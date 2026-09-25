@@ -17,6 +17,26 @@ Projeto Supabase, projeto Vercel, repositório e domínio exclusivos da Aden.
 
 Ordem aprovada: 1 Calculadora → 2 Núcleo + Clientes/Contratos + Decisões → 3 Produção + capacidade → 4 Aprovação → 5 Financeiro → 6 CRM → 7 Relatórios.
 
+## Pendências guardadas para as próximas fases
+
+### Fluxo de fechamento de ponta a ponta (pedido da Moni, 25/09/2026)
+Referência: o que já funciona no SoftMoni (briefing → proposta → contrato → CRM → pastas no Drive).
+Na Aden: **cliente fechou → o sistema organiza tudo sozinho, qualquer que seja o serviço**, sem montar nada à mão.
+Entra entre a Fase 2 (clientes e contratos) e a Fase 6 (CRM), e o desenho do modelo de dados já precisa prever isso.
+
+Ideia do fluxo (a detalhar com a Moni antes de construir):
+1. Lead no CRM → briefing → simulação na calculadora → proposta (a partir do cenário escolhido)
+2. Cliente fecha → contrato gerado com os dados da proposta e enviado para assinatura
+3. Ao assinar: cliente e contrato criados, **pastas do Drive criadas no padrão da Aden**, tarefas da entrada
+   (onboarding, enxoval, primeiras peças) e da rotina mensal geradas, painel do cliente liberado
+4. Tudo registrado no histórico e nas decisões
+
+A decidir com a Moni (não inventar):
+- Conta do Google Drive **da Aden** (separada da Mônica Design) e estrutura padrão de pastas
+- Modelos de proposta e contrato da Aden (identidade própria, ainda não definida)
+- Ferramenta de assinatura eletrônica
+- O que muda no fluxo por serviço (tráfego, criativos, social media, branding)
+
 ## Decisões de regra (definidas pela Moni, 25/09/2026)
 
 - Horas informadas **por entrega**; o sistema multiplica pela quantidade. Cada tipo de entrega tem sua hora por unidade configurável.
