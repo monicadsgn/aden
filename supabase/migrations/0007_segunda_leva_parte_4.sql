@@ -1,46 +1,6 @@
--- ════════════════════════════════════════════════════════════════════════════
--- Aden: segunda leva, parte 2 de 3 — histórico imutável e campos protegidos.
--- Rode inteiro, numa query nova, depois da 0004.
--- ════════════════════════════════════════════════════════════════════════════
-
--- ─── Histórico que não se apaga ─────────────────────────────────────────────
-create or replace function impedir_mudanca() returns trigger
-language plpgsql as $$
-begin
-  raise exception 'Este registro faz parte do histórico e não pode ser alterado nem apagado.';
-end;
-$$;
-create trigger auditoria_imutavel before update or delete on auditoria for each row execute function impedir_mudanca();
-create trigger aprovacoes_imutavel before update or delete on aprovacoes for each row execute function impedir_mudanca();
-
--- ─── Campos protegidos ──────────────────────────────────────────────────────
--- Mudar valor que já existia só passa pela função de aprovação (que liga 'aden.aplicando').
--- Preencher campo vazio passa direto.
-create or replace function proteger_campos() returns trigger
-language plpgsql as $$
-declare c text; v_antes jsonb; v_depois jsonb;
-begin
-  if coalesce(current_setting('aden.aplicando', true), '') = 'sim' then
-    return new;
-  end if;
-  foreach c in array tg_argv loop
-    v_antes := to_jsonb(old) -> c;
-    v_depois := to_jsonb(new) -> c;
-    if v_antes is not null and v_antes <> 'null'::jsonb and v_antes is distinct from v_depois then
-      raise exception 'O campo "%" é protegido: a mudança precisa da aprovação do sócio afetado.', c
-        using errcode = 'P0001';
-    end if;
-  end loop;
-  return new;
-end;
-$$;
-
-create trigger pessoas_protegido before update on pessoas
-  for each row execute function proteger_campos('piso_hora_centavos', 'percentual_padrao', 'membro_id');
-create trigger servico_divisao_protegido before update on servico_divisao
-  for each row execute function proteger_campos('percentual');
-create trigger tipos_entrega_protegido before update on tipos_entrega
-  for each row execute function proteger_campos('horas_por_unidade');
+-- Aden · segunda leva (aprovação dos sócios, cronômetro, pagamentos, perfis)
+-- Parte 4 de 6. Rode cada parte inteira, numa query nova, em ordem.
+-- (Dividida em partes pequenas porque colar um arquivo grande cortava o texto.)
 
 -- quem é afetado por um item (mesma regra de lib/regras/aprovacao.ts)
 create or replace function afetados_item(p_org uuid, p_item jsonb) returns uuid[]
