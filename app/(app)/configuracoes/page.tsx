@@ -128,7 +128,7 @@ export default function Configuracoes() {
     const tipos = [...rascunho.tiposEntrega];
     for (const nome of TIPOS_CITADOS)
       if (!tipos.some((t) => t.nome.toLowerCase() === nome.toLowerCase()))
-        tipos.push({ id: novoId(), nome, servicoId: null, horasPorUnidade: null, ativo: true });
+        tipos.push({ id: novoId(), nome, servicoId: null, horasPorUnidade: null, audiovisual: false, ativo: true });
     set({ servicos, tiposEntrega: tipos });
   };
 
@@ -158,7 +158,7 @@ export default function Configuracoes() {
               </Vazio>
             )}
             {socios.map((p) => (
-              <div key={p.id} className="grid grid-cols-2 items-end gap-3 rounded-2xl bg-superficie-2/60 p-3 sm:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
+              <div key={p.id} className="grid grid-cols-2 items-end gap-3 rounded-bloco bg-superficie-2/60 p-3 sm:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
                 <CampoTexto className="col-span-2 sm:col-span-1" rotulo="Nome" valor={p.nome} aoMudar={(v) => set({ pessoas: atualizar(rascunho.pessoas, p.id, { nome: v }) })} />
                 <CampoPct rotulo="% padrão" valor={p.percentualPadrao} aoMudar={(v) => set({ pessoas: atualizar(rascunho.pessoas, p.id, { percentualPadrao: v }) })} />
                 <CampoMoeda rotulo="Piso por hora" valor={p.pisoHoraCentavos} aoMudar={(v) => set({ pessoas: atualizar(rascunho.pessoas, p.id, { pisoHoraCentavos: v }) })} />
@@ -258,7 +258,7 @@ export default function Configuracoes() {
             {rascunho.servicos.map((s) => {
               const soma = socios.reduce((a, p) => a + (s.divisaoPadrao[p.id] ?? 0), 0);
               return (
-                <div key={s.id} className="rounded-2xl bg-superficie-2/60 p-3">
+                <div key={s.id} className="rounded-bloco bg-superficie-2/60 p-3">
                   <div className="flex items-end gap-2">
                     <CampoTexto className="flex-1" rotulo="Serviço" valor={s.nome} aoMudar={(v) => set({ servicos: atualizar(rascunho.servicos, s.id, { nome: v }) })} />
                     <Botao variante="perigo" icone={Trash2} aria-label="Remover serviço" onClick={() => set({ servicos: rascunho.servicos.filter((x) => x.id !== s.id) })} />
@@ -294,7 +294,11 @@ export default function Configuracoes() {
 
         {/* Tipos de entrega */}
         <Card>
-          <TituloCard icone={Shapes} titulo="Tipos de entrega" descricao="A unidade de esforço da calculadora: horas por entrega de cada tipo." />
+          <TituloCard
+            icone={Shapes}
+            titulo="Tipos de entrega"
+            descricao="A unidade de esforço da calculadora: horas por entrega de cada tipo. Roteiro e direção de gravação são tipos normais, com horas. Vídeo editado é de terceiro."
+          />
           <div className="flex flex-col gap-2 px-5 pb-5">
             {rascunho.tiposEntrega.length === 0 && (
               <Vazio icone={Clock3} titulo="Nenhum tipo de entrega">
@@ -302,7 +306,7 @@ export default function Configuracoes() {
               </Vazio>
             )}
             {rascunho.tiposEntrega.map((t) => (
-              <div key={t.id} className="grid grid-cols-[1fr_auto] items-end gap-2 rounded-2xl bg-superficie-2/60 p-3 sm:grid-cols-[1.4fr_1fr_7rem_auto]">
+              <div key={t.id} className="grid grid-cols-[1fr_auto] items-end gap-2 rounded-bloco bg-superficie-2/60 p-3 sm:grid-cols-[1.4fr_1fr_7rem_auto]">
                 <CampoTexto className="col-span-2 sm:col-span-1" rotulo="Entrega" valor={t.nome} aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { nome: v }) })} />
                 <Selecao
                   rotulo="Serviço"
@@ -311,12 +315,27 @@ export default function Configuracoes() {
                   opcoes={rascunho.servicos.map((s) => ({ valor: s.id, rotulo: s.nome || "(sem nome)" }))}
                   aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { servicoId: v }) })}
                 />
-                <CampoNumero rotulo="Horas/un." sufixo="h" valor={t.horasPorUnidade} aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { horasPorUnidade: v }) })} />
+                {t.audiovisual ? (
+                  <div className="pb-2.5 text-center text-[11px] leading-tight font-semibold text-texto-suave">
+                    sem horas
+                    <br />
+                    (terceiro)
+                  </div>
+                ) : (
+                  <CampoNumero rotulo="Horas/un." sufixo="h" valor={t.horasPorUnidade} aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { horasPorUnidade: v }) })} />
+                )}
                 <Botao variante="perigo" icone={Trash2} aria-label="Remover tipo" onClick={() => set({ tiposEntrega: rascunho.tiposEntrega.filter((x) => x.id !== t.id) })} />
+                <div className="col-span-full">
+                  <Interruptor
+                    ligado={!!t.audiovisual}
+                    rotulo="Vídeo de terceiro (edição, motion, legenda, corte): não gera horas"
+                    aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { audiovisual: v }) })}
+                  />
+                </div>
               </div>
             ))}
             <div>
-              <Botao icone={Plus} pequeno onClick={() => set({ tiposEntrega: [...rascunho.tiposEntrega, { id: novoId(), nome: "", servicoId: null, horasPorUnidade: null, ativo: true }] })}>
+              <Botao icone={Plus} pequeno onClick={() => set({ tiposEntrega: [...rascunho.tiposEntrega, { id: novoId(), nome: "", servicoId: null, horasPorUnidade: null, audiovisual: false, ativo: true }] })}>
                 Adicionar tipo de entrega
               </Botao>
             </div>
@@ -332,7 +351,7 @@ export default function Configuracoes() {
           />
           <div className="flex flex-col gap-2 px-5 pb-5">
             {rascunho.clientes.map((c) => (
-              <div key={c.id} className="rounded-2xl bg-superficie-2/60 p-3">
+              <div key={c.id} className="rounded-bloco bg-superficie-2/60 p-3">
                 <div className="grid grid-cols-[1fr_9rem_auto] items-end gap-2">
                   <CampoTexto rotulo="Cliente" valor={c.nome} aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { nome: v }) })} />
                   <CampoMoeda rotulo="Valor mensal" valor={c.valorMensalCentavos} aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { valorMensalCentavos: v }) })} />
@@ -363,7 +382,7 @@ export default function Configuracoes() {
       {/* barra de salvar */}
       {(sujo || mensagem) && (
         <div className="nao-imprimir fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-4 lg:pl-64">
-          <div className="flex w-full max-w-2xl flex-wrap items-center gap-3 rounded-full border border-linha bg-superficie px-4 py-2 shadow-forte">
+          <div className="flex w-full max-w-2xl flex-wrap items-center gap-3 rounded-botao border border-linha bg-superficie px-4 py-2 shadow-forte">
             <p className={`flex-1 text-xs font-semibold ${mensagem?.tom === "erro" ? "text-erro" : sujo ? "text-texto" : "text-ok"}`}>
               {sujo ? "Há alterações não salvas." : mensagem?.texto}
               {sujo && mensagem?.tom === "erro" && <span className="block text-erro">{mensagem.texto}</span>}

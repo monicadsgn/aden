@@ -24,7 +24,7 @@ export default function Entrar() {
       <Forma className="-top-40 -left-40 size-[520px] text-marca/10" />
       <Forma variante={3} className="-right-32 -bottom-40 size-[460px] text-destaque/15" />
       <form
-        className="relative w-full max-w-sm rounded-[28px] border border-linha bg-superficie p-8 shadow-forte"
+        className="relative w-full max-w-sm rounded-card border border-linha bg-superficie p-8 shadow-forte"
         onSubmit={async (e) => {
           e.preventDefault();
           setErro(null);

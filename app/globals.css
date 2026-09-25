@@ -26,6 +26,9 @@
   --font-sans: var(--fonte);
   --radius-card: var(--raio);
   --radius-campo: var(--raio-pequeno);
+  --radius-bloco: var(--raio-bloco);
+  --radius-item: var(--raio-item);
+  --radius-botao: var(--raio-botao);
   --shadow-card: var(--sombra);
   --shadow-forte: var(--sombra-forte);
 }

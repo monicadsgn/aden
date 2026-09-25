@@ -49,6 +49,7 @@ export function novoCenario(nome: string): Cenario {
       verbaMensalCentavos: null,
     },
     pontuais: [],
+    entrada: { entregas: [], custos: [], valorCobradoCentavos: null, mesesParaPagar: null },
     mesesSemCobranca: null,
     suspensaoSemCobranca: null,
     horizonteMeses: null,

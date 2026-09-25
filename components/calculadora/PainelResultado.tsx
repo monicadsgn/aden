@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock3,
+  DoorOpen,
   Coins,
   Gauge,
   Gem,
@@ -28,6 +29,7 @@ import type {
   Configuracao,
   LimiteEncaixe,
   ResultadoCenario,
+  ResultadoEntrada,
   ResultadoHorizonte,
   ResultadoMes,
   ResultadoPessoa,
@@ -58,7 +60,7 @@ export function ListaAlertas({ alertas }: { alertas: Alerta[] }) {
           <div
             key={a.texto}
             className={cx(
-              "flex items-start gap-2 rounded-2xl px-3 py-2 text-xs leading-snug font-medium",
+              "flex items-start gap-2 rounded-bloco px-3 py-2 text-xs leading-snug font-medium",
               a.nivel === "erro" ? "bg-erro-suave text-erro" : a.nivel === "aviso" ? "bg-aviso-suave text-aviso" : "bg-info-suave text-info",
             )}
           >
@@ -146,7 +148,7 @@ function Cascata({ m }: { m: ResultadoMes }) {
       {m.receitaTrafegoCentavos > 0 && <LinhaCascata rotulo="Cobrança de tráfego" valor={m.receitaTrafegoCentavos} />}
       <LinhaCascata rotulo="Receita bruta" valor={m.receitaBrutaCentavos} forte />
       {m.verbaMidiaCentavos != null && m.verbaMidiaCentavos > 0 && (
-        <div className="my-1 flex items-baseline justify-between gap-3 rounded-xl border border-dashed border-linha px-3 py-1.5 text-texto-suave">
+        <div className="my-1 flex items-baseline justify-between gap-3 rounded-item border border-dashed border-linha px-3 py-1.5 text-texto-suave">
           <span className="text-[12px]">
             Verba de mídia do cliente <span className="text-[11px]">(paga direto na plataforma, fora de qualquer soma)</span>
           </span>
@@ -212,7 +214,7 @@ function CartaoSocio({ p, grande }: { p: ResultadoPessoa; grande?: boolean }) {
           ? { tom: "erro", icone: TrendingDown, texto: `abaixo do piso de ${formatarMoeda(p.pisoHoraCentavos)}/h` }
           : { tom: "ok", icone: CheckCircle2, texto: `acima do piso de ${formatarMoeda(p.pisoHoraCentavos)}/h` };
   return (
-    <div className={cx("relative overflow-hidden rounded-2xl border p-4", p.abaixoPiso ? "border-erro/40 bg-erro-suave/40" : "border-linha bg-superficie")}>
+    <div className={cx("relative overflow-hidden rounded-bloco border p-4", p.abaixoPiso ? "border-erro/40 bg-erro-suave/40" : "border-linha bg-superficie")}>
       <span className="pointer-events-none absolute -top-6 -right-6 size-16 rounded-full bg-marca-suave/70" aria-hidden />
       <div className="relative flex items-center gap-2">
         <span className="flex size-8 items-center justify-center rounded-full bg-marca text-xs font-bold text-sobre-marca">{p.nome.slice(0, 1).toUpperCase()}</span>
@@ -254,7 +256,7 @@ function CartaoSocio({ p, grande }: { p: ResultadoPessoa; grande?: boolean }) {
 
 function Indicador({ icone, rotulo, valor, dica }: { icone: LucideIcon; rotulo: string; valor: string; dica: string }) {
   return (
-    <div className="rounded-2xl bg-superficie-2/70 p-3" title={dica}>
+    <div className="rounded-bloco bg-superficie-2/70 p-3" title={dica}>
       <div className="flex items-center gap-2">
         <IconeBadge icone={icone} tamanho="sm" />
         <span className="text-[11px] leading-tight font-semibold text-texto-suave">{rotulo}</span>
@@ -262,6 +264,80 @@ function Indicador({ icone, rotulo, valor, dica }: { icone: LucideIcon; rotulo: 
       <p className="numero mt-2 text-lg font-extrabold">{valor}</p>
       <p className="mt-0.5 text-[10px] leading-tight text-texto-suave">{dica}</p>
     </div>
+  );
+}
+
+// ─── Entrada do cliente (uma vez só) ────────────────────────────────────────
+
+function BlocoEntrada({ e, mesesDesejados }: { e: ResultadoEntrada; mesesDesejados: number | null }) {
+  const fmtMeses = (m: number) => (m <= 1 ? "1 mês" : `${m.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} meses`);
+  return (
+    <Card>
+      <TituloCard
+        icone={DoorOpen}
+        titulo="Entrada do cliente"
+        descricao="Uma vez só, separada da rotina. Custo = dinheiro + horas dos sócios no piso − o que for cobrado pela entrada."
+        acao={<Badge tom="aviso">uma vez</Badge>}
+      />
+      <div className="flex flex-col gap-3 px-5 pb-5">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="rounded-bloco bg-marca-tinta p-3">
+            <p className="text-[11px] font-semibold text-texto-suave">Custo da entrada</p>
+            <p className="numero text-2xl font-extrabold">{formatarMoeda(e.custoEntradaCentavos)}</p>
+          </div>
+          <div className={cx("rounded-bloco p-3", e.mesesParaSePagar == null ? "bg-erro-suave" : "bg-ok-suave")}>
+            <p className="text-[11px] font-semibold text-texto-suave">Se paga em</p>
+            <p className={cx("numero text-2xl font-extrabold", e.mesesParaSePagar == null ? "text-erro" : "text-texto")}>
+              {e.mesesParaSePagar == null ? "não se paga" : e.mesesParaSePagar === 0 ? "já está paga" : fmtMeses(e.mesesParaSePagar)}
+            </p>
+            <p className="mt-0.5 text-[10px] leading-tight text-texto-suave">
+              {e.folgaMensalRotinaCentavos != null
+                ? `a rotina gera ${formatarMoeda(Math.max(0, e.folgaMensalRotinaCentavos))}/mês acima do piso de todos`
+                : "defina os percentuais e o valor da rotina"}
+            </p>
+          </div>
+        </div>
+        {e.mensalidadeParaPagarCentavos != null && mesesDesejados != null && (
+          <div className="rounded-bloco border border-marca/40 p-3">
+            <p className="text-[11px] font-semibold text-texto-suave">Mensalidade para a entrada se pagar em {fmtMeses(mesesDesejados)}</p>
+            <p className="numero text-xl font-extrabold">{formatarMoeda(e.mensalidadeParaPagarCentavos)}</p>
+          </div>
+        )}
+        <div className="text-[13px]">
+          <div className="flex justify-between py-1">
+            <span className="text-texto-suave">Custos em dinheiro (terceiros, audiovisual…)</span>
+            <span className="numero font-semibold">{formatarMoeda(e.custosDinheiroCentavos)}</span>
+          </div>
+          <div className="flex justify-between py-1">
+            <span className="text-texto-suave">Horas dos sócios no piso ({formatarHoras(e.horasTotais)})</span>
+            <span className="numero font-semibold">{formatarMoeda(e.horasNoPisoCentavos)}</span>
+          </div>
+          {e.cobradoLiquidoCentavos > 0 && (
+            <div className="flex justify-between py-1">
+              <span className="text-texto-suave">− Cobrado pela entrada (sem imposto e taxa)</span>
+              <span className="numero font-semibold">−{formatarMoeda(e.cobradoLiquidoCentavos)}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-[11px] font-bold tracking-wide text-texto-suave uppercase">1º mês = rotina + entrada</p>
+          {e.pessoas
+            .filter((p) => p.horasPrimeiroMes > 0)
+            .map((p) => (
+              <div key={p.id}>
+                <div className="mb-1 flex flex-wrap justify-between gap-2 text-[11px] font-semibold">
+                  <span>{p.nome}</span>
+                  <span className="text-texto-suave">
+                    {formatarHoras(p.horasPrimeiroMes)} ({formatarHoras(p.horas)} da entrada)
+                    {p.consumoPrimeiroMesPct != null && ` · ${formatarPct(p.consumoPrimeiroMesPct)} do mês`}
+                  </span>
+                </div>
+                {p.consumoPrimeiroMesPct != null && <Barra pct={p.consumoPrimeiroMesPct} alerta={p.consumoPrimeiroMesPct > 100} />}
+              </div>
+            ))}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -283,7 +359,7 @@ function BlocoHorizonte({ h }: { h: ResultadoHorizonte }) {
       />
       <div className="px-5 pb-5">
         {h.opcoesIguais && h.semCobranca > 0 && (
-          <p className="mb-3 rounded-2xl bg-info-suave px-3 py-2 text-xs font-medium text-info">
+          <p className="mb-3 rounded-bloco bg-info-suave px-3 py-2 text-xs font-medium text-info">
             Este cenário não tem cobrança de tráfego, então as opções A e B dão o mesmo resultado.
           </p>
         )}
@@ -292,7 +368,7 @@ function BlocoHorizonte({ h }: { h: ResultadoHorizonte }) {
             const v = h.opcoes[o];
             const escolhida = h.escolhida === o;
             return (
-              <div key={o} className={cx("flex flex-col gap-2 rounded-2xl border p-3", escolhida ? "border-marca bg-marca-tinta" : "border-linha")}>
+              <div key={o} className={cx("flex flex-col gap-2 rounded-bloco border p-3", escolhida ? "border-marca bg-marca-tinta" : "border-linha")}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="flex size-6 items-center justify-center rounded-full bg-marca text-[11px] font-bold text-sobre-marca">{ROTULO_SUSPENSAO[o].letra}</span>
                   <span className="text-[13px] font-bold">{ROTULO_SUSPENSAO[o].texto}</span>
@@ -319,7 +395,7 @@ function BlocoHorizonte({ h }: { h: ResultadoHorizonte }) {
                   </div>
                 </div>
                 {v.pessoas.map((p) => (
-                  <div key={p.id} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-xl bg-superficie-2/70 px-3 py-2 text-[12px]">
+                  <div key={p.id} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-item bg-superficie-2/70 px-3 py-2 text-[12px]">
                     <span className="font-semibold">{p.nome}</span>
                     <span className="numero text-texto-suave">
                       {formatarMoeda(p.valorTotalCentavos)} · média {formatarMoeda(p.valorHoraMedioCentavos)}/h
@@ -365,7 +441,7 @@ export function PainelResultado({
       <Destaque
         grande={grande}
         icone={Scale}
-        rotulo="Valor mínimo mensal"
+        rotulo="Valor mínimo mensal · rotina"
         valor={r.minimo.possivel ? formatarMoeda(r.minimo.mensalidadeMinimaCentavos) : "—"}
         sub={
           r.minimo.possivel ? (
@@ -389,13 +465,13 @@ export function PainelResultado({
       <Destaque
         grande={grande}
         icone={PiggyBank}
-        rotulo="Sobra do mês depois dos custos"
+        rotulo="Sobra do mês da rotina"
         valor={m ? formatarMoeda(m.sobraCentavos) : "—"}
         sub={
           r.minimo.possivel && dif != null ? (
             <span className="inline-flex flex-wrap items-center gap-1.5">
               Valor mínimo para este escopo: <strong className="numero">{formatarMoeda(r.minimo.mensalidadeMinimaCentavos)}</strong>
-              <span className="inline-flex items-center gap-1 rounded-full bg-sobre-marca/20 px-2 py-0.5 font-bold">
+              <span className="inline-flex items-center gap-1 rounded-botao bg-sobre-marca/20 px-2 py-0.5 font-bold">
                 {dif >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                 {dif >= 0 ? `${formatarMoeda(dif)} acima` : `${formatarMoeda(-dif)} abaixo`}
               </span>
@@ -415,7 +491,7 @@ export function PainelResultado({
         <>
           {socios.length > 0 && (
             <Card>
-              <TituloCard icone={Users} titulo="Cada sócio" descricao="Valor do mês e por hora trabalhada neste projeto." />
+              <TituloCard icone={Users} titulo="Cada sócio · rotina mensal" descricao="Valor do mês e por hora trabalhada na rotina deste projeto." />
               <div className={cx("grid gap-3 px-5 pb-5", socios.length > 1 && "sm:grid-cols-2")}>
                 {socios.map((p) => (
                   <CartaoSocio key={p.id} p={p} grande={grande} />
@@ -423,6 +499,8 @@ export function PainelResultado({
               </div>
             </Card>
           )}
+
+          {r.entrada && <BlocoEntrada e={r.entrada} mesesDesejados={cenario.entrada?.mesesParaPagar ?? null} />}
 
           <Card>
             <TituloCard icone={Gauge} titulo="Indicadores por hora" descricao={`${formatarHoras(m.horasTotais)} de produção por mês neste projeto.`} />
@@ -449,9 +527,9 @@ export function PainelResultado({
                 }
               />
               <div className="px-5 pb-5">
-                {!r.encaixe.disponivel && <p className="mb-3 rounded-2xl bg-info-suave px-3 py-2 text-xs font-medium text-info">{r.encaixe.motivo}</p>}
+                {!r.encaixe.disponivel && <p className="mb-3 rounded-bloco bg-info-suave px-3 py-2 text-xs font-medium text-info">{r.encaixe.motivo}</p>}
                 {r.encaixe.disponivel && !r.encaixe.cabe && (
-                  <div className="mb-4 flex flex-wrap items-center gap-1.5 rounded-2xl bg-erro-suave/60 px-3 py-2">
+                  <div className="mb-4 flex flex-wrap items-center gap-1.5 rounded-bloco bg-erro-suave/60 px-3 py-2">
                     <span className="text-xs font-bold text-erro">Está travando:</span>
                     {r.encaixe.limitantes.map((l) => (
                       <ChipLimite key={l.tipo + l.pessoaId} l={l} estourado />
@@ -495,7 +573,13 @@ export function PainelResultado({
                     <div key={t.tipoEntregaId} className="flex flex-wrap items-center gap-3 py-2">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-semibold">{t.nome}</p>
-                        <p className="text-[11px] text-texto-suave">{t.horasPorUnidade != null ? `${formatarHoras(t.horasPorUnidade)} por entrega` : "sem horas configuradas"}</p>
+                        <p className="text-[11px] text-texto-suave">
+                          {config.tiposEntrega.find((x) => x.id === t.tipoEntregaId)?.audiovisual
+                            ? "vídeo de terceiro · só custo"
+                            : t.horasPorUnidade != null
+                              ? `${formatarHoras(t.horasPorUnidade)} por entrega`
+                              : "sem horas configuradas"}
+                        </p>
                       </div>
                       <Passo
                         ariaLabel={t.nome}
@@ -503,7 +587,9 @@ export function PainelResultado({
                         aoMudar={(v) => aoMudar(ajustarQuantidade(cenario, t.tipoEntregaId, (v ?? 0) - t.quantidade))}
                       />
                       <div className="flex w-48 flex-col items-end gap-1 text-right">
-                        {t.folga == null ? (
+                        {t.folga == null && t.naoResolve ? (
+                          <span className="text-[11px] text-texto-suave">nada a tirar</span>
+                        ) : t.folga == null ? (
                           <span className="text-[11px] text-texto-suave">{r.encaixe!.disponivel ? "sem limite" : "—"}</span>
                         ) : t.folga > 0 ? (
                           <Badge tom="ok">+{t.folga >= 9999 ? "9999" : t.folga} cabe{t.folga === 1 ? "" : "m"}</Badge>
@@ -553,7 +639,7 @@ export function PainelResultado({
               <p className="text-[11px] font-semibold text-texto-suave">Custos do projeto</p>
               <p className="numero font-bold">{formatarMoeda(pf.custosCentavos)}</p>
             </div>
-            <div className="col-span-2 rounded-2xl bg-marca-tinta p-3">
+            <div className="col-span-2 rounded-bloco bg-marca-tinta p-3">
               <p className="text-[11px] font-semibold text-texto-suave">Valor mínimo do projeto</p>
               <p className="numero text-xl font-extrabold">{pf.minimo.possivel ? formatarMoeda(pf.minimo.mensalidadeMinimaCentavos) : "—"}</p>
               {!pf.minimo.possivel && <p className="text-[11px] text-erro">{pf.minimo.motivo}</p>}
@@ -561,7 +647,7 @@ export function PainelResultado({
             {pf.resultado?.pessoas
               .filter((p) => p.horas > 0)
               .map((p) => (
-                <div key={p.id} className="col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-superficie-2/70 px-3 py-2">
+                <div key={p.id} className="col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-item bg-superficie-2/70 px-3 py-2">
                   <span className="font-semibold">{p.nome}</span>
                   <span className="numero text-texto-suave">
                     {formatarMoeda(p.valorCentavos)} · {formatarMoeda(p.valorHoraCentavos)}/h

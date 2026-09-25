@@ -86,7 +86,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
               if (i.emBreve)
                 return (
                   <li key={i.href}>
-                    <span className="flex cursor-default items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-texto-suave/60" title="Próximas fases">
+                    <span className="flex cursor-default items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-medium text-texto-suave/60" title="Próximas fases">
                       <Ic size={17} strokeWidth={1.9} />
                       <span className="flex-1 truncate">{i.rotulo}</span>
                       <span className="text-[9px] font-bold tracking-wide uppercase">breve</span>
@@ -99,7 +99,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
                     href={i.href}
                     onClick={aoNavegar}
                     className={cx(
-                      "flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-semibold transition-colors",
+                      "flex items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-semibold transition-colors",
                       ativo ? "bg-marca text-sobre-marca shadow-card" : "text-texto hover:bg-marca-suave/60",
                     )}
                   >
@@ -136,7 +136,7 @@ function AlternarTema() {
     } catch {}
   };
   return (
-    <button type="button" onClick={trocar} aria-label="Alternar tema claro/escuro" className="flex size-9 items-center justify-center rounded-xl text-texto-suave hover:bg-superficie-2 hover:text-texto">
+    <button type="button" onClick={trocar} aria-label="Alternar tema claro/escuro" className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto">
       {escuro ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
@@ -187,7 +187,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <button
           type="button"
           aria-label="Sair"
-          className="flex size-9 items-center justify-center rounded-xl text-texto-suave hover:bg-superficie-2 hover:text-texto"
+          className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
           onClick={async () => {
             await repo.sair();
             await atualizarUsuario();
@@ -216,7 +216,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="nao-imprimir sticky top-0 z-30 flex items-center justify-between border-b border-linha bg-fundo/90 px-4 py-3 backdrop-blur lg:hidden">
           <Marca compacta />
-          <button type="button" aria-label="Abrir menu" onClick={() => setMenuAberto(true)} className="flex size-10 items-center justify-center rounded-xl hover:bg-superficie-2">
+          <button type="button" aria-label="Abrir menu" onClick={() => setMenuAberto(true)} className="flex size-10 items-center justify-center rounded-item hover:bg-superficie-2">
             <Menu size={20} />
           </button>
         </header>
@@ -226,7 +226,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto bg-superficie px-3 py-5 shadow-forte">
               <div className="flex items-center justify-between px-2">
                 <Marca />
-                <button aria-label="Fechar menu" onClick={() => setMenuAberto(false)} className="flex size-9 items-center justify-center rounded-xl hover:bg-superficie-2">
+                <button aria-label="Fechar menu" onClick={() => setMenuAberto(false)} className="flex size-9 items-center justify-center rounded-item hover:bg-superficie-2">
                   <X size={18} />
                 </button>
               </div>
@@ -268,7 +268,7 @@ export function CabecalhoPagina({
       </svg>
       <span className="pointer-events-none absolute right-48 -bottom-10 size-24 rounded-full bg-destaque/15" aria-hidden />
       <div className="relative mx-auto flex max-w-[1500px] flex-wrap items-center gap-4 px-4 py-6 sm:px-6 lg:px-8">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-marca text-sobre-marca shadow-card">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-bloco bg-marca text-sobre-marca shadow-card">
           <Icone size={22} />
         </span>
         <div className="min-w-0 flex-1">

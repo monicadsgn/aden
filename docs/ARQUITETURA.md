@@ -36,6 +36,9 @@ Ordem aprovada: 1 Calculadora → 2 Núcleo + Clientes/Contratos + Decisões →
 - "O que cabe" respeita piso e capacidade e **mostra qual limite trava e de qual sócio**: piso é preço (decisão comercial), capacidade é gente (decisão de equipe).
 - Os dois sócios são administradores. Toda alteração em valor, percentual e configuração fica registrada.
 
+- **Audiovisual** (25/09/2026): a Moni não faz audiovisual (edição, motion, legendagem, corte). Tipo de entrega marcado como "vídeo de terceiro" nunca gera horas; é sempre custo de audiovisual (fixo ou por entrega), pago pela empresa. Roteiro e direção de gravação são tipos normais, com horas. Vídeo sem custo de audiovisual no mesmo bloco gera alerta.
+- **Entrada × rotina** (25/09/2026): a entrada do cliente novo (onboarding, estrutura visual e proposta de conteúdo, enxoval do perfil, primeiros estáticos e criativos) acontece uma vez só e fica fora do resultado mensal. O resultado mostra a rotina mensal e, à parte, o custo da entrada e em quantos meses ele se paga.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```
@@ -70,12 +73,25 @@ suspensos e calcula a média por hora de cada sócio. Nos meses suspensos os cus
 (opção A) ou só a gestão de tráfego, com imposto e taxa sobre ela (opção B). Para cada opção, mostra também a mensalidade
 necessária nos meses pagantes para compensar.
 
+**Entrada do cliente (uma vez só):**
+```
+custo da entrada = custos em dinheiro da entrada + Σ horas do sócio na entrada × piso do sócio
+                   − valor cobrado pela entrada × (1 − imposto − taxa)
+folga da rotina  = sobra mensal da rotina − sobra necessária para todos chegarem ao piso
+se paga em       = custo da entrada ÷ folga da rotina   (folga ≤ 0 → "não se paga com a rotina")
+mensalidade p/ pagar em N meses = menor mensalidade cuja folga × N cobre o custo da entrada
+1º mês           = horas da rotina + horas da entrada (consumo da capacidade)
+```
+No valor mínimo, a rotina paga exatamente o piso, então a entrada não se paga por ela: é preciso cobrá-la à parte ou subir a mensalidade.
+**A confirmar:** as horas dos sócios na entrada são valorizadas pelo piso de cada um.
+
 **Pontual fora da mensalidade:** cálculo próprio, sem rateio de custo fixo, com valor mínimo e resultado por sócio.
 
 ## Identidade visual
 
-Provisória (pistache, creme e Montserrat são da Mônica Design). Cores, fonte, raios e sombras ficam só em
-`app/tokens.css`; nenhum componente tem cor ou fonte fixa. O logo fica em `components/Marca.tsx` e `app/icon.svg`.
+Provisória (pistache, creme e Montserrat são da Mônica Design). Cores, fonte, cantos (inclusive o formato pílula
+dos botões, abas, seletores e etiquetas: `--raio-botao`) e sombras ficam só em `app/tokens.css`; nenhum componente
+tem cor, fonte ou arredondamento fixo (só círculos de verdade: avatares, pontos, chaves, barras). O logo fica em `components/Marca.tsx` e `app/icon.svg`.
 Verificado em 25/09/2026: trocando só o `tokens.css` por outra paleta e outra fonte, o sistema inteiro muda.
 
 ## Modelo de dados

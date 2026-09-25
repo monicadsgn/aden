@@ -304,3 +304,101 @@ describe("pontuais, horizonte e encaixe", () => {
     expect(post.folga!).toBeLessThan(0);
   });
 });
+
+describe("audiovisual", () => {
+  function cfgVideo() {
+    const c = config();
+    c.tiposEntrega.push({ id: "video", nome: "Reels editado", servicoId: "s1", horasPorUnidade: 3, audiovisual: true, ativo: true });
+    return c;
+  }
+
+  it("entrega de vídeo nunca gera horas dos sócios, mesmo com horas preenchidas", () => {
+    const c = cenario();
+    c.entregas.push({ id: "v", tipoEntregaId: "video", quantidade: 4, horasPorUnidade: 5 });
+    const r = calcularComReceita(prepararMes(cfgVideo(), c), 300000);
+    expect(r.horasTotais).toBe(30);
+  });
+
+  it("alerta quando há vídeo sem custo de audiovisual", () => {
+    const c = cenario();
+    c.entregas.push({ id: "v", tipoEntregaId: "video", quantidade: 4, horasPorUnidade: null });
+    const r = calcularCenario(cfgVideo(), c);
+    expect(r.alertas.some((a) => a.nivel === "erro" && a.texto.includes("entrega de vídeo"))).toBe(true);
+  });
+
+  it("não alerta com custo de audiovisual por entrega (e o custo entra)", () => {
+    const c = cenario();
+    c.entregas.push({ id: "v", tipoEntregaId: "video", quantidade: 4, horasPorUnidade: null });
+    c.custos.push({ id: "av", categoria: "audiovisual", descricao: "", forma: "por_entrega", valorCentavos: 15000, tipoEntregaId: "video" });
+    const r = calcularCenario(cfgVideo(), c);
+    expect(r.alertas.some((a) => a.texto.includes("entrega de vídeo"))).toBe(false);
+    expect(r.mes!.custosPorCategoria.audiovisual).toBe(60000);
+  });
+
+  it("roteiro é entrega normal, com horas", () => {
+    const cfg = cfgVideo();
+    cfg.tiposEntrega.push({ id: "rot", nome: "Roteiro", servicoId: "s1", horasPorUnidade: 1, ativo: true });
+    const c = cenario();
+    c.entregas.push({ id: "r", tipoEntregaId: "rot", quantidade: 4, horasPorUnidade: null });
+    const r = calcularComReceita(prepararMes(cfg, c), 300000);
+    expect(r.pessoas.find((p) => p.id === "a")!.horas).toBe(24);
+  });
+});
+
+describe("entrada de cliente novo", () => {
+  function comEntrada() {
+    const c = cenario();
+    c.entrada = {
+      entregas: [{ id: "e", tipoEntregaId: "post", quantidade: 5, horasPorUnidade: null }], // 10 h de A
+      custos: [{ id: "k", categoria: "terceiro", descricao: "", forma: "fixo", valorCentavos: 20000, tipoEntregaId: null }],
+      valorCobradoCentavos: null,
+      mesesParaPagar: null,
+    };
+    return c;
+  }
+
+  it("não entra no resultado da rotina", () => {
+    const r1 = calcularComReceita(prepararMes(config(), cenario()), 300000);
+    const r2 = calcularComReceita(prepararMes(config(), comEntrada()), 300000);
+    expect(r2.horasTotais).toBe(r1.horasTotais);
+    expect(r2.sobraCentavos).toBe(r1.sobraCentavos);
+  });
+
+  it("custo = dinheiro + horas no piso; se paga pela folga da rotina acima do piso", () => {
+    const c = comEntrada();
+    c.modo = "valor";
+    c.mensalidadeCentavos = 400000;
+    const r = calcularCenario(config(), c);
+    const e = r.entrada!;
+    expect(e.custosDinheiroCentavos).toBe(20000);
+    expect(e.horasNoPisoCentavos).toBe(10 * 5000);
+    expect(e.custoEntradaCentavos).toBe(70000);
+    const alvo = calcularMinimo(prepararMes(config(), c)).resultado!.sobraCentavos;
+    expect(e.folgaMensalRotinaCentavos!).toBeCloseTo(r.mes!.sobraCentavos - alvo, -1);
+    expect(e.mesesParaSePagar!).toBeCloseTo(70000 / e.folgaMensalRotinaCentavos!);
+    expect(e.pessoas.find((p) => p.id === "a")!.horasPrimeiroMes).toBe(30);
+  });
+
+  it("valor cobrado pela entrada abate o custo (sem imposto e taxa)", () => {
+    const c = comEntrada();
+    c.entrada!.valorCobradoCentavos = 50000;
+    const e = calcularCenario(config(), c).entrada!;
+    expect(e.cobradoLiquidoCentavos).toBeCloseTo(50000 * 0.9);
+    expect(e.custoEntradaCentavos).toBeCloseTo(70000 - 45000);
+  });
+
+  it("no valor mínimo a entrada não se paga; com prazo, calcula a mensalidade", () => {
+    const c = comEntrada();
+    const r = calcularCenario(config(), c);
+    expect(r.entrada!.mesesParaSePagar).toBeNull();
+    expect(r.alertas.some((a) => a.texto.includes("não se paga com a rotina"))).toBe(true);
+
+    c.entrada!.mesesParaPagar = 4;
+    const r2 = calcularCenario(config(), c);
+    const m = r2.entrada!.mensalidadeParaPagarCentavos!;
+    // cobrando essa mensalidade, a entrada se paga em ~4 meses
+    const v = calcularCenario(config(), { ...c, modo: "valor", mensalidadeCentavos: m });
+    expect(v.entrada!.mesesParaSePagar!).toBeGreaterThan(3.99);
+    expect(v.entrada!.mesesParaSePagar!).toBeLessThanOrEqual(4.0001);
+  });
+});

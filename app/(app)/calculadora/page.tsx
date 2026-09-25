@@ -160,7 +160,7 @@ export default function Calculadora() {
           <div className="nao-imprimir flex flex-wrap items-center gap-3 rounded-card border border-aviso/30 bg-aviso-suave px-4 py-3 text-sm text-aviso">
             <Settings2 size={18} />
             <span className="flex-1 font-medium">Para calcular, cadastre primeiro os sócios, os serviços e os tipos de entrega com as horas de cada um.</span>
-            <Link href="/configuracoes" className="rounded-full bg-aviso px-4 py-1.5 text-xs font-bold text-superficie">
+            <Link href="/configuracoes" className="rounded-botao bg-aviso px-4 py-1.5 text-xs font-bold text-superficie">
               Ir para configurações
             </Link>
           </div>
@@ -220,7 +220,7 @@ export default function Calculadora() {
               <div
                 key={c.id}
                 className={cx(
-                  "flex items-center gap-1 rounded-full border py-1 pr-1 pl-1 transition-all",
+                  "flex items-center gap-1 rounded-botao border py-1 pr-1 pl-1 transition-all",
                   sel ? "border-marca bg-marca text-sobre-marca shadow-card" : "border-linha bg-superficie hover:border-marca/50",
                 )}
               >
@@ -239,11 +239,11 @@ export default function Calculadora() {
                   )}
                   {erros > 0 && <span className={cx("size-2 rounded-full", sel ? "bg-sobre-marca" : "bg-erro")} aria-label={`${erros} alertas`} />}
                 </button>
-                <button type="button" aria-label={`Duplicar ${c.nome}`} title="Duplicar" disabled={sim.cenarios.length >= MAX_CENARIOS} onClick={() => adicionarCenario(c)} className="flex size-7 items-center justify-center rounded-full opacity-70 hover:opacity-100 disabled:opacity-30">
+                <button type="button" aria-label={`Duplicar ${c.nome}`} title="Duplicar" disabled={sim.cenarios.length >= MAX_CENARIOS} onClick={() => adicionarCenario(c)} className="flex size-7 items-center justify-center rounded-botao opacity-70 hover:opacity-100 disabled:opacity-30">
                   <Copy size={13} />
                 </button>
                 {sim.cenarios.length > 1 && (
-                  <button type="button" aria-label={`Remover ${c.nome}`} title="Remover" onClick={() => removerCenario(c.id)} className="flex size-7 items-center justify-center rounded-full opacity-70 hover:opacity-100">
+                  <button type="button" aria-label={`Remover ${c.nome}`} title="Remover" onClick={() => removerCenario(c.id)} className="flex size-7 items-center justify-center rounded-botao opacity-70 hover:opacity-100">
                     <X size={14} />
                   </button>
                 )}

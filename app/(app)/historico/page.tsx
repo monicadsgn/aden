@@ -121,7 +121,7 @@ export default function Historico() {
                 const lista = r.acao === "alterou" ? mudancas(r) : [];
                 return (
                   <li key={r.id} className="relative flex gap-3 border-b border-linha py-3 last:border-0">
-                    <span className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl ${a.tom === "ok" ? "bg-ok-suave text-ok" : a.tom === "erro" ? "bg-erro-suave text-erro" : "bg-info-suave text-info"}`}>
+                    <span className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-item ${a.tom === "ok" ? "bg-ok-suave text-ok" : a.tom === "erro" ? "bg-erro-suave text-erro" : "bg-info-suave text-info"}`}>
                       <Ic size={15} />
                     </span>
                     <div className="min-w-0 flex-1">

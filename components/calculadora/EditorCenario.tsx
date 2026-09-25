@@ -2,6 +2,8 @@
 
 import {
   CalendarClock,
+  Clapperboard,
+  DoorOpen,
   Gem,
   ListChecks,
   Megaphone,
@@ -71,17 +73,18 @@ function EditorEntregas({
   return (
     <div className="flex flex-col gap-2">
       {tipos.length === 0 && (
-        <p className="rounded-2xl bg-aviso-suave px-3 py-2 text-xs font-medium text-aviso">
+        <p className="rounded-bloco bg-aviso-suave px-3 py-2 text-xs font-medium text-aviso">
           Cadastre os tipos de entrega (e as horas de cada um) em Configurações.
         </p>
       )}
       {linhas.map((l) => {
         const tipo = config.tiposEntrega.find((t) => t.id === l.tipoEntregaId);
-        const hUn = l.horasPorUnidade ?? tipo?.horasPorUnidade ?? null;
+        const video = !!tipo?.audiovisual;
+        const hUn = video ? 0 : (l.horasPorUnidade ?? tipo?.horasPorUnidade ?? null);
         const total = hUn != null && l.quantidade != null ? hUn * l.quantidade : null;
-        const sobreposto = l.horasPorUnidade != null && l.horasPorUnidade !== tipo?.horasPorUnidade;
+        const sobreposto = !video && l.horasPorUnidade != null && l.horasPorUnidade !== tipo?.horasPorUnidade;
         return (
-          <div key={l.id} className="grid grid-cols-[auto_6.5rem_1fr_auto] items-end gap-2 rounded-2xl bg-superficie-2/60 p-3 2xl:grid-cols-[1fr_auto_6.5rem_4.5rem_auto]">
+          <div key={l.id} className="grid grid-cols-[auto_6.5rem_1fr_auto] items-end gap-2 rounded-bloco bg-superficie-2/60 p-3 2xl:grid-cols-[1fr_auto_6.5rem_4.5rem_auto]">
             <Selecao
               className="col-span-4 2xl:col-span-1"
               rotulo="Entrega"
@@ -94,17 +97,27 @@ function EditorEntregas({
               <Rotulo>{unidade}</Rotulo>
               <Passo ariaLabel="quantidade" valor={l.quantidade} aoMudar={(v) => mudar(l.id, { quantidade: v })} />
             </div>
-            <CampoNumero
-              rotulo="h/un."
-              sufixo="h"
-              destaque={sobreposto}
-              placeholder={tipo?.horasPorUnidade != null ? formatarNumero(tipo.horasPorUnidade) : "—"}
-              valor={l.horasPorUnidade}
-              aoMudar={(v) => mudar(l.id, { horasPorUnidade: v })}
-            />
-            <div className="pb-2.5 text-right">
-              <span className="numero text-sm font-bold">{formatarHoras(total)}</span>
-            </div>
+            {video ? (
+              <div className="col-span-2 pb-2 2xl:col-span-2">
+                <Badge tom="info" icone={Clapperboard}>
+                  vídeo de terceiro · sem horas
+                </Badge>
+              </div>
+            ) : (
+              <>
+                <CampoNumero
+                  rotulo="h/un."
+                  sufixo="h"
+                  destaque={sobreposto}
+                  placeholder={tipo?.horasPorUnidade != null ? formatarNumero(tipo.horasPorUnidade) : "—"}
+                  valor={l.horasPorUnidade}
+                  aoMudar={(v) => mudar(l.id, { horasPorUnidade: v })}
+                />
+                <div className="pb-2.5 text-right">
+                  <span className="numero text-sm font-bold">{formatarHoras(total)}</span>
+                </div>
+              </>
+            )}
             <Botao variante="perigo" icone={Trash2} aria-label="Remover entrega" onClick={() => aoMudar(linhas.filter((x) => x.id !== l.id))} />
             {sobreposto && (
               <p className="col-span-full -mt-1 text-[11px] font-medium text-aviso">
@@ -147,7 +160,7 @@ function EditorCustos({
         const ferramenta = l.categoria === "ferramenta";
         const porEntrega = !ferramenta && l.forma === "por_entrega";
         return (
-          <div key={l.id} className="grid grid-cols-2 items-end gap-2 rounded-2xl bg-superficie-2/60 p-3 sm:grid-cols-[8.5rem_1fr_9rem_auto]">
+          <div key={l.id} className="grid grid-cols-2 items-end gap-2 rounded-bloco bg-superficie-2/60 p-3 sm:grid-cols-[8.5rem_1fr_9rem_auto]">
             <Selecao
               rotulo="Tipo de custo"
               valor={l.categoria}
@@ -208,7 +221,11 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
   const setT = (patch: Partial<Cenario["trafego"]>) => set({ trafego: { ...t, ...patch } });
 
   // serviços com horas neste cenário (inclui pontuais)
-  const tiposUsados = new Set([...cenario.entregas, ...cenario.pontuais.flatMap((p) => p.entregas)].map((l) => l.tipoEntregaId));
+  const entrada = cenario.entrada ?? { entregas: [], custos: [], valorCobradoCentavos: null, mesesParaPagar: null };
+  const setEntrada = (patch: Partial<typeof entrada>) => set({ entrada: { ...entrada, ...patch } });
+  const tiposUsados = new Set(
+    [...cenario.entregas, ...entrada.entregas, ...cenario.pontuais.flatMap((p) => p.entregas)].map((l) => l.tipoEntregaId),
+  );
   const servicosUsados = config.servicos.filter((s) => config.tiposEntrega.some((te) => te.servicoId === s.id && tiposUsados.has(te.id)));
 
   const mudarPontual = (id: string, patch: Partial<ProjetoPontual>) =>
@@ -256,7 +273,12 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
 
       {/* Entregas */}
       <Card>
-        <TituloCard icone={Shapes} titulo="Entregas do mês" descricao="Quantidade por mês × horas por entrega. As horas padrão vêm das configurações." />
+        <TituloCard
+          icone={Shapes}
+          titulo="Rotina mensal"
+          descricao="O que acontece todo mês: planejamento, reunião mensal, roteiros, estáticos, criativos pontuais e extras. Quantidade × horas por entrega."
+          acao={<Badge tom="marca">todo mês</Badge>}
+        />
         <Secao>
           <EditorEntregas linhas={cenario.entregas} config={config} unidade="Qtd./mês" aoMudar={(entregas) => set({ entregas })} />
         </Secao>
@@ -274,7 +296,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
                 const soma = socios.reduce((a, p) => a + efetivo(p.id), 0);
                 const sobreposto = socios.some((p) => o[p.id] != null && o[p.id] !== s.divisaoPadrao[p.id]);
                 return (
-                  <div key={s.id} className="rounded-2xl bg-superficie-2/60 p-3">
+                  <div key={s.id} className="rounded-bloco bg-superficie-2/60 p-3">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <span className="text-sm font-semibold">{s.nome}</span>
                       <Diferente ativo={sobreposto} />
@@ -316,9 +338,32 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
 
       {/* Custos */}
       <Card>
-        <TituloCard icone={Receipt} titulo="Custos do projeto" descricao="Ferramentas são fixas e mensais. Audiovisual e terceiros podem ser fixos ou por entrega." />
+        <TituloCard
+          icone={Receipt}
+          titulo="Custos da rotina"
+          descricao="Ferramentas são fixas e mensais. Audiovisual é sempre terceiro pago pela empresa, fixo ou por entrega de vídeo."
+        />
         <Secao>
           <EditorCustos linhas={cenario.custos} config={config} aoMudar={(custos) => set({ custos })} />
+        </Secao>
+      </Card>
+
+      {/* Entrada */}
+      <Card>
+        <TituloCard
+          icone={DoorOpen}
+          titulo="Entrada do cliente"
+          descricao="Acontece uma vez só: onboarding, estrutura visual e proposta de conteúdo, enxoval do perfil, primeiros estáticos e criativos. Não pesa na rotina."
+          acao={<Badge tom="aviso">uma vez</Badge>}
+        />
+        <Secao>
+          <EditorEntregas linhas={entrada.entregas} config={config} unidade="Qtd. total" aoMudar={(entregas) => setEntrada({ entregas })} />
+          <p className="mt-3 mb-2 text-xs font-bold text-texto-suave">Custos da entrada</p>
+          <EditorCustos pontual linhas={entrada.custos} config={config} aoMudar={(custos) => setEntrada({ custos })} />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <CampoMoeda rotulo="Valor cobrado pela entrada (opcional)" valor={entrada.valorCobradoCentavos} aoMudar={(v) => setEntrada({ valorCobradoCentavos: v })} />
+            <CampoNumero rotulo="Quero que se pague em (opcional)" sufixo="meses" valor={entrada.mesesParaPagar} aoMudar={(v) => setEntrada({ mesesParaPagar: v })} />
+          </div>
         </Secao>
       </Card>
 
@@ -346,7 +391,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
             )}
           </div>
           {t.modelo !== "sem_trafego" && (
-            <div className="mt-3 rounded-2xl border border-dashed border-linha bg-marca-tinta/50 p-3">
+            <div className="mt-3 rounded-bloco border border-dashed border-linha bg-marca-tinta/50 p-3">
               <CampoMoeda
                 className="sm:max-w-xs"
                 rotulo={t.modelo === "percentual_verba" ? "Verba mensal do cliente (base do percentual)" : "Verba mensal do cliente (opcional)"}
@@ -371,7 +416,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         <Secao>
           <div className="flex flex-col gap-3">
             {cenario.pontuais.map((p) => (
-              <div key={p.id} className="rounded-2xl border border-linha p-3">
+              <div key={p.id} className="rounded-bloco border border-linha p-3">
                 <div className="flex items-end gap-2">
                   <CampoTexto className="flex-1" rotulo="Projeto" placeholder="Ex.: branding" valor={p.nome} aoMudar={(v) => mudarPontual(p.id, { nome: v })} />
                   <Botao variante="perigo" icone={Trash2} aria-label="Remover projeto" onClick={() => set({ pontuais: cenario.pontuais.filter((x) => x.id !== p.id) })} />

@@ -20,7 +20,7 @@ export function Card({ children, className }: { children: ReactNode; className?:
 }
 
 export function IconeBadge({ icone: Icone, tom = "marca", tamanho = "md" }: { icone: LucideIcon; tom?: Tom; tamanho?: "sm" | "md" | "lg" }) {
-  const t = { sm: "size-7 rounded-lg", md: "size-9 rounded-xl", lg: "size-12 rounded-2xl" }[tamanho];
+  const t = { sm: "size-7 rounded-item", md: "size-9 rounded-item", lg: "size-12 rounded-bloco" }[tamanho];
   const i = { sm: 14, md: 18, lg: 22 }[tamanho];
   return (
     <span className={cx("inline-flex shrink-0 items-center justify-center", t, TONS[tom])}>
@@ -69,7 +69,7 @@ const TONS: Record<Tom, string> = {
 
 export function Badge({ children, tom = "neutro", icone: Icone, title }: { children: ReactNode; tom?: Tom; icone?: LucideIcon; title?: string }) {
   return (
-    <span title={title} className={cx("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap", TONS[tom])}>
+    <span title={title} className={cx("inline-flex items-center gap-1 rounded-botao px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap", TONS[tom])}>
       {Icone && <Icone size={12} strokeWidth={2.4} aria-hidden />}
       {children}
     </span>
@@ -97,7 +97,7 @@ export function Botao({
       type="button"
       {...resto}
       className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-full font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-1.5 rounded-botao font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
         pequeno ? "h-8 text-xs" : "h-10 text-sm",
         children ? (pequeno ? "px-3" : "px-4") : pequeno ? "w-8" : "w-10",
         v[variante],
@@ -122,7 +122,7 @@ export function Segmentado<T extends string>({
   rotulo: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={rotulo} className="inline-flex w-full rounded-full bg-superficie-2 p-1">
+    <div role="radiogroup" aria-label={rotulo} className="inline-flex w-full rounded-botao bg-superficie-2 p-1">
       {opcoes.map((o) => {
         const ativo = o.valor === valor;
         const Ic = o.icone;
@@ -134,7 +134,7 @@ export function Segmentado<T extends string>({
             aria-checked={ativo}
             onClick={() => aoMudar(o.valor)}
             className={cx(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
+              "flex flex-1 items-center justify-center gap-1.5 rounded-botao px-3 py-1.5 text-xs font-semibold transition-all",
               ativo ? "bg-superficie text-marca-forte shadow-card" : "text-texto-suave hover:text-texto",
             )}
           >
@@ -331,8 +331,8 @@ export function Selecao({
 export function Passo({ valor, aoMudar, ariaLabel }: { valor: number | null; aoMudar: (v: number | null) => void; ariaLabel: string }) {
   const v = valor ?? 0;
   return (
-    <div className="inline-flex h-10 items-center rounded-full border border-linha bg-superficie">
-      <button type="button" aria-label={`Menos ${ariaLabel}`} className="flex size-9 items-center justify-center rounded-full text-texto-suave hover:bg-superficie-2 hover:text-texto" onClick={() => aoMudar(Math.max(0, v - 1))}>
+    <div className="inline-flex h-10 items-center rounded-botao border border-linha bg-superficie">
+      <button type="button" aria-label={`Menos ${ariaLabel}`} className="flex size-9 items-center justify-center rounded-botao text-texto-suave hover:bg-superficie-2 hover:text-texto" onClick={() => aoMudar(Math.max(0, v - 1))}>
         <Minus size={14} />
       </button>
       <input
@@ -343,7 +343,7 @@ export function Passo({ valor, aoMudar, ariaLabel }: { valor: number | null; aoM
         placeholder="0"
         onChange={(e) => aoMudar(lerNumero(e.target.value))}
       />
-      <button type="button" aria-label={`Mais ${ariaLabel}`} className="flex size-9 items-center justify-center rounded-full text-texto-suave hover:bg-superficie-2 hover:text-texto" onClick={() => aoMudar(v + 1)}>
+      <button type="button" aria-label={`Mais ${ariaLabel}`} className="flex size-9 items-center justify-center rounded-botao text-texto-suave hover:bg-superficie-2 hover:text-texto" onClick={() => aoMudar(v + 1)}>
         <Plus size={14} />
       </button>
     </div>
@@ -352,8 +352,8 @@ export function Passo({ valor, aoMudar, ariaLabel }: { valor: number | null; aoM
 
 export function Interruptor({ ligado, aoMudar, rotulo }: { ligado: boolean; aoMudar: (v: boolean) => void; rotulo: string }) {
   return (
-    <button type="button" role="switch" aria-checked={ligado} onClick={() => aoMudar(!ligado)} className="inline-flex items-center gap-2 text-xs font-semibold text-texto-suave">
-      <span className={cx("relative h-5 w-9 rounded-full transition-colors", ligado ? "bg-marca" : "bg-linha")}>
+    <button type="button" role="switch" aria-checked={ligado} onClick={() => aoMudar(!ligado)} className="inline-flex items-center gap-2 text-left text-xs font-semibold text-texto-suave">
+      <span className={cx("relative h-5 w-9 shrink-0 rounded-full transition-colors", ligado ? "bg-marca" : "bg-linha")}>
         <span className={cx("absolute top-0.5 size-4 rounded-full bg-superficie shadow transition-all", ligado ? "left-[18px]" : "left-0.5")} />
       </span>
       {rotulo}
@@ -364,7 +364,7 @@ export function Interruptor({ ligado, aoMudar, rotulo }: { ligado: boolean; aoMu
 export function Vazio({ icone: Icone, titulo, children }: { icone: LucideIcon; titulo: string; children?: ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-card border border-dashed border-linha bg-marca-tinta/50 px-6 py-8 text-center">
-      <span className="flex size-12 items-center justify-center rounded-2xl bg-marca-suave text-marca-forte">
+      <span className="flex size-12 items-center justify-center rounded-bloco bg-marca-suave text-marca-forte">
         <Icone size={22} />
       </span>
       <p className="text-sm font-semibold">{titulo}</p>

@@ -45,9 +45,12 @@
   --fonte: "Montserrat Variable", "Montserrat", system-ui, sans-serif;
   --fonte-numeros: "Montserrat Variable", "Montserrat", system-ui, sans-serif;
 
-  /* forma */
-  --raio: 1.25rem;
-  --raio-pequeno: 0.75rem;
+  /* forma — cantos. Para botões quadrados, troque --raio-botao por um valor pequeno */
+  --raio: 1.25rem;           /* cartões */
+  --raio-bloco: 1rem;        /* caixas dentro dos cartões */
+  --raio-item: 0.75rem;      /* itens de menu, ícones, botões de ícone */
+  --raio-pequeno: 0.75rem;   /* campos de texto e seleção */
+  --raio-botao: 9999px;      /* botões, abas, seletores, etiquetas (hoje: pílula) */
   --sombra: 0 1px 2px rgb(42 43 30 / 0.04), 0 8px 24px -12px rgb(42 43 30 / 0.12);
   --sombra-forte: 0 2px 4px rgb(42 43 30 / 0.06), 0 20px 40px -20px rgb(42 43 30 / 0.25);
 

@@ -111,6 +111,7 @@ export class RepositorioSupabase implements Repositorio {
         nome: t.nome as string,
         servicoId: (t.servico_id as string) ?? null,
         horasPorUnidade: num(t.horas_por_unidade),
+        audiovisual: (t.audiovisual as boolean) ?? false,
         ativo: t.ativo as boolean,
       })),
       custosFixos: ((cus.data ?? []) as Linha[]).map((c) => ({
@@ -188,6 +189,7 @@ export class RepositorioSupabase implements Repositorio {
         nome: t.nome,
         servico_id: t.servicoId,
         horas_por_unidade: t.horasPorUnidade,
+        audiovisual: t.audiovisual ?? false,
         ativo: t.ativo,
         ordem: i,
       })),

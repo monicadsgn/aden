@@ -73,6 +73,27 @@ export function Comparacao({
       )),
     },
     { rotulo: "Reinvestimento", valores: resultados.map((r, i) => moeda(r.mes?.reinvestimentoCentavos, i)) },
+    ...(resultados.some((r) => r.entrada)
+      ? [
+          { rotulo: "Entrada (uma vez)", grupo: true, valores: [] },
+          { rotulo: "Custo da entrada", valores: resultados.map((r, i) => moeda(r.entrada?.custoEntradaCentavos, i)) },
+          {
+            rotulo: "Se paga em",
+            forte: true,
+            valores: resultados.map((r, i) =>
+              !r.entrada ? (
+                <span key={i} className="text-texto-suave">—</span>
+              ) : r.entrada.mesesParaSePagar == null ? (
+                <span key={i} className="text-erro">não se paga</span>
+              ) : (
+                <span key={i} className="numero">
+                  {r.entrada.mesesParaSePagar.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} meses
+                </span>
+              ),
+            ),
+          },
+        ]
+      : []),
     { rotulo: "Sócios", grupo: true, valores: [] },
     ...socios.flatMap((s) => [
       {
@@ -153,7 +174,7 @@ export function Comparacao({
                     type="button"
                     onClick={() => aoSelecionar(c.id)}
                     className={cx(
-                      "rounded-full px-3 py-1 text-xs font-bold transition-colors",
+                      "rounded-botao px-3 py-1 text-xs font-bold transition-colors",
                       c.id === ativoId ? "bg-marca text-sobre-marca" : "bg-superficie-2 hover:bg-marca-suave",
                     )}
                   >

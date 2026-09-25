@@ -29,6 +29,7 @@ import type {
   Pessoa,
   RegraRateio,
   ResultadoCenario,
+  ResultadoEntrada,
   ResultadoHorizonte,
   ResultadoMes,
   ResultadoMinimo,
@@ -154,6 +155,8 @@ function horasDasEntregas(
     if (!tipo) continue;
     const qtd = v0(l.quantidade);
     if (qtd === 0) continue;
+    // audiovisual é sempre terceiro: nunca gera horas dos sócios
+    if (tipo.audiovisual) continue;
     const hUn = l.horasPorUnidade ?? tipo.horasPorUnidade;
     if (hUn == null) {
       alertas.push({
@@ -767,6 +770,120 @@ export function calcularEncaixe(config: Configuracao, cenario: Cenario, base: Re
   return { disponivel: true, motivo: null, cabe: atual.ok, limitantes: atual.limites, tipos, pessoas };
 }
 
+// ─── Audiovisual: entrega de vídeo exige custo de terceiro ──────────────────
+
+function alertasAudiovisualBloco(config: Configuracao, entregas: LinhaEntrega[], custos: LinhaCusto[], prefixo: string): Alerta[] {
+  const out: Alerta[] = [];
+  const temFixo = custos.some((c) => c.categoria === "audiovisual" && c.forma === "fixo" && v0(c.valorCentavos) > 0);
+  for (const [tipoId, qtd] of quantidadesPorTipo(entregas)) {
+    const tipo = config.tiposEntrega.find((t) => t.id === tipoId);
+    if (!tipo?.audiovisual || qtd <= 0) continue;
+    const temPorEntrega = custos.some(
+      (c) => c.categoria === "audiovisual" && c.forma === "por_entrega" && c.tipoEntregaId === tipoId && v0(c.valorCentavos) > 0,
+    );
+    if (!temFixo && !temPorEntrega)
+      out.push({
+        nivel: "erro",
+        texto: `${prefixo}"${tipo.nome}" é entrega de vídeo, mas não há custo de audiovisual preenchido. Audiovisual é sempre terceiro pago pela empresa: informe o custo (fixo ou por entrega).`,
+      });
+  }
+  return out;
+}
+
+export function verificarAudiovisual(config: Configuracao, cenario: Cenario): Alerta[] {
+  const out = alertasAudiovisualBloco(config, cenario.entregas, cenario.custos, "");
+  for (const p of cenario.pontuais) out.push(...alertasAudiovisualBloco(config, p.entregas, p.custos, `${p.nome || "Projeto pontual"}: `));
+  if (cenario.entrada) out.push(...alertasAudiovisualBloco(config, cenario.entrada.entregas, cenario.entrada.custos, "Entrada: "));
+  return out;
+}
+
+// ─── Entrada de cliente novo (uma vez só) ───────────────────────────────────
+//
+// custo da entrada = custos em dinheiro + horas dos sócios × piso de cada um
+//                    − valor cobrado pela entrada (sem imposto e taxa)
+// folga da rotina  = sobra do mês − sobra necessária para todos chegarem ao piso
+// meses p/ pagar   = custo da entrada ÷ folga da rotina
+
+export function calcularEntrada(
+  config: Configuracao,
+  cenario: Cenario,
+  prep: PreparadoMes,
+  mesRotina: ResultadoMes | null,
+): { entrada: ResultadoEntrada | null; alertas: Alerta[] } {
+  const e = cenario.entrada;
+  const alertas: Alerta[] = [];
+  if (!e) return { entrada: null, alertas };
+  const temAlgo =
+    e.entregas.some((l) => v0(l.quantidade) > 0) || e.custos.some((c) => v0(c.valorCentavos) > 0) || v0(e.valorCobradoCentavos) > 0;
+  if (!temAlgo) return { entrada: null, alertas };
+
+  const pseudo: Cenario = { ...cenario, entregas: e.entregas, custos: e.custos, pontuais: [], clienteId: null };
+  const pe = prepararMes(config, pseudo, { semRateio: true, semCapacidade: true, ignorarPontuais: true });
+  // só os alertas próprios da entrada (os de percentual já aparecem pela rotina)
+  for (const a of pe.alertas)
+    if (a.nivel !== "info" && !prep.alertas.some((x) => x.texto === a.texto)) alertas.push({ ...a, texto: `Entrada: ${a.texto}` });
+
+  const cobrado = v0(e.valorCobradoCentavos);
+  const liquido = cobrado * (1 - (pe.impostoPct + pe.taxaPct) / 100);
+
+  let horasNoPiso = 0;
+  const pessoas = config.pessoas
+    .filter((p) => p.ativo)
+    .map((p) => {
+      const horas = pe.horasPorPessoa.get(p.id) ?? 0;
+      const piso = positivo(p.pisoHoraCentavos) ? p.pisoHoraCentavos : null;
+      const valor = piso != null ? horas * piso : null;
+      if (valor != null) horasNoPiso += valor;
+      if (horas > 0 && piso == null)
+        alertas.push({ nivel: "aviso", texto: `Entrada: as horas de ${p.nome} não foram valorizadas porque ele(a) não tem piso por hora configurado.` });
+      const horasPrimeiroMes = (prep.horasPorPessoa.get(p.id) ?? 0) + horas;
+      const cap = positivo(p.capacidadeHorasMes) ? p.capacidadeHorasMes : null;
+      const consumo = cap != null ? (horasPrimeiroMes / cap) * 100 : null;
+      if (consumo != null && consumo > 100 + EPS)
+        alertas.push({
+          nivel: "aviso",
+          texto: `No 1º mês (rotina + entrada), ${p.nome} usa ${formatarPct(consumo)} das horas do mês.`,
+        });
+      return { id: p.id, nome: p.nome, horas, valorHorasNoPisoCentavos: valor, horasPrimeiroMes, consumoPrimeiroMesPct: consumo };
+    });
+
+  const custo = pe.custosProjeto + horasNoPiso - liquido;
+
+  let folga: number | null = null;
+  let mensalidadeParaPagar: number | null = null;
+  const alvo = prep.percentuaisValidos ? sobraAlvo(prep) : null;
+  if (alvo?.ok) {
+    if (mesRotina) folga = mesRotina.sobraCentavos - alvo.alvo;
+    if (positivo(e.mesesParaPagar) && custo > 0) {
+      const R = resolverReceita(prep, alvo.alvo + custo / e.mesesParaPagar);
+      if (R != null) mensalidadeParaPagar = Math.max(0, R - prep.receitaTrafego);
+    }
+  }
+  // folga de até 1 centavo é só arredondamento do valor mínimo: conta como zero
+  const meses = custo <= 0 ? 0 : folga != null && folga > 1 ? custo / folga : null;
+  if (custo > 0 && mesRotina && meses == null)
+    alertas.push({
+      nivel: "aviso",
+      texto:
+        "A entrada não se paga com a rotina: neste valor, a rotina paga só o piso (ou menos). Cobre a entrada à parte ou suba a mensalidade.",
+    });
+
+  return {
+    entrada: {
+      horasTotais: pe.horasTotais,
+      pessoas,
+      custosDinheiroCentavos: pe.custosProjeto,
+      horasNoPisoCentavos: horasNoPiso,
+      cobradoLiquidoCentavos: liquido,
+      custoEntradaCentavos: custo,
+      folgaMensalRotinaCentavos: folga,
+      mesesParaSePagar: meses,
+      mensalidadeParaPagarCentavos: mensalidadeParaPagar,
+    },
+    alertas,
+  };
+}
+
 // ─── Cenário completo ───────────────────────────────────────────────────────
 
 function calcularPontuaisFora(config: Configuracao, cenario: Cenario): ResultadoPontualFora[] {
@@ -827,6 +944,10 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
   }
   if (mes) alertas.push(...mes.alertas);
 
+  alertas.push(...verificarAudiovisual(config, cenario));
+  const ent = calcularEntrada(config, cenario, prep, mes);
+  alertas.push(...ent.alertas);
+
   const mensalidadeHorizonte = cenario.modo === "escopo" ? minimo.mensalidadeMinimaCentavos : cenario.mensalidadeCentavos;
   const hz = calcularHorizonte(prep, cenario, mensalidadeHorizonte);
   alertas.push(...hz.alertas);
@@ -843,5 +964,5 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
     if (pf.resultado) for (const a of pf.resultado.alertas) if (a.nivel === "erro") alertas.push({ ...a, texto: `${pf.nome}: ${a.texto}` });
   }
 
-  return { modo: cenario.modo, mes, minimo, encaixe, horizonte: hz.horizonte, pontuaisFora, alertas: unicos(alertas) };
+  return { modo: cenario.modo, entrada: ent.entrada, mes, minimo, encaixe, horizonte: hz.horizonte, pontuaisFora, alertas: unicos(alertas) };
 }

@@ -38,6 +38,12 @@ export interface TipoEntrega {
   nome: string;
   servicoId: Id | null;
   horasPorUnidade: number | null;
+  /**
+   * Entrega de vídeo produzida por terceiro (edição, motion, legendagem, corte).
+   * Nunca gera horas dos sócios: é sempre custo de audiovisual. Roteiro e
+   * direção são tipos normais, com horas.
+   */
+  audiovisual?: boolean;
   ativo: boolean;
 }
 
@@ -147,6 +153,16 @@ export interface ProjetoPontual {
   valorCobradoCentavos: Centavos;
 }
 
+/** O que acontece uma vez só quando o cliente entra (onboarding, enxoval, primeiras peças). */
+export interface EntradaCliente {
+  entregas: LinhaEntrega[];
+  custos: LinhaCusto[];
+  /** opcional: se a entrada for cobrada à parte */
+  valorCobradoCentavos: Centavos;
+  /** opcional: em quantos meses a entrada deve se pagar (modo escopo calcula a mensalidade para isso) */
+  mesesParaPagar: number | null;
+}
+
 export interface Sobreposicoes {
   /** null = usa o padrão da empresa */
   reinvestimentoPct: Pct;
@@ -170,6 +186,8 @@ export interface Cenario {
   custos: LinhaCusto[];
   trafego: CobrancaTrafego;
   pontuais: ProjetoPontual[];
+  /** entrada de cliente novo: acontece uma vez só, separada da rotina mensal */
+  entrada?: EntradaCliente;
   mesesSemCobranca: number | null;
   /** qual opção vale para este cenário; as duas são sempre calculadas para comparar */
   suspensaoSemCobranca?: SuspensaoSemCobranca | null;
@@ -325,8 +343,38 @@ export interface ResultadoPontualFora {
   resultado: ResultadoMes | null;
 }
 
+export interface ResultadoEntrada {
+  horasTotais: number;
+  pessoas: {
+    id: Id;
+    nome: string;
+    horas: number;
+    /** horas × piso do sócio (null se o sócio não tem piso) */
+    valorHorasNoPisoCentavos: number | null;
+    /** 1º mês = rotina + entrada */
+    horasPrimeiroMes: number;
+    consumoPrimeiroMesPct: number | null;
+  }[];
+  /** terceiros, audiovisual, ferramentas da entrada */
+  custosDinheiroCentavos: number;
+  /** horas dos sócios valorizadas pelo piso de cada um */
+  horasNoPisoCentavos: number;
+  /** valor cobrado pela entrada, já sem imposto e taxa */
+  cobradoLiquidoCentavos: number;
+  /** custos em dinheiro + horas no piso − cobrado líquido */
+  custoEntradaCentavos: number;
+  /** quanto a rotina gera por mês acima do piso de todos (o que sobra pra pagar a entrada) */
+  folgaMensalRotinaCentavos: number | null;
+  /** meses para a folga da rotina pagar a entrada; null = não se paga com a rotina */
+  mesesParaSePagar: number | null;
+  /** escopo, com meses definidos: mensalidade para a entrada se pagar nesse prazo */
+  mensalidadeParaPagarCentavos: number | null;
+}
+
 export interface ResultadoCenario {
   modo: Modo;
+  /** null quando o cenário não tem entrada */
+  entrada: ResultadoEntrada | null;
   /** o mês como calculado: no escopo, no valor mínimo; no valor, no valor informado */
   mes: ResultadoMes | null;
   minimo: ResultadoMinimo;
