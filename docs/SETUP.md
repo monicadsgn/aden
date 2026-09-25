@@ -1,0 +1,40 @@
+# Colocar no ar (Supabase + Vercel)
+
+Tudo em contas/projetos **exclusivos da Aden**. Não reutilize o projeto Supabase nem o projeto Vercel do SoftMoni.
+
+## 1. Supabase
+
+1. Crie um projeto novo em supabase.com (ex.: `aden-gestao`), região São Paulo.
+2. **Authentication → Providers → Email**: deixe ativo. Em **Authentication → Settings**, desligue *Allow new users to sign up* (só os sócios criam acessos).
+3. **SQL Editor**: cole e rode o conteúdo de `supabase/migrations/0001_nucleo_e_calculadora.sql`.
+4. **Authentication → Users → Add user**: crie o usuário de cada sócio (e-mail + senha).
+5. **SQL Editor**: crie a organização e vincule os sócios como administradores:
+
+```sql
+insert into organizacoes (nome) values ('Aden') returning id;
+-- copie o id retornado e use abaixo
+select vincular_socio('<ID-DA-ORG>', 'email-da-moni@...', 'Moni');
+select vincular_socio('<ID-DA-ORG>', 'email-do-aleff@...', 'Áleff');
+```
+
+6. **Settings → API**: copie a *Project URL* e a chave *anon / publishable*.
+
+## 2. Vercel
+
+1. *Add New → Project* → importe o repositório `monicadsgn/aden`.
+2. Em *Environment Variables*, adicione:
+   - `NEXT_PUBLIC_SUPABASE_URL` = Project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = chave anon
+3. Deploy. O endereço fica `https://<nome-do-projeto>.vercel.app`.
+
+## 3. Primeiro uso
+
+1. Entre com o e-mail e a senha de sócio.
+2. Em **Configurações**, cadastre os sócios (% padrão, piso por hora, horas/mês), os percentuais da empresa, os serviços e quem executa, os tipos de entrega com horas, os custos fixos, a regra de rateio e os clientes ativos.
+3. Abra a **Calculadora**.
+
+## Segurança e histórico
+
+- Permissões ficam no banco (RLS): só membros da Aden leem; só administradores (sócios) gravam.
+- Toda inserção, alteração e remoção em configurações, clientes, contratos e simulações vai para a tabela `auditoria` por trigger, com autor e data. Ninguém (nem admin) consegue editar ou apagar o histórico pelo app.
+- A migration foi testada num Postgres local: histórico com autor, histórico imutável e usuário de fora sem acesso de leitura nem de escrita.

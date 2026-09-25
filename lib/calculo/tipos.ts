@@ -1,0 +1,302 @@
+// Tipos do domínio da calculadora.
+//
+// Convenções:
+// - Dinheiro sempre em CENTAVOS (number inteiro). `null` = campo vazio.
+// - Percentuais de 0 a 100. `null` = campo vazio.
+// - Nenhum valor padrão de negócio mora no código: tudo vem da configuração
+//   (tabelas do Supabase) ou do que a pessoa digita no cenário.
+
+export type Id = string;
+export type Centavos = number | null;
+export type Pct = number | null;
+
+// ─── Configuração da empresa ────────────────────────────────────────────────
+
+export interface Pessoa {
+  id: Id;
+  nome: string;
+  socio: boolean;
+  /** % padrão da parte distribuível que vai pra essa pessoa */
+  percentualPadrao: Pct;
+  /** piso de valor por hora, em centavos */
+  pisoHoraCentavos: Centavos;
+  /** horas disponíveis de produção por mês */
+  capacidadeHorasMes: number | null;
+  ativo: boolean;
+}
+
+export interface Servico {
+  id: Id;
+  nome: string;
+  /** divisão padrão das horas do serviço entre pessoas, em % (pessoaId → %) */
+  divisaoPadrao: Record<Id, number | null>;
+  ativo: boolean;
+}
+
+export interface TipoEntrega {
+  id: Id;
+  nome: string;
+  servicoId: Id | null;
+  horasPorUnidade: number | null;
+  ativo: boolean;
+}
+
+export interface CustoFixo {
+  id: Id;
+  nome: string;
+  valorMensalCentavos: Centavos;
+  ativo: boolean;
+}
+
+/** Cliente ativo usado como base do rateio de custo fixo. */
+export interface ClienteBase {
+  id: Id;
+  nome: string;
+  interno: boolean;
+  participaRateio: boolean;
+  /** valor mensal do contrato vigente */
+  valorMensalCentavos: Centavos;
+  ativo: boolean;
+}
+
+export type RegraRateio = "igual" | "proporcional";
+
+export interface ConfigEmpresa {
+  reinvestimentoPct: Pct;
+  impostoPct: Pct;
+  taxaRecebimentoPct: Pct;
+  regraRateio: RegraRateio | null;
+}
+
+export interface Configuracao {
+  empresa: ConfigEmpresa;
+  pessoas: Pessoa[];
+  servicos: Servico[];
+  tiposEntrega: TipoEntrega[];
+  custosFixos: CustoFixo[];
+  clientes: ClienteBase[];
+}
+
+// ─── Cenário ────────────────────────────────────────────────────────────────
+
+export type Modo = "escopo" | "valor";
+
+export interface LinhaEntrega {
+  id: Id;
+  tipoEntregaId: Id | null;
+  quantidade: number | null;
+  /** sobrepõe a hora por unidade configurada no tipo. null = usa o padrão */
+  horasPorUnidade: number | null;
+}
+
+export type CategoriaCusto = "ferramenta" | "audiovisual" | "terceiro";
+export type FormaCusto = "fixo" | "por_entrega";
+
+export interface LinhaCusto {
+  id: Id;
+  categoria: CategoriaCusto;
+  descricao: string;
+  /** ferramenta é sempre fixo mensal */
+  forma: FormaCusto;
+  /** fixo: valor do mês (ou do projeto, no pontual). por_entrega: valor unitário */
+  valorCentavos: Centavos;
+  /** por_entrega: tipo de entrega cuja quantidade multiplica o valor */
+  tipoEntregaId: Id | null;
+}
+
+export type ModeloTrafego =
+  | "fixo"
+  | "por_campanha"
+  | "percentual_verba"
+  | "incluido"
+  | "sem_trafego";
+
+export interface CobrancaTrafego {
+  modelo: ModeloTrafego | null;
+  valorFixoCentavos: Centavos;
+  valorPorCampanhaCentavos: Centavos;
+  campanhas: number | null;
+  percentualVerba: Pct;
+  /** verba de mídia do cliente (paga por fora) — só base do percentual */
+  verbaMensalCentavos: Centavos;
+}
+
+export type FormaPontual = "diluido" | "fora";
+
+export interface ProjetoPontual {
+  id: Id;
+  nome: string;
+  forma: FormaPontual | null;
+  /** diluído: em quantos meses */
+  meses: number | null;
+  entregas: LinhaEntrega[];
+  custos: LinhaCusto[];
+  /** fora da mensalidade, modo valor: quanto será cobrado pelo projeto */
+  valorCobradoCentavos: Centavos;
+}
+
+export interface Sobreposicoes {
+  /** null = usa o padrão da empresa */
+  reinvestimentoPct: Pct;
+  impostoPct: Pct;
+  taxaRecebimentoPct: Pct;
+  /** pessoaId → % (ausente = padrão) */
+  percentualPessoa: Record<Id, number | null>;
+  /** servicoId → (pessoaId → %) (ausente = padrão do serviço) */
+  divisaoServico: Record<Id, Record<Id, number | null>>;
+}
+
+export interface Cenario {
+  id: Id;
+  nome: string;
+  modo: Modo;
+  /** cliente já ativo que este cenário substitui na base de rateio */
+  clienteId: Id | null;
+  /** modo valor: mensalidade informada */
+  mensalidadeCentavos: Centavos;
+  entregas: LinhaEntrega[];
+  custos: LinhaCusto[];
+  trafego: CobrancaTrafego;
+  pontuais: ProjetoPontual[];
+  mesesSemCobranca: number | null;
+  horizonteMeses: number | null;
+  sobreposicoes: Sobreposicoes;
+}
+
+// ─── Resultado ──────────────────────────────────────────────────────────────
+
+export type NivelAlerta = "erro" | "aviso" | "info";
+
+export interface Alerta {
+  nivel: NivelAlerta;
+  texto: string;
+}
+
+export interface ResultadoPessoa {
+  id: Id;
+  nome: string;
+  percentual: number | null;
+  percentualSobreposto: boolean;
+  horas: number;
+  valorCentavos: number | null;
+  valorHoraCentavos: number | null;
+  pisoHoraCentavos: number | null;
+  abaixoPiso: boolean;
+  capacidadeHorasMes: number | null;
+  consumoCapacidadePct: number | null;
+}
+
+export interface ResultadoServico {
+  servicoId: Id | null;
+  nome: string;
+  horas: number;
+  divisao: Record<Id, number>;
+  divisaoSobreposta: boolean;
+}
+
+export interface ResultadoMes {
+  receitaMensalidadeCentavos: number;
+  receitaTrafegoCentavos: number;
+  receitaBrutaCentavos: number;
+  impostoPct: number;
+  impostoPctSobreposto: boolean;
+  impostosCentavos: number;
+  taxaRecebimentoPct: number;
+  taxaRecebimentoPctSobreposta: boolean;
+  taxasCentavos: number;
+  custosPorCategoria: Record<CategoriaCusto, number>;
+  custoPontualDiluidoCentavos: number;
+  custosProjetoCentavos: number;
+  rateio: {
+    regra: RegraRateio | null;
+    totalFixoCentavos: number;
+    clientesNaBase: number;
+    quotaCentavos: number;
+  };
+  sobraCentavos: number;
+  reinvestimentoPct: number;
+  reinvestimentoPctSobreposto: boolean;
+  reinvestimentoCentavos: number;
+  distribuivelCentavos: number;
+  horasTotais: number;
+  servicos: ResultadoServico[];
+  pessoas: ResultadoPessoa[];
+  /** (custos do projeto + custo fixo rateado) ÷ horas */
+  custoHoraCentavos: number | null;
+  /** receita bruta ÷ horas */
+  valorCobradoHoraCentavos: number | null;
+  /** sobra ÷ horas (informativo) */
+  sobraHoraCentavos: number | null;
+  percentuaisValidos: boolean;
+  alertas: Alerta[];
+}
+
+export interface ResultadoMinimo {
+  possivel: boolean;
+  motivo: string | null;
+  criterio: "piso" | "equilibrio";
+  receitaMinimaCentavos: number | null;
+  mensalidadeMinimaCentavos: number | null;
+  /** pessoa cujo piso define o mínimo */
+  limitantePessoaId: Id | null;
+  resultado: ResultadoMes | null;
+}
+
+export interface EncaixeTipo {
+  tipoEntregaId: Id;
+  nome: string;
+  quantidade: number;
+  horasPorUnidade: number | null;
+  /** positivo: quantas unidades a mais cabem; negativo: quantas precisa tirar */
+  folga: number | null;
+  limite: "piso" | "capacidade" | null;
+  /** true quando nem zerando este tipo o cenário volta a caber */
+  naoResolve: boolean;
+}
+
+export interface Encaixe {
+  disponivel: boolean;
+  motivo: string | null;
+  cabe: boolean;
+  tipos: EncaixeTipo[];
+  pessoas: {
+    id: Id;
+    nome: string;
+    horas: number;
+    /** horas que o valor recebido paga no piso */
+    horasPagasNoPiso: number | null;
+    capacidadeHorasMes: number | null;
+  }[];
+}
+
+export interface ResultadoHorizonte {
+  meses: number;
+  semCobranca: number;
+  receitaTotalCentavos: number;
+  sobraTotalCentavos: number;
+  pessoas: { id: Id; nome: string; valorTotalCentavos: number | null; valorHoraMedioCentavos: number | null; abaixoPiso: boolean }[];
+  /** modo escopo: mensalidade necessária nos meses pagantes */
+  mensalidadeNecessariaCentavos: number | null;
+  aproximado: boolean;
+}
+
+export interface ResultadoPontualFora {
+  id: Id;
+  nome: string;
+  horasTotais: number;
+  custosCentavos: number;
+  minimo: ResultadoMinimo;
+  /** só no modo valor, com valor cobrado informado */
+  resultado: ResultadoMes | null;
+}
+
+export interface ResultadoCenario {
+  modo: Modo;
+  /** o mês como calculado: no escopo, no valor mínimo; no valor, no valor informado */
+  mes: ResultadoMes | null;
+  minimo: ResultadoMinimo;
+  encaixe: Encaixe | null;
+  horizonte: ResultadoHorizonte | null;
+  pontuaisFora: ResultadoPontualFora[];
+  alertas: Alerta[];
+}

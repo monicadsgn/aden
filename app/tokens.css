@@ -1,0 +1,94 @@
+/* ════════════════════════════════════════════════════════════════════════
+   TOKENS DA ADEN — o único lugar para trocar a identidade visual.
+   Cores, tipografia, raios e sombras. Os componentes só usam estes nomes.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* marca */
+  --marca: #797c46;          /* pistache */
+  --marca-forte: #5c5f33;    /* texto/realce sobre fundo claro */
+  --marca-suave: #e8e9d6;    /* fundos tingidos, badges */
+  --marca-tinta: #f2f2e6;    /* fundos bem leves */
+  --sobre-marca: #fcf9f1;    /* texto sobre a cor da marca */
+  --destaque: #c9a86a;       /* acento secundário para formas decorativas */
+
+  /* base */
+  --fundo: #fcf9f1;          /* creme */
+  --superficie: #ffffff;
+  --superficie-2: #f6f2e6;
+  --linha: #e7e1cf;
+  --texto: #2a2b1e;
+  --texto-suave: #6b6c58;
+
+  /* estados */
+  --erro: #b3422e;
+  --erro-suave: #f9e5df;
+  --aviso: #9a6a10;
+  --aviso-suave: #f8eed6;
+  --ok: #4c7743;
+  --ok-suave: #e4efdd;
+  --info: #466779;
+  --info-suave: #e3ecf1;
+
+  /* tipografia */
+  --fonte: "Montserrat Variable", "Montserrat", system-ui, sans-serif;
+  --fonte-numeros: "Montserrat Variable", "Montserrat", system-ui, sans-serif;
+
+  /* forma */
+  --raio: 1.25rem;
+  --raio-pequeno: 0.75rem;
+  --sombra: 0 1px 2px rgb(42 43 30 / 0.04), 0 8px 24px -12px rgb(42 43 30 / 0.12);
+  --sombra-forte: 0 2px 4px rgb(42 43 30 / 0.06), 0 20px 40px -20px rgb(42 43 30 / 0.25);
+
+  color-scheme: light;
+}
+
+/* modo escuro — segue o sistema, a menos que a pessoa escolha o claro */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --marca: #a6a96a;
+    --marca-forte: #c8cb8e;
+    --marca-suave: #34361f;
+    --marca-tinta: #25261a;
+    --sobre-marca: #17180f;
+    --destaque: #d4b67a;
+    --fundo: #16170f;
+    --superficie: #1f2016;
+    --superficie-2: #28291d;
+    --linha: #36372a;
+    --texto: #f3f0e4;
+    --texto-suave: #b2b19b;
+    --erro: #e98a74;
+    --erro-suave: #3a2019;
+    --aviso: #e0b35a;
+    --aviso-suave: #362b14;
+    --ok: #9cc58f;
+    --ok-suave: #1f3019;
+    --info: #9dbfd2;
+    --info-suave: #1a2a33;
+    color-scheme: dark;
+  }
+}
+:root[data-tema="escuro"] {
+  --marca: #a6a96a;
+  --marca-forte: #c8cb8e;
+  --marca-suave: #34361f;
+  --marca-tinta: #25261a;
+  --sobre-marca: #17180f;
+  --destaque: #d4b67a;
+  --fundo: #16170f;
+  --superficie: #1f2016;
+  --superficie-2: #28291d;
+  --linha: #36372a;
+  --texto: #f3f0e4;
+  --texto-suave: #b2b19b;
+  --erro: #e98a74;
+  --erro-suave: #3a2019;
+  --aviso: #e0b35a;
+  --aviso-suave: #362b14;
+  --ok: #9cc58f;
+  --ok-suave: #1f3019;
+  --info: #9dbfd2;
+  --info-suave: #1a2a33;
+  color-scheme: dark;
+}

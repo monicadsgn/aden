@@ -1,0 +1,235 @@
+// Números aqui são só fixtures de teste — não são sugestão de preço nem regra.
+import { describe, expect, it } from "vitest";
+import { calcularCenario, calcularComReceita, calcularMinimo, prepararMes } from "./motor";
+import { configVazia, novoCenario } from "./novo";
+import type { Cenario, Configuracao } from "./tipos";
+
+function config(): Configuracao {
+  const c = configVazia();
+  c.empresa = { reinvestimentoPct: 10, impostoPct: 6, taxaRecebimentoPct: 4, regraRateio: "igual" };
+  c.pessoas = [
+    { id: "a", nome: "A", socio: true, percentualPadrao: 50, pisoHoraCentavos: 5000, capacidadeHorasMes: 100, ativo: true },
+    { id: "b", nome: "B", socio: true, percentualPadrao: 50, pisoHoraCentavos: 5000, capacidadeHorasMes: 100, ativo: true },
+  ];
+  c.servicos = [
+    { id: "s1", nome: "Social", divisaoPadrao: { a: 100 }, ativo: true },
+    { id: "s2", nome: "Tráfego", divisaoPadrao: { b: 100 }, ativo: true },
+  ];
+  c.tiposEntrega = [
+    { id: "post", nome: "Post", servicoId: "s1", horasPorUnidade: 2, ativo: true },
+    { id: "camp", nome: "Campanha", servicoId: "s2", horasPorUnidade: 5, ativo: true },
+  ];
+  c.custosFixos = [{ id: "f", nome: "Assinaturas", valorMensalCentavos: 30000, ativo: true }];
+  c.clientes = [
+    { id: "c1", nome: "C1", interno: false, participaRateio: true, valorMensalCentavos: 200000, ativo: true },
+    { id: "c2", nome: "C2", interno: false, participaRateio: true, valorMensalCentavos: 100000, ativo: true },
+  ];
+  return c;
+}
+
+function cenario(): Cenario {
+  const c = novoCenario("A");
+  c.trafego.modelo = "sem_trafego";
+  c.entregas = [
+    { id: "l1", tipoEntregaId: "post", quantidade: 10, horasPorUnidade: null },
+    { id: "l2", tipoEntregaId: "camp", quantidade: 2, horasPorUnidade: null },
+  ];
+  c.custos = [{ id: "k1", categoria: "ferramenta", descricao: "x", forma: "fixo", valorCentavos: 10000, tipoEntregaId: null }];
+  return c;
+}
+
+describe("cálculo do mês", () => {
+  it("segue a cascata receita → sobra → reinvestimento → sócios", () => {
+    const prep = prepararMes(config(), cenario());
+    const r = calcularComReceita(prep, 300000);
+    expect(r.receitaBrutaCentavos).toBe(300000);
+    expect(r.impostosCentavos).toBe(18000);
+    expect(r.taxasCentavos).toBe(12000);
+    expect(r.rateio.clientesNaBase).toBe(3); // cliente novo entra na base
+    expect(r.rateio.quotaCentavos).toBe(10000);
+    expect(r.sobraCentavos).toBe(300000 - 18000 - 12000 - 10000 - 10000);
+    expect(r.reinvestimentoCentavos).toBeCloseTo(25000);
+    const a = r.pessoas.find((p) => p.id === "a")!;
+    expect(a.horas).toBe(20);
+    expect(a.valorCentavos).toBeCloseTo(112500);
+    expect(a.valorHoraCentavos).toBeCloseTo(5625);
+    const b = r.pessoas.find((p) => p.id === "b")!;
+    expect(b.horas).toBe(10);
+    expect(b.valorHoraCentavos).toBeCloseTo(11250);
+    expect(r.horasTotais).toBe(30);
+    expect(r.custoHoraCentavos).toBeCloseTo(20000 / 30);
+    expect(r.valorCobradoHoraCentavos).toBeCloseTo(10000);
+    expect(a.consumoCapacidadePct).toBeCloseTo(20);
+  });
+
+  it("alerta quando o valor por hora fica abaixo do piso", () => {
+    const r = calcularComReceita(prepararMes(config(), cenario()), 150000);
+    expect(r.pessoas.find((p) => p.id === "a")!.abaixoPiso).toBe(true);
+    expect(r.alertas.some((x) => x.nivel === "erro" && x.texto.includes("abaixo do piso"))).toBe(true);
+  });
+
+  it("bloqueia a divisão quando os percentuais não somam 100", () => {
+    const c = cenario();
+    c.sobreposicoes.percentualPessoa = { a: 70 };
+    const r = calcularComReceita(prepararMes(config(), c), 300000);
+    expect(r.percentuaisValidos).toBe(false);
+    expect(r.pessoas[0].valorCentavos).toBeNull();
+  });
+
+  it("divide as horas de um serviço entre pessoas", () => {
+    const c = cenario();
+    c.sobreposicoes.divisaoServico = { s1: { a: 60, b: 40 } };
+    const r = calcularComReceita(prepararMes(config(), c), 300000);
+    expect(r.pessoas.find((p) => p.id === "a")!.horas).toBeCloseTo(12);
+    expect(r.pessoas.find((p) => p.id === "b")!.horas).toBeCloseTo(18);
+    expect(r.servicos.find((s) => s.servicoId === "s1")!.divisaoSobreposta).toBe(true);
+  });
+
+  it("começa sem nenhum número: config e cenário vazios não quebram", () => {
+    const r = calcularCenario(configVazia(), novoCenario("X"));
+    expect(r.alertas.length).toBeGreaterThan(0);
+  });
+});
+
+describe("rateio", () => {
+  it("cliente existente substitui a si mesmo na base", () => {
+    const c = cenario();
+    c.clienteId = "c1";
+    const r = calcularComReceita(prepararMes(config(), c), 300000);
+    expect(r.rateio.clientesNaBase).toBe(2);
+    expect(r.rateio.quotaCentavos).toBe(15000);
+  });
+
+  it("proporcional ao valor", () => {
+    const cfg = config();
+    cfg.empresa.regraRateio = "proporcional";
+    const r = calcularComReceita(prepararMes(cfg, cenario()), 300000);
+    // 30000 × 300000 / (300000 + 300000)
+    expect(r.rateio.quotaCentavos).toBeCloseTo(15000);
+  });
+
+  it("sem regra escolhida gera erro", () => {
+    const cfg = config();
+    cfg.empresa.regraRateio = null;
+    const r = calcularComReceita(prepararMes(cfg, cenario()), 300000);
+    expect(r.alertas.some((a) => a.texto.includes("regra de rateio"))).toBe(true);
+    expect(r.rateio.quotaCentavos).toBe(0);
+  });
+});
+
+describe("valor mínimo (modo escopo)", () => {
+  for (const regra of ["igual", "proporcional"] as const) {
+    it(`o mínimo coloca o sócio limitante exatamente no piso (${regra})`, () => {
+      const cfg = config();
+      cfg.empresa.regraRateio = regra;
+      const m = calcularMinimo(prepararMes(cfg, cenario()));
+      expect(m.possivel).toBe(true);
+      expect(m.criterio).toBe("piso");
+      expect(m.limitantePessoaId).toBe("a");
+      const a = m.resultado!.pessoas.find((p) => p.id === "a")!;
+      expect(a.valorHoraCentavos!).toBeGreaterThanOrEqual(5000 - 0.01);
+      expect(a.valorHoraCentavos!).toBeLessThan(5000 + 1);
+      // um centavo a menos já fica abaixo do piso
+      const menos = calcularComReceita(prepararMes(cfg, cenario()), m.mensalidadeMinimaCentavos! - 2);
+      expect(menos.pessoas.find((p) => p.id === "a")!.abaixoPiso).toBe(true);
+    });
+  }
+
+  it("sem piso, o mínimo é o ponto de equilíbrio", () => {
+    const cfg = config();
+    cfg.pessoas.forEach((p) => (p.pisoHoraCentavos = null));
+    const m = calcularMinimo(prepararMes(cfg, cenario()));
+    expect(m.criterio).toBe("equilibrio");
+    expect(Math.abs(m.resultado!.sobraCentavos)).toBeLessThan(1);
+  });
+
+  it("desconta do mínimo o que o tráfego já cobra por fora", () => {
+    const c = cenario();
+    c.trafego = { ...c.trafego, modelo: "fixo", valorFixoCentavos: 50000 };
+    const semTrafego = calcularMinimo(prepararMes(config(), cenario()));
+    const comTrafego = calcularMinimo(prepararMes(config(), c));
+    expect(comTrafego.receitaMinimaCentavos).toBe(semTrafego.receitaMinimaCentavos);
+    expect(comTrafego.mensalidadeMinimaCentavos).toBe(semTrafego.mensalidadeMinimaCentavos! - 50000);
+  });
+});
+
+describe("pontuais, horizonte e encaixe", () => {
+  it("pontual diluído soma horas e custos divididos pelos meses", () => {
+    const c = cenario();
+    c.pontuais = [
+      {
+        id: "p",
+        nome: "Branding",
+        forma: "diluido",
+        meses: 4,
+        entregas: [{ id: "x", tipoEntregaId: "post", quantidade: 8, horasPorUnidade: null }],
+        custos: [{ id: "y", categoria: "terceiro", descricao: "", forma: "fixo", valorCentavos: 40000, tipoEntregaId: null }],
+        valorCobradoCentavos: null,
+      },
+    ];
+    const r = calcularComReceita(prepararMes(config(), c), 300000);
+    expect(r.horasTotais).toBe(30 + 4);
+    expect(r.custoPontualDiluidoCentavos).toBe(10000);
+  });
+
+  it("pontual fora da mensalidade tem cálculo próprio, sem rateio", () => {
+    const c = cenario();
+    c.pontuais = [
+      {
+        id: "p",
+        nome: "Branding",
+        forma: "fora",
+        meses: null,
+        entregas: [{ id: "x", tipoEntregaId: "post", quantidade: 10, horasPorUnidade: null }],
+        custos: [],
+        valorCobradoCentavos: null,
+      },
+    ];
+    const r = calcularCenario(config(), c);
+    expect(r.pontuaisFora).toHaveLength(1);
+    expect(r.pontuaisFora[0].horasTotais).toBe(20);
+    expect(r.pontuaisFora[0].minimo.resultado!.rateio.quotaCentavos).toBe(0);
+    expect(r.mes!.horasTotais).toBe(30); // não entra no mês
+  });
+
+  it("meses sem cobrança elevam a mensalidade necessária", () => {
+    const c = cenario();
+    c.horizonteMeses = 12;
+    c.mesesSemCobranca = 3;
+    const r = calcularCenario(config(), c);
+    expect(r.horizonte!.mensalidadeNecessariaCentavos!).toBeGreaterThan(r.minimo.mensalidadeMinimaCentavos!);
+    // cobrando a mensalidade necessária, a média no horizonte fica no piso
+    const v = { ...c, modo: "valor" as const, mensalidadeCentavos: r.horizonte!.mensalidadeNecessariaCentavos };
+    const rv = calcularCenario(config(), v);
+    const a = rv.horizonte!.pessoas.find((p) => p.id === "a")!;
+    expect(a.valorHoraMedioCentavos!).toBeGreaterThanOrEqual(5000 - 0.01);
+    expect(a.valorHoraMedioCentavos!).toBeLessThan(5001);
+  });
+
+  it("modo valor mostra quantas entregas a mais cabem", () => {
+    const c = cenario();
+    c.modo = "valor";
+    c.mensalidadeCentavos = 400000;
+    const r = calcularCenario(config(), c);
+    expect(r.encaixe!.disponivel).toBe(true);
+    expect(r.encaixe!.cabe).toBe(true);
+    const post = r.encaixe!.tipos.find((t) => t.tipoEntregaId === "post")!;
+    expect(post.folga!).toBeGreaterThan(0);
+    // conferir: com a folga cabe, com +1 não
+    const cfg = config();
+    const com = calcularComReceita(prepararMes(cfg, { ...c, entregas: [{ ...c.entregas[0], quantidade: 10 + post.folga! }, c.entregas[1]] }), 400000);
+    expect(com.pessoas.find((p) => p.id === "a")!.abaixoPiso).toBe(false);
+    const mais = calcularComReceita(prepararMes(cfg, { ...c, entregas: [{ ...c.entregas[0], quantidade: 11 + post.folga! }, c.entregas[1]] }), 400000);
+    expect(mais.pessoas.find((p) => p.id === "a")!.abaixoPiso || mais.pessoas.find((p) => p.id === "a")!.consumoCapacidadePct! > 100).toBe(true);
+  });
+
+  it("modo valor mostra quantas precisa tirar quando não cabe", () => {
+    const c = cenario();
+    c.modo = "valor";
+    c.mensalidadeCentavos = 150000;
+    const r = calcularCenario(config(), c);
+    expect(r.encaixe!.cabe).toBe(false);
+    const post = r.encaixe!.tipos.find((t) => t.tipoEntregaId === "post")!;
+    expect(post.folga!).toBeLessThan(0);
+  });
+});
