@@ -27,6 +27,10 @@ select vincular_socio('<ID-DA-ORG>', 'email-do-aleff@...', 'Áleff');
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = chave anon
 3. Deploy. O endereço fica `https://<nome-do-projeto>.vercel.app`.
 
+As variáveis são lidas pelo servidor **a cada acesso** (não ficam congeladas no build). Mesmo assim, a Vercel só
+entrega variáveis novas ou alteradas a deploys feitos depois da mudança: depois de mexer nelas, faça um Redeploy.
+Se a faixa amarela de "modo demonstração" aparecer, ela diz qual variável o servidor não encontrou.
+
 ## 3. Primeiro uso
 
 1. Entre com o e-mail e a senha de sócio.

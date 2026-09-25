@@ -14,23 +14,28 @@ interface ContextoDados {
 
 const Contexto = createContext<ContextoDados | null>(null);
 
-// Lidas no momento do build (a Vercel embute NEXT_PUBLIC_* no código do site).
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-const SUPABASE_CHAVE = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+/** Configuração de conexão lida no servidor, a cada acesso (ver app/layout.tsx). */
+export interface ConexaoSupabase {
+  url: string | null;
+  chave: string | null;
+  /** nomes das variáveis que não foram encontradas no servidor */
+  faltando: string[];
+}
 
-/** Nomes das variáveis que faltaram no build — mostrados na faixa do modo demonstração. */
-export const VARIAVEIS_FALTANDO = [
-  !SUPABASE_URL && "NEXT_PUBLIC_SUPABASE_URL",
-  !SUPABASE_CHAVE && "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-].filter(Boolean) as string[];
-
-function criarRepositorio(): Repositorio {
-  if (SUPABASE_URL && SUPABASE_CHAVE) return new RepositorioSupabase(SUPABASE_URL, SUPABASE_CHAVE);
+function criarRepositorio(c: ConexaoSupabase): Repositorio {
+  if (c.url && c.chave) return new RepositorioSupabase(c.url, c.chave);
   return new RepositorioLocal();
 }
 
-export function ProvedorDados({ children }: { children: ReactNode }) {
-  const repo = useMemo(() => criarRepositorio(), []);
+const ContextoConexao = createContext<ConexaoSupabase>({ url: null, chave: null, faltando: [] });
+
+/** Variáveis que faltaram — mostradas na faixa do modo demonstração. */
+export function useVariaveisFaltando(): string[] {
+  return useContext(ContextoConexao).faltando;
+}
+
+export function ProvedorDados({ children, conexao }: { children: ReactNode; conexao: ConexaoSupabase }) {
+  const repo = useMemo(() => criarRepositorio(conexao), [conexao]);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -49,7 +54,11 @@ export function ProvedorDados({ children }: { children: ReactNode }) {
     void atualizarUsuario();
   }, [atualizarUsuario]);
 
-  return <Contexto.Provider value={{ repo, usuario, carregando, atualizarUsuario }}>{children}</Contexto.Provider>;
+  return (
+    <ContextoConexao.Provider value={conexao}>
+      <Contexto.Provider value={{ repo, usuario, carregando, atualizarUsuario }}>{children}</Contexto.Provider>
+    </ContextoConexao.Provider>
+  );
 }
 
 export function useDados(): ContextoDados {
