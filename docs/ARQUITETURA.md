@@ -94,6 +94,15 @@ dos botões, abas, seletores e etiquetas: `--raio-botao`) e sombras ficam só em
 tem cor, fonte ou arredondamento fixo (só círculos de verdade: avatares, pontos, chaves, barras). O logo fica em `components/Marca.tsx` e `app/icon.svg`.
 Verificado em 25/09/2026: trocando só o `tokens.css` por outra paleta e outra fonte, o sistema inteiro muda.
 
+## Conector MCP (Claude no claude.ai)
+
+`app/api/mcp` e `app/api/mcp/[token]` → `lib/mcp/`. O Claude entra com um usuário próprio vinculado como admin
+("Claude (conector)"): RLS e auditoria valem para ele como para um sócio. Ferramentas: ver/alterar configuração
+(percentuais, sócios, serviços, tipos de entrega, custos fixos, clientes), calcular cenário, listar/ver/salvar/remover
+simulação e ver histórico. Dinheiro em reais e referências por nome na conversa; a tradução fica em
+`lib/mcp/traducao.ts`. As instruções do servidor proíbem inventar número de negócio.
+Ao criar uma área nova (fases 2+), acrescente as ferramentas dela aqui.
+
 ## Modelo de dados
 
 Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e trigger de auditoria.

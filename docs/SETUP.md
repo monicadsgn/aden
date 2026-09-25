@@ -42,3 +42,29 @@ Se a faixa amarela de "modo demonstração" aparecer, ela diz qual variável o s
 - Permissões ficam no banco (RLS): só membros da Aden leem; só administradores (sócios) gravam.
 - Toda inserção, alteração e remoção em configurações, clientes, contratos e simulações vai para a tabela `auditoria` por trigger, com autor e data. Ninguém (nem admin) consegue editar ou apagar o histórico pelo app.
 - A migration foi testada num Postgres local: histórico com autor, histórico imutável e usuário de fora sem acesso de leitura nem de escrita.
+
+## 4. Conector para o Claude (claude.ai)
+
+Dá ao Claude do projeto ADEN no claude.ai o mesmo acesso de um sócio: ver e alterar configurações, rodar a
+calculadora, salvar simulações e ler o histórico. Ele entra com um usuário próprio, então tudo o que alterar
+aparece no Histórico como "Claude (conector)".
+
+1. **Supabase → Authentication → Users → Add user**: crie um usuário para o conector (um e-mail só dele,
+   ex.: `claude@aden-gestao.app`, e uma senha forte), com **Auto Confirm User** marcado.
+2. **Supabase → SQL Editor** (query limpa):
+   ```sql
+   select vincular_socio((select id from organizacoes limit 1), 'claude@aden-gestao.app', 'Claude (conector)');
+   ```
+3. **Vercel → Settings → Environment Variables**, adicione:
+   - `ADEN_MCP_EMAIL` = o e-mail do passo 1
+   - `ADEN_MCP_SENHA` = a senha do passo 1
+   - `ADEN_MCP_TOKEN` = uma senha nova, longa (40+ letras e números), só para o conector
+   Depois, **Redeploy**.
+4. **claude.ai → Configurações → Conectores → Adicionar conector personalizado**:
+   - Nome: `Aden`
+   - URL: `https://aden-sable.vercel.app/api/mcp/<ADEN_MCP_TOKEN>`
+5. No projeto ADEN, ative o conector no menu de ferramentas da conversa.
+
+Se o conector não responder, abrir `https://aden-sable.vercel.app/api/mcp/x` no navegador mostra
+"Não autorizado" (configuração ok) ou "Faltam: …" com os nomes das variáveis que o servidor não encontrou.
+Na Vercel, variáveis do tipo **Secret** já chegaram vazias em Production uma vez; se isso acontecer, recrie como **Config**.

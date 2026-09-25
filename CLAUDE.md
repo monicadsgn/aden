@@ -10,3 +10,4 @@
 - Toda tabela nova: `org_id`, RLS (leitura membro, escrita admin, a menos que a fase peça outra coisa), triggers `carimbar()` e `auditar()`.
 - Motor de cálculo em `lib/calculo/` é puro e testado (`npm test`). Mudou fórmula → atualiza teste e `docs/ARQUITETURA.md`.
 - Next.js 16: ler `node_modules/next/dist/docs/` antes de usar APIs novas (`middleware` virou `proxy`, APIs de request são assíncronas).
+- Conector MCP (`lib/mcp/`): toda área nova ganha ferramentas no conector, para o Claude do claude.ai operar o sistema como um sócio.

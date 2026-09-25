@@ -19,8 +19,13 @@ export class RepositorioSupabase implements Repositorio {
   private orgId: string | null = null;
   private usuario: Usuario | null = null;
 
-  constructor(url: string, chave: string) {
-    this.sb = createClient(url, chave, { auth: { persistSession: true, autoRefreshToken: true } });
+  /** `servidor`: sem guardar sessão no navegador (uso pelo conector MCP). */
+  constructor(url: string, chave: string, opcoes: { servidor?: boolean } = {}) {
+    this.sb = createClient(url, chave, {
+      auth: opcoes.servidor
+        ? { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        : { persistSession: true, autoRefreshToken: true },
+    });
   }
 
   private async org(): Promise<string> {
