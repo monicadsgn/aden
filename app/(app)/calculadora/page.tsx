@@ -1,32 +1,24 @@
 "use client";
 
-import {
-  Calculator,
-  Copy,
-  FilePlus2,
-  FolderOpen,
-  Maximize2,
-  Minimize2,
-  Pencil,
-  Plus,
-  Printer,
-  Save,
-  Settings2,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Calculator, Copy, FilePlus2, FolderOpen, Pencil, Plus, Presentation, Save, Settings2, Trash2, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Comparacao } from "@/components/calculadora/Comparacao";
 import { EditorCenario } from "@/components/calculadora/EditorCenario";
-import { PainelResultado } from "@/components/calculadora/PainelResultado";
+import { PainelResultado, type OpcoesPdf } from "@/components/calculadora/PainelResultado";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Selecao, cx } from "@/components/ui";
 import { calcularCenario } from "@/lib/calculo/motor";
 import { configVazia, duplicarCenario, novoCenario, novoId } from "@/lib/calculo/novo";
 import type { Configuracao } from "@/lib/calculo/tipos";
+import { assinaturaProposta, guardarEscopo as guardarEscopoComRegra } from "@/lib/dados/acoes";
 import { useDados } from "@/lib/dados/contexto";
-import type { ResumoSimulacao, Simulacao } from "@/lib/dados/repositorio";
+import type { Pedido, ResumoSimulacao, Simulacao } from "@/lib/dados/repositorio";
+import { formatarMoeda } from "@/lib/formato";
+import { enviarCenario, receberCenario } from "@/lib/navegacao";
+import { sociosAbaixoDoPiso } from "@/lib/regras/aprovacao";
+import { guardarParaImprimir } from "@/lib/impressao";
 
 const LETRAS = ["A", "B", "C"];
 const MAX_CENARIOS = 3;
@@ -44,7 +36,8 @@ export default function Calculadora() {
   // referência para "há alterações?": uma simulação nova e intocada não conta como suja
   const [salvoJson, setSalvoJson] = useState<string>(() => JSON.stringify(inicial));
   const [ativoId, setAtivoId] = useState<string>(() => "");
-  const [reuniao, setReuniao] = useState(false);
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const router = useRouter();
   const [editandoNome, setEditandoNome] = useState(false);
   const [mensagem, setMensagem] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -56,6 +49,14 @@ export default function Calculadora() {
     (async () => {
       try {
         setConfig(await repo.carregarConfig());
+        setPedidos(await repo.listarPedidos().catch(() => []));
+        // cenário vindo de outra tela (saúde, apresentação): abre como simulação nova
+        const recebido = receberCenario();
+        if (recebido?.cenarios.length) {
+          const s: Simulacao = { id: novoId(), nome: recebido.nome, cenarios: recebido.cenarios.slice(0, MAX_CENARIOS) };
+          setSim(s);
+          setAtivoId(s.cenarios[0].id);
+        }
         await carregarLista();
       } catch (e) {
         setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao carregar." });
@@ -94,18 +95,79 @@ export default function Calculadora() {
     setMensagem(null);
   };
 
+  const nomePessoa = (id: string) => config.pessoas.find((p) => p.id === id)?.nome ?? "sócio";
+
   const guardarEscopo = async () => {
     const cliente = config.clientes.find((c) => c.id === ativo.clienteId);
     if (!cliente) return;
     const substitui = cliente.escopo ? " Isso substitui o escopo guardado antes." : "";
-    if (!confirm(`Guardar "${ativo.nome}" como o escopo contratado de ${cliente.nome}?${substitui}`)) return;
+    const valor = resultadoAtivo.proposta && resultadoAtivo.mes ? resultadoAtivo.proposta.valorCentavos - resultadoAtivo.mes.receitaTrafegoCentavos : null;
+    const textoValor = ativo.modo === "valor" ? ativo.mensalidadeCentavos : valor;
+    if (!confirm(`Guardar "${ativo.nome}" como o escopo contratado de ${cliente.nome}, com mensalidade de ${formatarMoeda(textoValor)}?${substitui}`)) return;
     try {
-      await repo.definirEscopoCliente(cliente.id, ativo);
+      const r = await guardarEscopoComRegra(repo, config, cliente.id, ativo);
       setConfig(await repo.carregarConfig());
-      setMensagem({ tom: "ok", texto: `Escopo contratado de ${cliente.nome} guardado. Ele já conta na Visão do mês e na Saúde dos clientes.` });
+      setPedidos(await repo.listarPedidos().catch(() => []));
+      if (r.gravado)
+        setMensagem({ tom: "ok", texto: `Escopo contratado de ${cliente.nome} guardado. Ele já conta na Visão do mês e na Saúde dos clientes.` });
+      else if (r.pedido?.status === "aplicado")
+        setMensagem({ tom: "ok", texto: `Guardado como exceção: fica abaixo do seu piso, e você mesma aprovou. Ficou no histórico.` });
+      else
+        setMensagem({
+          tom: "erro",
+          texto: `Este escopo fica abaixo do piso de ${r.abaixo.map((a) => a.nome).join(" e ")}. Ele só vale depois que ${r.pedido?.aguardando.map(nomePessoa).join(" e ")} aprovar a exceção (em Sócios → Aprovações).`,
+        });
     } catch (e) {
       setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao guardar o escopo." });
     }
+  };
+
+  // PDF da proposta: abaixo do piso de algum sócio, só com a aprovação dele
+  const opcoesPdf = (): OpcoesPdf | undefined => {
+    const r = resultadoAtivo;
+    if (!r.proposta) return undefined;
+    const clienteNome = config.clientes.find((c) => c.id === ativo.clienteId)?.nome ?? sim.nome;
+    const abaixo = sociosAbaixoDoPiso(config, r);
+    const assinatura = assinaturaProposta(ativo, r.proposta.valorCentavos);
+    const excecoes = pedidos.filter((p) => p.tipo === "excecao" && p.assinatura === assinatura);
+    const aprovada = excecoes.some((p) => p.status === "aplicado");
+    const pendente = excecoes.some((p) => p.status === "pendente");
+    const aoExportar = () => {
+      guardarParaImprimir({ tipo: "proposta", cenario: ativo, clienteNome, valorCentavos: r.proposta!.valorCentavos });
+      router.push("/imprimir/proposta");
+    };
+    const motivo = abaixo.length ? `Esta proposta fica abaixo do piso de ${abaixo.map((a) => a.nome).join(" e ")}.` : undefined;
+    return {
+      liberado: abaixo.length === 0 || aprovada,
+      pendente,
+      motivo,
+      aoExportar,
+      aoPedirExcecao: async () => {
+        if (!confirm(`${motivo} Pedir a aprovação de ${abaixo.map((a) => a.nome).join(" e ")} para exportar esta proposta?`)) return;
+        try {
+          const p = await repo.proporExcecao({
+            clienteId: ativo.clienteId,
+            afetados: abaixo.map((a) => a.pessoaId),
+            assinatura,
+            descricao: `Proposta de ${formatarMoeda(r.proposta!.valorCentavos)} para ${clienteNome} abaixo do piso de ${abaixo.map((a) => a.nome).join(" e ")}`,
+            dados: { aplicar: "proposta", cenario: ativo, valorCentavos: r.proposta!.valorCentavos, perdas: abaixo },
+          });
+          setPedidos(await repo.listarPedidos());
+          setMensagem(
+            p.status === "aplicado"
+              ? { tom: "ok", texto: "Exceção registrada (você é a única afetada). O PDF está liberado." }
+              : { tom: "ok", texto: `Pedido enviado. O PDF libera quando ${p.aguardando.map(nomePessoa).join(" e ")} aprovar.` },
+          );
+        } catch (e) {
+          setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao pedir aprovação." });
+        }
+      },
+    };
+  };
+
+  const abrirApresentacao = () => {
+    enviarCenario({ origem: "calculadora", nome: sim.nome, cenarios: [ativo] });
+    router.push("/negociacao");
   };
 
   const salvar = async () => {
@@ -160,12 +222,9 @@ export default function Calculadora() {
         titulo="Calculadora de projeto"
         descricao="Simule um cliente antes de fechar: do escopo ao valor mínimo, ou do valor ao que cabe dentro dele."
         acoes={
-          <>
-            <Botao variante={reuniao ? "primario" : "secundario"} icone={reuniao ? Minimize2 : Maximize2} onClick={() => setReuniao(!reuniao)}>
-              {reuniao ? "Sair do modo reunião" : "Modo reunião"}
-            </Botao>
-            <Botao icone={Printer} aria-label="Imprimir ou salvar em PDF" onClick={() => window.print()} />
-          </>
+          <Botao variante="primario" icone={Presentation} onClick={abrirApresentacao}>
+            Modo apresentação
+          </Botao>
         }
       />
 
@@ -277,22 +336,16 @@ export default function Calculadora() {
         </div>
 
         {/* editor + resultado */}
-        {reuniao ? (
-          <div className="mx-auto w-full max-w-5xl">
-            <PainelResultado grande resultado={resultadoAtivo} cenario={ativo} config={config} aoMudar={mudarCenario} aoGuardarEscopo={guardarEscopo} />
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+          <div className="nao-imprimir min-w-0">
+            <EditorCenario cenario={ativo} config={config} aoMudar={mudarCenario} />
           </div>
-        ) : (
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-            <div className="nao-imprimir min-w-0">
-              <EditorCenario cenario={ativo} config={config} aoMudar={mudarCenario} />
-            </div>
-            <div className="min-w-0">
-              <div className="painel-resultado lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
-                <PainelResultado resultado={resultadoAtivo} cenario={ativo} config={config} aoMudar={mudarCenario} aoGuardarEscopo={guardarEscopo} />
-              </div>
+          <div className="min-w-0">
+            <div className="painel-resultado lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
+              <PainelResultado resultado={resultadoAtivo} cenario={ativo} config={config} aoMudar={mudarCenario} aoGuardarEscopo={guardarEscopo} pdf={opcoesPdf()} />
             </div>
           </div>
-        )}
+        </div>
 
         {sim.cenarios.length > 1 && (
           <Comparacao cenarios={sim.cenarios} resultados={resultados} config={config} ativoId={ativo.id} aoSelecionar={setAtivoId} />

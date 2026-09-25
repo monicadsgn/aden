@@ -85,6 +85,8 @@ export interface PreparadoMes {
     clientesNaBase: number;
     somaOutros: number;
   };
+  /** o cálculo não pode ser feito (ex.: regra de rateio vazia com custo fixo cadastrado) */
+  bloqueio: Alerta | null;
   semCapacidade: boolean;
   alertas: Alerta[];
 }
@@ -131,7 +133,8 @@ function somarCustos(
       if (!c.tipoEntregaId) {
         alertas.push({
           nivel: "aviso",
-          texto: `${prefixo}Custo "${c.descricao || c.categoria}" é por entrega mas não tem tipo de entrega vinculado — ficou fora do cálculo.`,
+          texto: `${prefixo}Custo "${c.descricao || c.categoria}" é por entrega mas não tem tipo de entrega vinculado: ficou fora do cálculo.`,
+          acao: { rotulo: "Vincular a entrega", destino: { tipo: "cenario", bloco: "custos" } },
         });
         continue;
       }
@@ -168,7 +171,8 @@ function horasDasEntregas(
     if (hUn == null) {
       alertas.push({
         nivel: "aviso",
-        texto: `${prefixo}"${tipo.nome}" não tem horas por entrega configuradas — contou 0 h.`,
+        texto: `${prefixo}"${tipo.nome}" não tem tempo por entrega cadastrado: contou 0 h.`,
+        acao: { rotulo: "Cadastrar o tempo", destino: { tipo: "config", secao: "tipos", campo: "horasPorUnidade" } },
       });
       continue;
     }
@@ -177,17 +181,79 @@ function horasDasEntregas(
   return out;
 }
 
+const normalizar = (t: string) =>
+  t
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+/** Serviço de tráfego pago, reconhecido pelo nome ("Tráfego pago", "Gestão de tráfego"…). */
+export function ehServicoTrafego(nome: string | null | undefined): boolean {
+  return !!nome && normalizar(nome).includes("trafego");
+}
+
+/** O cenário tem alguma entrega de um serviço de tráfego (rotina ou pontual diluído)? */
+export function temEntregaDeTrafego(config: Configuracao, cenario: Cenario): boolean {
+  const linhas = [...cenario.entregas, ...cenario.pontuais.filter((p) => p.forma === "diluido").flatMap((p) => p.entregas)];
+  return linhas.some((l) => {
+    if (!l.tipoEntregaId || v0(l.quantidade) <= 0) return false;
+    const tipo = config.tiposEntrega.find((t) => t.id === l.tipoEntregaId);
+    const serv = config.servicos.find((s) => s.id === tipo?.servicoId);
+    return ehServicoTrafego(serv?.nome);
+  });
+}
+
+const NOMES_IMPOSTO = /\b(das|imposto|impostos|mei|simples)\b/;
+
+/**
+ * Proteção contra imposto contado duas vezes: um custo fixo com nome de imposto
+ * (DAS, imposto, MEI…) ao mesmo tempo que o campo "imposto fixo por mês" preenchido.
+ */
+export function verificarImpostoEmDobro(config: Configuracao): Alerta | null {
+  if (!positivo(config.empresa.impostoFixoMensalCentavos)) return null;
+  const parecidos = config.custosFixos.filter((c) => c.ativo && positivo(c.valorMensalCentavos) && NOMES_IMPOSTO.test(normalizar(c.nome)));
+  if (!parecidos.length) return null;
+  return {
+    nivel: "erro",
+    texto: `Parece que o imposto está contado duas vezes: o campo "imposto fixo por mês" está preenchido e há custo fixo com nome de imposto (${parecidos.map((c) => c.nome).join(", ")}). Tire um dos dois.`,
+    acao: { rotulo: "Ver custos fixos", destino: { tipo: "config", secao: "custos" } },
+  };
+}
+
+/** Imposto em % que vale: no MEI é sempre zero (o imposto é o valor fixo mensal). */
+function impostoPctEfetivo(config: Configuracao, sobreposto: number | null): number | null {
+  if (config.empresa.regime === "mei") return 0;
+  return sobreposto ?? config.empresa.impostoPct;
+}
+
 export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: OpcoesPreparo = {}): PreparadoMes {
   const alertas: Alerta[] = [];
   const sob = cenario.sobreposicoes;
+  const regras = (campo: string) => ({ tipo: "config" as const, secao: "regras" as const, campo });
 
   // Percentuais da empresa, com sobreposição por projeto
-  const imposto = sob.impostoPct ?? config.empresa.impostoPct;
+  const mei = config.empresa.regime === "mei";
+  const imposto = impostoPctEfetivo(config, sob.impostoPct);
   const taxa = sob.taxaRecebimentoPct ?? config.empresa.taxaRecebimentoPct;
   const reinv = sob.reinvestimentoPct ?? config.empresa.reinvestimentoPct;
-  if (imposto == null) alertas.push({ nivel: "info", texto: "Imposto sobre faturamento não configurado — considerado 0%." });
-  if (taxa == null) alertas.push({ nivel: "info", texto: "Taxa de recebimento não configurada — considerada 0%." });
-  if (reinv == null) alertas.push({ nivel: "aviso", texto: "Percentual de reinvestimento não configurado — considerado 0%." });
+  if (imposto == null)
+    alertas.push({
+      nivel: "lembrete",
+      texto: "Imposto sobre faturamento não preenchido: contado como 0%.",
+      acao: { rotulo: "Preencher o imposto", destino: regras("impostoPct") },
+    });
+  if (taxa == null && config.empresa.taxaRecebimentoFixaCentavos == null)
+    alertas.push({
+      nivel: "lembrete",
+      texto: "Taxa de recebimento não preenchida: contada como 0%.",
+      acao: { rotulo: "Preencher a taxa", destino: regras("taxaRecebimentoPct") },
+    });
+  if (reinv == null)
+    alertas.push({
+      nivel: "lembrete",
+      texto: "Reinvestimento não preenchido: nada fica guardado na empresa, a sobra toda vai para os sócios.",
+      acao: { rotulo: "Preencher o reinvestimento", destino: regras("reinvestimentoPct") },
+    });
 
   // Horas: entregas do mês + pontuais diluídos
   const linhasHoras = horasDasEntregas(cenario.entregas, config, 1, alertas, "");
@@ -198,12 +264,20 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     for (const p of cenario.pontuais) {
       const nome = p.nome || "Projeto pontual";
       if (p.forma == null) {
-        alertas.push({ nivel: "aviso", texto: `${nome}: escolha "diluído" ou "fora da mensalidade" — ainda não entrou no cálculo.` });
+        alertas.push({
+          nivel: "aviso",
+          texto: `${nome}: escolha "diluído" ou "fora da mensalidade". Ainda não entrou no cálculo.`,
+          acao: { rotulo: "Escolher", destino: { tipo: "cenario", bloco: "pontuais" } },
+        });
         continue;
       }
       if (p.forma !== "diluido") continue;
       if (!positivo(p.meses)) {
-        alertas.push({ nivel: "erro", texto: `${nome}: informe em quantos meses o projeto será diluído.` });
+        alertas.push({
+          nivel: "erro",
+          texto: `${nome}: informe em quantos meses o projeto será diluído.`,
+          acao: { rotulo: "Informar os meses", destino: { tipo: "cenario", bloco: "pontuais" } },
+        });
         continue;
       }
       const pref = `${nome}: `;
@@ -225,7 +299,11 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
   let percentuaisValidos = true;
   if (socios.length === 0) {
     percentuaisValidos = false;
-    alertas.push({ nivel: "erro", texto: "Cadastre os sócios nas configurações para ver a divisão." });
+    alertas.push({
+      nivel: "erro",
+      texto: "Cadastre os sócios nas configurações para ver a divisão.",
+      acao: { rotulo: "Cadastrar sócios", destino: { tipo: "config", secao: "socios" } },
+    });
   } else {
     const faltando = socios.filter((s) => s.pct == null);
     if (faltando.length) {
@@ -233,12 +311,17 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       alertas.push({
         nivel: "erro",
         texto: `Defina o percentual de ${faltando.map((s) => s.pessoa.nome).join(", ")} (padrão nas configurações ou neste cenário).`,
+        acao: { rotulo: "Definir o percentual", destino: { tipo: "config", secao: "socios", campo: "percentualPadrao" } },
       });
     } else {
       const soma = socios.reduce((a, s) => a + v0(s.pct), 0);
       if (Math.abs(soma - 100) > EPS) {
         percentuaisValidos = false;
-        alertas.push({ nivel: "erro", texto: `Os percentuais dos sócios somam ${formatarPct(soma)}. Precisam somar 100%.` });
+        alertas.push({
+          nivel: "erro",
+          texto: `Os percentuais dos sócios somam ${formatarPct(soma)}. Precisam somar 100%.`,
+          acao: { rotulo: "Corrigir os percentuais", destino: { tipo: "config", secao: "socios", campo: "percentualPadrao" } },
+        });
       }
     }
   }
@@ -257,7 +340,11 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     if (servicoId == null) {
       servicos.push({ servicoId: null, nome: "Sem serviço", horas, divisao: {}, divisaoSobreposta: false });
       if (horas > 0)
-        alertas.push({ nivel: "aviso", texto: "Há tipos de entrega sem serviço vinculado: essas horas não foram atribuídas a ninguém." });
+        alertas.push({
+          nivel: "aviso",
+          texto: "Há tipos de entrega sem serviço vinculado: essas horas não foram atribuídas a ninguém.",
+          acao: { rotulo: "Vincular o serviço", destino: { tipo: "config", secao: "tipos" } },
+        });
       continue;
     }
     const serv = config.servicos.find((s) => s.id === servicoId);
@@ -275,10 +362,18 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     if (horas > 0) {
       if (soma === 0) {
         percentuaisValidos = false;
-        alertas.push({ nivel: "erro", texto: `Defina quem executa "${nome}" (divisão de horas entre as pessoas).` });
+        alertas.push({
+          nivel: "erro",
+          texto: `Defina quem executa "${nome}" (divisão de horas entre as pessoas).`,
+          acao: { rotulo: "Definir quem executa", destino: { tipo: "config", secao: "servicos" } },
+        });
       } else if (Math.abs(soma - 100) > EPS) {
         percentuaisValidos = false;
-        alertas.push({ nivel: "erro", texto: `A divisão de horas de "${nome}" soma ${formatarPct(soma)}. Precisa somar 100%.` });
+        alertas.push({
+          nivel: "erro",
+          texto: `A divisão de horas de "${nome}" soma ${formatarPct(soma)}. Precisa somar 100%.`,
+          acao: { rotulo: "Corrigir a divisão", destino: { tipo: "config", secao: "servicos" } },
+        });
       }
     }
     for (const [pid, pct] of Object.entries(divisao)) {
@@ -289,15 +384,18 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
 
   // Tráfego — só a gestão fatura. A verba de mídia é paga pelo cliente direto na
   // plataforma: não é receita, não entra em imposto nem em taxa de recebimento.
+  // Sem nenhuma entrega de tráfego no cenário, "sem tráfego" é assumido sozinho.
   let receitaTrafego = 0;
   if (!opcoes.ignorarPontuais) {
     const t = cenario.trafego;
     switch (t.modelo) {
       case null:
-        alertas.push({
-          nivel: "aviso",
-          texto: 'Modelo de cobrança do tráfego não definido — nenhuma receita de tráfego considerada. Se não houver tráfego, marque "não há tráfego".',
-        });
+        if (temEntregaDeTrafego(config, cenario))
+          alertas.push({
+            nivel: "aviso",
+            texto: "Este cenário tem entrega de tráfego, mas o modelo de cobrança do tráfego não foi escolhido: nenhuma cobrança de tráfego entrou na conta.",
+            acao: { rotulo: "Escolher o modelo", destino: { tipo: "cenario", bloco: "trafego" } },
+          });
         break;
       case "fixo":
         receitaTrafego = v0(t.valorFixoCentavos);
@@ -320,8 +418,15 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
   const outros = base.filter((c) => c.id !== cenario.clienteId);
   const rateioAtivo = !opcoes.semRateio && totalFixo > 0;
   const regra = config.empresa.regraRateio;
+  let bloqueio: Alerta | null = null;
   if (rateioAtivo && regra == null) {
-    alertas.push({ nivel: "erro", texto: "Há custos fixos cadastrados, mas a regra de rateio não foi escolhida nas configurações." });
+    // sem regra, o custo fixo sumiria da conta e tudo sairia inflado: bloqueia
+    bloqueio = {
+      nivel: "erro",
+      texto: `Há ${formatarMoeda(totalFixo)} de custo fixo por mês, mas a regra de rateio não foi escolhida. Sem ela o custo fixo sumiria da conta e o resultado sairia maior do que é, então nada é calculado.`,
+      acao: { rotulo: "Escolher a regra de rateio", destino: regras("regraRateio") },
+    };
+    alertas.push(bloqueio);
   }
   if (rateioAtivo && regra === "proporcional") {
     const semValor = outros.filter((c) => c.valorMensalCentavos == null);
@@ -329,8 +434,15 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       alertas.push({
         nivel: "aviso",
         texto: `Clientes sem valor mensal na base de rateio (contados como R$ 0): ${semValor.map((c) => c.nome).join(", ")}.`,
+        acao: { rotulo: "Preencher os valores", destino: { tipo: "config", secao: "clientes" } },
       });
   }
+  if (!opcoes.semRateio) {
+    const dobro = verificarImpostoEmDobro(config);
+    if (dobro) alertas.push(dobro);
+  }
+  if (mei && sob.impostoPct != null && sob.impostoPct !== 0)
+    alertas.push({ nivel: "info", texto: "No MEI o imposto é o valor fixo por mês: o imposto em % deste cenário foi ignorado." });
 
   const custosProjeto = somaCategorias(custosCat) + custoPontualDiluido;
 
@@ -345,7 +457,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     receitaTrafego,
     verbaMidia: opcoes.ignorarPontuais ? null : cenario.trafego.verbaMensalCentavos,
     impostoPct: v0(imposto),
-    impostoSobreposto: sob.impostoPct != null && sob.impostoPct !== config.empresa.impostoPct,
+    impostoSobreposto: !mei && sob.impostoPct != null && sob.impostoPct !== config.empresa.impostoPct,
     taxaPct: v0(taxa),
     taxaFixa: v0(config.empresa.taxaRecebimentoFixaCentavos),
     taxaSobreposta: sob.taxaRecebimentoPct != null && sob.taxaRecebimentoPct !== config.empresa.taxaRecebimentoPct,
@@ -361,9 +473,23 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       clientesNaBase: outros.length + 1,
       somaOutros: outros.reduce((a, c) => a + v0(c.valorMensalCentavos), 0),
     },
+    bloqueio,
     semCapacidade: !!opcoes.semCapacidade,
     alertas,
   };
+}
+
+/** Uma frase dizendo como o custo fixo foi dividido neste cálculo. */
+export function explicarRateio(r: PreparadoMes["rateio"], quota: number, receita: number): string {
+  if (r.total <= 0) return "A empresa não tem custo fixo cadastrado.";
+  if (!r.ativo) return "Sem regra de rateio escolhida.";
+  const outros = r.clientesNaBase - 1;
+  const conta = outros === 0 ? "Não há outros clientes ativos no rateio, então este cliente conta como o único" : `Este cliente conta como mais 1, junto com ${outros} cliente(s) ativo(s)`;
+  if (r.regra === "igual")
+    return `${conta}: ${formatarMoeda(r.total)} ÷ ${r.clientesNaBase} = ${formatarMoeda(quota)} para este cliente.`;
+  if (outros === 0 || r.somaOutros <= 0) return `${conta} e fica com todo o custo fixo (${formatarMoeda(r.total)}).`;
+  const pct = receita + r.somaOutros > 0 ? (receita / (receita + r.somaOutros)) * 100 : 0;
+  return `${conta}. Ele paga ${formatarMoeda(receita)} de ${formatarMoeda(receita + r.somaOutros)} somando todos, ou seja ${formatarPct(pct)}; a mesma fatia do custo fixo: ${formatarMoeda(quota)}.`;
 }
 
 // ─── Cálculo do mês com uma receita ─────────────────────────────────────────
@@ -408,6 +534,7 @@ export function calcularComReceita(
       const cap = prep.semCapacidade ? null : positivo(p.capacidadeHorasMes) ? p.capacidadeHorasMes : null;
       const consumo = cap != null ? (horas / cap) * 100 : null;
       return {
+        recebeSemHoras: horas <= EPS && valor != null && valor > EPS,
         id: p.id,
         nome: p.nome,
         percentual: pct,
@@ -429,7 +556,11 @@ export function calcularComReceita(
         texto: `${p.nome}: ${formatarMoeda(p.valorHoraCentavos)}/h, abaixo do piso de ${formatarMoeda(p.pisoHoraCentavos)}/h.`,
       });
     if (p.horas > 0 && p.pisoHoraCentavos == null && prep.socios.some((s) => s.pessoa.id === p.id))
-      alertas.push({ nivel: "aviso", texto: `${p.nome} não tem piso por hora configurado — o alerta de piso não vale para ele(a).` });
+      alertas.push({
+        nivel: "aviso",
+        texto: `${p.nome} não tem piso por hora: não dá para saber se o valor por hora dele(a) está bom.`,
+        acao: { rotulo: `Preencher o piso de ${p.nome}`, destino: { tipo: "config", secao: "socios", campo: "pisoHoraCentavos" } },
+      });
     if (p.consumoCapacidadePct != null && p.consumoCapacidadePct > 100 + EPS)
       alertas.push({
         nivel: "erro",
@@ -456,8 +587,10 @@ export function calcularComReceita(
       regra: prep.rateio.regra,
       totalFixoCentavos: prep.rateio.total,
       clientesNaBase: prep.rateio.clientesNaBase,
+      outrosClientes: prep.rateio.clientesNaBase - 1,
       quotaCentavos: quota,
       impostoFixoCentavos: prep.rateio.impostoFixo,
+      explicacao: explicarRateio(prep.rateio, quota, receita),
     },
     sobraCentavos: sobra,
     reinvestimentoPct: prep.reinvPct,
@@ -547,6 +680,7 @@ export function calcularMinimo(prep: PreparadoMes): ResultadoMinimo {
     limitantePessoaId: null,
     resultado: null,
   });
+  if (prep.bloqueio) return vazio(prep.bloqueio.texto);
   if (!prep.percentuaisValidos) return vazio("Corrija os percentuais indicados nos alertas para calcular o valor mínimo.");
   const alvo = sobraAlvo(prep);
   if (!alvo.ok) return vazio(alvo.motivo);
@@ -577,11 +711,19 @@ export function calcularHorizonte(
   const M = cenario.horizonteMeses;
   if (!positivo(M)) {
     if (N > 0)
-      alertas.push({ nivel: "aviso", texto: "Informe o horizonte da simulação (em meses) para ver o efeito dos meses sem cobrança." });
+      alertas.push({
+        nivel: "aviso",
+        texto: "Informe o horizonte da simulação (em meses) para ver o efeito dos meses sem cobrança.",
+        acao: { rotulo: "Informar o horizonte", destino: { tipo: "cenario", bloco: "semcobranca" } },
+      });
     return { horizonte: null, alertas };
   }
   if (N > M) {
-    alertas.push({ nivel: "erro", texto: "Os meses sem cobrança passam do horizonte da simulação." });
+    alertas.push({
+      nivel: "erro",
+      texto: "Os meses sem cobrança passam do horizonte da simulação.",
+      acao: { rotulo: "Corrigir", destino: { tipo: "cenario", bloco: "semcobranca" } },
+    });
     return { horizonte: null, alertas };
   }
   const alvo = prep.percentuaisValidos ? sobraAlvo(prep) : null;
@@ -630,6 +772,7 @@ export function calcularHorizonte(
     alertas.push({
       nivel: "aviso",
       texto: "Escolha o que fica suspenso nos meses sem cobrança (nada é pago, ou só a mensalidade). As duas opções aparecem lado a lado.",
+      acao: { rotulo: "Escolher", destino: { tipo: "cenario", bloco: "semcobranca" } },
     });
 
   return {
@@ -798,6 +941,7 @@ function alertasAudiovisualBloco(config: Configuracao, entregas: LinhaEntrega[],
       out.push({
         nivel: "erro",
         texto: `${prefixo}"${tipo.nome}" é entrega de vídeo, mas não há custo de audiovisual preenchido. Audiovisual é sempre terceiro pago pela empresa: informe o custo (fixo ou por entrega).`,
+        acao: { rotulo: "Informar o custo", destino: { tipo: "cenario", bloco: "custos" } },
       });
   }
   return out;
@@ -848,7 +992,11 @@ export function calcularEntrada(
       const valor = piso != null ? horas * piso : null;
       if (valor != null) horasNoPiso += valor;
       if (horas > 0 && piso == null)
-        alertas.push({ nivel: "aviso", texto: `Entrada: as horas de ${p.nome} não foram valorizadas porque ele(a) não tem piso por hora configurado.` });
+        alertas.push({
+          nivel: "aviso",
+          texto: `Entrada: as horas de ${p.nome} não foram valorizadas porque ele(a) não tem piso por hora configurado.`,
+          acao: { rotulo: `Preencher o piso de ${p.nome}`, destino: { tipo: "config", secao: "socios", campo: "pisoHoraCentavos" } },
+        });
       const horasPrimeiroMes = (prep.horasPorPessoa.get(p.id) ?? 0) + horas;
       const cap = positivo(p.capacidadeHorasMes) ? p.capacidadeHorasMes : null;
       const consumo = cap != null ? (horasPrimeiroMes / cap) * 100 : null;
@@ -967,7 +1115,7 @@ function calcularPontuaisFora(config: Configuracao, cenario: Cenario): Resultado
 
 function unicos(alertas: Alerta[]): Alerta[] {
   const vistos = new Set<string>();
-  const ordem = { erro: 0, aviso: 1, info: 2 } as const;
+  const ordem = { erro: 0, aviso: 1, lembrete: 2, info: 3 } as const;
   return alertas
     .filter((a) => (vistos.has(a.texto) ? false : (vistos.add(a.texto), true)))
     .sort((a, b) => ordem[a.nivel] - ordem[b.nivel]);
@@ -976,6 +1124,22 @@ function unicos(alertas: Alerta[]): Alerta[] {
 export function calcularCenario(config: Configuracao, cenario: Cenario): ResultadoCenario {
   const prep = prepararMes(config, cenario);
   const minimo = calcularMinimo(prep);
+  if (prep.bloqueio) {
+    // resultado bloqueado: nenhum número sai, só o que precisa ser resolvido
+    return {
+      modo: cenario.modo,
+      bloqueio: prep.bloqueio,
+      entrada: null,
+      teto: null,
+      proposta: null,
+      mes: null,
+      minimo,
+      encaixe: null,
+      horizonte: null,
+      pontuaisFora: [],
+      alertas: unicos([...prep.alertas, ...verificarAudiovisual(config, cenario)]),
+    };
+  }
   const pontuaisFora = calcularPontuaisFora(config, cenario);
 
   let mes: ResultadoMes | null;
@@ -989,7 +1153,11 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
   } else {
     if (cenario.mensalidadeCentavos == null) {
       mes = null;
-      alertas.push(...prep.alertas, { nivel: "info", texto: "Informe o valor mensal que o cliente vai pagar." });
+      alertas.push(...prep.alertas, {
+        nivel: "info",
+        texto: "Informe o valor mensal que o cliente vai pagar.",
+        acao: { rotulo: "Informar o valor", destino: { tipo: "cenario", bloco: "modo" } },
+      });
     } else {
       mes = calcularComReceita(prep, cenario.mensalidadeCentavos);
       encaixe = calcularEncaixe(config, cenario, mes);
@@ -1031,6 +1199,7 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
 
   return {
     modo: cenario.modo,
+    bloqueio: null,
     entrada: ent.entrada,
     teto,
     proposta: calcularProposta(config, mes, cenario.modo),

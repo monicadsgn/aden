@@ -73,3 +73,16 @@ input[type="number"]::-webkit-outer-spin-button {
   .card { box-shadow: none !important; break-inside: avoid; }
   .painel-resultado { position: static !important; max-height: none !important; overflow: visible !important; }
 }
+
+/* destaque rápido do campo ou bloco que um aviso mandou abrir */
+.destaque-alvo {
+  outline: 2px solid var(--aviso);
+  outline-offset: 4px;
+  transition: outline-color 0.3s;
+}
+
+/* PDFs: margem da página e nada de sombra */
+@media print {
+  @page { margin: 16mm 14mm; }
+  .documento { gap: 1.75rem; }
+}

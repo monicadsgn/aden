@@ -3,9 +3,12 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { beforeEach, describe, expect, it } from "vitest";
-import { configVazia } from "../calculo/novo";
+import type { Medicao } from "../calculo/calibragem";
+import { configVazia, novoId } from "../calculo/novo";
+import type { Pagamento } from "../calculo/pagamentos";
 import type { Configuracao } from "../calculo/tipos";
-import type { AlteracoesConfig, RegistroAuditoria, Simulacao } from "../dados/repositorio";
+import { afetados, aplicarItens, separarProtegidas } from "../regras/aprovacao";
+import type { AlteracoesConfig, AvisoSocio, DadosExcecao, NovoAviso, Pedido, RegistroAuditoria, ResultadoSalvarConfig, Simulacao } from "../dados/repositorio";
 import type { RepositorioSupabase } from "../dados/supabase";
 import { criarServidorMcp } from "./servidor";
 
@@ -22,7 +25,28 @@ class BancoFalso {
   async carregarConfig() {
     return structuredClone(this.config);
   }
-  async salvarConfig(a: AlteracoesConfig) {
+  pedidos: Pedido[] = [];
+  avisos: AvisoSocio[] = [];
+  medicoes: Medicao[] = [];
+  pagamentos: Pagamento[] = [];
+  // o conector não é sócio: toda mudança protegida vira pedido
+  async salvarConfig(alt: AlteracoesConfig): Promise<ResultadoSalvarConfig> {
+    const sep = separarProtegidas(this.config, alt);
+    const a = sep.alteracoes;
+    const antes = structuredClone(this.config);
+    this.aplicarLivres(a);
+    if (!sep.itens.length) return { pedido: null, itensProtegidos: [] };
+    const af = afetados(antes, sep.itens);
+    const pedidoId = novoId();
+    this.pedidos.push({
+      id: pedidoId, tipo: "campos", descricao: "x", itens: sep.itens, dados: null, assinatura: null, clienteId: null, afetados: af,
+      impacto: null, status: af.length ? "pendente" : "aplicado", motivo: null, autorNome: "Claude (conector)", autorPessoaId: null,
+      criadoEm: "", decididoEm: null, aprovacoes: [],
+    });
+    if (!af.length) this.config = aplicarItens(this.config, sep.itens);
+    return { pedido: { pedidoId, status: af.length ? "pendente" : "aplicado", aguardando: af }, itensProtegidos: sep.itens };
+  }
+  private aplicarLivres(a: AlteracoesConfig) {
     if (a.empresa) this.config.empresa = a.empresa;
     this.config.pessoas = aplicar(this.config.pessoas, a.pessoas);
     this.config.servicos = aplicar(this.config.servicos, a.servicos);
@@ -30,6 +54,49 @@ class BancoFalso {
     this.config.custosFixos = aplicar(this.config.custosFixos, a.custosFixos);
     this.config.clientes = aplicar(this.config.clientes, a.clientes);
     this.historico.push({ id: String(this.historico.length), tabela: "config", registroId: "-", acao: "alterou", antes: null, depois: null, autor: "Claude (conector)", em: "" });
+  }
+  async listarMembros() {
+    return [];
+  }
+  async listarPedidos() {
+    return this.pedidos;
+  }
+  async decidirPedido(): Promise<never> {
+    throw new Error("O conector não aprova.");
+  }
+  async cancelarPedido() {}
+  async proporExcecao(p: { clienteId: string | null; afetados: string[]; assinatura: string; descricao: string; dados: DadosExcecao }) {
+    const id = novoId();
+    this.pedidos.push({
+      id, tipo: "excecao", descricao: p.descricao, itens: [], dados: p.dados, assinatura: p.assinatura, clienteId: p.clienteId, afetados: p.afetados,
+      impacto: null, status: "pendente", motivo: null, autorNome: "Claude (conector)", autorPessoaId: null, criadoEm: "", decididoEm: null, aprovacoes: [],
+    });
+    return { pedidoId: id, status: "pendente" as const, aguardando: p.afetados };
+  }
+  async listarAvisos() {
+    return this.avisos;
+  }
+  async criarAvisos(a: NovoAviso[]) {
+    this.avisos.push(...a.map((x) => ({ ...x, id: novoId(), criadoEm: "", lidoEm: null })));
+  }
+  async marcarAvisoLido() {}
+  async listarMedicoes() {
+    return this.medicoes;
+  }
+  async salvarMedicao(m: Medicao) {
+    this.medicoes = [...this.medicoes.filter((x) => x.id !== m.id), m];
+  }
+  async removerMedicao(id: string) {
+    this.medicoes = this.medicoes.filter((x) => x.id !== id);
+  }
+  async listarPagamentos() {
+    return this.pagamentos;
+  }
+  async salvarPagamento(p: Pagamento) {
+    this.pagamentos = [...this.pagamentos.filter((x) => x.id !== p.id), p];
+  }
+  async removerPagamento(id: string) {
+    this.pagamentos = this.pagamentos.filter((x) => x.id !== id);
   }
   async listarSimulacoes() {
     return this.sims.map((s) => ({ id: s.id, nome: s.nome, atualizadoEm: s.atualizadoEm, cenarios: s.cenarios.length }));
@@ -160,6 +227,45 @@ describe("conector MCP da Aden", () => {
     // 1500 ÷ 40 h = 37,50/h < piso 45
     expect(s.clientes[0].socios[0].porHoraReal).toBe(37.5);
     expect(s.clientes[0].prejuizoSilencioso).toBe(true);
+  });
+
+  it("mudança protegida pelo conector fica pendente de aprovação do sócio", async () => {
+    await chamar("salvar_socio", { nome: "Moni", percentualPadrao: 100, pisoHoraReais: 45 });
+    const r = await chamar("salvar_socio", { id: "Moni", pisoHoraReais: 30 });
+    expect(r.protegido).toMatch(/PENDENTES.*Moni/);
+    expect(banco.config.pessoas[0].pisoHoraCentavos).toBe(4500); // vale o antigo
+    const ap = await chamar("ver_aprovacoes");
+    expect(ap.pedidos[0].status).toBe("pendente");
+    expect(ap.pedidos[0].afetados[0].socio).toBe("Moni");
+  });
+
+  it("escopo abaixo do piso vira pedido de exceção; pagamentos e calibragem", async () => {
+    await chamar("salvar_socio", { nome: "Moni", percentualPadrao: 100, pisoHoraReais: 45, capacidadeHorasMes: 44 });
+    await chamar("salvar_servico", { nome: "Social", divisao: { Moni: 100 } });
+    await chamar("salvar_tipo_entrega", { nome: "Carrossel", servico: "Social", minutosPorUnidade: 40 });
+    expect(banco.config.tiposEntrega[0].horasPorUnidade).toBeCloseTo(40 / 60);
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 100 });
+    const e = await chamar("definir_escopo_cliente", {
+      cliente: "Olinda",
+      cenario: { nome: "Contrato", modo: "valor", mensalidadeReais: 100, entregas: [{ tipo: "Carrossel", quantidade: 10 }] },
+    });
+    expect(e.gravado).toBe(false);
+    expect(e.situacao).toMatch(/Pedido de exceção/);
+    expect(banco.config.clientes[0].escopo ?? null).toBeNull();
+
+    // sem ordem de distribuição: registra, mas a distribuição fica bloqueada
+    const p1 = await chamar("registrar_pagamento", { cliente: "Olinda", valorReais: 50, competencia: "2026-09", recebidoEm: "2026-09-10" });
+    expect(p1.distribuicaoBloqueada).toMatch(/ordem de distribuição/);
+    await chamar("definir_percentuais_empresa", { ordemDistribuicao: "proporcional", regime: "mei" });
+    const mes = await chamar("ver_pagamentos_do_mes", { competencia: "2026-09" });
+    expect(mes.clientes[0].entrou).toBe(50);
+    expect(mes.socios[0].jaRecebeu).toBeGreaterThan(0);
+
+    await chamar("definir_percentuais_empresa", { medicoesCalibragem: 2 });
+    await chamar("registrar_medicao", { entrega: "Carrossel", minutos: 55 });
+    const m = await chamar("registrar_medicao", { entrega: "Carrossel", minutos: 55 });
+    expect(m.situacao).toBe("calibrado");
+    expect(m.sugestao).toMatch(/55 min, não 40 min/);
   });
 
   it("nome inexistente gera erro claro, sem gravar nada", async () => {

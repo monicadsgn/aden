@@ -5,7 +5,7 @@
 import { ChevronDown, Minus, Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
-import { lerMoeda, lerNumero, moedaParaTexto, numeroParaTexto } from "@/lib/formato";
+import { horasParaMinutos, lerMoeda, lerNumero, minutosParaHoras, moedaParaTexto, numeroParaTexto } from "@/lib/formato";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -13,9 +13,11 @@ export function cx(...c: (string | false | null | undefined)[]) {
 
 // ─── Estrutura ──────────────────────────────────────────────────────────────
 
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
+export function Card({ children, className, id }: { children: ReactNode; className?: string; id?: string }) {
   return (
-    <section className={cx("card relative rounded-card border border-linha bg-superficie shadow-card", className)}>{children}</section>
+    <section id={id} className={cx("card relative scroll-mt-4 rounded-card border border-linha bg-superficie shadow-card", className)}>
+      {children}
+    </section>
   );
 }
 
@@ -385,4 +387,44 @@ export function Forma({ className, variante = 1 }: { className?: string; variant
       <path d={d} fill="currentColor" />
     </svg>
   );
+}
+
+/** Tempo por entrega: a pessoa digita minutos, o sistema guarda horas. */
+export function CampoMinutos({ valor, aoMudar, ...p }: Omit<PropsCampo, "valor" | "aoMudar"> & { valor: number | null; aoMudar: (horas: number | null) => void }) {
+  return (
+    <CampoNumericoBase
+      {...p}
+      sufixo="min"
+      valor={horasParaMinutos(valor)}
+      aoMudar={(min) => aoMudar(minutosParaHoras(min))}
+      paraTexto={numeroParaTexto}
+      deTexto={lerNumero}
+    />
+  );
+}
+
+/** Etiqueta curta dizendo de onde vem um número de horas. */
+export function EtiquetaOrigem({ texto, previsao }: { texto: string; previsao?: boolean }) {
+  return (
+    <span
+      className={cx(
+        "inline-flex items-center rounded-botao px-1.5 py-px text-[10px] font-semibold whitespace-nowrap",
+        previsao ? "border border-dashed border-linha text-texto-suave" : "bg-marca-suave text-marca-forte",
+      )}
+    >
+      {texto}
+    </span>
+  );
+}
+
+/** Lê um parâmetro da URL no cliente (sem precisar de Suspense). */
+export function useParametro(nome: string): string | null {
+  const [v, setV] = useState<string | null>(null);
+  useEffect(() => {
+    const ler = () => setV(new URLSearchParams(window.location.search).get(nome));
+    ler();
+    window.addEventListener("popstate", ler);
+    return () => window.removeEventListener("popstate", ler);
+  }, [nome]);
+  return v;
 }

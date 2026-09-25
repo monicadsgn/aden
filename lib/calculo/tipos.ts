@@ -23,6 +23,8 @@ export interface Pessoa {
   /** horas disponíveis de produção por mês */
   capacidadeHorasMes: number | null;
   ativo: boolean;
+  /** login ligado a este sócio (para aprovar o que o afeta) */
+  membroId?: string | null;
 }
 
 export interface Servico {
@@ -45,6 +47,8 @@ export interface TipoEntrega {
    */
   audiovisual?: boolean;
   ativo: boolean;
+  /** medições do cronômetro antes desta data não contam (recalibrar quando o processo muda) */
+  calibrarDesde?: string | null;
 }
 
 export interface CustoFixo {
@@ -69,7 +73,19 @@ export interface ClienteBase {
 
 export type RegraRateio = "igual" | "proporcional";
 
+/** MEI: imposto fixo por mês (o campo de imposto em % some). Outro: imposto em % do faturamento. */
+export type Regime = "mei" | "outro";
+
+/**
+ * Como cada pagamento que cai é distribuído:
+ * - custo_primeiro: primeiro cobre os custos do mês (projeto + parte do custo fixo); o resto vira sobra
+ * - proporcional: cada real é dividido na mesma proporção do mês completo
+ */
+export type OrdemDistribuicao = "custo_primeiro" | "proporcional";
+
 export interface ConfigEmpresa {
+  /** regime do CNPJ; null = não informado (usa os dois campos de imposto) */
+  regime?: Regime | null;
   reinvestimentoPct: Pct;
   impostoPct: Pct;
   taxaRecebimentoPct: Pct;
@@ -86,6 +102,12 @@ export interface ConfigEmpresa {
   ociosidadePct?: Pct;
   /** arredondar o valor da proposta para cima, em múltiplos deste valor */
   arredondamentoPropostaCentavos?: Centavos;
+  /** ordem de distribuição dos pagamentos; vazio bloqueia a distribuição */
+  ordemDistribuicao?: OrdemDistribuicao | null;
+  /** quantas medições de cronômetro cada tipo de entrega precisa para ficar calibrado */
+  medicoesCalibragem?: number | null;
+  /** sugerir atualizar o padrão quando a média medida diferir mais que este %; vazio = qualquer diferença */
+  diferencaSugerirPct?: Pct;
 }
 
 export interface Configuracao {
@@ -211,11 +233,21 @@ export interface Cenario {
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
 
-export type NivelAlerta = "erro" | "aviso" | "info";
+/**
+ * erro: o resultado está errado ou bloqueado. aviso: atenção, o número pode enganar.
+ * lembrete: campo opcional vazio (considerado zero). info: observação.
+ */
+export type NivelAlerta = "erro" | "aviso" | "lembrete" | "info";
+
+export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "regras" | "limites" | "clientes";
+
+/** Onde se resolve o alerta: um campo das configurações ou um bloco do cenário. */
+export type DestinoAlerta = { tipo: "config"; secao: SecaoConfig; campo?: string } | { tipo: "cenario"; bloco: string };
 
 export interface Alerta {
   nivel: NivelAlerta;
   texto: string;
+  acao?: { rotulo: string; destino: DestinoAlerta };
 }
 
 export interface ResultadoPessoa {
@@ -230,6 +262,8 @@ export interface ResultadoPessoa {
   abaixoPiso: boolean;
   capacidadeHorasMes: number | null;
   consumoCapacidadePct: number | null;
+  /** recebe parte da sobra sem ter horas neste cliente (a regra é dos sócios; aqui só fica visível) */
+  recebeSemHoras: boolean;
 }
 
 export interface ResultadoServico {
@@ -258,10 +292,15 @@ export interface ResultadoMes {
   rateio: {
     regra: RegraRateio | null;
     totalFixoCentavos: number;
+    /** clientes na divisão, contando este cenário (cliente novo soma 1) */
     clientesNaBase: number;
+    /** outros clientes ativos que entram no rateio */
+    outrosClientes: number;
     quotaCentavos: number;
     /** parte do total que é imposto fixo mensal (MEI) */
     impostoFixoCentavos: number;
+    /** uma frase explicando a divisão deste mês */
+    explicacao: string;
   };
   sobraCentavos: number;
   reinvestimentoPct: number;
@@ -389,6 +428,8 @@ export interface ResultadoEntrada {
 
 export interface ResultadoCenario {
   modo: Modo;
+  /** algo impede o cálculo (ex.: regra de rateio vazia): nenhum número é mostrado */
+  bloqueio: Alerta | null;
   /** null quando o cenário não tem entrada */
   entrada: ResultadoEntrada | null;
   /** projeção anual contra o teto do regime (null sem teto configurado) */

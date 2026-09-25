@@ -1,11 +1,31 @@
 // Modo demonstração: guarda tudo no navegador (localStorage).
-// Reproduz o registro de auditoria para que o comportamento seja o mesmo do
-// banco — mas os dados ficam só neste navegador.
+// Reproduz o registro de auditoria e as regras de aprovação para que o comportamento
+// seja o mesmo do banco — mas os dados ficam só neste navegador. Aqui não há login de
+// sócio, então quem aprova escolhe "decidir como" na tela de aprovações.
 
-import { configVazia, novoId } from "../calculo/novo";
+import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
+import { configVazia, novoId } from "../calculo/novo";
+import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, Configuracao } from "../calculo/tipos";
-import type { AlteracoesConfig, RegistroAuditoria, Repositorio, ResumoSimulacao, Simulacao, Usuario } from "./repositorio";
+import { afetados, aplicarItens, separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
+import { avisosDaMudanca } from "./acoes";
+import type {
+  AlteracoesConfig,
+  AvisoSocio,
+  DadosExcecao,
+  Membro,
+  NovoAviso,
+  Pedido,
+  RegistroAuditoria,
+  Repositorio,
+  ResultadoPedido,
+  ResultadoSalvarConfig,
+  ResumoSimulacao,
+  Simulacao,
+  StatusPedido,
+  Usuario,
+} from "./repositorio";
 
 const CHAVE = "aden:local:v1";
 
@@ -14,9 +34,13 @@ interface Banco {
   config: Configuracao;
   simulacoes: (Simulacao & { atualizadoEm: string })[];
   auditoria: RegistroAuditoria[];
+  pedidos?: Pedido[];
+  avisos?: AvisoSocio[];
+  medicoes?: Medicao[];
+  pagamentos?: Pagamento[];
 }
 
-const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin" };
+const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
 
 function ler(): Banco {
   try {
@@ -65,6 +89,58 @@ function aplicar<T extends { id: string }>(b: Banco, tabela: string, lista: T[],
   return out;
 }
 
+/** Valor atual de um item protegido na configuração. */
+function valorAtual(c: Configuracao, i: ItemProtegido): number | null {
+  if (i.tabela === "pessoas") {
+    const p = c.pessoas.find((x) => x.id === i.registroId);
+    return (i.campo === "piso_hora_centavos" ? p?.pisoHoraCentavos : p?.percentualPadrao) ?? null;
+  }
+  if (i.tabela === "servico_divisao") return c.servicos.find((x) => x.id === i.registroId)?.divisaoPadrao[i.pessoaId ?? ""] ?? null;
+  return c.tiposEntrega.find((x) => x.id === i.registroId)?.horasPorUnidade ?? null;
+}
+
+function concluir(b: Banco, p: Pedido) {
+  if (p.tipo === "campos") {
+    if (p.itens.some((i) => valorAtual(b.config, i) !== i.antes)) {
+      p.status = "cancelado";
+      p.motivo = "Os valores mudaram desde o pedido. Faça o pedido de novo.";
+      p.decididoEm = new Date().toISOString();
+      return;
+    }
+    const antes = b.config;
+    b.config = aplicarItens(b.config, p.itens);
+    registrar(b, "configuracao", p.id, antes, b.config);
+  } else if (p.dados?.aplicar === "escopo" && p.clienteId) {
+    const c = b.config.clientes.find((x) => x.id === p.clienteId);
+    if (c) {
+      registrar(b, "contratos", c.id, { escopo: c.escopo ?? null, valor: c.valorMensalCentavos }, { escopo: p.dados.cenario, valor: p.dados.valorCentavos });
+      c.escopo = p.dados.cenario;
+      if (p.dados.valorCentavos != null) c.valorMensalCentavos = p.dados.valorCentavos;
+    }
+  }
+  p.status = "aplicado";
+  p.decididoEm = new Date().toISOString();
+}
+
+function criarPedido(b: Banco, base: Omit<Pedido, "id" | "status" | "motivo" | "autorNome" | "autorPessoaId" | "criadoEm" | "decididoEm" | "aprovacoes">): ResultadoPedido {
+  const p: Pedido = {
+    ...base,
+    id: novoId(),
+    status: "pendente",
+    motivo: null,
+    autorNome: USUARIO.nome,
+    autorPessoaId: USUARIO.pessoaId,
+    criadoEm: new Date().toISOString(),
+    decididoEm: null,
+    aprovacoes: [],
+  };
+  (b.pedidos ??= []).unshift(p);
+  registrar(b, "pedidos_alteracao", p.id, null, { descricao: p.descricao, afetados: p.afetados });
+  const aguardando = p.afetados.filter((id) => id !== USUARIO.pessoaId);
+  if (!aguardando.length) concluir(b, p);
+  return { pedidoId: p.id, status: p.status, aguardando };
+}
+
 export class RepositorioLocal implements Repositorio {
   readonly modo = "local" as const;
 
@@ -78,8 +154,15 @@ export class RepositorioLocal implements Repositorio {
     return ler().config;
   }
 
-  async salvarConfig(a: AlteracoesConfig) {
+  async listarMembros(): Promise<Membro[]> {
+    return [{ id: "local", nome: USUARIO.nome, email: USUARIO.email, papel: "admin" }];
+  }
+
+  async salvarConfig(alt: AlteracoesConfig): Promise<ResultadoSalvarConfig> {
     const b = ler();
+    const antes = structuredClone(b.config);
+    const sep = separarProtegidas(antes, alt);
+    const a = sep.alteracoes;
     if (a.empresa) {
       registrar(b, "configuracoes_empresa", "empresa", b.config.empresa, a.empresa);
       b.config.empresa = a.empresa;
@@ -89,7 +172,30 @@ export class RepositorioLocal implements Repositorio {
     b.config.tiposEntrega = aplicar(b, "tipos_entrega", b.config.tiposEntrega, a.tiposEntrega);
     b.config.custosFixos = aplicar(b, "custos_fixos", b.config.custosFixos, a.custosFixos);
     b.config.clientes = aplicar(b, "clientes", b.config.clientes, a.clientes);
+
+    let pedido: ResultadoPedido | null = null;
+    if (sep.itens.length)
+      pedido = criarPedido(b, {
+        tipo: "campos",
+        descricao: sep.itens.map((i) => i.descricao).join(", "),
+        itens: sep.itens,
+        dados: null,
+        assinatura: null,
+        clienteId: null,
+        afetados: afetados(antes, sep.itens),
+        impacto: null,
+      });
+    const avisos = avisosDaMudanca({
+      antes,
+      depois: b.config,
+      autor: USUARIO,
+      itensPendentes: pedido?.status === "pendente" ? sep.itens : [],
+      pedido,
+      itensNaHora: [...sep.primeirosPreenchimentos, ...(pedido?.status === "aplicado" ? sep.itens : [])],
+    });
+    b.avisos = [...avisos.map(novoAviso), ...(b.avisos ?? [])];
     gravar(b);
+    return { pedido, itensProtegidos: sep.itens };
   }
 
   async listarSimulacoes(): Promise<ResumoSimulacao[]> {
@@ -150,4 +256,125 @@ export class RepositorioLocal implements Repositorio {
     b.meses[competencia][clienteId] = registro;
     gravar(b);
   }
+
+  // ─── Aprovações e avisos ──────────────────────────────────────────────────
+
+  async listarPedidos() {
+    return ler().pedidos ?? [];
+  }
+
+  async decidirPedido(id: string, decisao: "aprovado" | "recusado", motivo?: string | null, comoPessoaId?: string): Promise<StatusPedido> {
+    const b = ler();
+    const p = b.pedidos?.find((x) => x.id === id);
+    if (!p) throw new Error("Pedido não encontrado.");
+    if (p.status !== "pendente") throw new Error("Este pedido já foi decidido.");
+    const quem = comoPessoaId ?? USUARIO.pessoaId;
+    if (!quem || !p.afetados.includes(quem)) throw new Error("Só o sócio afetado pode decidir este pedido.");
+    if (p.aprovacoes.some((a) => a.pessoaId === quem)) throw new Error("Este sócio já decidiu este pedido.");
+    p.aprovacoes.push({ pessoaId: quem, decisao, automatica: false, em: new Date().toISOString() });
+    registrar(b, "aprovacoes", `${id}:${quem}`, null, { decisao });
+    if (decisao === "recusado") {
+      p.status = "recusado";
+      p.motivo = motivo ?? null;
+      p.decididoEm = new Date().toISOString();
+    } else if (p.afetados.every((a) => p.aprovacoes.some((x) => x.pessoaId === a && x.decisao === "aprovado"))) concluir(b, p);
+    gravar(b);
+    return p.status;
+  }
+
+  async cancelarPedido(id: string) {
+    const b = ler();
+    const p = b.pedidos?.find((x) => x.id === id);
+    if (!p || p.status !== "pendente") throw new Error("Só dá para cancelar pedido pendente.");
+    p.status = "cancelado";
+    p.motivo = "Cancelado por quem pediu.";
+    p.decididoEm = new Date().toISOString();
+    gravar(b);
+  }
+
+  async proporExcecao(e: { clienteId: string | null; afetados: string[]; assinatura: string; descricao: string; dados: DadosExcecao }) {
+    const b = ler();
+    const r = criarPedido(b, {
+      tipo: "excecao",
+      descricao: e.descricao,
+      itens: [],
+      dados: e.dados,
+      assinatura: e.assinatura,
+      clienteId: e.clienteId,
+      afetados: e.afetados,
+      impacto: null,
+    });
+    gravar(b);
+    return r;
+  }
+
+  async listarAvisos() {
+    return ler().avisos ?? [];
+  }
+
+  async criarAvisos(avisos: NovoAviso[]) {
+    const b = ler();
+    b.avisos = [...avisos.map(novoAviso), ...(b.avisos ?? [])];
+    gravar(b);
+  }
+
+  async marcarAvisoLido(id: string) {
+    const b = ler();
+    const a = b.avisos?.find((x) => x.id === id);
+    if (a) a.lidoEm = new Date().toISOString();
+    gravar(b);
+  }
+
+  // ─── Cronômetro ───────────────────────────────────────────────────────────
+
+  async listarMedicoes() {
+    return ler().medicoes ?? [];
+  }
+
+  async salvarMedicao(m: Medicao) {
+    const b = ler();
+    const lista = b.medicoes ?? [];
+    const i = lista.findIndex((x) => x.id === m.id);
+    registrar(b, "medicoes", m.id, i >= 0 ? lista[i] : null, m);
+    if (i >= 0) lista[i] = m;
+    else lista.unshift(m);
+    b.medicoes = lista;
+    gravar(b);
+  }
+
+  async removerMedicao(id: string) {
+    const b = ler();
+    registrar(b, "medicoes", id, b.medicoes?.find((x) => x.id === id), null);
+    b.medicoes = (b.medicoes ?? []).filter((x) => x.id !== id);
+    gravar(b);
+  }
+
+  // ─── Pagamentos ───────────────────────────────────────────────────────────
+
+  async listarPagamentos() {
+    return (ler().pagamentos ?? []).slice().sort((a, b) => a.recebidoEm.localeCompare(b.recebidoEm));
+  }
+
+  async salvarPagamento(p: Pagamento) {
+    const b = ler();
+    const lista = b.pagamentos ?? [];
+    const i = lista.findIndex((x) => x.id === p.id);
+    const novo = { ...p, autor: USUARIO.nome, criadoEm: p.criadoEm ?? new Date().toISOString() };
+    registrar(b, "pagamentos", p.id, i >= 0 ? lista[i] : null, novo);
+    if (i >= 0) lista[i] = novo;
+    else lista.push(novo);
+    b.pagamentos = lista;
+    gravar(b);
+  }
+
+  async removerPagamento(id: string) {
+    const b = ler();
+    registrar(b, "pagamentos", id, b.pagamentos?.find((x) => x.id === id), null);
+    b.pagamentos = (b.pagamentos ?? []).filter((x) => x.id !== id);
+    gravar(b);
+  }
+}
+
+function novoAviso(a: NovoAviso): AvisoSocio {
+  return { ...a, id: novoId(), criadoEm: new Date().toISOString(), lidoEm: null };
 }

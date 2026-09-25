@@ -2,7 +2,7 @@
 export function Marca({ compacta }: { compacta?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5">
-      <span className="relative flex size-9 items-center justify-center overflow-hidden rounded-[14px] bg-marca text-sobre-marca shadow-card">
+      <span className="relative flex size-9 items-center justify-center overflow-hidden rounded-item bg-marca text-sobre-marca shadow-card">
         <span className="absolute -right-2 -bottom-2 size-6 rounded-full bg-destaque/70" aria-hidden />
         <span className="relative text-lg font-extrabold leading-none">a</span>
       </span>

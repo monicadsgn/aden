@@ -49,7 +49,8 @@ const zEntrega = z.object({
     .number()
     .nullable()
     .optional()
-    .describe("Só se for DIFERENTE do padrão configurado no tipo. Vazio = usa o padrão."),
+    .describe("Só se for DIFERENTE do padrão configurado no tipo. Vazio = usa o padrão. Prefira minutosPorUnidade."),
+  minutosPorUnidade: z.number().nullable().optional().describe("Tempo por entrega em minutos, só se for DIFERENTE do padrão"),
 });
 
 const zCusto = z.object({
@@ -128,7 +129,7 @@ function entregasParaInterno(lista: z.infer<typeof zEntrega>[] | undefined, conf
   return (lista ?? []).map((e) => ({
     ...novaLinhaEntrega(resolver(config.tiposEntrega, e.tipo, "Tipo de entrega").id),
     quantidade: e.quantidade ?? null,
-    horasPorUnidade: e.horasPorUnidade ?? null,
+    horasPorUnidade: e.minutosPorUnidade != null ? e.minutosPorUnidade / 60 : (e.horasPorUnidade ?? null),
   }));
 }
 
@@ -209,7 +210,7 @@ function entregasParaConversa(l: LinhaEntrega[], config: Configuracao) {
     .map((e) => ({
       tipo: nomeDe(config.tiposEntrega, e.tipoEntregaId)!,
       quantidade: e.quantidade,
-      ...(e.horasPorUnidade != null ? { horasPorUnidade: e.horasPorUnidade } : {}),
+      ...(e.horasPorUnidade != null ? { minutosPorUnidade: Math.round(e.horasPorUnidade * 60 * 100) / 100 } : {}),
     }));
 }
 
@@ -290,6 +291,10 @@ export function configParaConversa(c: Configuracao) {
   const e = c.empresa;
   return {
     empresa: {
+      regime: e.regime ?? null,
+      ordemDistribuicao: e.ordemDistribuicao ?? null,
+      medicoesCalibragem: e.medicoesCalibragem ?? null,
+      diferencaSugerirPct: e.diferencaSugerirPct ?? null,
       reinvestimentoPct: e.reinvestimentoPct,
       impostoPct: e.impostoPct,
       taxaRecebimentoPct: e.taxaRecebimentoPct,
@@ -310,6 +315,7 @@ export function configParaConversa(c: Configuracao) {
         pisoHoraReais: paraReais(p.pisoHoraCentavos),
         capacidadeHorasMes: p.capacidadeHorasMes,
         ativo: p.ativo,
+        temLoginLigado: !!p.membroId,
       })),
     servicos: c.servicos.map((s) => ({
       id: s.id,
@@ -325,7 +331,7 @@ export function configParaConversa(c: Configuracao) {
       id: t.id,
       nome: t.nome,
       servico: nomeDe(c.servicos, t.servicoId),
-      horasPorUnidade: t.horasPorUnidade,
+      minutosPorUnidade: t.horasPorUnidade == null ? null : Math.round(t.horasPorUnidade * 60 * 100) / 100,
       audiovisual: !!t.audiovisual,
       ativo: t.ativo,
     })),
@@ -364,7 +370,9 @@ function mesParaConversa(m: ResultadoMes) {
       regra: m.rateio.regra,
       totalEmpresa: paraReais(m.rateio.totalFixoCentavos),
       clientesNaBase: m.rateio.clientesNaBase,
+      outrosClientesAtivos: m.rateio.outrosClientes,
       parteDesteCliente: paraReais(m.rateio.quotaCentavos),
+      comoFoiDividido: m.rateio.explicacao,
     },
     sobra: paraReais(m.sobraCentavos),
     reinvestimento: { pct: m.reinvestimentoPct, valor: paraReais(m.reinvestimentoCentavos), diferenteDoPadrao: m.reinvestimentoPctSobreposto },
@@ -383,6 +391,7 @@ function mesParaConversa(m: ResultadoMes) {
       piso: paraReais(p.pisoHoraCentavos),
       abaixoDoPiso: p.abaixoPiso,
       consumoCapacidadePct: p.consumoCapacidadePct,
+      recebeSemHorasNesteCliente: p.recebeSemHoras,
     })),
   };
 }
@@ -390,6 +399,7 @@ function mesParaConversa(m: ResultadoMes) {
 export function resultadoParaConversa(r: ResultadoCenario) {
   return {
     modo: r.modo,
+    bloqueado: r.bloqueio ? { motivo: r.bloqueio.texto, comoResolver: r.bloqueio.acao?.rotulo ?? null } : null,
     paraOCliente: r.proposta
       ? {
           investimentoMensal: paraReais(r.proposta.valorCentavos),
@@ -400,7 +410,7 @@ export function resultadoParaConversa(r: ResultadoCenario) {
     tetoDoRegime: r.teto
       ? { projecaoAnual: paraReais(r.teto.anualCentavos), teto: paraReais(r.teto.tetoCentavos), pct: r.teto.pct, nivel: r.teto.nivel }
       : null,
-    alertas: r.alertas.map((a) => `[${a.nivel}] ${a.texto}`),
+    alertas: r.alertas.map((a) => `[${a.nivel}] ${a.texto}${a.acao ? ` (resolver: ${a.acao.rotulo})` : ""}`),
     valorMinimo: r.minimo.possivel
       ? {
           mensalidadeMinima: paraReais(r.minimo.mensalidadeMinimaCentavos),

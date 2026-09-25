@@ -2,9 +2,28 @@
 // de auditoria são garantidos pelo banco (RLS + triggers), não por este código.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
+import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, ClienteBase, Configuracao, CustoFixo, Pessoa, ResultadoCenario, Servico, TipoEntrega } from "../calculo/tipos";
-import type { AlteracoesConfig, RegistroAuditoria, Repositorio, ResumoSimulacao, Simulacao, Usuario } from "./repositorio";
+import { separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
+import { avisosDaMudanca } from "./acoes";
+import type {
+  AlteracoesConfig,
+  AvisoSocio,
+  DadosExcecao,
+  Membro,
+  NovoAviso,
+  Pedido,
+  RegistroAuditoria,
+  Repositorio,
+  ResultadoPedido,
+  ResultadoSalvarConfig,
+  ResumoSimulacao,
+  Simulacao,
+  StatusPedido,
+  Usuario,
+} from "./repositorio";
 
 type Linha = Record<string, unknown>;
 
@@ -49,9 +68,16 @@ export class RepositorioSupabase implements Repositorio {
       .limit(1)
       .maybeSingle();
     erro(error);
-    if (!m) return { id: user.id, nome: user.email ?? "", email: user.email ?? "", papel: "sem_vinculo" };
+    if (!m) return { id: user.id, nome: user.email ?? "", email: user.email ?? "", papel: "sem_vinculo", pessoaId: null };
     this.orgId = m.org_id as string;
-    this.usuario = { id: user.id, nome: m.nome as string, email: m.email as string, papel: m.papel as string };
+    const pes = await this.sb.from("pessoas").select("id").eq("membro_id", m.id as string).limit(1).maybeSingle();
+    this.usuario = {
+      id: user.id,
+      nome: m.nome as string,
+      email: m.email as string,
+      papel: m.papel as string,
+      pessoaId: (pes.data?.id as string | undefined) ?? null,
+    };
     return this.usuario;
   }
 
@@ -90,6 +116,10 @@ export class RepositorioSupabase implements Repositorio {
 
     return {
       empresa: {
+        regime: (e?.regime as Configuracao["empresa"]["regime"]) ?? null,
+        ordemDistribuicao: (e?.ordem_distribuicao as Configuracao["empresa"]["ordemDistribuicao"]) ?? null,
+        medicoesCalibragem: num(e?.medicoes_calibragem),
+        diferencaSugerirPct: num(e?.diferenca_sugerir_pct),
         reinvestimentoPct: num(e?.reinvestimento_pct),
         impostoPct: num(e?.imposto_pct),
         taxaRecebimentoPct: num(e?.taxa_recebimento_pct),
@@ -109,6 +139,7 @@ export class RepositorioSupabase implements Repositorio {
         pisoHoraCentavos: num(p.piso_hora_centavos),
         capacidadeHorasMes: num(p.capacidade_horas_mes),
         ativo: p.ativo as boolean,
+        membroId: (p.membro_id as string) ?? null,
       })),
       servicos: ((ser.data ?? []) as Linha[]).map((s) => ({
         id: s.id as string,
@@ -125,6 +156,7 @@ export class RepositorioSupabase implements Repositorio {
         horasPorUnidade: num(t.horas_por_unidade),
         audiovisual: (t.audiovisual as boolean) ?? false,
         ativo: t.ativo as boolean,
+        calibrarDesde: (t.calibrar_desde as string) ?? null,
       })),
       custosFixos: ((cus.data ?? []) as Linha[]).map((c) => ({
         id: c.id as string,
@@ -147,12 +179,49 @@ export class RepositorioSupabase implements Repositorio {
     };
   }
 
-  async salvarConfig(a: AlteracoesConfig) {
+  async salvarConfig(alt: AlteracoesConfig): Promise<ResultadoSalvarConfig> {
     const org_id = await this.org();
+    const antes = await this.carregarConfig();
+    const autor = await this.usuarioAtual();
+    // campos protegidos com valor mudam só por pedido de aprovação
+    const sep = separarProtegidas(antes, alt);
+    await this.gravarLivres(org_id, sep.alteracoes);
+
+    let pedido: ResultadoPedido | null = null;
+    if (sep.itens.length) {
+      const { data, error } = await this.sb.rpc("propor_alteracao", {
+        p_org: org_id,
+        p_itens: sep.itens.map(itemParaBanco),
+        p_impacto: null,
+        p_descricao: sep.itens.map((i) => i.descricao).join(", "),
+      });
+      erro(error);
+      pedido = pedidoDoBanco(data);
+    }
+
+    const depois = await this.carregarConfig();
+    const naHora = [...sep.primeirosPreenchimentos, ...(pedido?.status === "aplicado" ? sep.itens : [])];
+    const avisos = avisosDaMudanca({
+      antes,
+      depois,
+      autor,
+      itensPendentes: pedido?.status === "pendente" ? sep.itens : [],
+      pedido,
+      itensNaHora: naHora,
+    });
+    if (avisos.length) await this.criarAvisos(avisos);
+    return { pedido, itensProtegidos: sep.itens };
+  }
+
+  private async gravarLivres(org_id: string, a: AlteracoesConfig) {
 
     if (a.empresa) {
       const { error } = await this.sb.from("configuracoes_empresa").upsert({
         org_id,
+        regime: a.empresa.regime ?? null,
+        ordem_distribuicao: a.empresa.ordemDistribuicao ?? null,
+        medicoes_calibragem: a.empresa.medicoesCalibragem ?? null,
+        diferenca_sugerir_pct: a.empresa.diferencaSugerirPct ?? null,
         reinvestimento_pct: a.empresa.reinvestimentoPct,
         imposto_pct: a.empresa.impostoPct,
         taxa_recebimento_pct: a.empresa.taxaRecebimentoPct,
@@ -179,6 +248,7 @@ export class RepositorioSupabase implements Repositorio {
         piso_hora_centavos: p.pisoHoraCentavos,
         capacidade_horas_mes: p.capacidadeHorasMes,
         ativo: p.ativo,
+        membro_id: p.membroId ?? null,
         ordem: i,
       })),
     );
@@ -210,6 +280,7 @@ export class RepositorioSupabase implements Repositorio {
         horas_por_unidade: t.horasPorUnidade,
         audiovisual: t.audiovisual ?? false,
         ativo: t.ativo,
+        calibrar_desde: t.calibrarDesde ?? null,
         ordem: i,
       })),
     );
@@ -417,4 +488,219 @@ export class RepositorioSupabase implements Repositorio {
       em: a.em as string,
     }));
   }
+
+  async listarMembros(): Promise<Membro[]> {
+    const org = await this.org();
+    const { data, error } = await this.sb.from("membros").select("id, nome, email, papel").eq("org_id", org).eq("ativo", true).order("nome");
+    erro(error);
+    return ((data ?? []) as Linha[]).map((m) => ({ id: m.id as string, nome: m.nome as string, email: m.email as string, papel: m.papel as string }));
+  }
+
+  // ─── Aprovações e avisos ──────────────────────────────────────────────────
+
+  async listarPedidos(): Promise<Pedido[]> {
+    const org = await this.org();
+    const [ped, apr] = await Promise.all([
+      this.sb.from("pedidos_alteracao").select("*").eq("org_id", org).order("criado_em", { ascending: false }).limit(200),
+      this.sb.from("aprovacoes").select("*").eq("org_id", org),
+    ]);
+    erro(ped.error);
+    erro(apr.error);
+    const aprovacoes = (apr.data ?? []) as Linha[];
+    return ((ped.data ?? []) as Linha[]).map((p) => ({
+      id: p.id as string,
+      tipo: p.tipo as Pedido["tipo"],
+      descricao: p.descricao as string,
+      itens: ((p.itens as Linha[]) ?? []).map(itemDoBanco),
+      dados: dadosDoBanco(p.dados as Linha | null),
+      assinatura: (p.assinatura as string) ?? null,
+      clienteId: (p.cliente_id as string) ?? null,
+      afetados: (p.afetados as string[]) ?? [],
+      impacto: (p.impacto as Record<string, number>) ?? null,
+      status: p.status as StatusPedido,
+      motivo: (p.motivo as string) ?? null,
+      autorNome: (p.autor_nome as string) ?? null,
+      autorPessoaId: (p.autor_pessoa_id as string) ?? null,
+      criadoEm: p.criado_em as string,
+      decididoEm: (p.decidido_em as string) ?? null,
+      aprovacoes: aprovacoes
+        .filter((a) => a.pedido_id === p.id)
+        .map((a) => ({ pessoaId: a.pessoa_id as string, decisao: a.decisao as "aprovado" | "recusado", automatica: a.automatica as boolean, em: a.em as string })),
+    }));
+  }
+
+  async decidirPedido(id: string, decisao: "aprovado" | "recusado", motivo?: string | null): Promise<StatusPedido> {
+    const { data, error } = await this.sb.rpc("decidir_pedido", { p_pedido: id, p_decisao: decisao, p_motivo: motivo ?? null });
+    erro(error);
+    return data as StatusPedido;
+  }
+
+  async cancelarPedido(id: string) {
+    const { error } = await this.sb.rpc("cancelar_pedido", { p_pedido: id });
+    erro(error);
+  }
+
+  async proporExcecao(p: { clienteId: string | null; afetados: string[]; assinatura: string; descricao: string; dados: DadosExcecao }): Promise<ResultadoPedido> {
+    const org = await this.org();
+    const { data, error } = await this.sb.rpc("propor_excecao", {
+      p_org: org,
+      p_cliente: p.clienteId,
+      p_afetados: p.afetados,
+      p_assinatura: p.assinatura,
+      p_descricao: p.descricao,
+      p_dados: { aplicar: p.dados.aplicar, cenario: p.dados.cenario, valor_centavos: p.dados.valorCentavos, perdas: p.dados.perdas },
+    });
+    erro(error);
+    return pedidoDoBanco(data);
+  }
+
+  async listarAvisos(): Promise<AvisoSocio[]> {
+    const org = await this.org();
+    const { data, error } = await this.sb.from("avisos_socios").select("*").eq("org_id", org).order("criado_em", { ascending: false }).limit(200);
+    erro(error);
+    return ((data ?? []) as Linha[]).map((a) => ({
+      id: a.id as string,
+      pessoaId: a.pessoa_id as string,
+      titulo: a.titulo as string,
+      texto: a.texto as string,
+      impactoCentavos: num(a.impacto_centavos),
+      autorNome: (a.autor_nome as string) ?? null,
+      pedidoId: (a.pedido_id as string) ?? null,
+      criadoEm: a.criado_em as string,
+      lidoEm: (a.lido_em as string) ?? null,
+    }));
+  }
+
+  async criarAvisos(avisos: NovoAviso[]) {
+    if (!avisos.length) return;
+    const org_id = await this.org();
+    const { error } = await this.sb.from("avisos_socios").insert(
+      avisos.map((a) => ({
+        org_id,
+        pessoa_id: a.pessoaId,
+        titulo: a.titulo,
+        texto: a.texto,
+        impacto_centavos: a.impactoCentavos,
+        autor_nome: a.autorNome,
+        pedido_id: a.pedidoId,
+      })),
+    );
+    erro(error);
+  }
+
+  async marcarAvisoLido(id: string) {
+    const { error } = await this.sb.from("avisos_socios").update({ lido_em: new Date().toISOString() }).eq("id", id);
+    erro(error);
+  }
+
+  // ─── Cronômetro ───────────────────────────────────────────────────────────
+
+  async listarMedicoes(): Promise<Medicao[]> {
+    const org = await this.org();
+    const { data, error } = await this.sb.from("medicoes").select("*").eq("org_id", org).order("criado_em", { ascending: false });
+    erro(error);
+    return ((data ?? []) as Linha[]).map((m) => ({
+      id: m.id as string,
+      clienteId: (m.cliente_id as string) ?? null,
+      tipoEntregaId: m.tipo_entrega_id as string,
+      pessoaId: (m.pessoa_id as string) ?? null,
+      estado: m.estado as Medicao["estado"],
+      acumuladoSegundos: Number(m.acumulado_segundos ?? 0),
+      retomadoEm: (m.retomado_em as string) ?? null,
+      fim: (m.fim as string) ?? null,
+      criadoEm: m.criado_em as string,
+    }));
+  }
+
+  async salvarMedicao(m: Medicao) {
+    const org_id = await this.org();
+    const { error } = await this.sb.from("medicoes").upsert({
+      id: m.id,
+      org_id,
+      cliente_id: m.clienteId,
+      tipo_entrega_id: m.tipoEntregaId,
+      pessoa_id: m.pessoaId,
+      estado: m.estado,
+      acumulado_segundos: m.acumuladoSegundos,
+      retomado_em: m.retomadoEm,
+      fim: m.fim,
+      criado_em: m.criadoEm,
+    });
+    erro(error);
+  }
+
+  async removerMedicao(id: string) {
+    await this.remover("medicoes", [id]);
+  }
+
+  // ─── Pagamentos ───────────────────────────────────────────────────────────
+
+  async listarPagamentos(): Promise<Pagamento[]> {
+    const org = await this.org();
+    const { data, error } = await this.sb.from("pagamentos").select("*").eq("org_id", org).order("recebido_em");
+    erro(error);
+    const { data: membros } = await this.sb.from("membros").select("user_id, nome").eq("org_id", org);
+    const nomes = new Map(((membros ?? []) as Linha[]).map((m) => [m.user_id as string, m.nome as string]));
+    return ((data ?? []) as Linha[]).map((p) => ({
+      id: p.id as string,
+      clienteId: p.cliente_id as string,
+      competencia: (p.competencia as string).slice(0, 7),
+      valorCentavos: Number(p.valor_centavos),
+      recebidoEm: p.recebido_em as string,
+      observacao: (p.observacao as string) ?? null,
+      autor: nomes.get(p.criado_por as string) ?? null,
+      criadoEm: p.criado_em as string,
+    }));
+  }
+
+  async salvarPagamento(p: Pagamento) {
+    const org_id = await this.org();
+    const { error } = await this.sb.from("pagamentos").upsert({
+      id: p.id,
+      org_id,
+      cliente_id: p.clienteId,
+      competencia: `${p.competencia}-01`,
+      valor_centavos: p.valorCentavos,
+      recebido_em: p.recebidoEm,
+      observacao: p.observacao ?? null,
+    });
+    erro(error);
+  }
+
+  async removerPagamento(id: string) {
+    await this.remover("pagamentos", [id]);
+  }
+}
+
+// ─── Conversões dos pedidos ─────────────────────────────────────────────────
+
+function itemParaBanco(i: ItemProtegido): Linha {
+  return { tabela: i.tabela, registro_id: i.registroId, pessoa_id: i.pessoaId ?? null, campo: i.campo, antes: i.antes, depois: i.depois, descricao: i.descricao };
+}
+
+function itemDoBanco(i: Linha): ItemProtegido {
+  return {
+    tabela: i.tabela as ItemProtegido["tabela"],
+    registroId: i.registro_id as string,
+    pessoaId: (i.pessoa_id as string) ?? undefined,
+    campo: i.campo as ItemProtegido["campo"],
+    antes: num(i.antes),
+    depois: num(i.depois),
+    descricao: (i.descricao as string) ?? "",
+  };
+}
+
+function dadosDoBanco(d: Linha | null): DadosExcecao | null {
+  if (!d) return null;
+  return {
+    aplicar: d.aplicar as DadosExcecao["aplicar"],
+    cenario: d.cenario as Cenario,
+    valorCentavos: num(d.valor_centavos),
+    perdas: (d.perdas as DadosExcecao["perdas"]) ?? [],
+  };
+}
+
+function pedidoDoBanco(d: unknown): ResultadoPedido {
+  const x = d as { pedido_id: string; status: StatusPedido; aguardando: string[] | null };
+  return { pedidoId: x.pedido_id, status: x.status, aguardando: x.aguardando ?? [] };
 }

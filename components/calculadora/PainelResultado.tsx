@@ -2,7 +2,6 @@
 
 import {
   AlertOctagon,
-  AlertTriangle,
   ArrowDown,
   CalendarClock,
   Check,
@@ -15,7 +14,10 @@ import {
   Coins,
   Gauge,
   Gem,
+  FileDown,
   Info,
+  Lock,
+  ShieldAlert,
   PiggyBank,
   Scale,
   Shapes,
@@ -28,7 +30,6 @@ import {
 import { useState } from "react";
 import { ajustarQuantidade } from "@/lib/calculo/motor";
 import type {
-  Alerta,
   Cenario,
   Configuracao,
   LimiteEncaixe,
@@ -39,48 +40,9 @@ import type {
   ResultadoPessoa,
   SuspensaoSemCobranca,
 } from "@/lib/calculo/tipos";
-import { formatarHoras, formatarMoeda, formatarPct } from "@/lib/formato";
-import { Badge, Botao, Card, Forma, IconeBadge, Passo, TituloCard, cx, type Tom } from "../ui";
-
-// ─── Alertas ────────────────────────────────────────────────────────────────
-
-const ICONE_ALERTA: Record<Alerta["nivel"], { icone: LucideIcon; tom: Tom; rotulo: string }> = {
-  erro: { icone: AlertOctagon, tom: "erro", rotulo: "Atenção" },
-  aviso: { icone: AlertTriangle, tom: "aviso", rotulo: "Aviso" },
-  info: { icone: Info, tom: "info", rotulo: "Info" },
-};
-
-export function ListaAlertas({ alertas }: { alertas: Alerta[] }) {
-  const [verInfo, setVerInfo] = useState(false);
-  const principais = alertas.filter((a) => a.nivel !== "info");
-  const infos = alertas.filter((a) => a.nivel === "info");
-  if (!alertas.length) return null;
-  return (
-    <div className="flex flex-col gap-1.5">
-      {[...principais, ...(verInfo ? infos : [])].map((a) => {
-        const s = ICONE_ALERTA[a.nivel];
-        const Ic = s.icone;
-        return (
-          <div
-            key={a.texto}
-            className={cx(
-              "flex items-start gap-2 rounded-bloco px-3 py-2 text-xs leading-snug font-medium",
-              a.nivel === "erro" ? "bg-erro-suave text-erro" : a.nivel === "aviso" ? "bg-aviso-suave text-aviso" : "bg-info-suave text-info",
-            )}
-          >
-            <Ic size={15} className="mt-px shrink-0" aria-label={s.rotulo} />
-            <span>{a.texto}</span>
-          </div>
-        );
-      })}
-      {infos.length > 0 && (
-        <button type="button" className="self-start px-1 text-[11px] font-semibold text-texto-suave hover:text-texto" onClick={() => setVerInfo(!verInfo)}>
-          {verInfo ? "Ocultar observações" : `+ ${infos.length} observação(ões)`}
-        </button>
-      )}
-    </div>
-  );
-}
+import { formatarDuracao, formatarHoras, formatarMoeda, formatarPct } from "@/lib/formato";
+import { BotaoAcao, ListaAlertas } from "../Alertas";
+import { Badge, Botao, Card, EtiquetaOrigem, Forma, IconeBadge, Passo, TituloCard, cx, type Tom } from "../ui";
 
 // ─── Limites do encaixe ─────────────────────────────────────────────────────
 // Piso é preço (decisão comercial), capacidade é gente (decisão de equipe).
@@ -189,6 +151,7 @@ function Cascata({ m, taxaFixa }: { m: ResultadoMes; taxaFixa: number | null }) 
           ) : undefined
         }
       />
+      {m.rateio.totalFixoCentavos > 0 && <p className="-mt-0.5 mb-1 text-[11px] leading-snug text-texto-suave">{m.rateio.explicacao}</p>}
       <LinhaCascata rotulo="Sobra depois dos custos" valor={m.sobraCentavos} forte />
       <LinhaCascata
         rotulo={`Reinvestimento (${formatarPct(m.reinvestimentoPct)})`}
@@ -249,9 +212,16 @@ function CartaoSocio({ p, grande }: { p: ResultadoPessoa; grande?: boolean }) {
           </Badge>
         </div>
       )}
+      {p.recebeSemHoras && (
+        <p className="relative mt-2 rounded-item bg-info-suave px-2 py-1.5 text-[11px] leading-snug font-semibold text-info">
+          {p.nome} recebe {formatarMoeda(p.valorCentavos)} sem horas neste cliente. A regra da divisão é dos sócios; aqui só fica visível.
+        </p>
+      )}
       <div className="relative mt-3">
-        <div className="mb-1 flex justify-between text-[11px] font-semibold text-texto-suave">
-          <span>{formatarHoras(p.horas)} no projeto</span>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-texto-suave">
+          <span className="inline-flex items-center gap-1.5">
+            {formatarHoras(p.horas)} no projeto <EtiquetaOrigem texto="previsto no escopo" previsao />
+          </span>
           {p.consumoCapacidadePct != null ? <span>{formatarPct(p.consumoCapacidadePct)} do mês</span> : <span>capacidade não configurada</span>}
         </div>
         {p.consumoCapacidadePct != null && <Barra pct={p.consumoCapacidadePct} alerta={p.consumoCapacidadePct > 100} />}
@@ -349,6 +319,15 @@ function BlocoEntrada({ e, mesesDesejados }: { e: ResultadoEntrada; mesesDesejad
 
 // ─── Para o cliente: um valor só ────────────────────────────────────────────
 
+/** Proposta abaixo do piso de um sócio só vira PDF com aprovação dele. */
+export interface OpcoesPdf {
+  liberado: boolean;
+  pendente: boolean;
+  motivo?: string;
+  aoExportar: () => void;
+  aoPedirExcecao?: () => void;
+}
+
 function BlocoProposta({
   valor,
   arredondado,
@@ -357,6 +336,7 @@ function BlocoProposta({
   cliente,
   jaEEscopo,
   aoGuardarEscopo,
+  pdf,
 }: {
   valor: number;
   arredondado: boolean;
@@ -365,6 +345,7 @@ function BlocoProposta({
   cliente: string | null;
   jaEEscopo: boolean;
   aoGuardarEscopo?: () => void;
+  pdf?: OpcoesPdf;
 }) {
   const [copiado, setCopiado] = useState(false);
   const texto = `Investimento mensal: ${formatarMoeda(valor)}. Inclui ${incluiTrafego ? "gestão de tráfego, " : ""}produção, planejamento e todas as ferramentas, sem cobranças separadas.${verba ? " A verba de anúncios é paga por vocês direto na plataforma." : ""}`;
@@ -395,6 +376,20 @@ function BlocoProposta({
           >
             {copiado ? "Copiado" : "Copiar texto"}
           </Botao>
+          {pdf &&
+            (pdf.liberado ? (
+              <Botao pequeno icone={FileDown} onClick={pdf.aoExportar}>
+                Exportar PDF
+              </Botao>
+            ) : pdf.pendente ? (
+              <Badge tom="aviso" title={pdf.motivo}>
+                PDF esperando aprovação
+              </Badge>
+            ) : (
+              <Botao pequeno icone={ShieldAlert} onClick={pdf.aoPedirExcecao} title={pdf.motivo}>
+                Pedir aprovação para exportar
+              </Botao>
+            ))}
           {aoGuardarEscopo &&
             (cliente ? (
               jaEEscopo ? (
@@ -499,6 +494,7 @@ export function PainelResultado({
   aoMudar,
   grande,
   aoGuardarEscopo,
+  pdf,
 }: {
   resultado: ResultadoCenario;
   cenario: Cenario;
@@ -507,6 +503,7 @@ export function PainelResultado({
   grande?: boolean;
   /** guarda este cenário como escopo contratado do cliente escolhido */
   aoGuardarEscopo?: () => void;
+  pdf?: OpcoesPdf;
 }) {
   const m = r.mes;
   const limitante = config.pessoas.find((p) => p.id === r.minimo.limitantePessoaId);
@@ -559,6 +556,22 @@ export function PainelResultado({
     );
   }
 
+  if (r.bloqueio)
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 rounded-card border border-erro/40 bg-erro-suave p-5 text-erro">
+          <p className="flex items-center gap-2 text-sm font-bold">
+            <Lock size={17} /> Resultado bloqueado
+          </p>
+          <p className="text-xs leading-relaxed font-medium">{r.bloqueio.texto}</p>
+          <div>
+            <BotaoAcao a={r.bloqueio} />
+          </div>
+        </div>
+        <ListaAlertas alertas={r.alertas.filter((a) => a.texto !== r.bloqueio!.texto)} />
+      </div>
+    );
+
   return (
     <div className="flex flex-col gap-4">
       {destaque}
@@ -572,6 +585,7 @@ export function PainelResultado({
           cliente={config.clientes.find((c) => c.id === cenario.clienteId)?.nome ?? null}
           jaEEscopo={!!cenario.clienteId && JSON.stringify(config.clientes.find((c) => c.id === cenario.clienteId)?.escopo ?? null) === JSON.stringify(cenario)}
           aoGuardarEscopo={aoGuardarEscopo}
+          pdf={pdf}
         />
       )}
 
@@ -665,8 +679,8 @@ export function PainelResultado({
                           {config.tiposEntrega.find((x) => x.id === t.tipoEntregaId)?.audiovisual
                             ? "vídeo de terceiro · só custo"
                             : t.horasPorUnidade != null
-                              ? `${formatarHoras(t.horasPorUnidade)} por entrega`
-                              : "sem horas configuradas"}
+                              ? `${formatarDuracao(t.horasPorUnidade)} por entrega`
+                              : "sem tempo cadastrado"}
                         </p>
                       </div>
                       <Passo

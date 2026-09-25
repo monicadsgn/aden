@@ -87,12 +87,13 @@ describe("saúde do cliente", () => {
     expect(s.contratadoAbaixoDoPiso).toBe(false); // previsto 54/h ≥ 50/h
   });
 
-  it("sem horas lançadas, não há realizado", () => {
+  it("sem horas lançadas, o realizado usa a previsão e não acusa prejuízo silencioso", () => {
     const c = config();
     const cli = { id: "c1", nome: "C1", interno: false, participaRateio: true, valorMensalCentavos: 300000, ativo: true, escopo: escopo(10, 2) };
     c.clientes = [cli];
     const s = calcularSaudeCliente(c, cli, null);
-    expect(s.realizado).toBeNull();
+    expect(s.realizado!.horasTotais).toBe(s.horasPrevistas);
+    expect(s.socios.every((x) => x.semRegistro)).toBe(true);
     expect(s.prejuizoSilencioso).toBe(false);
     expect(s.previsto).not.toBeNull();
   });

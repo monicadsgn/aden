@@ -70,6 +70,36 @@ A decidir com a Moni (não inventar):
 - **Taxa de recebimento**: % e/ou valor fixo por cobrança, prontos para receber a taxa real quando o InfinitePay for integrado.
 - **Linguagem simples**: cada tela e cada número importante dizem, em uma frase, o que significam.
 
+## Segunda leva (definida pela Moni em 25/09/2026)
+
+- **Navegação aprovada** (menu sanfona, uma tela por assunto): Comercial (Calculadora, Negociação ao vivo, CRM) ·
+  Operação (Visão do mês, Cronômetro, Calibragem das horas, Produção, Aprovações do cliente) · Financeiro (Saúde dos
+  clientes, Registrar pagamento, Repasse dos sócios, PDFs e relatórios) · Sócios (Aprovações, Avisos) · Administrativo
+  (Clientes e contratos, Decisões) · Sistema (Configurações em abas, Histórico). O menu lembra o grupo aberto.
+- **Sem regra de rateio** (com custo fixo cadastrado) o resultado é **bloqueado**, com botão para escolher a regra.
+  O cliente simulado conta como mais um no rateio; com zero clientes, ele fica com todo o custo fixo.
+- **Imposto em dobro:** custo fixo com nome de imposto (DAS, imposto, MEI, Simples) + imposto fixo preenchido → erro.
+  No regime MEI o imposto em % some da tela e da conta.
+- **Tráfego:** sem entrega de um serviço de tráfego no cenário, vale "sem tráfego" sozinho, sem aviso.
+- **Horas:** tempo por entrega digitado em minutos (guardado em horas com 6 casas). Todo número de horas mostra a
+  origem: previsto no escopo, lançado manualmente ou média medida (N medições). Sem lançamento: "sem registro" e usa a previsão.
+- **Avisos acionáveis:** cada aviso tem botão para o campo que resolve. Erro (resultado errado/bloqueado) ≠ aviso ≠ lembrete
+  (campo opcional vazio, ex.: reinvestimento).
+- **Quem recebe sem trabalhar:** a regra da divisão não muda; a tela mostra "X recebe R$ Y sem horas neste cliente".
+- **Cronômetro:** iniciar, pausar, parar por entrega. Modo calibragem pede N medições por tipo (N configurável; a Moni
+  pediu 5). Calibrado → a média medida estima as horas reais na Saúde. Sugestão de atualizar o tempo quando a média
+  difere (limiar opcional); a atualização passa pela aprovação. Recalibrar descarta as medições anteriores.
+- **Proteção da remuneração:** piso, % dos sócios, divisão de horas por serviço e tempo por entrega só mudam com a
+  aprovação do sócio afetado (piso: o próprio; %: todos os sócios; divisão: quem teve o % mudado; tempo: quem executa o
+  serviço). Se quem mudou é o único afetado, vale na hora. Campo vazio pode ser preenchido direto. Escopo ou proposta
+  (PDF) abaixo do piso de um sócio só com a aprovação dele (exceção). O conector nunca aprova. Avisos por sócio com
+  autor, antes, depois e impacto no bolso por mês. Histórico (auditoria e aprovações) não pode ser editado nem apagado.
+- **Pagamentos:** cada pagamento que cai (mês de referência + data). Ordem de distribuição configurável e vazia até os
+  sócios decidirem (vazia = distribuição bloqueada). Atraso = o mês de referência acabou sem o contrato pago; pagamento
+  que cai depois do mês fica marcado. A Saúde usa os pagamentos quando o mês fecha (ou já cobriram o contrato).
+- **Perfis:** "sócio" (admin) hoje; "contador" preparado no banco (papel `contador`, só leitura de pagamentos, clientes,
+  custos fixos e configuração da empresa) e em `lib/acesso.ts`. Falta só o convite.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```
@@ -133,6 +163,18 @@ mensalidade p/ pagar em N meses = menor mensalidade cuja folga × N cobre o cust
 No valor mínimo, a rotina paga exatamente o piso, então a entrada não se paga por ela: é preciso cobrá-la à parte ou subir a mensalidade.
 **A confirmar:** as horas dos sócios na entrada são valorizadas pelo piso de cada um.
 
+**Soluções da Saúde (`lib/calculo/solucoes.ts`):** o escopo do cliente vira um cenário "como está hoje" no valor do
+contrato, com o tempo por entrega ajustado para reproduzir as horas reais de cada sócio (fator do sócio ponderado pela
+divisão do serviço). Subir = valor mínimo desse cenário. Cortar = "o que cabe" no valor atual (tirar N de um tipo).
+Misto = tirar metade do corte e calcular o novo mínimo. Exceção = horas × piso − parte do sócio, por mês.
+
+**Distribuição de pagamentos (`lib/calculo/pagamentos.ts`):** o mês planejado sai do motor (contrato + escopo). Em cada
+pagamento: imposto % e taxa (% + tarifa fixa por pagamento); o líquido vai para custos (do projeto + parte do custo fixo)
+e sobra. Custo primeiro: enche os custos antes; proporcional: custos ÷ (custos + sobra) do mês. Custos nunca passam do
+planejado. Sobra → reinvestimento → sócios pelo %. Pago inteiro ou em partes chega no mesmo total do mês.
+
+**Pacote que cabe ("só tenho R$ X"):** tira uma entrega por vez (a de mais horas) até todos ficarem no piso e dentro das horas.
+
 **Pontual fora da mensalidade:** cálculo próprio, sem rateio de custo fixo, com valor mínimo e resultado por sócio.
 
 ## Identidade visual
@@ -146,8 +188,10 @@ Verificado em 25/09/2026: trocando só o `tokens.css` por outra paleta e outra f
 
 `app/api/mcp` e `app/api/mcp/[token]` → `lib/mcp/`. O Claude entra com um usuário próprio vinculado como admin
 ("Claude (conector)"): RLS e auditoria valem para ele como para um sócio. Ferramentas: ver/alterar configuração
-(percentuais, sócios, serviços, tipos de entrega, custos fixos, clientes), calcular cenário, listar/ver/salvar/remover
-simulação e ver histórico. Dinheiro em reais e referências por nome na conversa; a tradução fica em
+(percentuais, regime, ordem de distribuição, sócios, serviços, tipos de entrega em minutos, custos fixos, clientes),
+calcular cenário, simulações, histórico, visão do mês, escopo contratado (com a regra do piso), saúde com os caminhos,
+horas do mês, calibragem e medições, pagamentos e repasse, resumo do contador, aprovações (só leitura) e pacote que cabe.
+Mudanças protegidas feitas pelo conector viram pedido de aprovação. Dinheiro em reais e referências por nome na conversa; a tradução fica em
 `lib/mcp/traducao.ts`. As instruções do servidor proíbem inventar número de negócio.
 Ao criar uma área nova (fases 2+), acrescente as ferramentas dela aqui.
 
@@ -157,7 +201,8 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 ✅ = criada na Fase 1.
 
 **Núcleo**
-- ✅ `organizacoes`, ✅ `membros` (papel: admin, colaborador, freelancer, cliente)
+- ✅ `organizacoes`, ✅ `membros` (papel: admin, contador, colaborador, freelancer, cliente)
+- ✅ `pedidos_alteracao` (campos protegidos e exceções abaixo do piso), ✅ `aprovacoes` (imutável), ✅ `avisos_socios`
 - ✅ `auditoria` (tabela, registro, ação, antes, depois, autor, data). Só inserida por trigger e sem edição.
 - ✅ `configuracoes_empresa` (reinvestimento, imposto, taxa de recebimento, regra de rateio)
 - ✅ `pessoas` (sócio?, % padrão, piso/h, capacidade h/mês, vínculo opcional com membro)
@@ -170,7 +215,8 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 **Clientes e contratos**
 - ✅ `clientes` (interno?, entra no rateio?), ✅ `contratos` (status, valor mensal, **escopo contratado** em jsonb)
 - ✅ `mes_cliente` (valor recebido no mês), ✅ `horas_realizadas` (horas reais por sócio e mês)
-- ✅ `servicos`, ✅ `servico_divisao`, ✅ `tipos_entrega` (horas por unidade)
+- ✅ `servicos`, ✅ `servico_divisao`, ✅ `tipos_entrega` (horas por unidade, calibrar desde)
+- ✅ `medicoes` (cronômetro), ✅ `pagamentos` (cada pagamento, mês de referência e data)
 - Fase 2 amplia `contratos`: prazo mínimo, vencimento, limite de rodadas, prazo de aprovação, prazo de entrega, aviso prévio, condição de início da cobrança, modelo de cobrança do tráfego, versão/aditivos
 - `contrato_entregas` (tipo de entrega, quantidade/mês), `metas_resultado` (métrica, fonte, alvo, prazo, atingida em)
 

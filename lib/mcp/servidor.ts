@@ -6,11 +6,18 @@
 import "server-only";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { calcularSaudeCliente, calcularVisaoMes } from "../calculo/mes";
+import { pacoteQueCabe } from "../calculo/apresentacao";
+import { calcularCalibragem, type Medicao } from "../calculo/calibragem";
+import { documentoContador } from "../calculo/documentos";
+import { calcularSaudeCliente, calcularVisaoMes, rotuloOrigemHoras } from "../calculo/mes";
 import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
+import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
+import { calcularSolucoes } from "../calculo/solucoes";
 import type { Configuracao } from "../calculo/tipos";
+import { descreverItem, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
+import { REGRAS_PROTECAO } from "../regras/aprovacao";
 import type { RepositorioSupabase } from "../dados/supabase";
 import {
   cenarioParaConversa,
@@ -35,7 +42,17 @@ Regras que você deve seguir:
   Roteiro e direção de gravação são tipos normais, com horas.
 - Entrada do cliente (uma vez só) é separada da rotina mensal.
 - Ferramentas e estrutura vão EMBUTIDAS na mensalidade (rateio). Na proposta, um valor só; nunca assinatura à parte.
-- Para saber se cabe cliente novo, use ver_visao_do_mes. Para ver cliente dando prejuízo, ver_saude_clientes.
+- Para saber se cabe cliente novo, use ver_visao_do_mes. Para ver cliente dando prejuízo e os caminhos para resolver, ver_saude_clientes.
+- Tempo por entrega é em MINUTOS (minutosPorUnidade). 20 min, 40 min…
+- Proteção dos sócios: ${REGRAS_PROTECAO}
+  Você (o conector) não é sócio: toda mudança sua em piso, % dos sócios, divisão de horas ou tempo por entrega
+  vira pedido de aprovação para o sócio afetado (exceto campo que estava vazio). Diga isso a quem está conversando.
+  Você nunca aprova pedidos; quem aprova é o sócio, no site (Sócios → Aprovações).
+- Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
+- Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
+  onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
+- Cronômetro: registrar_medicao guarda quanto UMA entrega levou (em minutos). ver_calibragem mostra a média medida.
+- Sem regra de rateio (com custo fixo cadastrado) a calculadora não calcula: diga o motivo, não invente o resultado.
 - Antes de alterar configurações, confirme com quem está conversando o que vai mudar.
 - Tudo o que você alterar fica registrado no Histórico com o seu nome.
 Comece por ver_configuracao para saber o que existe (nomes de sócios, serviços, tipos de entrega, clientes).`;
@@ -65,8 +82,18 @@ async function salvarDiferenca(repo: RepositorioSupabase, antes: Configuracao, d
     clientes: diferenca(antes.clientes, depois.clientes),
   };
   if (!temAlteracoes(alt)) return "Nada mudou.";
-  await repo.salvarConfig(alt);
-  return configParaConversa(await repo.carregarConfig());
+  const r = await repo.salvarConfig(alt);
+  const config = await repo.carregarConfig();
+  const nome = (id: string) => config.pessoas.find((p) => p.id === id)?.nome ?? id;
+  return {
+    protegido:
+      r.pedido == null
+        ? null
+        : r.pedido.status === "pendente"
+          ? `As mudanças protegidas (${r.itensProtegidos.map(descreverItem).join("; ")}) ficaram PENDENTES: só valem depois que ${r.pedido.aguardando.map(nome).join(" e ")} aprovar no site. Até lá vale o valor antigo.`
+          : "A mudança protegida já valeu.",
+    configuracao: configParaConversa(config),
+  };
 }
 
 const opt = <T extends z.ZodTypeAny>(t: T, d: string) => t.nullable().optional().describe(`${d} (null apaga, ausente mantém)`);
@@ -127,6 +154,13 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         avisoTetoPct: opt(z.number(), "avisar quando a projeção anual chegar a este % do teto"),
         ociosidadePct: opt(z.number(), "sócio com uso abaixo deste % da capacidade aparece com folga sobrando"),
         arredondamentoPropostaReais: opt(z.number(), "arredondar o valor da proposta para cima, em múltiplos deste valor"),
+        regime: opt(z.enum(["mei", "outro"]), "mei = imposto fixo por mês (o imposto em % é ignorado); outro = imposto em %"),
+        ordemDistribuicao: opt(
+          z.enum(["custo_primeiro", "proporcional"]),
+          "como cada pagamento é distribuído: custo_primeiro (paga os custos do mês antes dos sócios) ou proporcional. Só grave o que os sócios decidirem",
+        ),
+        medicoesCalibragem: opt(z.number().int().positive(), "quantas medições de cronômetro calibram cada tipo de entrega"),
+        diferencaSugerirPct: opt(z.number(), "sugerir novo tempo quando a média medida diferir mais que este %"),
       },
     },
     async ({ impostoFixoMensalReais, taxaRecebimentoFixaReais, tetoFaturamentoAnualReais, arredondamentoPropostaReais, ...p }) =>
@@ -227,17 +261,19 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         id: z.string().optional().describe("id ou nome do tipo a alterar; vazio = novo"),
         nome: z.string().optional(),
         servico: opt(z.string(), "serviço (nome ou id)"),
-        horasPorUnidade: opt(z.number(), "horas por entrega"),
+        minutosPorUnidade: opt(z.number(), "tempo por entrega, em minutos (campo protegido)"),
+        horasPorUnidade: opt(z.number(), "tempo por entrega em horas (prefira minutosPorUnidade)"),
         audiovisual: z.boolean().optional(),
         ativo: z.boolean().optional(),
       },
     },
-    async ({ id, servico, ...resto }) =>
+    async ({ id, servico, minutosPorUnidade, ...resto }) =>
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
         const patch = {
           ...resto,
+          ...(minutosPorUnidade !== undefined ? { horasPorUnidade: minutosPorUnidade == null ? null : minutosPorUnidade / 60 } : {}),
           ...(servico !== undefined ? { servicoId: servico == null ? null : resolver(antes.servicos, servico, "Serviço").id } : {}),
         };
         let tiposEntrega;
@@ -388,7 +424,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
     {
       title: "Definir escopo contratado do cliente",
       description:
-        "Guarda o escopo contratado de um cliente ativo (entregas, custos, tráfego…), no mesmo formato de calcular_cenario. É a base da visão do mês e da saúde do cliente. Confirme antes de substituir um escopo existente.",
+        "Guarda o escopo contratado de um cliente ativo (entregas, custos, tráfego…), no mesmo formato de calcular_cenario, e o valor como mensalidade do contrato. Se algum sócio ficar abaixo do piso, NÃO grava: vira pedido de exceção para o sócio afetado aprovar. Confirme antes de substituir um escopo existente.",
       inputSchema: {
         cliente: z.string().describe("cliente (nome ou id)"),
         cenario: zCenarioConversa.nullable().describe("escopo; null remove"),
@@ -399,9 +435,23 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const alvo = resolver(config.clientes, cliente, "Cliente");
-        const escopo = cenario ? { ...cenarioParaInterno(cenario, config), clienteId: alvo.id } : null;
-        await repo.definirEscopoCliente(alvo.id, escopo);
-        return { cliente: alvo.nome, escopoDefinido: !!escopo };
+        if (!cenario) {
+          await repo.definirEscopoCliente(alvo.id, null);
+          return { cliente: alvo.nome, escopoRemovido: true };
+        }
+        const r = await guardarEscopo(repo, config, alvo.id, { ...cenarioParaInterno(cenario, config), clienteId: alvo.id });
+        const nome = (id: string) => config.pessoas.find((p) => p.id === id)?.nome ?? id;
+        return {
+          cliente: alvo.nome,
+          valorMensal: paraReais(r.valorCentavos),
+          gravado: r.gravado || r.pedido?.status === "aplicado",
+          abaixoDoPiso: r.abaixo.map((x) => ({ socio: x.nome, perdaPorMes: paraReais(x.perdaMensalCentavos) })),
+          situacao: r.gravado
+            ? "Escopo guardado."
+            : r.pedido?.status === "aplicado"
+              ? "Guardado como exceção (o afetado é quem pediu)."
+              : `Não gravado: fica abaixo do piso. Pedido de exceção esperando ${r.pedido?.aguardando.map(nome).join(" e ")} aprovar no site.`,
+        };
       }),
   );
 
@@ -416,26 +466,33 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
     {
       title: "Saúde dos clientes no mês",
       description:
-        "Para cada cliente ativo: previsto (escopo + contrato) × realizado (horas reais e valor recebido do mês), valor por hora real de cada sócio e se ficou abaixo do piso (prejuízo silencioso).",
+        "Para cada cliente ativo: previsto (escopo + contrato) × realizado (horas lançadas, ou média medida, ou previsão; valor dos pagamentos), valor por hora de cada sócio contra o piso, de onde vem cada número de horas e, quando há problema, os caminhos calculados: subir o valor, cortar escopo, misto, ou aceitar a exceção (quanto cada sócio perde por mês).",
       inputSchema: { competencia: zCompetencia },
     },
     async ({ competencia }) =>
       executar(async () => {
         const repo = await obterRepo();
         const mes = competencia ?? competenciaAtual();
-        const [config, registros] = await Promise.all([repo.carregarConfig(), repo.carregarMes(mes)]);
+        const [config, registros, pagamentos, medicoes] = await Promise.all([repo.carregarConfig(), repo.carregarMes(mes), repo.listarPagamentos(), repo.listarMedicoes()]);
+        const calibragem = calcularCalibragem(config, medicoes);
         return {
           competencia: mes,
           clientes: config.clientes
             .filter((c) => c.ativo)
             .map((c) => {
-              const s = calcularSaudeCliente(config, c, registros[c.id] ?? null);
+              const s = calcularSaudeCliente(config, c, registros[c.id] ?? null, {
+                calibragem,
+                pagamentosCentavos: somaPagamentos(pagamentos, c.id, mes),
+                mesFechado: mes < competenciaAtual(),
+              });
+              const sol = calcularSolucoes(config, c, s, calibragem);
               return {
                 nome: s.nome,
+                bloqueado: s.bloqueio?.texto ?? null,
                 temEscopo: s.temEscopo,
                 valorContrato: paraReais(s.valorContratoCentavos),
-                valorRecebido: paraReais(s.valorRecebidoCentavos),
-                horasLancadas: s.horasLancadas,
+                valorUsadoNoMes: paraReais(s.valorRealCentavos),
+                deOndeVemOValor: s.origemValor,
                 horasPrevistas: s.horasPrevistas,
                 horasReais: s.horasReais,
                 pagaPorHoraPrevisto: paraReais(s.valorCobradoHoraPrevisto),
@@ -447,10 +504,25 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
                   piso: paraReais(x.piso),
                   horasPrevistas: x.horasPrevistas,
                   horasReais: x.horasReais,
+                  origemDasHoras: rotuloOrigemHoras(x.origemHoras),
+                  semRegistro: x.semRegistro,
+                  recebe: paraReais(x.valorReal),
                   porHoraPrevisto: paraReais(x.valorHoraPrevisto),
                   porHoraReal: paraReais(x.valorHoraReal),
                   abaixoDoPiso: x.abaixoPisoReal,
+                  recebeSemHoras: x.recebeSemHoras,
                 })),
+                caminhos: sol.temProblema
+                  ? {
+                      calculadoCom: sol.base === "real" ? "horas reais do mês" : "o contrato",
+                      faltaDado: sol.faltando,
+                      subirOValor: sol.subir ? { mensalidade: paraReais(sol.subir.mensalidadeCentavos), aMais: paraReais(sol.subir.aMaisCentavos) } : null,
+                      cortarEscopo: sol.cortar.map((x) => ({ tirar: x.tirar, entrega: x.nome })),
+                      corteDeUmTipoSoNaoResolve: sol.corteSozinhoNaoResolve,
+                      misto: sol.misto.map((x) => ({ tirar: x.tirar, entrega: x.nome, mensalidade: paraReais(x.mensalidadeCentavos), aMais: paraReais(x.aMaisCentavos) })),
+                      aceitarExcecao: sol.excecao.map((x) => ({ socio: x.nome, perdePorMes: paraReais(x.perdaMensalCentavos), precisaAprovacaoDe: x.nome })),
+                    }
+                  : null,
               };
             }),
         };
@@ -462,11 +534,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
     {
       title: "Registrar horas reais e valor recebido",
       description:
-        "Lança, para um cliente e um mês, as horas reais de cada sócio e (opcional) quanto entrou de fato. Só registre números que foram informados na conversa.",
+        "Lança, para um cliente e um mês, as horas reais de cada sócio (lançamento manual). Para dinheiro que entrou, use registrar_pagamento. Só registre números que foram informados na conversa.",
       inputSchema: {
         cliente: z.string().describe("cliente (nome ou id)"),
         competencia: zCompetencia,
-        valorRecebidoReais: opt(z.number(), "quanto entrou no mês; vazio = valor do contrato"),
+        valorRecebidoReais: opt(z.number(), "lançamento antigo de quanto entrou; prefira registrar_pagamento"),
         horas: z.record(z.string(), z.number().nullable()).optional().describe("sócio (nome ou id) → horas reais no mês"),
       },
     },
@@ -577,6 +649,264 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         const alvo = resolver(await repo.listarSimulacoes(), id, "Simulação");
         await repo.removerSimulacao(alvo.id);
         return { removida: alvo.nome };
+      }),
+  );
+
+  // ─── Cronômetro e calibragem ──────────────────────────────────────────────
+
+  server.registerTool(
+    "ver_calibragem",
+    {
+      title: "Calibragem das horas",
+      description:
+        "Para cada tipo de entrega: tempo cadastrado, média medida pelo cronômetro, quantas medições, se está calibrado e se o sistema sugere atualizar o tempo.",
+      inputSchema: {},
+    },
+    async () =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        return calcularCalibragem(config, await repo.listarMedicoes()).map((c) => ({
+          entrega: c.nome,
+          situacao: c.situacao,
+          medicoes: c.medicoes,
+          medicoesPedidas: c.alvo,
+          tempoCadastradoMin: c.padraoMinutos == null ? null : Math.round(c.padraoMinutos),
+          mediaMedidaMin: c.mediaMinutos == null ? null : Math.round(c.mediaMinutos),
+          diferencaPct: c.diferencaPct == null ? null : Math.round(c.diferencaPct),
+          sugestao: c.sugestao,
+        }));
+      }),
+  );
+
+  server.registerTool(
+    "registrar_medicao",
+    {
+      title: "Registrar quanto uma entrega levou",
+      description: "Guarda uma medição (uma entrega) em minutos, como se fosse o cronômetro. Só registre tempos que a pessoa disse.",
+      inputSchema: {
+        entrega: z.string().describe("tipo de entrega (nome ou id)"),
+        minutos: z.number().positive(),
+        cliente: z.string().optional().describe("cliente (nome ou id), se houver"),
+        socio: z.string().optional().describe("quem fez (nome ou id)"),
+      },
+    },
+    async ({ entrega, minutos, cliente, socio }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const tipo = resolver(config.tiposEntrega, entrega, "Tipo de entrega");
+        const agora = new Date().toISOString();
+        const m: Medicao = {
+          id: novoId(),
+          clienteId: cliente ? resolver(config.clientes, cliente, "Cliente").id : null,
+          tipoEntregaId: tipo.id,
+          pessoaId: socio ? resolver(config.pessoas.filter((p) => p.socio), socio, "Sócio").id : null,
+          estado: "concluido",
+          acumuladoSegundos: minutos * 60,
+          retomadoEm: null,
+          fim: agora,
+          criadoEm: agora,
+        };
+        await repo.salvarMedicao(m);
+        const c = calcularCalibragem(config, await repo.listarMedicoes()).find((x) => x.tipoEntregaId === tipo.id);
+        return { registrada: `${tipo.nome}: ${minutos} min`, medicoes: c?.medicoes, situacao: c?.situacao, sugestao: c?.sugestao ?? null };
+      }),
+  );
+
+  server.registerTool(
+    "recalibrar_tipo",
+    {
+      title: "Recalibrar um tipo de entrega",
+      description: "Quando o processo mudou: as medições antigas deixam de contar e o cronômetro volta a pedir medições. Confirme antes.",
+      inputSchema: { entrega: z.string().describe("tipo de entrega (nome ou id)") },
+    },
+    async ({ entrega }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const antes = await repo.carregarConfig();
+        const tipo = resolver(antes.tiposEntrega, entrega, "Tipo de entrega");
+        const agora = new Date().toISOString();
+        await salvarDiferenca(repo, antes, { ...antes, tiposEntrega: antes.tiposEntrega.map((t) => (t.id === tipo.id ? { ...t, calibrarDesde: agora } : t)) });
+        return { recalibrando: tipo.nome, desde: agora };
+      }),
+  );
+
+  // ─── Pagamentos ───────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "registrar_pagamento",
+    {
+      title: "Registrar pagamento que caiu",
+      description:
+        "Cada pagamento que cai (inteiro, parcial ou atrasado). competencia = mês de referência que o cliente está pagando; recebidoEm = data em que caiu. Mostra para onde vai cada real. Só registre valores informados na conversa.",
+      inputSchema: {
+        cliente: z.string().describe("cliente (nome ou id)"),
+        valorReais: z.number().positive(),
+        competencia: zCompetencia,
+        recebidoEm: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional()
+          .describe("data em que caiu, AAAA-MM-DD (padrão: hoje)"),
+        observacao: z.string().optional(),
+      },
+    },
+    async ({ cliente, valorReais, competencia, recebidoEm, observacao }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const alvo = resolver(config.clientes, cliente, "Cliente");
+        const mes = competencia ?? competenciaAtual();
+        const hoje = new Date().toISOString().slice(0, 10);
+        const id = novoId();
+        await repo.salvarPagamento({ id, clienteId: alvo.id, competencia: mes, valorCentavos: paraCentavos(valorReais)!, recebidoEm: recebidoEm ?? hoje, observacao: observacao ?? null });
+        const d = distribuirPagamentos(config, alvo, mes, await repo.listarPagamentos(), hoje);
+        const parte = d.partes.find((x) => x.pagamentoId === id);
+        const nome = (pid: string) => config.pessoas.find((p) => p.id === pid)?.nome ?? pid;
+        return {
+          registrado: `${alvo.nome}: ${valorReais} reais referente a ${mes}`,
+          situacaoDoMes: d.situacao,
+          faltaReceber: paraReais(d.faltaReceberCentavos),
+          distribuicaoBloqueada: d.bloqueio?.texto ?? null,
+          paraOndeVai: parte
+            ? {
+                imposto: paraReais(parte.impostoCentavos),
+                taxa: paraReais(parte.taxaCentavos),
+                custosDoMes: paraReais(parte.custosCentavos),
+                reinvestimento: paraReais(parte.reinvestimentoCentavos),
+                socios: Object.fromEntries(Object.entries(parte.socios).map(([k, v]) => [nome(k), paraReais(v)])),
+                chegouAtrasado: parte.atrasado,
+              }
+            : null,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "ver_pagamentos_do_mes",
+    {
+      title: "Pagamentos e repasse do mês",
+      description: "Por cliente: contrato, quanto entrou, quanto falta, se está em atraso e para onde foi o dinheiro. Por sócio: quanto já recebeu no mês e quanto falta.",
+      inputSchema: { competencia: zCompetencia },
+    },
+    async ({ competencia }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const mes = competencia ?? competenciaAtual();
+        const [config, pagamentos] = await Promise.all([repo.carregarConfig(), repo.listarPagamentos()]);
+        const hoje = new Date().toISOString().slice(0, 10);
+        const dist = config.clientes.filter((c) => c.ativo && !c.interno).map((c) => distribuirPagamentos(config, c, mes, pagamentos, hoje));
+        return {
+          competencia: mes,
+          clientes: dist.map((d) => ({
+            nome: d.nome,
+            contrato: paraReais(d.contratoCentavos),
+            entrou: paraReais(d.recebidoCentavos),
+            falta: paraReais(d.faltaReceberCentavos),
+            situacao: d.situacao,
+            bloqueado: d.bloqueio?.texto ?? null,
+            pagamentos: pagamentos
+              .filter((p) => p.clienteId === d.clienteId && p.competencia === mes)
+              .map((p) => ({ id: p.id, valor: paraReais(p.valorCentavos), caiuEm: p.recebidoEm })),
+          })),
+          socios: repasseDosSocios(config, dist).map((r) => ({
+            nome: r.nome,
+            jaRecebeu: paraReais(r.recebidoCentavos),
+            falta: paraReais(r.faltaCentavos),
+            mesCheio: paraReais(r.planejadoCentavos),
+          })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "remover_pagamento",
+    {
+      title: "Remover pagamento lançado errado",
+      description: "Apaga um pagamento (a exclusão fica no histórico). Use o id de ver_pagamentos_do_mes. Confirme antes.",
+      inputSchema: { id: z.string() },
+    },
+    async ({ id }) =>
+      executar(async () => {
+        await (await obterRepo()).removerPagamento(id);
+        return { removido: id };
+      }),
+  );
+
+  server.registerTool(
+    "ver_resumo_contador",
+    {
+      title: "Resumo do mês para o contador",
+      description: "Recebimentos do mês (pela data em que caíram) por cliente, custos fixos, imposto fixo do MEI e posição no teto do ano. Sem dados internos dos sócios.",
+      inputSchema: { competencia: zCompetencia },
+    },
+    async ({ competencia }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [config, pagamentos] = await Promise.all([repo.carregarConfig(), repo.listarPagamentos()]);
+        const d = documentoContador(config, pagamentos, competencia ?? competenciaAtual());
+        return {
+          mes: d.mesReferencia,
+          recebidoNoMes: paraReais(d.faturamentoCentavos),
+          porCliente: d.porCliente.map((c) => ({ cliente: c.cliente, valor: paraReais(c.valorCentavos) })),
+          custosFixos: d.custosFixos.map((c) => ({ nome: c.nome, valor: paraReais(c.valorCentavos) })),
+          impostoFixo: paraReais(d.impostoFixoCentavos),
+          teto: d.teto ? { teto: paraReais(d.teto.tetoCentavos), recebidoNoAno: paraReais(d.teto.acumuladoAnoCentavos), pct: Math.round(d.teto.pct * 10) / 10 } : null,
+          pdf: "No site: Financeiro → PDFs e relatórios → Resumo para o contador.",
+        };
+      }),
+  );
+
+  // ─── Aprovações ───────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "ver_aprovacoes",
+    {
+      title: "Pedidos de aprovação e avisos dos sócios",
+      description: "Pedidos pendentes e decididos (mudanças protegidas e exceções abaixo do piso), quem precisa aprovar e os últimos avisos. Você não aprova: quem aprova é o sócio afetado, no site.",
+      inputSchema: {},
+    },
+    async () =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [config, pedidos, avisos] = await Promise.all([repo.carregarConfig(), repo.listarPedidos(), repo.listarAvisos()]);
+        const nome = (id: string | null) => config.pessoas.find((p) => p.id === id)?.nome ?? "—";
+        return {
+          regras: REGRAS_PROTECAO,
+          pedidos: pedidos.slice(0, 30).map((p) => ({
+            descricao: p.descricao,
+            status: p.status,
+            pediuQuem: p.autorNome,
+            mudancas: p.itens.map(descreverItem),
+            perdasPorMes: p.dados?.perdas.map((x) => ({ socio: x.nome, perde: paraReais(x.perdaMensalCentavos) })) ?? [],
+            afetados: p.afetados.map((a) => {
+              const d = p.aprovacoes.find((x) => x.pessoaId === a);
+              return { socio: nome(a), decisao: d?.decisao ?? "falta decidir" };
+            }),
+            motivo: p.motivo,
+            em: p.criadoEm,
+          })),
+          avisos: avisos.slice(0, 20).map((a) => ({ para: nome(a.pessoaId), titulo: a.titulo, texto: a.texto, lido: !!a.lidoEm, em: a.criadoEm })),
+        };
+      }),
+  );
+
+  // ─── Negociação ───────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "montar_pacote_que_cabe",
+    {
+      title: "Contraproposta: só tenho R$ X",
+      description:
+        "Parte de um pacote (mesmo formato de calcular_cenario) e tira entregas, uma por vez, até todos os sócios ficarem no piso e dentro das horas no valor informado. Devolve o pacote que cabe.",
+      inputSchema: { cenario: zCenarioConversa, valorReais: z.number().positive() },
+    },
+    async ({ cenario, valorReais }) =>
+      executar(async () => {
+        const config = await (await obterRepo()).carregarConfig();
+        const r = pacoteQueCabe(config, cenarioParaInterno(cenario, config), paraCentavos(valorReais)!);
+        return { cabe: r.cabe, tirou: r.tirados.map((t) => `${t.quantidade} ${t.nome}`), pacote: cenarioParaConversa(r.cenario, config) };
       }),
   );
 

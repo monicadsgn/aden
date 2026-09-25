@@ -54,3 +54,27 @@ export function numeroParaTexto(v: number | null | undefined): string {
   if (v == null) return "";
   return v.toLocaleString("pt-BR", { maximumFractionDigits: 4, useGrouping: false });
 }
+
+// ─── Tempo em minutos ───────────────────────────────────────────────────────
+// A pessoa digita minutos (20 min, 40 min); por dentro o sistema guarda horas.
+
+export function minutosParaHoras(min: number | null): number | null {
+  return min == null ? null : min / 60;
+}
+
+export function horasParaMinutos(h: number | null | undefined): number | null {
+  if (h == null || !Number.isFinite(h)) return null;
+  // arredonda para não mostrar 19,99998 min por causa da divisão
+  return Math.round(h * 60 * 1000) / 1000;
+}
+
+/** "40 min", "1 h 30 min", "2 h". Para tempo por entrega e medições. */
+export function formatarDuracao(h: number | null | undefined): string {
+  const min = horasParaMinutos(h);
+  if (min == null) return "—";
+  const m = Math.round(min);
+  if (m < 60) return `${m} min`;
+  const hh = Math.floor(m / 60);
+  const r = m % 60;
+  return r ? `${hh} h ${r} min` : `${hh} h`;
+}

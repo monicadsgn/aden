@@ -4,7 +4,7 @@ import { AlertOctagon, CalendarRange, CheckCircle2, Coins, Info, Landmark, Users
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CabecalhoPagina } from "@/components/Shell";
-import { Badge, Card, TituloCard, Vazio, cx, type Tom } from "@/components/ui";
+import { Badge, Card, EtiquetaOrigem, TituloCard, Vazio, cx, type Tom } from "@/components/ui";
 import { calcularVisaoMes, type SituacaoSocio, type VisaoSocio } from "@/lib/calculo/mes";
 import { configVazia } from "@/lib/calculo/novo";
 import type { Configuracao } from "@/lib/calculo/tipos";
@@ -110,6 +110,7 @@ export default function VisaoDoMes() {
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <p className="text-[11px] font-semibold text-texto-suave">Clientes usam</p>
+                      <EtiquetaOrigem texto="previsto no escopo" previsao />
                       <p className="numero text-xl font-extrabold">{formatarHoras(s.horasUsadas)}</p>
                     </div>
                     <div>
@@ -138,7 +139,12 @@ export default function VisaoDoMes() {
 
         {/* Clientes */}
         <Card>
-          <TituloCard icone={CalendarRange} titulo="Horas por cliente" descricao="Quanto cada cliente ativo pede de cada sócio por mês, pelo escopo contratado." />
+          <TituloCard
+            icone={CalendarRange}
+            titulo="Horas por cliente"
+            descricao="Quanto cada cliente ativo pede de cada sócio por mês, pelo escopo contratado."
+            acao={<EtiquetaOrigem texto="previsto no escopo" previsao />}
+          />
           <div className="overflow-x-auto px-2 pb-4 sm:px-5">
             {v.clientes.length === 0 ? (
               <Vazio icone={CalendarRange} titulo="Nenhum cliente ativo">

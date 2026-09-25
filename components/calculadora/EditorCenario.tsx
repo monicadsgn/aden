@@ -18,6 +18,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { temEntregaDeTrafego } from "@/lib/calculo/motor";
 import { novaLinhaCusto, novaLinhaEntrega, novoPontual } from "@/lib/calculo/novo";
 import type {
   CategoriaCusto,
@@ -29,8 +30,8 @@ import type {
   Pct,
   ProjetoPontual,
 } from "@/lib/calculo/tipos";
-import { formatarHoras, formatarNumero, formatarPct } from "@/lib/formato";
-import { Badge, Botao, Card, CampoMoeda, CampoNumero, CampoPct, CampoTexto, Passo, Rotulo, Segmentado, Selecao, TituloCard, cx } from "../ui";
+import { formatarDuracao, formatarHoras, formatarPct, horasParaMinutos } from "@/lib/formato";
+import { Badge, Botao, Card, CampoMinutos, CampoMoeda, CampoNumero, CampoPct, CampoTexto, Passo, Rotulo, Segmentado, Selecao, TituloCard, cx } from "../ui";
 
 const CATEGORIAS: { valor: CategoriaCusto; rotulo: string }[] = [
   { valor: "ferramenta", rotulo: "Ferramenta" },
@@ -106,11 +107,10 @@ function EditorEntregas({
               </div>
             ) : (
               <>
-                <CampoNumero
-                  rotulo="h/un."
-                  sufixo="h"
+                <CampoMinutos
+                  rotulo="tempo/un."
                   destaque={sobreposto}
-                  placeholder={tipo?.horasPorUnidade != null ? formatarNumero(tipo.horasPorUnidade) : "—"}
+                  placeholder={tipo?.horasPorUnidade != null ? String(horasParaMinutos(tipo.horasPorUnidade)) : "—"}
                   valor={l.horasPorUnidade}
                   aoMudar={(v) => mudar(l.id, { horasPorUnidade: v })}
                 />
@@ -122,7 +122,7 @@ function EditorEntregas({
             <Botao variante="perigo" icone={Trash2} aria-label="Remover entrega" onClick={() => aoMudar(linhas.filter((x) => x.id !== l.id))} />
             {sobreposto && (
               <p className="col-span-full -mt-1 text-[11px] font-medium text-aviso">
-                Horas por entrega diferentes do padrão ({formatarHoras(tipo?.horasPorUnidade)}).{" "}
+                Tempo por entrega diferente do padrão ({formatarDuracao(tipo?.horasPorUnidade)}).{" "}
                 <button type="button" className="underline" onClick={() => mudar(l.id, { horasPorUnidade: null })}>
                   Voltar ao padrão
                 </button>
@@ -237,7 +237,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
   return (
     <div className="flex flex-col gap-4">
       {/* Modo */}
-      <Card>
+      <Card id="cenario-modo">
         <TituloCard
           icone={cenario.modo === "escopo" ? ListChecks : Wallet}
           titulo="Como calcular"
@@ -338,7 +338,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
       )}
 
       {/* Custos */}
-      <Card>
+      <Card id="cenario-custos">
         <TituloCard
           icone={Receipt}
           titulo="Custos da rotina"
@@ -369,9 +369,14 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
       </Card>
 
       {/* Tráfego */}
-      <Card>
+      <Card id="cenario-trafego">
         <TituloCard icone={Megaphone} titulo="Cobrança do tráfego pago" descricao="A verba de mídia é do cliente e fica por fora. Aqui é só como a Aden cobra pela gestão." />
         <Secao>
+          {t.modelo == null && !temEntregaDeTrafego(config, cenario) && (
+            <p className="mb-2 rounded-bloco bg-superficie-2 px-3 py-2 text-[11px] text-texto-suave">
+              Este cenário não tem nenhuma entrega de tráfego, então conta como “sem tráfego”. Só precisa escolher o modelo se incluir entregas de tráfego.
+            </p>
+          )}
           <Selecao
             rotulo="Modelo de cobrança"
             valor={t.modelo}
@@ -412,7 +417,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
       </Card>
 
       {/* Pontuais */}
-      <Card>
+      <Card id="cenario-pontuais">
         <TituloCard icone={Gem} titulo="Projetos pontuais" descricao="Branding e outros projetos únicos: diluídos em X meses na mensalidade ou cobrados por fora." />
         <Secao>
           <div className="flex flex-col gap-3">
@@ -519,7 +524,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
       </Card>
 
       {/* Meses sem cobrança */}
-      <Card>
+      <Card id="cenario-semcobranca">
         <TituloCard
           icone={CalendarClock}
           titulo="Meses sem cobrança"

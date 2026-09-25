@@ -2,21 +2,28 @@
 
 import {
   BadgeCheck,
+  Bell,
   Briefcase,
   Calculator,
   CalendarRange,
-  HeartPulse,
+  ChevronDown,
   ClipboardList,
+  FileDown,
   FileSignature,
+  Gauge,
+  HandCoins,
+  HeartPulse,
   History,
-  LineChart,
   LogOut,
   Menu,
   MessagesSquare,
   Moon,
+  Presentation,
   Scale,
   Settings2,
+  ShieldCheck,
   Sun,
+  Timer,
   Wallet,
   X,
   type LucideIcon,
@@ -24,7 +31,9 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { podeVer, type Area } from "@/lib/acesso";
 import { useDados, useVariaveisFaltando } from "@/lib/dados/contexto";
+import type { Repositorio, Usuario } from "@/lib/dados/repositorio";
 import { Marca } from "./Marca";
 import { Badge, cx } from "./ui";
 
@@ -32,16 +41,45 @@ interface Item {
   href: string;
   rotulo: string;
   icone: LucideIcon;
+  area?: Area;
   emBreve?: boolean;
+  contador?: "aprovacoes" | "avisos";
 }
 
-// Áreas do sistema. As marcadas "em breve" são as fases seguintes do plano.
+// Áreas do sistema (aprovadas pela Moni em 25/09/2026). Cada item é uma tela com um assunto só.
 const GRUPOS: { titulo: string; itens: Item[] }[] = [
   {
     titulo: "Comercial",
     itens: [
-      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator },
+      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora" },
+      { href: "/negociacao", rotulo: "Negociação ao vivo", icone: Presentation, area: "negociacao" },
       { href: "#crm", rotulo: "CRM e leads", icone: MessagesSquare, emBreve: true },
+    ],
+  },
+  {
+    titulo: "Operação",
+    itens: [
+      { href: "/mes", rotulo: "Visão do mês", icone: CalendarRange, area: "mes" },
+      { href: "/cronometro", rotulo: "Cronômetro", icone: Timer, area: "cronometro" },
+      { href: "/calibragem", rotulo: "Calibragem das horas", icone: Gauge, area: "calibragem" },
+      { href: "#producao", rotulo: "Produção", icone: ClipboardList, emBreve: true },
+      { href: "#aprovacao", rotulo: "Aprovações do cliente", icone: BadgeCheck, emBreve: true },
+    ],
+  },
+  {
+    titulo: "Financeiro",
+    itens: [
+      { href: "/saude", rotulo: "Saúde dos clientes", icone: HeartPulse, area: "saude" },
+      { href: "/pagamentos", rotulo: "Registrar pagamento", icone: Wallet, area: "pagamentos" },
+      { href: "/repasse", rotulo: "Repasse dos sócios", icone: HandCoins, area: "repasse" },
+      { href: "/pdfs", rotulo: "PDFs e relatórios", icone: FileDown, area: "pdfs" },
+    ],
+  },
+  {
+    titulo: "Sócios",
+    itens: [
+      { href: "/aprovacoes", rotulo: "Aprovações", icone: ShieldCheck, area: "aprovacoes", contador: "aprovacoes" },
+      { href: "/avisos", rotulo: "Avisos", icone: Bell, area: "avisos", contador: "avisos" },
     ],
   },
   {
@@ -52,70 +90,120 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
     ],
   },
   {
-    titulo: "Operação",
-    itens: [
-      { href: "/mes", rotulo: "Visão do mês", icone: CalendarRange },
-      { href: "#producao", rotulo: "Produção e capacidade", icone: ClipboardList, emBreve: true },
-      { href: "#aprovacao", rotulo: "Aprovações do cliente", icone: BadgeCheck, emBreve: true },
-    ],
-  },
-  {
-    titulo: "Financeiro",
-    itens: [
-      { href: "/saude", rotulo: "Saúde dos clientes", icone: HeartPulse },
-      { href: "#financeiro", rotulo: "Financeiro", icone: Wallet, emBreve: true },
-      { href: "#relatorios", rotulo: "Relatórios de resultado", icone: LineChart, emBreve: true },
-    ],
-  },
-  {
     titulo: "Sistema",
     itens: [
-      { href: "/configuracoes", rotulo: "Configurações", icone: Settings2 },
-      { href: "/historico", rotulo: "Histórico de alterações", icone: History },
+      { href: "/configuracoes", rotulo: "Configurações", icone: Settings2, area: "configuracoes" },
+      { href: "/historico", rotulo: "Histórico de alterações", icone: History, area: "historico" },
     ],
   },
 ];
 
+const CHAVE_MENU = "aden:menu-aberto";
+
+/** Quantas aprovações esperam por mim e quantos avisos meus não foram lidos. */
+async function contarPendencias(repo: Repositorio, u: Usuario | null) {
+  const [pedidos, avisos] = await Promise.all([repo.listarPedidos(), repo.listarAvisos()]);
+  const meu = (pessoa: string) => (repo.modo === "local" ? true : pessoa === u?.pessoaId);
+  return {
+    aprovacoes: pedidos.filter((p) => p.status === "pendente" && p.afetados.some((a) => meu(a) && !p.aprovacoes.some((x) => x.pessoaId === a))).length,
+    avisos: avisos.filter((a) => !a.lidoEm && meu(a.pessoaId)).length,
+  };
+}
+
 function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
   const caminho = usePathname();
+  const { repo, usuario } = useDados();
+  const papel = usuario?.papel ?? "sem_vinculo";
+  const grupos = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter((i) => i.emBreve ? papel === "admin" : i.area && podeVer(papel, i.area)) })).filter((g) => g.itens.length);
+  const doCaminho = grupos.find((g) => g.itens.some((i) => !i.emBreve && caminho.startsWith(i.href)))?.titulo;
+  const [abertos, setAbertos] = useState<string[]>([]);
+  const [contagem, setContagem] = useState({ aprovacoes: 0, avisos: 0 });
+
+  useEffect(() => {
+    let salvo: string[] = [];
+    try {
+      salvo = JSON.parse(localStorage.getItem(CHAVE_MENU) ?? "[]");
+    } catch {}
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o menu lembrado só no cliente
+    setAbertos(doCaminho && !salvo.includes(doCaminho) ? [...salvo, doCaminho] : salvo);
+  }, [doCaminho]);
+
+  useEffect(() => {
+    if (papel !== "admin") return;
+    contarPendencias(repo, usuario).then(setContagem).catch(() => {});
+  }, [repo, usuario, caminho, papel]);
+
+  const alternar = (t: string) => {
+    const novo = abertos.includes(t) ? abertos.filter((x) => x !== t) : [...abertos, t];
+    setAbertos(novo);
+    try {
+      localStorage.setItem(CHAVE_MENU, JSON.stringify(novo));
+    } catch {}
+  };
+
   return (
-    <nav className="flex flex-col gap-5" aria-label="Áreas do sistema">
-      {GRUPOS.map((g) => (
-        <div key={g.titulo}>
-          <p className="mb-1.5 px-3 text-[10px] font-bold tracking-[0.16em] text-texto-suave/80 uppercase">{g.titulo}</p>
-          <ul className="flex flex-col gap-0.5">
-            {g.itens.map((i) => {
-              const ativo = caminho.startsWith(i.href);
-              const Ic = i.icone;
-              if (i.emBreve)
-                return (
-                  <li key={i.href}>
-                    <span className="flex cursor-default items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-medium text-texto-suave/60" title="Próximas fases">
-                      <Ic size={17} strokeWidth={1.9} />
-                      <span className="flex-1 truncate">{i.rotulo}</span>
-                      <span className="text-[9px] font-bold tracking-wide uppercase">breve</span>
-                    </span>
-                  </li>
-                );
-              return (
-                <li key={i.href}>
-                  <Link
-                    href={i.href}
-                    onClick={aoNavegar}
-                    className={cx(
-                      "flex items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-semibold transition-colors",
-                      ativo ? "bg-marca text-sobre-marca shadow-card" : "text-texto hover:bg-marca-suave/60",
-                    )}
-                  >
-                    <Ic size={17} strokeWidth={2} />
-                    <span className="truncate">{i.rotulo}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+    <nav className="flex flex-col gap-1" aria-label="Áreas do sistema">
+      {grupos.map((g) => {
+        const aberto = abertos.includes(g.titulo);
+        const total = g.itens.reduce((a, i) => a + (i.contador ? contagem[i.contador] : 0), 0);
+        const temAtivo = g.titulo === doCaminho;
+        return (
+          <div key={g.titulo}>
+            <button
+              type="button"
+              aria-expanded={aberto}
+              onClick={() => alternar(g.titulo)}
+              className={cx(
+                "flex w-full items-center gap-2 rounded-item px-3 py-2 text-left text-[12px] font-bold tracking-[0.08em] uppercase transition-colors",
+                temAtivo ? "text-marca-forte" : "text-texto-suave hover:text-texto",
+              )}
+            >
+              <span className="flex-1">{g.titulo}</span>
+              {!aberto && total > 0 && <span className="flex size-5 items-center justify-center rounded-full bg-erro text-[10px] text-superficie">{total}</span>}
+              <ChevronDown size={15} className={cx("transition-transform", aberto && "rotate-180")} />
+            </button>
+            {aberto && (
+              <ul className="mb-2 flex flex-col gap-0.5 pl-1">
+                {g.itens.map((i) => {
+                  const ativo = !i.emBreve && caminho.startsWith(i.href);
+                  const Ic = i.icone;
+                  if (i.emBreve)
+                    return (
+                      <li key={i.href}>
+                        <span className="flex cursor-default items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-medium text-texto-suave/60" title="Próximas fases">
+                          <Ic size={17} strokeWidth={1.9} />
+                          <span className="flex-1 truncate">{i.rotulo}</span>
+                          <span className="text-[9px] font-bold tracking-wide uppercase">breve</span>
+                        </span>
+                      </li>
+                    );
+                  const n = i.contador ? contagem[i.contador] : 0;
+                  return (
+                    <li key={i.href}>
+                      <Link
+                        href={i.href}
+                        onClick={aoNavegar}
+                        className={cx(
+                          "flex items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-semibold transition-colors",
+                          ativo ? "bg-marca text-sobre-marca shadow-card" : "text-texto hover:bg-marca-suave/60",
+                        )}
+                      >
+                        <Ic size={17} strokeWidth={2} />
+                        <span className="flex-1 truncate">{i.rotulo}</span>
+                        {n > 0 && (
+                          <span className={cx("flex size-5 items-center justify-center rounded-full text-[10px] font-bold", ativo ? "bg-sobre-marca text-marca-forte" : "bg-erro text-superficie")}>
+                            {n}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        );
+      })}
     </nav>
   );
 }
@@ -185,7 +273,9 @@ export function Shell({ children }: { children: ReactNode }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-semibold">{usuario?.nome}</p>
-        <p className="truncate text-[11px] text-texto-suave">{repo.modo === "local" ? "dados só neste navegador" : "sócio · admin"}</p>
+        <p className="truncate text-[11px] text-texto-suave">
+          {repo.modo === "local" ? "dados só neste navegador" : usuario?.papel === "contador" ? "contador · só leitura" : "sócio"}
+        </p>
       </div>
       <AlternarTema />
       {repo.modo === "supabase" && (
