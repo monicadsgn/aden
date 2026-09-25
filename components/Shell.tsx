@@ -22,7 +22,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { useDados } from "@/lib/dados/contexto";
+import { VARIAVEIS_FALTANDO, useDados } from "@/lib/dados/contexto";
 import { Marca } from "./Marca";
 import { Badge, cx } from "./ui";
 
@@ -238,8 +238,9 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
         {repo.modo === "local" && (
-          <div className="nao-imprimir flex items-center justify-center gap-2 bg-aviso-suave px-4 py-1.5 text-center text-[11px] font-semibold text-aviso">
+          <div className="nao-imprimir flex flex-wrap items-center justify-center gap-x-2 bg-aviso-suave px-4 py-1.5 text-center text-[11px] font-semibold text-aviso">
             <Briefcase size={13} /> Modo demonstração: sem banco conectado. Os dados ficam só neste navegador.
+            {VARIAVEIS_FALTANDO.length > 0 && <span className="font-medium">Faltou no build: {VARIAVEIS_FALTANDO.join(" e ")}.</span>}
           </div>
         )}
         <main className="min-w-0 flex-1">{children}</main>
