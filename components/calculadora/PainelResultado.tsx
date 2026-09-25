@@ -22,7 +22,17 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { ajustarQuantidade } from "@/lib/calculo/motor";
-import type { Alerta, Cenario, Configuracao, ResultadoCenario, ResultadoMes, ResultadoPessoa } from "@/lib/calculo/tipos";
+import type {
+  Alerta,
+  Cenario,
+  Configuracao,
+  LimiteEncaixe,
+  ResultadoCenario,
+  ResultadoHorizonte,
+  ResultadoMes,
+  ResultadoPessoa,
+  SuspensaoSemCobranca,
+} from "@/lib/calculo/tipos";
 import { formatarHoras, formatarMoeda, formatarPct } from "@/lib/formato";
 import { Badge, Card, Forma, IconeBadge, Passo, TituloCard, cx, type Tom } from "../ui";
 
@@ -63,6 +73,22 @@ export function ListaAlertas({ alertas }: { alertas: Alerta[] }) {
         </button>
       )}
     </div>
+  );
+}
+
+// ─── Limites do encaixe ─────────────────────────────────────────────────────
+// Piso é preço (decisão comercial), capacidade é gente (decisão de equipe).
+
+function ChipLimite({ l, estourado }: { l: LimiteEncaixe; estourado?: boolean }) {
+  const piso = l.tipo === "piso";
+  return (
+    <Badge
+      tom={estourado ? "erro" : "aviso"}
+      icone={piso ? Coins : Users}
+      title={piso ? "Limite de preço: o valor não paga o piso por hora deste sócio." : "Limite de gente: as horas passam da capacidade deste sócio."}
+    >
+      {piso ? `piso de ${l.nome} · preço` : `capacidade de ${l.nome} · gente`}
+    </Badge>
   );
 }
 
@@ -119,6 +145,14 @@ function Cascata({ m }: { m: ResultadoMes }) {
       <LinhaCascata rotulo="Mensalidade" valor={m.receitaMensalidadeCentavos} />
       {m.receitaTrafegoCentavos > 0 && <LinhaCascata rotulo="Cobrança de tráfego" valor={m.receitaTrafegoCentavos} />}
       <LinhaCascata rotulo="Receita bruta" valor={m.receitaBrutaCentavos} forte />
+      {m.verbaMidiaCentavos != null && m.verbaMidiaCentavos > 0 && (
+        <div className="my-1 flex items-baseline justify-between gap-3 rounded-xl border border-dashed border-linha px-3 py-1.5 text-texto-suave">
+          <span className="text-[12px]">
+            Verba de mídia do cliente <span className="text-[11px]">(paga direto na plataforma, fora de qualquer soma)</span>
+          </span>
+          <span className="numero text-[13px] whitespace-nowrap">{formatarMoeda(m.verbaMidiaCentavos)}</span>
+        </div>
+      )}
       <LinhaCascata
         rotulo={`Imposto (${formatarPct(m.impostoPct)})`}
         valor={m.impostosCentavos}
@@ -228,6 +262,81 @@ function Indicador({ icone, rotulo, valor, dica }: { icone: LucideIcon; rotulo: 
       <p className="numero mt-2 text-lg font-extrabold">{valor}</p>
       <p className="mt-0.5 text-[10px] leading-tight text-texto-suave">{dica}</p>
     </div>
+  );
+}
+
+// ─── Horizonte: opção A × opção B ───────────────────────────────────────────
+
+const ROTULO_SUSPENSAO: Record<SuspensaoSemCobranca, { letra: string; texto: string }> = {
+  tudo: { letra: "A", texto: "não paga nada" },
+  mensalidade: { letra: "B", texto: "paga só a gestão de tráfego" },
+};
+
+function BlocoHorizonte({ h }: { h: ResultadoHorizonte }) {
+  const opcoes: SuspensaoSemCobranca[] = ["tudo", "mensalidade"];
+  return (
+    <Card>
+      <TituloCard
+        icone={CalendarClock}
+        titulo={`Horizonte de ${h.meses} meses`}
+        descricao={`${h.semCobranca} mês(es) sem cobrança. Só simulação: compara o que fica suspenso nesses meses.`}
+      />
+      <div className="px-5 pb-5">
+        {h.opcoesIguais && h.semCobranca > 0 && (
+          <p className="mb-3 rounded-2xl bg-info-suave px-3 py-2 text-xs font-medium text-info">
+            Este cenário não tem cobrança de tráfego, então as opções A e B dão o mesmo resultado.
+          </p>
+        )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {opcoes.map((o) => {
+            const v = h.opcoes[o];
+            const escolhida = h.escolhida === o;
+            return (
+              <div key={o} className={cx("flex flex-col gap-2 rounded-2xl border p-3", escolhida ? "border-marca bg-marca-tinta" : "border-linha")}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-marca text-[11px] font-bold text-sobre-marca">{ROTULO_SUSPENSAO[o].letra}</span>
+                  <span className="text-[13px] font-bold">{ROTULO_SUSPENSAO[o].texto}</span>
+                  {escolhida && (
+                    <Badge tom="marca" icone={CheckCircle2}>
+                      vale neste cenário
+                    </Badge>
+                  )}
+                </div>
+                {h.semCobranca > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-texto-suave">Mensalidade necessária nos meses pagantes</p>
+                    <p className="numero text-lg font-extrabold">{formatarMoeda(v.mensalidadeNecessariaCentavos)}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[11px] font-semibold text-texto-suave">Receita no período</p>
+                    <p className="numero text-[13px] font-bold">{formatarMoeda(v.receitaTotalCentavos)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-texto-suave">Sobra no período</p>
+                    <p className={cx("numero text-[13px] font-bold", v.sobraTotalCentavos < 0 && "text-erro")}>{formatarMoeda(v.sobraTotalCentavos)}</p>
+                  </div>
+                </div>
+                {v.pessoas.map((p) => (
+                  <div key={p.id} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-xl bg-superficie-2/70 px-3 py-2 text-[12px]">
+                    <span className="font-semibold">{p.nome}</span>
+                    <span className="numero text-texto-suave">
+                      {formatarMoeda(p.valorTotalCentavos)} · média {formatarMoeda(p.valorHoraMedioCentavos)}/h
+                    </span>
+                    {p.abaixoPiso && (
+                      <Badge tom="erro" icone={TrendingDown}>
+                        abaixo do piso
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -341,17 +450,34 @@ export function PainelResultado({
               />
               <div className="px-5 pb-5">
                 {!r.encaixe.disponivel && <p className="mb-3 rounded-2xl bg-info-suave px-3 py-2 text-xs font-medium text-info">{r.encaixe.motivo}</p>}
+                {r.encaixe.disponivel && !r.encaixe.cabe && (
+                  <div className="mb-4 flex flex-wrap items-center gap-1.5 rounded-2xl bg-erro-suave/60 px-3 py-2">
+                    <span className="text-xs font-bold text-erro">Está travando:</span>
+                    {r.encaixe.limitantes.map((l) => (
+                      <ChipLimite key={l.tipo + l.pessoaId} l={l} estourado />
+                    ))}
+                  </div>
+                )}
                 {r.encaixe.disponivel && (
                   <div className="mb-4 flex flex-col gap-2.5">
                     {r.encaixe.pessoas
                       .filter((p) => p.horasPagasNoPiso != null || p.capacidadeHorasMes != null)
                       .map((p) => {
                         const teto = Math.min(p.horasPagasNoPiso ?? Infinity, p.capacidadeHorasMes ?? Infinity);
+                        const tetoPor: "piso" | "capacidade" =
+                          (p.horasPagasNoPiso ?? Infinity) <= (p.capacidadeHorasMes ?? Infinity) ? "piso" : "capacidade";
                         const pct = Number.isFinite(teto) && teto > 0 ? (p.horas / teto) * 100 : p.horas > 0 ? 101 : 0;
                         return (
                           <div key={p.id}>
                             <div className="mb-1 flex flex-wrap justify-between gap-2 text-[11px] font-semibold">
-                              <span>{p.nome}</span>
+                              <span>
+                                {p.nome}
+                                {Number.isFinite(teto) && (
+                                  <span className="ml-1.5 font-medium text-texto-suave">
+                                    · teto pelo {tetoPor === "piso" ? "piso (preço)" : "capacidade (gente)"}
+                                  </span>
+                                )}
+                              </span>
                               <span className="text-texto-suave">
                                 {formatarHoras(p.horas)} usadas
                                 {p.horasPagasNoPiso != null && ` · o valor paga ${formatarHoras(p.horasPagasNoPiso)} no piso`}
@@ -376,7 +502,7 @@ export function PainelResultado({
                         valor={t.quantidade}
                         aoMudar={(v) => aoMudar(ajustarQuantidade(cenario, t.tipoEntregaId, (v ?? 0) - t.quantidade))}
                       />
-                      <div className="w-32 text-right">
+                      <div className="flex w-48 flex-col items-end gap-1 text-right">
                         {t.folga == null ? (
                           <span className="text-[11px] text-texto-suave">{r.encaixe!.disponivel ? "sem limite" : "—"}</span>
                         ) : t.folga > 0 ? (
@@ -388,7 +514,14 @@ export function PainelResultado({
                         ) : (
                           <Badge tom="erro">tirar {-t.folga}</Badge>
                         )}
-                        {t.limite && t.folga != null && t.folga >= 0 && <p className="mt-0.5 text-[10px] text-texto-suave">limite: {t.limite}</p>}
+                        {t.folga != null && t.folga >= 0 && t.folga < 9999 && t.limites.length > 0 && (
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="text-[10px] text-texto-suave">o próximo esbarra em</span>
+                            {t.limites.map((l) => (
+                              <ChipLimite key={l.tipo + l.pessoaId} l={l} />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -406,46 +539,7 @@ export function PainelResultado({
         </>
       )}
 
-      {r.horizonte && (
-        <Card>
-          <TituloCard
-            icone={CalendarClock}
-            titulo={`Horizonte de ${r.horizonte.meses} meses`}
-            descricao={`${r.horizonte.semCobranca} mês(es) sem cobrança. Só simulação.`}
-          />
-          <div className="flex flex-col gap-3 px-5 pb-5">
-            {r.horizonte.mensalidadeNecessariaCentavos != null && r.horizonte.semCobranca > 0 && (
-              <div className="rounded-2xl bg-marca-tinta p-3">
-                <p className="text-[11px] font-semibold text-texto-suave">Mensalidade necessária nos meses pagantes para compensar</p>
-                <p className="numero text-xl font-extrabold">{formatarMoeda(r.horizonte.mensalidadeNecessariaCentavos)}</p>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-2 text-[13px]">
-              <div>
-                <p className="text-[11px] font-semibold text-texto-suave">Receita no período</p>
-                <p className="numero font-bold">{formatarMoeda(r.horizonte.receitaTotalCentavos)}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold text-texto-suave">Sobra no período</p>
-                <p className={cx("numero font-bold", r.horizonte.sobraTotalCentavos < 0 && "text-erro")}>{formatarMoeda(r.horizonte.sobraTotalCentavos)}</p>
-              </div>
-              {r.horizonte.pessoas.map((p) => (
-                <div key={p.id} className="col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-superficie-2/70 px-3 py-2">
-                  <span className="font-semibold">{p.nome}</span>
-                  <span className="numero text-texto-suave">
-                    {formatarMoeda(p.valorTotalCentavos)} no período · média {formatarMoeda(p.valorHoraMedioCentavos)}/h
-                  </span>
-                  {p.abaixoPiso && (
-                    <Badge tom="erro" icone={TrendingDown}>
-                      abaixo do piso
-                    </Badge>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      )}
+      {r.horizonte && <BlocoHorizonte h={r.horizonte} />}
 
       {r.pontuaisFora.map((pf) => (
         <Card key={pf.id}>

@@ -50,6 +50,7 @@ export function novoCenario(nome: string): Cenario {
     },
     pontuais: [],
     mesesSemCobranca: null,
+    suspensaoSemCobranca: null,
     horizonteMeses: null,
     sobreposicoes: {
       reinvestimentoPct: null,

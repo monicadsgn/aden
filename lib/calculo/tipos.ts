@@ -117,9 +117,21 @@ export interface CobrancaTrafego {
   valorPorCampanhaCentavos: Centavos;
   campanhas: number | null;
   percentualVerba: Pct;
-  /** verba de mídia do cliente (paga por fora) — só base do percentual */
+  /**
+   * Verba de mídia do cliente. Paga pelo cliente direto na plataforma: NUNCA é
+   * faturamento da Aden, não entra em imposto, taxa nem receita. Campo
+   * informativo; o único uso em conta é como base do modelo "percentual da
+   * verba" (e aí o que fatura é só a gestão).
+   */
   verbaMensalCentavos: Centavos;
 }
+
+/** O que fica suspenso nos meses sem cobrança. */
+export type SuspensaoSemCobranca =
+  /** opção A: o cliente não paga nada */
+  | "tudo"
+  /** opção B: não paga a mensalidade, mas paga a gestão de tráfego */
+  | "mensalidade";
 
 export type FormaPontual = "diluido" | "fora";
 
@@ -159,6 +171,8 @@ export interface Cenario {
   trafego: CobrancaTrafego;
   pontuais: ProjetoPontual[];
   mesesSemCobranca: number | null;
+  /** qual opção vale para este cenário; as duas são sempre calculadas para comparar */
+  suspensaoSemCobranca?: SuspensaoSemCobranca | null;
   horizonteMeses: number | null;
   sobreposicoes: Sobreposicoes;
 }
@@ -198,6 +212,8 @@ export interface ResultadoMes {
   receitaMensalidadeCentavos: number;
   receitaTrafegoCentavos: number;
   receitaBrutaCentavos: number;
+  /** informativo: verba de mídia do cliente, fora do caixa e de qualquer soma */
+  verbaMidiaCentavos: number | null;
   impostoPct: number;
   impostoPctSobreposto: boolean;
   impostosCentavos: number;
@@ -242,6 +258,13 @@ export interface ResultadoMinimo {
   resultado: ResultadoMes | null;
 }
 
+/** O que impede de caber mais: piso é preço, capacidade é gente. */
+export interface LimiteEncaixe {
+  tipo: "piso" | "capacidade";
+  pessoaId: Id;
+  nome: string;
+}
+
 export interface EncaixeTipo {
   tipoEntregaId: Id;
   nome: string;
@@ -249,7 +272,8 @@ export interface EncaixeTipo {
   horasPorUnidade: number | null;
   /** positivo: quantas unidades a mais cabem; negativo: quantas precisa tirar */
   folga: number | null;
-  limite: "piso" | "capacidade" | null;
+  /** o que trava: na folga positiva, o que impede a próxima unidade; na negativa, o que está estourado */
+  limites: LimiteEncaixe[];
   /** true quando nem zerando este tipo o cenário volta a caber */
   naoResolve: boolean;
 }
@@ -258,6 +282,8 @@ export interface Encaixe {
   disponivel: boolean;
   motivo: string | null;
   cabe: boolean;
+  /** quando não cabe: quem e o que está estourado agora */
+  limitantes: LimiteEncaixe[];
   tipos: EncaixeTipo[];
   pessoas: {
     id: Id;
@@ -269,15 +295,24 @@ export interface Encaixe {
   }[];
 }
 
-export interface ResultadoHorizonte {
-  meses: number;
-  semCobranca: number;
+export interface VarianteHorizonte {
+  suspensao: SuspensaoSemCobranca;
   receitaTotalCentavos: number;
   sobraTotalCentavos: number;
   pessoas: { id: Id; nome: string; valorTotalCentavos: number | null; valorHoraMedioCentavos: number | null; abaixoPiso: boolean }[];
-  /** modo escopo: mensalidade necessária nos meses pagantes */
+  /** mensalidade necessária nos meses pagantes para compensar os meses sem cobrança */
   mensalidadeNecessariaCentavos: number | null;
-  aproximado: boolean;
+}
+
+export interface ResultadoHorizonte {
+  meses: number;
+  semCobranca: number;
+  /** as duas opções, sempre calculadas para comparação */
+  opcoes: Record<SuspensaoSemCobranca, VarianteHorizonte>;
+  /** a que vale para este cenário (null = ainda não escolhida) */
+  escolhida: SuspensaoSemCobranca | null;
+  /** sem cobrança de tráfego, A e B dão o mesmo resultado */
+  opcoesIguais: boolean;
 }
 
 export interface ResultadoPontualFora {

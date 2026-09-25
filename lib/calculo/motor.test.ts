@@ -117,6 +117,31 @@ describe("rateio", () => {
   });
 });
 
+describe("verba de mídia", () => {
+  it("é só informativa: não muda nenhum número quando o modelo não é percentual", () => {
+    const base = cenario();
+    base.trafego = { ...base.trafego, modelo: "fixo", valorFixoCentavos: 50000 };
+    const comVerba = { ...base, trafego: { ...base.trafego, verbaMensalCentavos: 10000000 } };
+    const r1 = calcularComReceita(prepararMes(config(), base), 300000);
+    const r2 = calcularComReceita(prepararMes(config(), comVerba), 300000);
+    expect(r2.receitaBrutaCentavos).toBe(r1.receitaBrutaCentavos);
+    expect(r2.impostosCentavos).toBe(r1.impostosCentavos);
+    expect(r2.taxasCentavos).toBe(r1.taxasCentavos);
+    expect(r2.sobraCentavos).toBe(r1.sobraCentavos);
+    expect(r2.verbaMidiaCentavos).toBe(10000000);
+  });
+
+  it("no percentual da verba, fatura só a gestão; imposto e taxa incidem só sobre ela", () => {
+    const c = cenario();
+    c.trafego = { ...c.trafego, modelo: "percentual_verba", percentualVerba: 10, verbaMensalCentavos: 1000000 };
+    const r = calcularComReceita(prepararMes(config(), c), 300000);
+    expect(r.receitaTrafegoCentavos).toBe(100000);
+    expect(r.receitaBrutaCentavos).toBe(400000); // mensalidade + gestão, sem a verba
+    expect(r.impostosCentavos).toBeCloseTo(400000 * 0.06);
+    expect(r.taxasCentavos).toBeCloseTo(400000 * 0.04);
+  });
+});
+
 describe("valor mínimo (modo escopo)", () => {
   for (const regra of ["igual", "proporcional"] as const) {
     it(`o mínimo coloca o sócio limitante exatamente no piso (${regra})`, () => {
@@ -192,18 +217,47 @@ describe("pontuais, horizonte e encaixe", () => {
     expect(r.mes!.horasTotais).toBe(30); // não entra no mês
   });
 
-  it("meses sem cobrança elevam a mensalidade necessária", () => {
+  it("meses sem cobrança elevam a mensalidade necessária (opção A: não paga nada)", () => {
     const c = cenario();
     c.horizonteMeses = 12;
     c.mesesSemCobranca = 3;
+    c.suspensaoSemCobranca = "tudo";
     const r = calcularCenario(config(), c);
-    expect(r.horizonte!.mensalidadeNecessariaCentavos!).toBeGreaterThan(r.minimo.mensalidadeMinimaCentavos!);
+    const a = r.horizonte!.opcoes.tudo;
+    expect(a.mensalidadeNecessariaCentavos!).toBeGreaterThan(r.minimo.mensalidadeMinimaCentavos!);
     // cobrando a mensalidade necessária, a média no horizonte fica no piso
-    const v = { ...c, modo: "valor" as const, mensalidadeCentavos: r.horizonte!.mensalidadeNecessariaCentavos };
+    const v = { ...c, modo: "valor" as const, mensalidadeCentavos: a.mensalidadeNecessariaCentavos };
     const rv = calcularCenario(config(), v);
-    const a = rv.horizonte!.pessoas.find((p) => p.id === "a")!;
-    expect(a.valorHoraMedioCentavos!).toBeGreaterThanOrEqual(5000 - 0.01);
-    expect(a.valorHoraMedioCentavos!).toBeLessThan(5001);
+    const moni = rv.horizonte!.opcoes.tudo.pessoas.find((p) => p.id === "a")!;
+    expect(moni.valorHoraMedioCentavos!).toBeGreaterThanOrEqual(5000 - 0.01);
+    expect(moni.valorHoraMedioCentavos!).toBeLessThan(5001);
+  });
+
+  it("opção B (paga só a gestão de tráfego) sai melhor que a A quando há cobrança de tráfego", () => {
+    const c = cenario();
+    c.trafego = { ...c.trafego, modelo: "fixo", valorFixoCentavos: 60000 };
+    c.modo = "valor";
+    c.mensalidadeCentavos = 300000;
+    c.horizonteMeses = 12;
+    c.mesesSemCobranca = 3;
+    const r = calcularCenario(config(), c);
+    const { tudo, mensalidade } = r.horizonte!.opcoes;
+    expect(r.horizonte!.opcoesIguais).toBe(false);
+    // nos 3 meses a gestão entra, já descontados imposto (6%) e taxa (4%)
+    expect(mensalidade.sobraTotalCentavos - tudo.sobraTotalCentavos).toBeCloseTo(3 * 60000 * 0.9);
+    expect(mensalidade.receitaTotalCentavos - tudo.receitaTotalCentavos).toBe(3 * 60000);
+    expect(mensalidade.mensalidadeNecessariaCentavos!).toBeLessThan(tudo.mensalidadeNecessariaCentavos!);
+    // sem escolher, avisa
+    expect(r.alertas.some((a) => a.texto.includes("Escolha o que fica suspenso"))).toBe(true);
+  });
+
+  it("sem cobrança de tráfego, as opções A e B são iguais", () => {
+    const c = cenario();
+    c.horizonteMeses = 12;
+    c.mesesSemCobranca = 2;
+    const h = calcularCenario(config(), c).horizonte!;
+    expect(h.opcoesIguais).toBe(true);
+    expect(h.opcoes.tudo.mensalidadeNecessariaCentavos).toBe(h.opcoes.mensalidade.mensalidadeNecessariaCentavos);
   });
 
   it("modo valor mostra quantas entregas a mais cabem", () => {
@@ -221,6 +275,23 @@ describe("pontuais, horizonte e encaixe", () => {
     expect(com.pessoas.find((p) => p.id === "a")!.abaixoPiso).toBe(false);
     const mais = calcularComReceita(prepararMes(cfg, { ...c, entregas: [{ ...c.entregas[0], quantidade: 11 + post.folga! }, c.entregas[1]] }), 400000);
     expect(mais.pessoas.find((p) => p.id === "a")!.abaixoPiso || mais.pessoas.find((p) => p.id === "a")!.consumoCapacidadePct! > 100).toBe(true);
+  });
+
+  it("diz qual limite trava e de qual sócio: piso (preço) ou capacidade (gente)", () => {
+    const c = cenario();
+    c.modo = "valor";
+    c.mensalidadeCentavos = 150000;
+    const r = calcularCenario(config(), c);
+    expect(r.encaixe!.limitantes).toContainEqual({ tipo: "piso", pessoaId: "a", nome: "A" });
+
+    // valor alto: quem trava a próxima unidade de post é a capacidade de A
+    const cap = cenario();
+    cap.modo = "valor";
+    cap.mensalidadeCentavos = 100000000;
+    const rc = calcularCenario(config(), cap);
+    const post = rc.encaixe!.tipos.find((t) => t.tipoEntregaId === "post")!;
+    expect(post.limites).toEqual([{ tipo: "capacidade", pessoaId: "a", nome: "A" }]);
+    expect(post.folga).toBe(40); // (100 h − 20 h) ÷ 2 h
   });
 
   it("modo valor mostra quantas precisa tirar quando não cabe", () => {

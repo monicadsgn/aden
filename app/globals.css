@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@fontsource-variable/montserrat";
 @import "./tokens.css";
 
 /* expõe os tokens como classes do Tailwind (bg-marca, text-texto-suave…) */

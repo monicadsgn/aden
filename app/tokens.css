@@ -1,7 +1,18 @@
 /* ════════════════════════════════════════════════════════════════════════
-   TOKENS DA ADEN — o único lugar para trocar a identidade visual.
-   Cores, tipografia, raios e sombras. Os componentes só usam estes nomes.
+   TOKENS DA ADEN — o único lugar para trocar cores e fonte.
+   Os componentes só usam estes nomes (bg-marca, text-texto-suave…).
+
+   PROVISÓRIO: pistache/creme e Montserrat são da Mônica Design. Quando a
+   Aden tiver identidade própria:
+   1. Fonte: troque o @import abaixo pelo pacote da nova fonte
+      (npm install @fontsource-variable/<fonte>) e ajuste --fonte.
+      Fontes vêm de pacote local, não do Google Fonts (a política de
+      segurança do app só carrega fontes do próprio domínio).
+   2. Cores: troque os valores em :root e nos dois blocos de modo escuro.
+   3. Logo: components/Marca.tsx (logo da tela) e app/icon.svg (ícone da aba).
    ════════════════════════════════════════════════════════════════════════ */
+
+@import "@fontsource-variable/montserrat";
 
 :root {
   /* marca */

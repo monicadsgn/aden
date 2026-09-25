@@ -27,10 +27,13 @@ Ordem aprovada: 1 Calculadora → 2 Núcleo + Clientes/Contratos + Decisões →
 - Mostrar custo por hora **e** valor cobrado por hora.
 - Pontuais (branding etc.): diluídos em X meses **ou** fora da mensalidade, escolhido por projeto.
 - Audiovisual e terceiros: fixo **ou** por entrega. Ferramentas: fixo mensal.
-- Meses sem cobrança: só simulação, começa em zero.
+- Meses sem cobrança: só simulação, começa em zero. Duas opções sempre calculadas lado a lado: **A** o cliente não paga nada; **B** não paga a mensalidade, mas paga a gestão de tráfego. O cenário escolhe qual vale para os alertas.
 - Consumo de capacidade em % das horas do mês de cada sócio.
 - Custo fixo da empresa cadastrado uma vez e rateado entre clientes ativos, **igual** ou **proporcional ao valor**.
 - Cobrança do tráfego: fixo, por campanha, % da verba ou incluído na mensalidade. **Sem padrão.**
+- **Verba de mídia não é faturamento** (25/09/2026): o cliente paga direto na plataforma. Não entra em receita, imposto nem taxa, e não é somada em lugar nenhum. É um campo opcional e informativo; no modelo "% da verba" serve só de base para calcular a gestão, e o que fatura é a gestão. Travado por teste.
+- Reinvestimento só quando há sobra; cliente novo entra no rateio (+1); custo por hora sem imposto e sem taxa (confirmados em 25/09/2026).
+- "O que cabe" respeita piso e capacidade e **mostra qual limite trava e de qual sócio**: piso é preço (decisão comercial), capacidade é gente (decisão de equipe).
 - Os dois sócios são administradores. Toda alteração em valor, percentual e configuração fica registrada.
 
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
@@ -38,7 +41,7 @@ Ordem aprovada: 1 Calculadora → 2 Núcleo + Clientes/Contratos + Decisões →
 ```
 horas do serviço      = Σ quantidade × horas por entrega (pontual diluído: ÷ meses)
 horas do sócio        = Σ horas do serviço × % de divisão do sócio naquele serviço
-receita bruta         = mensalidade + cobrança de tráfego
+receita bruta         = mensalidade + cobrança da gestão de tráfego   (a verba de mídia nunca entra)
 impostos / taxas      = receita bruta × %
 custos do projeto     = ferramentas + audiovisual + terceiros (+ custos do pontual diluído ÷ meses)
 rateio (igual)        = total de custos fixos ÷ nº de clientes na base (cliente novo soma 1)
@@ -60,12 +63,20 @@ A cobrança de tráfego é descontada da mensalidade mínima.
 
 **O que cabe (modo valor):** para cada tipo de entrega, busca quantas unidades a mais (ou a menos) mantêm
 todos os sócios acima do piso e dentro da capacidade, considerando também o custo por entrega vinculado ao tipo.
+Informa o limite que trava (piso ou capacidade) e de qual sócio.
 
-**Meses sem cobrança:** no horizonte de M meses com N sem cobrança, soma a sobra dos meses pagantes com a dos meses
-gratuitos (sem receita, com custos) e calcula a média por hora de cada sócio. No modo escopo, mostra a mensalidade
+**Meses sem cobrança:** no horizonte de M meses com N sem cobrança, soma a sobra dos meses pagantes com a dos N meses
+suspensos e calcula a média por hora de cada sócio. Nos meses suspensos os custos e o rateio continuam; a receita é zero
+(opção A) ou só a gestão de tráfego, com imposto e taxa sobre ela (opção B). Para cada opção, mostra também a mensalidade
 necessária nos meses pagantes para compensar.
 
 **Pontual fora da mensalidade:** cálculo próprio, sem rateio de custo fixo, com valor mínimo e resultado por sócio.
+
+## Identidade visual
+
+Provisória (pistache, creme e Montserrat são da Mônica Design). Cores, fonte, raios e sombras ficam só em
+`app/tokens.css`; nenhum componente tem cor ou fonte fixa. O logo fica em `components/Marca.tsx` e `app/icon.svg`.
+Verificado em 25/09/2026: trocando só o `tokens.css` por outra paleta e outra fonte, o sistema inteiro muda.
 
 ## Modelo de dados
 

@@ -2,7 +2,7 @@
 
 // Componentes básicos de interface. Só usam os tokens de app/tokens.css.
 
-import { Minus, Plus } from "lucide-react";
+import { ChevronDown, Minus, Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { lerMoeda, lerNumero, moedaParaTexto, numeroParaTexto } from "@/lib/formato";
@@ -295,36 +295,35 @@ export function Selecao({
   return (
     <div className={className}>
       {rotulo && <Rotulo htmlFor={id}>{rotulo}</Rotulo>}
-      <select
-        id={id}
-        aria-label={ariaLabel}
-        className={cx(campoBase, "cursor-pointer appearance-none bg-[length:16px] bg-[right_0.6rem_center] bg-no-repeat pr-8")}
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23797c46' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
-        }}
-        value={valor ?? ""}
-        onChange={(e) => aoMudar(e.target.value === "" ? null : e.target.value)}
-      >
-        {vazio !== undefined && <option value="">{vazio}</option>}
-        {temGrupos
-          ? grupos.map((g) => (
-              <optgroup key={g ?? "-"} label={g ?? "Sem serviço"}>
-                {opcoes
-                  .filter((o) => o.grupo === g)
-                  .map((o) => (
-                    <option key={o.valor} value={o.valor}>
-                      {o.rotulo}
-                    </option>
-                  ))}
-              </optgroup>
-            ))
-          : opcoes.map((o) => (
-              <option key={o.valor} value={o.valor}>
-                {o.rotulo}
-              </option>
-            ))}
-      </select>
+      <div className="relative">
+        <select
+          id={id}
+          aria-label={ariaLabel}
+          className={cx(campoBase, "cursor-pointer appearance-none pr-8")}
+          value={valor ?? ""}
+          onChange={(e) => aoMudar(e.target.value === "" ? null : e.target.value)}
+        >
+          {vazio !== undefined && <option value="">{vazio}</option>}
+          {temGrupos
+            ? grupos.map((g) => (
+                <optgroup key={g ?? "-"} label={g ?? "Sem serviço"}>
+                  {opcoes
+                    .filter((o) => o.grupo === g)
+                    .map((o) => (
+                      <option key={o.valor} value={o.valor}>
+                        {o.rotulo}
+                      </option>
+                    ))}
+                </optgroup>
+              ))
+            : opcoes.map((o) => (
+                <option key={o.valor} value={o.valor}>
+                  {o.rotulo}
+                </option>
+              ))}
+        </select>
+        <ChevronDown size={16} strokeWidth={2.5} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-marca" aria-hidden />
+      </div>
     </div>
   );
 }

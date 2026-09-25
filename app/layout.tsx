@@ -10,7 +10,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#797c46",
 };
 
 // aplica o tema salvo antes da pintura, evitando piscar

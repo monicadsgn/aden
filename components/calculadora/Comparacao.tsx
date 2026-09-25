@@ -48,6 +48,18 @@ export function Comparacao({
       )),
     },
     { rotulo: "Receita bruta", valores: resultados.map((r, i) => moeda(r.mes?.receitaBrutaCentavos, i)) },
+    ...(resultados.some((r) => (r.mes?.verbaMidiaCentavos ?? 0) > 0)
+      ? [
+          {
+            rotulo: "Verba de mídia (informativa)",
+            valores: resultados.map((r, i) => (
+              <span key={i} className="numero text-texto-suave">
+                {formatarMoeda(r.mes?.verbaMidiaCentavos)}
+              </span>
+            )),
+          },
+        ]
+      : []),
     { rotulo: "Impostos e taxas", valores: resultados.map((r, i) => moeda(r.mes ? r.mes.impostosCentavos + r.mes.taxasCentavos : null, i)) },
     { rotulo: "Custos do projeto", valores: resultados.map((r, i) => moeda(r.mes?.custosProjetoCentavos, i)) },
     { rotulo: "Custo fixo rateado", valores: resultados.map((r, i) => moeda(r.mes?.rateio.quotaCentavos, i)) },

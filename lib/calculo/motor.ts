@@ -23,6 +23,7 @@ import type {
   Encaixe,
   EncaixeTipo,
   Id,
+  LimiteEncaixe,
   LinhaCusto,
   LinhaEntrega,
   Pessoa,
@@ -34,6 +35,8 @@ import type {
   ResultadoPessoa,
   ResultadoPontualFora,
   ResultadoServico,
+  SuspensaoSemCobranca,
+  VarianteHorizonte,
 } from "./tipos";
 
 const EPS = 0.005; // tolerância de meio centavo / arredondamento de %
@@ -57,7 +60,10 @@ export interface PreparadoMes {
   custosPorCategoria: Record<CategoriaCusto, number>;
   custoPontualDiluido: number;
   custosProjeto: number;
+  /** só a cobrança da Aden pela gestão; a verba de mídia nunca entra aqui */
   receitaTrafego: number;
+  /** informativo, fora de qualquer soma */
+  verbaMidia: number | null;
   impostoPct: number;
   impostoSobreposto: boolean;
   taxaPct: number;
@@ -271,7 +277,8 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     servicos.push({ servicoId, nome, horas, divisao, divisaoSobreposta: sobreposta });
   }
 
-  // Tráfego
+  // Tráfego — só a gestão fatura. A verba de mídia é paga pelo cliente direto na
+  // plataforma: não é receita, não entra em imposto nem em taxa de recebimento.
   let receitaTrafego = 0;
   if (!opcoes.ignorarPontuais) {
     const t = cenario.trafego;
@@ -289,6 +296,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         receitaTrafego = v0(t.valorPorCampanhaCentavos) * v0(t.campanhas);
         break;
       case "percentual_verba":
+        // a verba é só a BASE do percentual; o faturamento é a gestão
         receitaTrafego = (v0(t.verbaMensalCentavos) * v0(t.percentualVerba)) / 100;
         break;
     }
@@ -323,6 +331,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     custoPontualDiluido,
     custosProjeto,
     receitaTrafego,
+    verbaMidia: opcoes.ignorarPontuais ? null : cenario.trafego.verbaMensalCentavos,
     impostoPct: v0(imposto),
     impostoSobreposto: sob.impostoPct != null && sob.impostoPct !== config.empresa.impostoPct,
     taxaPct: v0(taxa),
@@ -419,6 +428,7 @@ export function calcularComReceita(
     receitaMensalidadeCentavos: Math.max(0, mensalidade),
     receitaTrafegoCentavos: trafego,
     receitaBrutaCentavos: receita,
+    verbaMidiaCentavos: prep.verbaMidia,
     impostoPct: prep.impostoPct,
     impostoPctSobreposto: prep.impostoSobreposto,
     impostosCentavos: impostos,
@@ -558,46 +568,61 @@ export function calcularHorizonte(
     alertas.push({ nivel: "erro", texto: "Os meses sem cobrança passam do horizonte da simulação." });
     return { horizonte: null, alertas };
   }
-  const gratis = calcularComReceita(prep, 0, { semTrafego: true });
+  const alvo = prep.percentuaisValidos ? sobraAlvo(prep) : null;
+  const pagante = mensalidade != null ? calcularComReceita(prep, mensalidade) : null;
 
-  let necessaria: number | null = null;
-  if (N < M && prep.percentuaisValidos) {
-    const alvo = sobraAlvo(prep);
-    if (alvo.ok) {
+  const variante = (suspensao: SuspensaoSemCobranca): VarianteHorizonte => {
+    // A: não paga nada. B: não paga a mensalidade, mas paga a gestão de tráfego.
+    const gratis = calcularComReceita(prep, 0, { semTrafego: suspensao === "tudo" });
+
+    let necessaria: number | null = null;
+    if (N < M && alvo?.ok) {
       const alvoPagante = (M * alvo.alvo - N * gratis.sobraCentavos) / (M - N);
       const R = resolverReceita(prep, alvoPagante);
       if (R != null) necessaria = Math.max(0, R - prep.receitaTrafego);
     }
-  }
 
-  const pagante = mensalidade != null ? calcularComReceita(prep, mensalidade) : null;
-  const sobraTotal = pagante ? (M - N) * pagante.sobraCentavos + N * gratis.sobraCentavos : 0;
-  const reinv = sobraTotal > 0 ? (sobraTotal * prep.reinvPct) / 100 : 0;
-  const distribuivel = sobraTotal - reinv;
+    const sobraTotal = pagante ? (M - N) * pagante.sobraCentavos + N * gratis.sobraCentavos : 0;
+    const reinv = sobraTotal > 0 ? (sobraTotal * prep.reinvPct) / 100 : 0;
+    const distribuivel = sobraTotal - reinv;
 
-  const pessoas = prep.socios.map((s) => {
-    const horasTot = (prep.horasPorPessoa.get(s.pessoa.id) ?? 0) * M;
-    const valor = pagante && prep.percentuaisValidos && s.pct != null ? (distribuivel * s.pct) / 100 : null;
-    const vh = valor != null && horasTot > 0 ? valor / horasTot : null;
-    const piso = positivo(s.pessoa.pisoHoraCentavos) ? s.pessoa.pisoHoraCentavos : null;
+    const pessoas = prep.socios.map((s) => {
+      const horasTot = (prep.horasPorPessoa.get(s.pessoa.id) ?? 0) * M;
+      const valor = pagante && prep.percentuaisValidos && s.pct != null ? (distribuivel * s.pct) / 100 : null;
+      const vh = valor != null && horasTot > 0 ? valor / horasTot : null;
+      const piso = positivo(s.pessoa.pisoHoraCentavos) ? s.pessoa.pisoHoraCentavos : null;
+      return {
+        id: s.pessoa.id,
+        nome: s.pessoa.nome,
+        valorTotalCentavos: valor,
+        valorHoraMedioCentavos: vh,
+        abaixoPiso: piso != null && vh != null && vh < piso - EPS,
+      };
+    });
+
     return {
-      id: s.pessoa.id,
-      nome: s.pessoa.nome,
-      valorTotalCentavos: valor,
-      valorHoraMedioCentavos: vh,
-      abaixoPiso: piso != null && vh != null && vh < piso - EPS,
+      suspensao,
+      receitaTotalCentavos: pagante ? (M - N) * pagante.receitaBrutaCentavos + N * gratis.receitaBrutaCentavos : 0,
+      sobraTotalCentavos: sobraTotal,
+      pessoas,
+      mensalidadeNecessariaCentavos: necessaria,
     };
-  });
+  };
+
+  const escolhida = cenario.suspensaoSemCobranca ?? null;
+  if (N > 0 && escolhida == null)
+    alertas.push({
+      nivel: "aviso",
+      texto: "Escolha o que fica suspenso nos meses sem cobrança (nada é pago, ou só a mensalidade). As duas opções aparecem lado a lado.",
+    });
 
   return {
     horizonte: {
       meses: M,
       semCobranca: N,
-      receitaTotalCentavos: pagante ? (M - N) * pagante.receitaBrutaCentavos : 0,
-      sobraTotalCentavos: sobraTotal,
-      pessoas,
-      mensalidadeNecessariaCentavos: necessaria,
-      aproximado: false,
+      opcoes: { tudo: variante("tudo"), mensalidade: variante("mensalidade") },
+      escolhida,
+      opcoesIguais: prep.receitaTrafego === 0,
     },
     alertas,
   };
@@ -624,14 +649,16 @@ export function ajustarQuantidade(cenario: Cenario, tipoId: Id, delta: number): 
   return { ...cenario, entregas };
 }
 
-function verificarCabe(r: ResultadoMes, socios: Set<Id>): { ok: boolean; limite: "piso" | "capacidade" | null } {
+/** Lista o que está estourado: piso (preço) e/ou capacidade (gente), por sócio. */
+function verificarCabe(r: ResultadoMes, socios: Set<Id>): { ok: boolean; limites: LimiteEncaixe[] } {
+  const limites: LimiteEncaixe[] = [];
   for (const p of r.pessoas) {
     if (p.horas <= EPS) continue;
     if (socios.has(p.id) && p.pisoHoraCentavos != null && (p.valorHoraCentavos == null || p.valorHoraCentavos < p.pisoHoraCentavos - EPS))
-      return { ok: false, limite: "piso" };
-    if (p.capacidadeHorasMes != null && p.horas > p.capacidadeHorasMes + EPS) return { ok: false, limite: "capacidade" };
+      limites.push({ tipo: "piso", pessoaId: p.id, nome: p.nome });
+    if (p.capacidadeHorasMes != null && p.horas > p.capacidadeHorasMes + EPS) limites.push({ tipo: "capacidade", pessoaId: p.id, nome: p.nome });
   }
-  return { ok: true, limite: null };
+  return { ok: limites.length === 0, limites };
 }
 
 const MAX_ENCAIXE = 9999;
@@ -657,13 +684,14 @@ export function calcularEncaixe(config: Configuracao, cenario: Cenario, base: Re
         ? "Corrija os percentuais para ver quanto cabe."
         : "Configure o piso por hora ou a capacidade dos sócios para ver quantas entregas cabem.",
       cabe: true,
+      limitantes: [],
       tipos: tiposBase.map((t) => ({
         tipoEntregaId: t.id,
         nome: t.nome,
         quantidade: qtds.get(t.id) ?? 0,
         horasPorUnidade: t.horasPorUnidade,
         folga: null,
-        limite: null,
+        limites: [],
         naoResolve: false,
       })),
       pessoas,
@@ -684,7 +712,7 @@ export function calcularEncaixe(config: Configuracao, cenario: Cenario, base: Re
       quantidade,
       horasPorUnidade: hUn,
       folga: null,
-      limite: null,
+      limites: [],
       naoResolve: false,
     };
     if (atual.ok) {
@@ -696,7 +724,7 @@ export function calcularEncaixe(config: Configuracao, cenario: Cenario, base: Re
           return item;
       } else {
         item.folga = 0;
-        item.limite = um.limite;
+        item.limites = um.limites;
         return item;
       }
       let lo = 1;
@@ -715,9 +743,9 @@ export function calcularEncaixe(config: Configuracao, cenario: Cenario, base: Re
         else hi = mid;
       }
       item.folga = lo;
-      item.limite = teste(ajustarQuantidade(cenario, t.id, lo + 1)).limite;
+      item.limites = teste(ajustarQuantidade(cenario, t.id, lo + 1)).limites;
     } else {
-      item.limite = atual.limite;
+      item.limites = atual.limites;
       const q = Math.floor(quantidade);
       if (q <= 0 || !teste(ajustarQuantidade(cenario, t.id, -q)).ok) {
         item.naoResolve = true;
@@ -736,7 +764,7 @@ export function calcularEncaixe(config: Configuracao, cenario: Cenario, base: Re
     return item;
   });
 
-  return { disponivel: true, motivo: null, cabe: atual.ok, tipos, pessoas };
+  return { disponivel: true, motivo: null, cabe: atual.ok, limitantes: atual.limites, tipos, pessoas };
 }
 
 // ─── Cenário completo ───────────────────────────────────────────────────────
@@ -802,8 +830,8 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
   const mensalidadeHorizonte = cenario.modo === "escopo" ? minimo.mensalidadeMinimaCentavos : cenario.mensalidadeCentavos;
   const hz = calcularHorizonte(prep, cenario, mensalidadeHorizonte);
   alertas.push(...hz.alertas);
-  if (hz.horizonte) {
-    for (const p of hz.horizonte.pessoas)
+  if (hz.horizonte?.escolhida) {
+    for (const p of hz.horizonte.opcoes[hz.horizonte.escolhida].pessoas)
       if (p.abaixoPiso)
         alertas.push({
           nivel: "erro",

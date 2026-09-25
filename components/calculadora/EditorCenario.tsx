@@ -342,12 +342,25 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
               </>
             )}
             {t.modelo === "percentual_verba" && (
-              <>
-                <CampoPct rotulo="Percentual sobre a verba" valor={t.percentualVerba} aoMudar={(v) => setT({ percentualVerba: v })} />
-                <CampoMoeda rotulo="Verba mensal do cliente" valor={t.verbaMensalCentavos} aoMudar={(v) => setT({ verbaMensalCentavos: v })} />
-              </>
+              <CampoPct rotulo="Percentual sobre a verba" valor={t.percentualVerba} aoMudar={(v) => setT({ percentualVerba: v })} />
             )}
           </div>
+          {t.modelo !== "sem_trafego" && (
+            <div className="mt-3 rounded-2xl border border-dashed border-linha bg-marca-tinta/50 p-3">
+              <CampoMoeda
+                className="sm:max-w-xs"
+                rotulo={t.modelo === "percentual_verba" ? "Verba mensal do cliente (base do percentual)" : "Verba mensal do cliente (opcional)"}
+                valor={t.verbaMensalCentavos}
+                aoMudar={(v) => setT({ verbaMensalCentavos: v })}
+              />
+              <p className="mt-1.5 text-[11px] leading-snug text-texto-suave">
+                Paga pelo cliente direto na plataforma: não passa pela conta da Aden, não é faturamento e não entra em imposto, taxa nem receita.
+                {t.modelo === "percentual_verba"
+                  ? " Aqui ela serve só de base: o que a Aden fatura é o percentual."
+                  : " Campo só informativo, para ver o tamanho da operação."}
+              </p>
+            </div>
+          )}
           <p className="mt-2 text-[11px] text-texto-suave">As horas de gestão do tráfego entram como entregas (ex.: um tipo de entrega mensal de gestão).</p>
         </Secao>
       </Card>
@@ -470,6 +483,19 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
           <div className="grid gap-3 sm:grid-cols-2">
             <CampoNumero rotulo="Meses sem cobrança" sufixo="meses" placeholder="0" valor={cenario.mesesSemCobranca} aoMudar={(v) => set({ mesesSemCobranca: v })} />
             <CampoNumero rotulo="Horizonte da simulação" sufixo="meses" valor={cenario.horizonteMeses} aoMudar={(v) => set({ horizonteMeses: v })} />
+          </div>
+          <div className="mt-3">
+            <Rotulo>O que fica suspenso nesses meses</Rotulo>
+            <Segmentado
+              rotulo="O que fica suspenso"
+              valor={cenario.suspensaoSemCobranca ?? null}
+              aoMudar={(v) => set({ suspensaoSemCobranca: v })}
+              opcoes={[
+                { valor: "tudo", rotulo: "A · não paga nada" },
+                { valor: "mensalidade", rotulo: "B · paga só a gestão de tráfego" },
+              ]}
+            />
+            <p className="mt-1.5 text-[11px] text-texto-suave">As duas opções aparecem lado a lado no resultado. A escolhida é a que vale para os alertas e a comparação.</p>
           </div>
         </Secao>
       </Card>
