@@ -4,6 +4,8 @@ import {
   BadgeCheck,
   Briefcase,
   Calculator,
+  CalendarRange,
+  HeartPulse,
   ClipboardList,
   FileSignature,
   History,
@@ -52,6 +54,7 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
   {
     titulo: "Operação",
     itens: [
+      { href: "/mes", rotulo: "Visão do mês", icone: CalendarRange },
       { href: "#producao", rotulo: "Produção e capacidade", icone: ClipboardList, emBreve: true },
       { href: "#aprovacao", rotulo: "Aprovações do cliente", icone: BadgeCheck, emBreve: true },
     ],
@@ -59,6 +62,7 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
   {
     titulo: "Financeiro",
     itens: [
+      { href: "/saude", rotulo: "Saúde dos clientes", icone: HeartPulse },
       { href: "#financeiro", rotulo: "Financeiro", icone: Wallet, emBreve: true },
       { href: "#relatorios", rotulo: "Relatórios de resultado", icone: LineChart, emBreve: true },
     ],

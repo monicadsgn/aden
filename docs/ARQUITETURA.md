@@ -59,6 +59,17 @@ A decidir com a Moni (não inventar):
 - **Audiovisual** (25/09/2026): a Moni não faz audiovisual (edição, motion, legendagem, corte). Tipo de entrega marcado como "vídeo de terceiro" nunca gera horas; é sempre custo de audiovisual (fixo ou por entrega), pago pela empresa. Roteiro e direção de gravação são tipos normais, com horas. Vídeo sem custo de audiovisual no mesmo bloco gera alerta.
 - **Entrada × rotina** (25/09/2026): a entrada do cliente novo (onboarding, estrutura visual e proposta de conteúdo, enxoval do perfil, primeiros estáticos e criativos) acontece uma vez só e fica fora do resultado mensal. O resultado mostra a rotina mensal e, à parte, o custo da entrada e em quantos meses ele se paga.
 
+- **Visão do mês e saúde do cliente** (25/09/2026): a calculadora projeta; a Visão do mês soma todos os clientes ativos
+  contra a capacidade de cada sócio; a Saúde do cliente compara o previsto (escopo contratado) com o realizado (horas reais
+  e valor recebido do mês). Piso é chão de proteção, não meta nem teto.
+- **Ferramentas embutidas** (25/09/2026): o custo das ferramentas e da estrutura entra EMBUTIDO na mensalidade, pelo rateio.
+  Na proposta sai um valor só, redondo. Nunca assinatura à parte para o cliente pagar.
+- **Regime** (25/09/2026): o CNPJ hoje é MEI: imposto fixo mensal (não %) e teto anual de faturamento. Os valores ficam
+  na configuração (nada no código). O sistema avisa quando a projeção anual se aproxima do teto.
+- **Custo variável por caso**: diária de gravação, deslocamento (Uber) etc. entram como custo "outro" no cenário, sem mexer no cadastro.
+- **Taxa de recebimento**: % e/ou valor fixo por cobrança, prontos para receber a taxa real quando o InfinitePay for integrado.
+- **Linguagem simples**: cada tela e cada número importante dizem, em uma frase, o que significam.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```
@@ -92,6 +103,23 @@ Informa o limite que trava (piso ou capacidade) e de qual sócio.
 suspensos e calcula a média por hora de cada sócio. Nos meses suspensos os custos e o rateio continuam; a receita é zero
 (opção A) ou só a gestão de tráfego, com imposto e taxa sobre ela (opção B). Para cada opção, mostra também a mensalidade
 necessária nos meses pagantes para compensar.
+
+**Imposto fixo e taxa fixa:** o imposto fixo mensal (MEI) soma-se aos custos fixos da empresa e é rateado entre
+os clientes. A taxa fixa de recebimento é descontada de cada cobrança (só quando há receita) e o valor mínimo já a considera.
+
+**Teto do regime:** projeção anual = (valor mensal dos outros clientes ativos + receita deste cenário) × 12. Aviso a partir
+do % configurado; erro acima de 100%.
+
+**Proposta (valor único):** receita bruta do cenário (mensalidade + gestão de tráfego, com rateio embutido). No modo escopo,
+arredondada para cima em múltiplos do valor configurado.
+
+**Visão do mês (`lib/calculo/mes.ts`):** para cada cliente ativo com escopo contratado, horas por sócio do escopo (rotina
+mensal). Soma por sócio × capacidade → horas livres, "afogado" (acima da capacidade) ou "folga sobrando" (uso abaixo do %
+configurado). Clientes sem escopo aparecem em aviso e não entram na soma.
+
+**Saúde do cliente:** previsto = escopo contratado com o valor do contrato. Realizado = mesmos custos e rateio, mas com as
+horas reais lançadas no mês e o valor recebido (vazio = valor do contrato). Mostra valor por hora real de cada sócio, marca
+"prejuízo silencioso" quando fica abaixo do piso e "contratado abaixo do piso" quando o próprio previsto já fica.
 
 **Entrada do cliente (uma vez só):**
 ```
@@ -140,7 +168,8 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - `funil_etapas`, `leads`, `criterios_qualificacao`, `lead_criterios`, `interacoes`, `propostas`
 
 **Clientes e contratos**
-- ✅ `clientes` (interno?, entra no rateio?), ✅ `contratos` (mínimo: status, valor mensal)
+- ✅ `clientes` (interno?, entra no rateio?), ✅ `contratos` (status, valor mensal, **escopo contratado** em jsonb)
+- ✅ `mes_cliente` (valor recebido no mês), ✅ `horas_realizadas` (horas reais por sócio e mês)
 - ✅ `servicos`, ✅ `servico_divisao`, ✅ `tipos_entrega` (horas por unidade)
 - Fase 2 amplia `contratos`: prazo mínimo, vencimento, limite de rodadas, prazo de aprovação, prazo de entrega, aviso prévio, condição de início da cobrança, modelo de cobrança do tráfego, versão/aditivos
 - `contrato_entregas` (tipo de entrega, quantidade/mês), `metas_resultado` (métrica, fonte, alvo, prazo, atingida em)

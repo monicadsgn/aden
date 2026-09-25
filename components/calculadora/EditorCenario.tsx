@@ -36,6 +36,7 @@ const CATEGORIAS: { valor: CategoriaCusto; rotulo: string }[] = [
   { valor: "ferramenta", rotulo: "Ferramenta" },
   { valor: "audiovisual", rotulo: "Audiovisual" },
   { valor: "terceiro", rotulo: "Terceiro" },
+  { valor: "outro", rotulo: "Outro (diária, deslocamento…)" },
 ];
 
 const MODELOS_TRAFEGO: { valor: ModeloTrafego; rotulo: string }[] = [

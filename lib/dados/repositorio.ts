@@ -5,6 +5,7 @@
 // - local.ts: modo demonstração, salva no navegador. Só é usado quando as
 //   variáveis do Supabase não estão configuradas (dev local / apresentação).
 
+import type { RegistroMesCliente } from "../calculo/mes";
 import type { Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Pessoa, ResultadoCenario, Servico, TipoEntrega } from "../calculo/tipos";
 
 export interface Usuario {
@@ -63,6 +64,18 @@ export interface Repositorio {
   removerSimulacao(id: string): Promise<void>;
 
   listarAuditoria(limite: number): Promise<RegistroAuditoria[]>;
+
+  /** Escopo contratado do cliente (cenário da calculadora). null remove. */
+  definirEscopoCliente(clienteId: string, escopo: Cenario | null): Promise<void>;
+  /** Registros do mês ("AAAA-MM"): valor recebido e horas reais por cliente. */
+  carregarMes(competencia: string): Promise<Record<string, RegistroMesCliente>>;
+  salvarMesCliente(competencia: string, clienteId: string, registro: RegistroMesCliente): Promise<void>;
+}
+
+/** Mês atual no formato "AAAA-MM". */
+export function competenciaAtual(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 /** Diferença entre duas listas por id, comparando o conteúdo. */

@@ -63,6 +63,8 @@ export interface ClienteBase {
   /** valor mensal do contrato vigente */
   valorMensalCentavos: Centavos;
   ativo: boolean;
+  /** escopo contratado (cenário da calculadora) — base da visão do mês e da saúde do cliente */
+  escopo?: Cenario | null;
 }
 
 export type RegraRateio = "igual" | "proporcional";
@@ -72,6 +74,18 @@ export interface ConfigEmpresa {
   impostoPct: Pct;
   taxaRecebimentoPct: Pct;
   regraRateio: RegraRateio | null;
+  /** imposto de valor fixo por mês (ex.: MEI). Entra no rateio como custo da empresa */
+  impostoFixoMensalCentavos?: Centavos;
+  /** taxa fixa por recebimento (ex.: tarifa da maquininha/banco), além do % */
+  taxaRecebimentoFixaCentavos?: Centavos;
+  /** teto anual de faturamento do regime (ex.: MEI) */
+  tetoFaturamentoAnualCentavos?: Centavos;
+  /** avisar quando a projeção anual passar deste % do teto */
+  avisoTetoPct?: Pct;
+  /** sócio com uso abaixo deste % da capacidade aparece como "com folga sobrando" */
+  ociosidadePct?: Pct;
+  /** arredondar o valor da proposta para cima, em múltiplos deste valor */
+  arredondamentoPropostaCentavos?: Centavos;
 }
 
 export interface Configuracao {
@@ -95,7 +109,7 @@ export interface LinhaEntrega {
   horasPorUnidade: number | null;
 }
 
-export type CategoriaCusto = "ferramenta" | "audiovisual" | "terceiro";
+export type CategoriaCusto = "ferramenta" | "audiovisual" | "terceiro" | "outro";
 export type FormaCusto = "fixo" | "por_entrega";
 
 export interface LinhaCusto {
@@ -246,6 +260,8 @@ export interface ResultadoMes {
     totalFixoCentavos: number;
     clientesNaBase: number;
     quotaCentavos: number;
+    /** parte do total que é imposto fixo mensal (MEI) */
+    impostoFixoCentavos: number;
   };
   sobraCentavos: number;
   reinvestimentoPct: number;
@@ -375,6 +391,10 @@ export interface ResultadoCenario {
   modo: Modo;
   /** null quando o cenário não tem entrada */
   entrada: ResultadoEntrada | null;
+  /** projeção anual contra o teto do regime (null sem teto configurado) */
+  teto: ProjecaoTeto | null;
+  /** o valor único que vai para o cliente */
+  proposta: PropostaCliente | null;
   /** o mês como calculado: no escopo, no valor mínimo; no valor, no valor informado */
   mes: ResultadoMes | null;
   minimo: ResultadoMinimo;
@@ -382,4 +402,21 @@ export interface ResultadoCenario {
   horizonte: ResultadoHorizonte | null;
   pontuaisFora: ResultadoPontualFora[];
   alertas: Alerta[];
+}
+
+export interface ProjecaoTeto {
+  tetoCentavos: number;
+  /** soma dos valores mensais dos clientes ativos (com este cenário) × 12 */
+  anualCentavos: number;
+  pct: number;
+  nivel: "ok" | "perto" | "estourou";
+}
+
+export interface PropostaCliente {
+  /** valor mensal único apresentado ao cliente (mensalidade + gestão de tráfego), já com rateio embutido */
+  valorCentavos: number;
+  arredondado: boolean;
+  incluiTrafego: boolean;
+  /** verba de mídia informada (paga pelo cliente direto na plataforma) */
+  verbaMidiaCentavos: number | null;
 }

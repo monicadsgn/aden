@@ -46,6 +46,17 @@ class BancoFalso {
   async listarAuditoria() {
     return this.historico;
   }
+  meses: Record<string, Record<string, import("../calculo/mes").RegistroMesCliente>> = {};
+  async definirEscopoCliente(id: string, escopo: import("../calculo/tipos").Cenario | null) {
+    const c = this.config.clientes.find((x) => x.id === id)!;
+    c.escopo = escopo;
+  }
+  async carregarMes(m: string) {
+    return this.meses[m] ?? {};
+  }
+  async salvarMesCliente(m: string, id: string, r: import("../calculo/mes").RegistroMesCliente) {
+    (this.meses[m] ??= {})[id] = r;
+  }
 }
 
 let banco: BancoFalso;
@@ -129,6 +140,26 @@ describe("conector MCP da Aden", () => {
     expect(banco.sims).toHaveLength(1);
     expect(banco.sims[0].cenarios).toHaveLength(2);
     expect(banco.sims[0].cenarios[1].mensalidadeCentavos).toBe(250000);
+  });
+
+  it("escopo contratado, visão do mês e saúde do cliente", async () => {
+    await chamar("salvar_socio", { nome: "Moni", percentualPadrao: 100, pisoHoraReais: 45, capacidadeHorasMes: 44 });
+    await chamar("salvar_servico", { nome: "Social", divisao: { Moni: 100 } });
+    await chamar("salvar_tipo_entrega", { nome: "Post", servico: "Social", horasPorUnidade: 2 });
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await chamar("definir_escopo_cliente", {
+      cliente: "olinda",
+      cenario: { nome: "Contrato", modo: "valor", trafego: { modelo: "sem_trafego" }, entregas: [{ tipo: "Post", quantidade: 10 }] },
+    });
+    const v = await chamar("ver_visao_do_mes");
+    expect(v.socios[0].horasUsadasPelosClientes).toBe(20);
+    expect(v.socios[0].horasLivres).toBe(24);
+
+    await chamar("registrar_mes_cliente", { cliente: "Olinda", competencia: "2026-09", horas: { Moni: 40 } });
+    const s = await chamar("ver_saude_clientes", { competencia: "2026-09" });
+    // 1500 ÷ 40 h = 37,50/h < piso 45
+    expect(s.clientes[0].socios[0].porHoraReal).toBe(37.5);
+    expect(s.clientes[0].prejuizoSilencioso).toBe(true);
   });
 
   it("nome inexistente gera erro claro, sem gravar nada", async () => {

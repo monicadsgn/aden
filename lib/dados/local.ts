@@ -3,12 +3,14 @@
 // banco — mas os dados ficam só neste navegador.
 
 import { configVazia, novoId } from "../calculo/novo";
-import type { Configuracao } from "../calculo/tipos";
+import type { RegistroMesCliente } from "../calculo/mes";
+import type { Cenario, Configuracao } from "../calculo/tipos";
 import type { AlteracoesConfig, RegistroAuditoria, Repositorio, ResumoSimulacao, Simulacao, Usuario } from "./repositorio";
 
 const CHAVE = "aden:local:v1";
 
 interface Banco {
+  meses?: Record<string, Record<string, RegistroMesCliente>>;
   config: Configuracao;
   simulacoes: (Simulacao & { atualizadoEm: string })[];
   auditoria: RegistroAuditoria[];
@@ -125,5 +127,27 @@ export class RepositorioLocal implements Repositorio {
 
   async listarAuditoria(limite: number) {
     return ler().auditoria.slice(0, limite);
+  }
+
+  async definirEscopoCliente(clienteId: string, escopo: Cenario | null) {
+    const b = ler();
+    const c = b.config.clientes.find((x) => x.id === clienteId);
+    if (!c) throw new Error("Cliente não encontrado.");
+    registrar(b, "contratos", clienteId, c.escopo ?? null, escopo);
+    c.escopo = escopo;
+    gravar(b);
+  }
+
+  async carregarMes(competencia: string) {
+    return ler().meses?.[competencia] ?? {};
+  }
+
+  async salvarMesCliente(competencia: string, clienteId: string, registro: RegistroMesCliente) {
+    const b = ler();
+    b.meses ??= {};
+    b.meses[competencia] ??= {};
+    registrar(b, "mes_cliente", `${clienteId}:${competencia}`, b.meses[competencia][clienteId] ?? null, registro);
+    b.meses[competencia][clienteId] = registro;
+    gravar(b);
   }
 }

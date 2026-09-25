@@ -53,7 +53,7 @@ const zEntrega = z.object({
 });
 
 const zCusto = z.object({
-  categoria: z.enum(["ferramenta", "audiovisual", "terceiro"]),
+  categoria: z.enum(["ferramenta", "audiovisual", "terceiro", "outro"]).describe("outro = diária, deslocamento (Uber) e custos avulsos do caso"),
   descricao: z.string().optional(),
   forma: z.enum(["fixo", "por_entrega"]).optional().describe("Ferramenta é sempre fixo. Padrão: fixo."),
   valorReais: z.number().nullable().optional().describe("Fixo: valor do mês (ou do projeto). Por entrega: valor unitário."),
@@ -287,8 +287,20 @@ export function cenarioParaConversa(c: Cenario, config: Configuracao): CenarioCo
 // ─── Configuração legível ───────────────────────────────────────────────────
 
 export function configParaConversa(c: Configuracao) {
+  const e = c.empresa;
   return {
-    empresa: c.empresa,
+    empresa: {
+      reinvestimentoPct: e.reinvestimentoPct,
+      impostoPct: e.impostoPct,
+      taxaRecebimentoPct: e.taxaRecebimentoPct,
+      regraRateio: e.regraRateio,
+      impostoFixoMensalReais: paraReais(e.impostoFixoMensalCentavos),
+      taxaRecebimentoFixaReais: paraReais(e.taxaRecebimentoFixaCentavos),
+      tetoFaturamentoAnualReais: paraReais(e.tetoFaturamentoAnualCentavos),
+      avisoTetoPct: e.avisoTetoPct ?? null,
+      ociosidadePct: e.ociosidadePct ?? null,
+      arredondamentoPropostaReais: paraReais(e.arredondamentoPropostaCentavos),
+    },
     socios: c.pessoas
       .filter((p) => p.socio)
       .map((p) => ({
@@ -325,6 +337,7 @@ export function configParaConversa(c: Configuracao) {
       interno: k.interno,
       participaRateio: k.participaRateio,
       ativo: k.ativo,
+      temEscopoContratado: !!k.escopo,
     })),
   };
 }
@@ -343,6 +356,7 @@ function mesParaConversa(m: ResultadoMes) {
       ferramentas: paraReais(m.custosPorCategoria.ferramenta),
       audiovisual: paraReais(m.custosPorCategoria.audiovisual),
       terceiros: paraReais(m.custosPorCategoria.terceiro),
+      outros: paraReais(m.custosPorCategoria.outro ?? 0),
       pontualDiluido: paraReais(m.custoPontualDiluidoCentavos),
       total: paraReais(m.custosProjetoCentavos),
     },
@@ -376,6 +390,16 @@ function mesParaConversa(m: ResultadoMes) {
 export function resultadoParaConversa(r: ResultadoCenario) {
   return {
     modo: r.modo,
+    paraOCliente: r.proposta
+      ? {
+          investimentoMensal: paraReais(r.proposta.valorCentavos),
+          arredondado: r.proposta.arredondado,
+          observacao: "Valor único, com ferramentas e estrutura embutidas. Nunca apresentar ferramentas como cobrança à parte.",
+        }
+      : null,
+    tetoDoRegime: r.teto
+      ? { projecaoAnual: paraReais(r.teto.anualCentavos), teto: paraReais(r.teto.tetoCentavos), pct: r.teto.pct, nivel: r.teto.nivel }
+      : null,
     alertas: r.alertas.map((a) => `[${a.nivel}] ${a.texto}`),
     valorMinimo: r.minimo.possivel
       ? {

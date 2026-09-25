@@ -5,8 +5,12 @@ import {
   AlertTriangle,
   ArrowDown,
   CalendarClock,
+  Check,
   CheckCircle2,
+  ClipboardCheck,
   Clock3,
+  Copy,
+  Send,
   DoorOpen,
   Coins,
   Gauge,
@@ -36,7 +40,7 @@ import type {
   SuspensaoSemCobranca,
 } from "@/lib/calculo/tipos";
 import { formatarHoras, formatarMoeda, formatarPct } from "@/lib/formato";
-import { Badge, Card, Forma, IconeBadge, Passo, TituloCard, cx, type Tom } from "../ui";
+import { Badge, Botao, Card, Forma, IconeBadge, Passo, TituloCard, cx, type Tom } from "../ui";
 
 // ─── Alertas ────────────────────────────────────────────────────────────────
 
@@ -140,7 +144,7 @@ function LinhaCascata({ rotulo, valor, sinal, forte, sub }: { rotulo: string; va
   );
 }
 
-function Cascata({ m }: { m: ResultadoMes }) {
+function Cascata({ m, taxaFixa }: { m: ResultadoMes; taxaFixa: number | null }) {
   const c = m.custosPorCategoria;
   return (
     <div>
@@ -162,7 +166,7 @@ function Cascata({ m }: { m: ResultadoMes }) {
         sub={m.impostoPctSobreposto ? <Badge tom="aviso">≠ padrão</Badge> : undefined}
       />
       <LinhaCascata
-        rotulo={`Taxa de recebimento (${formatarPct(m.taxaRecebimentoPct)})`}
+        rotulo={`Taxa de recebimento (${formatarPct(m.taxaRecebimentoPct)}${taxaFixa ? ` + ${formatarMoeda(taxaFixa)}` : ""})`}
         valor={m.taxasCentavos}
         sinal="-"
         sub={m.taxaRecebimentoPctSobreposta ? <Badge tom="aviso">≠ padrão</Badge> : undefined}
@@ -170,6 +174,7 @@ function Cascata({ m }: { m: ResultadoMes }) {
       {c.ferramenta > 0 && <LinhaCascata rotulo="Ferramentas" valor={c.ferramenta} sinal="-" />}
       {c.audiovisual > 0 && <LinhaCascata rotulo="Audiovisual" valor={c.audiovisual} sinal="-" />}
       {c.terceiro > 0 && <LinhaCascata rotulo="Terceiros" valor={c.terceiro} sinal="-" />}
+      {(c.outro ?? 0) > 0 && <LinhaCascata rotulo="Outros custos do caso (diária, deslocamento…)" valor={c.outro} sinal="-" />}
       {m.custoPontualDiluidoCentavos > 0 && <LinhaCascata rotulo="Pontual diluído (custos)" valor={m.custoPontualDiluidoCentavos} sinal="-" />}
       <LinhaCascata
         rotulo="Custo fixo da empresa (rateio)"
@@ -179,6 +184,7 @@ function Cascata({ m }: { m: ResultadoMes }) {
           m.rateio.totalFixoCentavos > 0 && m.rateio.regra ? (
             <span className="text-[11px] text-texto-suave">
               {m.rateio.regra === "igual" ? `÷ ${m.rateio.clientesNaBase} clientes` : "proporcional ao valor"} de {formatarMoeda(m.rateio.totalFixoCentavos)}
+              {m.rateio.impostoFixoCentavos > 0 && ` (inclui ${formatarMoeda(m.rateio.impostoFixoCentavos)} de imposto fixo)`}
             </span>
           ) : undefined
         }
@@ -341,6 +347,74 @@ function BlocoEntrada({ e, mesesDesejados }: { e: ResultadoEntrada; mesesDesejad
   );
 }
 
+// ─── Para o cliente: um valor só ────────────────────────────────────────────
+
+function BlocoProposta({
+  valor,
+  arredondado,
+  incluiTrafego,
+  verba,
+  cliente,
+  jaEEscopo,
+  aoGuardarEscopo,
+}: {
+  valor: number;
+  arredondado: boolean;
+  incluiTrafego: boolean;
+  verba: number | null;
+  cliente: string | null;
+  jaEEscopo: boolean;
+  aoGuardarEscopo?: () => void;
+}) {
+  const [copiado, setCopiado] = useState(false);
+  const texto = `Investimento mensal: ${formatarMoeda(valor)}. Inclui ${incluiTrafego ? "gestão de tráfego, " : ""}produção, planejamento e todas as ferramentas, sem cobranças separadas.${verba ? " A verba de anúncios é paga por vocês direto na plataforma." : ""}`;
+  return (
+    <Card>
+      <TituloCard
+        icone={Send}
+        titulo="Para o cliente"
+        descricao="O valor único que vai na proposta. As ferramentas e a estrutura já estão dentro dele, nunca como cobrança à parte."
+      />
+      <div className="flex flex-col gap-3 px-5 pb-5">
+        <div className="rounded-bloco bg-marca-tinta p-4">
+          <p className="text-[11px] font-semibold text-texto-suave">Investimento mensal</p>
+          <p className="numero text-3xl font-extrabold">{formatarMoeda(valor)}</p>
+          {arredondado && <p className="mt-1 text-[11px] text-texto-suave">Arredondado para cima, como definido nas configurações.</p>}
+        </div>
+        <p className="rounded-bloco border border-dashed border-linha px-3 py-2 text-xs leading-relaxed text-texto-suave">{texto}</p>
+        <div className="flex flex-wrap gap-2">
+          <Botao
+            pequeno
+            icone={copiado ? Check : Copy}
+            onClick={() => {
+              navigator.clipboard?.writeText(texto).then(() => {
+                setCopiado(true);
+                setTimeout(() => setCopiado(false), 2000);
+              });
+            }}
+          >
+            {copiado ? "Copiado" : "Copiar texto"}
+          </Botao>
+          {aoGuardarEscopo &&
+            (cliente ? (
+              jaEEscopo ? (
+                <Badge tom="ok" icone={CheckCircle2}>
+                  é o escopo contratado de {cliente}
+                </Badge>
+              ) : (
+                <Botao pequeno variante="primario" icone={ClipboardCheck} onClick={aoGuardarEscopo}>
+                  Guardar como escopo contratado de {cliente}
+                </Botao>
+              )
+            ) : (
+              <span className="self-center text-[11px] text-texto-suave">Para guardar como escopo contratado, escolha o cliente em “Como calcular”.</span>
+            ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // ─── Horizonte: opção A × opção B ───────────────────────────────────────────
 
 const ROTULO_SUSPENSAO: Record<SuspensaoSemCobranca, { letra: string; texto: string }> = {
@@ -424,12 +498,15 @@ export function PainelResultado({
   config,
   aoMudar,
   grande,
+  aoGuardarEscopo,
 }: {
   resultado: ResultadoCenario;
   cenario: Cenario;
   config: Configuracao;
   aoMudar: (c: Cenario) => void;
   grande?: boolean;
+  /** guarda este cenário como escopo contratado do cliente escolhido */
+  aoGuardarEscopo?: () => void;
 }) {
   const m = r.mes;
   const limitante = config.pessoas.find((p) => p.id === r.minimo.limitantePessoaId);
@@ -486,6 +563,17 @@ export function PainelResultado({
     <div className="flex flex-col gap-4">
       {destaque}
       <ListaAlertas alertas={r.alertas} />
+      {r.proposta && (
+        <BlocoProposta
+          valor={r.proposta.valorCentavos}
+          arredondado={r.proposta.arredondado}
+          incluiTrafego={r.proposta.incluiTrafego}
+          verba={r.proposta.verbaMidiaCentavos}
+          cliente={config.clientes.find((c) => c.id === cenario.clienteId)?.nome ?? null}
+          jaEEscopo={!!cenario.clienteId && JSON.stringify(config.clientes.find((c) => c.id === cenario.clienteId)?.escopo ?? null) === JSON.stringify(cenario)}
+          aoGuardarEscopo={aoGuardarEscopo}
+        />
+      )}
 
       {m && (
         <>
@@ -619,7 +707,7 @@ export function PainelResultado({
           <Card>
             <TituloCard icone={Coins} titulo="Do faturamento à divisão" descricao="Passo a passo do cálculo do mês." />
             <div className="px-5 pb-5">
-              <Cascata m={m} />
+              <Cascata m={m} taxaFixa={config.empresa.taxaRecebimentoFixaCentavos ?? null} />
             </div>
           </Card>
         </>

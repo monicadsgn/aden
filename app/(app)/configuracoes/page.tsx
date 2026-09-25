@@ -14,6 +14,7 @@ import {
   Shapes,
   Trash2,
   Users,
+  Gauge,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CabecalhoPagina } from "@/components/Shell";
@@ -61,6 +62,10 @@ function SomaPct({ soma, total }: { soma: number; total: number }) {
       soma {formatarPct(soma)}
     </Badge>
   );
+}
+
+function Explica({ children }: { children: React.ReactNode }) {
+  return <p className="self-end pb-2 text-[11px] leading-snug text-texto-suave">{children}</p>;
 }
 
 export default function Configuracoes() {
@@ -187,14 +192,49 @@ export default function Configuracoes() {
 
         {/* Percentuais da empresa */}
         <Card>
-          <TituloCard icone={Percent} titulo="Percentuais da empresa" descricao="Padrão para todos os projetos. Cada cenário pode sobrepor, e a tela sinaliza quando isso acontece." />
-          <div className="grid gap-3 px-5 pb-5 sm:grid-cols-3">
+          <TituloCard icone={Percent} titulo="Percentuais, impostos e taxas" descricao="Padrão para todos os projetos. Cada cenário pode sobrepor, e a tela sinaliza quando isso acontece." />
+          <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2">
             <CampoPct rotulo="Reinvestimento" valor={e.reinvestimentoPct} aoMudar={(v) => set({ empresa: { ...e, reinvestimentoPct: v } })} />
-            <CampoPct rotulo="Imposto s/ faturamento" valor={e.impostoPct} aoMudar={(v) => set({ empresa: { ...e, impostoPct: v } })} />
-            <CampoPct rotulo="Taxa de recebimento" valor={e.taxaRecebimentoPct} aoMudar={(v) => set({ empresa: { ...e, taxaRecebimentoPct: v } })} />
-            <p className="text-[11px] leading-snug text-texto-suave sm:col-span-3">
-              O reinvestimento incide sobre a sobra. Imposto e taxa incidem sobre o faturamento (mensalidade + cobrança de tráfego).
-            </p>
+            <Explica>Quanto da sobra de cada cliente fica guardado na empresa antes da divisão.</Explica>
+            <CampoMoeda
+              rotulo="Imposto fixo por mês (ex.: MEI)"
+              valor={e.impostoFixoMensalCentavos ?? null}
+              aoMudar={(v) => set({ empresa: { ...e, impostoFixoMensalCentavos: v } })}
+            />
+            <Explica>Valor que a empresa paga todo mês, tenha o faturamento que tiver. Entra dividido entre os clientes, junto com os custos fixos.</Explica>
+            <CampoPct rotulo="Imposto em % do faturamento" valor={e.impostoPct} aoMudar={(v) => set({ empresa: { ...e, impostoPct: v } })} />
+            <Explica>Para regimes em que o imposto é uma porcentagem do que entra. No MEI, deixe vazio.</Explica>
+            <CampoPct rotulo="Taxa de recebimento (%)" valor={e.taxaRecebimentoPct} aoMudar={(v) => set({ empresa: { ...e, taxaRecebimentoPct: v } })} />
+            <Explica>Quanto o meio de pagamento desconta de cada cobrança, em porcentagem.</Explica>
+            <CampoMoeda
+              rotulo="Taxa de recebimento fixa (por cobrança)"
+              valor={e.taxaRecebimentoFixaCentavos ?? null}
+              aoMudar={(v) => set({ empresa: { ...e, taxaRecebimentoFixaCentavos: v } })}
+            />
+            <Explica>Tarifa fixa por cobrança, se houver. Quando o InfinitePay for integrado, estes dois campos recebem a taxa real.</Explica>
+          </div>
+        </Card>
+
+        {/* Limites e avisos */}
+        <Card>
+          <TituloCard icone={Gauge} titulo="Limites e avisos" descricao="Quando o sistema deve acender um alerta. Vazio = sem aviso." />
+          <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2">
+            <CampoMoeda
+              rotulo="Teto de faturamento no ano"
+              valor={e.tetoFaturamentoAnualCentavos ?? null}
+              aoMudar={(v) => set({ empresa: { ...e, tetoFaturamentoAnualCentavos: v } })}
+            />
+            <Explica>O limite do regime (no MEI, o teto anual). Passar dele muda o regime inteiro da empresa.</Explica>
+            <CampoPct rotulo="Avisar a partir de (% do teto)" valor={e.avisoTetoPct ?? null} aoMudar={(v) => set({ empresa: { ...e, avisoTetoPct: v } })} />
+            <Explica>Quando a soma do ano projetada chegar a esta porcentagem do teto, o sistema avisa antes de estourar.</Explica>
+            <CampoPct rotulo="Folga sobrando abaixo de (% da capacidade)" valor={e.ociosidadePct ?? null} aoMudar={(v) => set({ empresa: { ...e, ociosidadePct: v } })} />
+            <Explica>Se os clientes usarem menos que isso das horas de um sócio, a Visão do mês mostra que ele tem espaço sobrando.</Explica>
+            <CampoMoeda
+              rotulo="Arredondar a proposta para cima, de"
+              valor={e.arredondamentoPropostaCentavos ?? null}
+              aoMudar={(v) => set({ empresa: { ...e, arredondamentoPropostaCentavos: v } })}
+            />
+            <Explica>O valor que vai para o cliente sobe até o próximo múltiplo deste valor, para sair um número redondo.</Explica>
           </div>
         </Card>
 
@@ -361,6 +401,15 @@ export default function Configuracoes() {
                   <Interruptor ligado={c.ativo} rotulo="Ativo" aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { ativo: v }) })} />
                   <Interruptor ligado={c.participaRateio} rotulo="Entra no rateio" aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { participaRateio: v }) })} />
                   <Interruptor ligado={c.interno} rotulo="Interno (rede da própria Aden)" aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { interno: v }) })} />
+                  {c.escopo ? (
+                    <Badge tom="ok" icone={Check}>
+                      escopo contratado definido
+                    </Badge>
+                  ) : (
+                    <Badge tom="aviso" title="Abra a calculadora, escolha este cliente no cenário e use 'Guardar como escopo contratado'.">
+                      sem escopo: horas fora da Visão do mês
+                    </Badge>
+                  )}
                 </div>
               </div>
             ))}

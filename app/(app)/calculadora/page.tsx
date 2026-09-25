@@ -94,6 +94,20 @@ export default function Calculadora() {
     setMensagem(null);
   };
 
+  const guardarEscopo = async () => {
+    const cliente = config.clientes.find((c) => c.id === ativo.clienteId);
+    if (!cliente) return;
+    const substitui = cliente.escopo ? " Isso substitui o escopo guardado antes." : "";
+    if (!confirm(`Guardar "${ativo.nome}" como o escopo contratado de ${cliente.nome}?${substitui}`)) return;
+    try {
+      await repo.definirEscopoCliente(cliente.id, ativo);
+      setConfig(await repo.carregarConfig());
+      setMensagem({ tom: "ok", texto: `Escopo contratado de ${cliente.nome} guardado. Ele já conta na Visão do mês e na Saúde dos clientes.` });
+    } catch (e) {
+      setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao guardar o escopo." });
+    }
+  };
+
   const salvar = async () => {
     setSalvando(true);
     try {
@@ -265,7 +279,7 @@ export default function Calculadora() {
         {/* editor + resultado */}
         {reuniao ? (
           <div className="mx-auto w-full max-w-5xl">
-            <PainelResultado grande resultado={resultadoAtivo} cenario={ativo} config={config} aoMudar={mudarCenario} />
+            <PainelResultado grande resultado={resultadoAtivo} cenario={ativo} config={config} aoMudar={mudarCenario} aoGuardarEscopo={guardarEscopo} />
           </div>
         ) : (
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
@@ -274,7 +288,7 @@ export default function Calculadora() {
             </div>
             <div className="min-w-0">
               <div className="painel-resultado lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1">
-                <PainelResultado resultado={resultadoAtivo} cenario={ativo} config={config} aoMudar={mudarCenario} />
+                <PainelResultado resultado={resultadoAtivo} cenario={ativo} config={config} aoMudar={mudarCenario} aoGuardarEscopo={guardarEscopo} />
               </div>
             </div>
           </div>

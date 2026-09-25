@@ -6,16 +6,18 @@
 import "server-only";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { calcularSaudeCliente, calcularVisaoMes } from "../calculo/mes";
 import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import type { Configuracao } from "../calculo/tipos";
-import { diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
+import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
 import type { RepositorioSupabase } from "../dados/supabase";
 import {
   cenarioParaConversa,
   cenarioParaInterno,
   configParaConversa,
   paraCentavos,
+  paraReais,
   resolver,
   resultadoParaConversa,
   zCenarioConversa,
@@ -32,6 +34,8 @@ Regras que você deve seguir:
 - Audiovisual (edição, motion, legenda, corte) nunca gera horas dos sócios: é tipo de entrega "audiovisual" + custo de terceiro.
   Roteiro e direção de gravação são tipos normais, com horas.
 - Entrada do cliente (uma vez só) é separada da rotina mensal.
+- Ferramentas e estrutura vão EMBUTIDAS na mensalidade (rateio). Na proposta, um valor só; nunca assinatura à parte.
+- Para saber se cabe cliente novo, use ver_visao_do_mes. Para ver cliente dando prejuízo, ver_saude_clientes.
 - Antes de alterar configurações, confirme com quem está conversando o que vai mudar.
 - Tudo o que você alterar fica registrado no Histórico com o seu nome.
 Comece por ver_configuracao para saber o que existe (nomes de sócios, serviços, tipos de entrega, clientes).`;
@@ -110,19 +114,34 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
     "definir_percentuais_empresa",
     {
       title: "Definir percentuais da empresa",
-      description: "Padrões da empresa: reinvestimento (sobre a sobra), imposto e taxa de recebimento (sobre o faturamento) e regra de rateio do custo fixo.",
+      description:
+        "Padrões da empresa: reinvestimento, impostos (em % ou fixo por mês, como no MEI), taxa de recebimento (% e fixa), regra de rateio, teto anual do regime e avisos.",
       inputSchema: {
         reinvestimentoPct: opt(z.number(), "% de reinvestimento"),
         impostoPct: opt(z.number(), "% de imposto sobre faturamento"),
+        impostoFixoMensalReais: opt(z.number(), "imposto fixo por mês em reais (ex.: DAS do MEI); entra no rateio"),
         taxaRecebimentoPct: opt(z.number(), "% de taxa de recebimento"),
+        taxaRecebimentoFixaReais: opt(z.number(), "tarifa fixa por recebimento, em reais"),
         regraRateio: opt(z.enum(["igual", "proporcional"]), "igual entre clientes ou proporcional ao valor"),
+        tetoFaturamentoAnualReais: opt(z.number(), "teto anual de faturamento do regime, em reais"),
+        avisoTetoPct: opt(z.number(), "avisar quando a projeção anual chegar a este % do teto"),
+        ociosidadePct: opt(z.number(), "sócio com uso abaixo deste % da capacidade aparece com folga sobrando"),
+        arredondamentoPropostaReais: opt(z.number(), "arredondar o valor da proposta para cima, em múltiplos deste valor"),
       },
     },
-    async (p) =>
+    async ({ impostoFixoMensalReais, taxaRecebimentoFixaReais, tetoFaturamentoAnualReais, arredondamentoPropostaReais, ...p }) =>
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
-        return salvarDiferenca(repo, antes, { ...antes, empresa: aplicar(antes.empresa, p) });
+        const reais = (v: number | null | undefined) => (v === undefined ? undefined : paraCentavos(v));
+        const patch = {
+          ...p,
+          impostoFixoMensalCentavos: reais(impostoFixoMensalReais),
+          taxaRecebimentoFixaCentavos: reais(taxaRecebimentoFixaReais),
+          tetoFaturamentoAnualCentavos: reais(tetoFaturamentoAnualReais),
+          arredondamentoPropostaCentavos: reais(arredondamentoPropostaReais),
+        };
+        return salvarDiferenca(repo, antes, { ...antes, empresa: aplicar(antes.empresa, patch) });
       }),
   );
 
@@ -331,6 +350,144 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
           depois.clientes = antes.clientes.filter((p) => p.id !== a.id);
         }
         return salvarDiferenca(repo, antes, depois);
+      }),
+  );
+
+  // ─── Mês inteiro e saúde dos clientes ─────────────────────────────────────
+
+  server.registerTool(
+    "ver_visao_do_mes",
+    {
+      title: "Visão do mês (capacidade)",
+      description:
+        "Soma as horas de todos os clientes ativos (pelo escopo contratado) e compara com a capacidade de cada sócio: horas usadas, livres, afogado ou com folga. Também faturamento mensal e projeção contra o teto do regime. Use para responder se dá para pegar cliente novo.",
+      inputSchema: {},
+    },
+    async () =>
+      executar(async () => {
+        const v = calcularVisaoMes(await (await obterRepo()).carregarConfig());
+        return {
+          socios: v.socios.map((s) => ({
+            nome: s.nome,
+            capacidadeHorasMes: s.capacidadeHorasMes,
+            horasUsadasPelosClientes: s.horasUsadas,
+            horasLivres: s.horasLivres,
+            usoPct: s.usoPct,
+            situacao: s.situacao,
+          })),
+          clientes: v.clientes.map((c) => ({ nome: c.nome, temEscopo: c.temEscopo, horasTotais: c.horasTotais, valorMensal: paraReais(c.valorMensalCentavos) })),
+          clientesSemEscopo_horasNaoContadas: v.semEscopo,
+          faturamentoMensal: paraReais(v.faturamentoMensalCentavos),
+          tetoDoRegime: v.teto ? { projecaoAnual: paraReais(v.teto.anualCentavos), teto: paraReais(v.teto.tetoCentavos), pct: v.teto.pct, nivel: v.teto.nivel } : null,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "definir_escopo_cliente",
+    {
+      title: "Definir escopo contratado do cliente",
+      description:
+        "Guarda o escopo contratado de um cliente ativo (entregas, custos, tráfego…), no mesmo formato de calcular_cenario. É a base da visão do mês e da saúde do cliente. Confirme antes de substituir um escopo existente.",
+      inputSchema: {
+        cliente: z.string().describe("cliente (nome ou id)"),
+        cenario: zCenarioConversa.nullable().describe("escopo; null remove"),
+      },
+    },
+    async ({ cliente, cenario }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const alvo = resolver(config.clientes, cliente, "Cliente");
+        const escopo = cenario ? { ...cenarioParaInterno(cenario, config), clienteId: alvo.id } : null;
+        await repo.definirEscopoCliente(alvo.id, escopo);
+        return { cliente: alvo.nome, escopoDefinido: !!escopo };
+      }),
+  );
+
+  const zCompetencia = z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional()
+    .describe("mês no formato AAAA-MM (padrão: mês atual)");
+
+  server.registerTool(
+    "ver_saude_clientes",
+    {
+      title: "Saúde dos clientes no mês",
+      description:
+        "Para cada cliente ativo: previsto (escopo + contrato) × realizado (horas reais e valor recebido do mês), valor por hora real de cada sócio e se ficou abaixo do piso (prejuízo silencioso).",
+      inputSchema: { competencia: zCompetencia },
+    },
+    async ({ competencia }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const mes = competencia ?? competenciaAtual();
+        const [config, registros] = await Promise.all([repo.carregarConfig(), repo.carregarMes(mes)]);
+        return {
+          competencia: mes,
+          clientes: config.clientes
+            .filter((c) => c.ativo)
+            .map((c) => {
+              const s = calcularSaudeCliente(config, c, registros[c.id] ?? null);
+              return {
+                nome: s.nome,
+                temEscopo: s.temEscopo,
+                valorContrato: paraReais(s.valorContratoCentavos),
+                valorRecebido: paraReais(s.valorRecebidoCentavos),
+                horasLancadas: s.horasLancadas,
+                horasPrevistas: s.horasPrevistas,
+                horasReais: s.horasReais,
+                pagaPorHoraPrevisto: paraReais(s.valorCobradoHoraPrevisto),
+                pagaPorHoraReal: paraReais(s.valorCobradoHoraReal),
+                prejuizoSilencioso: s.prejuizoSilencioso,
+                contratadoAbaixoDoPiso: s.contratadoAbaixoDoPiso,
+                socios: s.socios.map((x) => ({
+                  nome: x.nome,
+                  piso: paraReais(x.piso),
+                  horasPrevistas: x.horasPrevistas,
+                  horasReais: x.horasReais,
+                  porHoraPrevisto: paraReais(x.valorHoraPrevisto),
+                  porHoraReal: paraReais(x.valorHoraReal),
+                  abaixoDoPiso: x.abaixoPisoReal,
+                })),
+              };
+            }),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "registrar_mes_cliente",
+    {
+      title: "Registrar horas reais e valor recebido",
+      description:
+        "Lança, para um cliente e um mês, as horas reais de cada sócio e (opcional) quanto entrou de fato. Só registre números que foram informados na conversa.",
+      inputSchema: {
+        cliente: z.string().describe("cliente (nome ou id)"),
+        competencia: zCompetencia,
+        valorRecebidoReais: opt(z.number(), "quanto entrou no mês; vazio = valor do contrato"),
+        horas: z.record(z.string(), z.number().nullable()).optional().describe("sócio (nome ou id) → horas reais no mês"),
+      },
+    },
+    async ({ cliente, competencia, valorRecebidoReais, horas }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const mes = competencia ?? competenciaAtual();
+        const config = await repo.carregarConfig();
+        const alvo = resolver(config.clientes, cliente, "Cliente");
+        const socios = config.pessoas.filter((p) => p.socio);
+        const atual = (await repo.carregarMes(mes))[alvo.id] ?? { valorRecebidoCentavos: null, horas: {} };
+        const registro = {
+          valorRecebidoCentavos: valorRecebidoReais === undefined ? atual.valorRecebidoCentavos : paraCentavos(valorRecebidoReais),
+          horas: {
+            ...atual.horas,
+            ...Object.fromEntries(Object.entries(horas ?? {}).map(([ref, h]) => [resolver(socios, ref, "Sócio").id, h])),
+          },
+        };
+        await repo.salvarMesCliente(mes, alvo.id, registro);
+        const s = calcularSaudeCliente(config, alvo, registro);
+        return { cliente: alvo.nome, competencia: mes, prejuizoSilencioso: s.prejuizoSilencioso, pagaPorHoraReal: paraReais(s.valorCobradoHoraReal) };
       }),
   );
 

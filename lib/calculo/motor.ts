@@ -35,6 +35,8 @@ import type {
   ResultadoMinimo,
   ResultadoPessoa,
   ResultadoPontualFora,
+  ProjecaoTeto,
+  PropostaCliente,
   ResultadoServico,
   SuspensaoSemCobranca,
   VarianteHorizonte,
@@ -68,6 +70,8 @@ export interface PreparadoMes {
   impostoPct: number;
   impostoSobreposto: boolean;
   taxaPct: number;
+  /** tarifa fixa por recebimento (só quando há receita) */
+  taxaFixa: number;
   taxaSobreposta: boolean;
   reinvPct: number;
   reinvSobreposto: boolean;
@@ -77,6 +81,7 @@ export interface PreparadoMes {
     ativo: boolean;
     regra: RegraRateio | null;
     total: number;
+    impostoFixo: number;
     clientesNaBase: number;
     somaOutros: number;
   };
@@ -92,8 +97,10 @@ interface OpcoesPreparo {
 }
 
 function custosVazios(): Record<CategoriaCusto, number> {
-  return { ferramenta: 0, audiovisual: 0, terceiro: 0 };
+  return { ferramenta: 0, audiovisual: 0, terceiro: 0, outro: 0 };
 }
+
+const somaCategorias = (c: Record<CategoriaCusto, number>) => c.ferramenta + c.audiovisual + c.terceiro + (c.outro ?? 0);
 
 /** Quantidade total de cada tipo de entrega numa lista de linhas. */
 function quantidadesPorTipo(linhas: LinhaEntrega[]): Map<Id, number> {
@@ -202,7 +209,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       const pref = `${nome}: `;
       linhasHoras.push(...horasDasEntregas(p.entregas, config, p.meses, alertas, pref));
       const c = somarCustos(p.custos, quantidadesPorTipo(p.entregas), config, alertas, pref);
-      custoPontualDiluido += (c.ferramenta + c.audiovisual + c.terceiro) / p.meses;
+      custoPontualDiluido += somaCategorias(c) / p.meses;
     }
   }
 
@@ -306,7 +313,9 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
   }
 
   // Rateio do custo fixo
-  const totalFixo = config.custosFixos.filter((c) => c.ativo).reduce((a, c) => a + v0(c.valorMensalCentavos), 0);
+  // imposto fixo mensal (ex.: MEI) é custo da empresa: entra no rateio junto com os custos fixos
+  const impostoFixo = v0(config.empresa.impostoFixoMensalCentavos);
+  const totalFixo = config.custosFixos.filter((c) => c.ativo).reduce((a, c) => a + v0(c.valorMensalCentavos), 0) + impostoFixo;
   const base = config.clientes.filter((c) => c.ativo && c.participaRateio);
   const outros = base.filter((c) => c.id !== cenario.clienteId);
   const rateioAtivo = !opcoes.semRateio && totalFixo > 0;
@@ -323,7 +332,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       });
   }
 
-  const custosProjeto = custosCat.ferramenta + custosCat.audiovisual + custosCat.terceiro + custoPontualDiluido;
+  const custosProjeto = somaCategorias(custosCat) + custoPontualDiluido;
 
   return {
     config,
@@ -338,6 +347,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     impostoPct: v0(imposto),
     impostoSobreposto: sob.impostoPct != null && sob.impostoPct !== config.empresa.impostoPct,
     taxaPct: v0(taxa),
+    taxaFixa: v0(config.empresa.taxaRecebimentoFixaCentavos),
     taxaSobreposta: sob.taxaRecebimentoPct != null && sob.taxaRecebimentoPct !== config.empresa.taxaRecebimentoPct,
     reinvPct: v0(reinv),
     reinvSobreposto: sob.reinvestimentoPct != null && sob.reinvestimentoPct !== config.empresa.reinvestimentoPct,
@@ -347,6 +357,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       ativo: rateioAtivo && regra != null,
       regra,
       total: totalFixo,
+      impostoFixo,
       clientesNaBase: outros.length + 1,
       somaOutros: outros.reduce((a, c) => a + v0(c.valorMensalCentavos), 0),
     },
@@ -376,7 +387,7 @@ export function calcularComReceita(
   const trafego = opcoes.semTrafego ? 0 : prep.receitaTrafego;
   const receita = Math.max(0, mensalidade) + trafego;
   const impostos = (receita * prep.impostoPct) / 100;
-  const taxas = (receita * prep.taxaPct) / 100;
+  const taxas = receita > 0 ? (receita * prep.taxaPct) / 100 + prep.taxaFixa : 0;
   const quota = quotaRateio(prep, receita);
   const sobra = receita - impostos - taxas - prep.custosProjeto - quota;
   const reinvestimento = sobra > 0 ? (sobra * prep.reinvPct) / 100 : 0;
@@ -446,6 +457,7 @@ export function calcularComReceita(
       totalFixoCentavos: prep.rateio.total,
       clientesNaBase: prep.rateio.clientesNaBase,
       quotaCentavos: quota,
+      impostoFixoCentavos: prep.rateio.impostoFixo,
     },
     sobraCentavos: sobra,
     reinvestimentoPct: prep.reinvPct,
@@ -496,7 +508,8 @@ function sobraAlvo(prep: PreparadoMes):
 export function resolverReceita(prep: PreparadoMes, alvo: number): number | null {
   const a = 1 - (prep.impostoPct + prep.taxaPct) / 100;
   if (a <= 0) return null;
-  const c = alvo + prep.custosProjeto;
+  // a tarifa fixa de recebimento se comporta como custo fixo sempre que há receita
+  const c = alvo + prep.custosProjeto + prep.taxaFixa;
   let R: number;
   const r = prep.rateio;
   if (!r.ativo) {
@@ -884,6 +897,46 @@ export function calcularEntrada(
   };
 }
 
+// ─── Teto do regime (ex.: MEI) ──────────────────────────────────────────────
+
+/**
+ * Projeção anual de faturamento: (valor mensal dos outros clientes ativos + a receita
+ * deste cenário) × 12, contra o teto configurado. Sem teto configurado → null.
+ */
+export function calcularTeto(config: Configuracao, clienteId: Id | null, receitaMensal: number | null): ProjecaoTeto | null {
+  const teto = config.empresa.tetoFaturamentoAnualCentavos;
+  if (!positivo(teto)) return null;
+  const outros = config.clientes
+    .filter((c) => c.ativo && c.id !== clienteId)
+    .reduce((a, c) => a + v0(c.valorMensalCentavos), 0);
+  const anual = (outros + v0(receitaMensal)) * 12;
+  const pct = (anual / teto) * 100;
+  const aviso = config.empresa.avisoTetoPct;
+  const nivel = pct > 100 + EPS ? "estourou" : aviso != null && pct >= aviso ? "perto" : "ok";
+  return { tetoCentavos: teto, anualCentavos: anual, pct, nivel };
+}
+
+// ─── Valor único para o cliente ─────────────────────────────────────────────
+
+/** Um valor só: mensalidade + gestão de tráfego, com rateio embutido. Arredonda para cima se configurado. */
+export function calcularProposta(config: Configuracao, mes: ResultadoMes | null, modo: Cenario["modo"]): PropostaCliente | null {
+  if (!mes) return null;
+  let valor = mes.receitaBrutaCentavos;
+  const passo = config.empresa.arredondamentoPropostaCentavos;
+  let arredondado = false;
+  if (modo === "escopo" && positivo(passo)) {
+    const up = Math.ceil(valor / passo - 1e-9) * passo;
+    arredondado = up !== valor;
+    valor = up;
+  }
+  return {
+    valorCentavos: valor,
+    arredondado,
+    incluiTrafego: mes.receitaTrafegoCentavos > 0,
+    verbaMidiaCentavos: mes.verbaMidiaCentavos,
+  };
+}
+
 // ─── Cenário completo ───────────────────────────────────────────────────────
 
 function calcularPontuaisFora(config: Configuracao, cenario: Cenario): ResultadoPontualFora[] {
@@ -964,5 +1017,28 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
     if (pf.resultado) for (const a of pf.resultado.alertas) if (a.nivel === "erro") alertas.push({ ...a, texto: `${pf.nome}: ${a.texto}` });
   }
 
-  return { modo: cenario.modo, entrada: ent.entrada, mes, minimo, encaixe, horizonte: hz.horizonte, pontuaisFora, alertas: unicos(alertas) };
+  const teto = calcularTeto(config, cenario.clienteId, mes ? mes.receitaBrutaCentavos : null);
+  if (teto?.nivel === "estourou")
+    alertas.push({
+      nivel: "erro",
+      texto: `Com este cliente, o faturamento projetado do ano (${formatarMoeda(teto.anualCentavos)}) passa do teto de ${formatarMoeda(teto.tetoCentavos)}. Estourar o teto muda o regime da empresa.`,
+    });
+  else if (teto?.nivel === "perto")
+    alertas.push({
+      nivel: "aviso",
+      texto: `Com este cliente, o faturamento projetado do ano chega a ${formatarPct(teto.pct)} do teto (${formatarMoeda(teto.tetoCentavos)}).`,
+    });
+
+  return {
+    modo: cenario.modo,
+    entrada: ent.entrada,
+    teto,
+    proposta: calcularProposta(config, mes, cenario.modo),
+    mes,
+    minimo,
+    encaixe,
+    horizonte: hz.horizonte,
+    pontuaisFora,
+    alertas: unicos(alertas),
+  };
 }

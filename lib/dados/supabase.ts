@@ -2,6 +2,7 @@
 // de auditoria são garantidos pelo banco (RLS + triggers), não por este código.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { RegistroMesCliente } from "../calculo/mes";
 import type { Cenario, ClienteBase, Configuracao, CustoFixo, Pessoa, ResultadoCenario, Servico, TipoEntrega } from "../calculo/tipos";
 import type { AlteracoesConfig, RegistroAuditoria, Repositorio, ResumoSimulacao, Simulacao, Usuario } from "./repositorio";
 
@@ -93,6 +94,12 @@ export class RepositorioSupabase implements Repositorio {
         impostoPct: num(e?.imposto_pct),
         taxaRecebimentoPct: num(e?.taxa_recebimento_pct),
         regraRateio: (e?.regra_rateio as Configuracao["empresa"]["regraRateio"]) ?? null,
+        impostoFixoMensalCentavos: num(e?.imposto_fixo_mensal_centavos),
+        taxaRecebimentoFixaCentavos: num(e?.taxa_recebimento_fixa_centavos),
+        tetoFaturamentoAnualCentavos: num(e?.teto_faturamento_anual_centavos),
+        avisoTetoPct: num(e?.aviso_teto_pct),
+        ociosidadePct: num(e?.ociosidade_pct),
+        arredondamentoPropostaCentavos: num(e?.arredondamento_proposta_centavos),
       },
       pessoas: ((pes.data ?? []) as Linha[]).map((p) => ({
         id: p.id as string,
@@ -134,6 +141,7 @@ export class RepositorioSupabase implements Repositorio {
           participaRateio: c.participa_rateio as boolean,
           ativo: c.ativo as boolean,
           valorMensalCentavos: num(contrato?.valor_mensal_centavos),
+          escopo: (contrato?.escopo as Cenario | null) ?? null,
         };
       }),
     };
@@ -149,6 +157,12 @@ export class RepositorioSupabase implements Repositorio {
         imposto_pct: a.empresa.impostoPct,
         taxa_recebimento_pct: a.empresa.taxaRecebimentoPct,
         regra_rateio: a.empresa.regraRateio,
+        imposto_fixo_mensal_centavos: a.empresa.impostoFixoMensalCentavos ?? null,
+        taxa_recebimento_fixa_centavos: a.empresa.taxaRecebimentoFixaCentavos ?? null,
+        teto_faturamento_anual_centavos: a.empresa.tetoFaturamentoAnualCentavos ?? null,
+        aviso_teto_pct: a.empresa.avisoTetoPct ?? null,
+        ociosidade_pct: a.empresa.ociosidadePct ?? null,
+        arredondamento_proposta_centavos: a.empresa.arredondamentoPropostaCentavos ?? null,
       });
       erro(error);
     }
@@ -323,6 +337,60 @@ export class RepositorioSupabase implements Repositorio {
 
   async removerSimulacao(id: string) {
     await this.remover("simulacoes", [id]);
+  }
+
+  // ─── Escopo contratado e registros do mês ─────────────────────────────────
+
+  async definirEscopoCliente(clienteId: string, escopo: Cenario | null) {
+    const org_id = await this.org();
+    const { data, error } = await this.sb.from("contratos").select("id").eq("cliente_id", clienteId).eq("status", "ativo").maybeSingle();
+    erro(error);
+    if (data) {
+      const r = await this.sb.from("contratos").update({ escopo }).eq("id", data.id);
+      erro(r.error);
+    } else {
+      const r = await this.sb.from("contratos").insert({ org_id, cliente_id: clienteId, status: "ativo", escopo });
+      erro(r.error);
+    }
+  }
+
+  async carregarMes(competencia: string): Promise<Record<string, RegistroMesCliente>> {
+    const org = await this.org();
+    const dia = `${competencia}-01`;
+    const [meses, horas] = await Promise.all([
+      this.sb.from("mes_cliente").select("cliente_id, valor_recebido_centavos").eq("org_id", org).eq("competencia", dia),
+      this.sb.from("horas_realizadas").select("cliente_id, pessoa_id, horas").eq("org_id", org).eq("competencia", dia),
+    ]);
+    erro(meses.error);
+    erro(horas.error);
+    const out: Record<string, RegistroMesCliente> = {};
+    const garantir = (id: string) => (out[id] ??= { valorRecebidoCentavos: null, horas: {} });
+    for (const m of (meses.data ?? []) as Linha[]) garantir(m.cliente_id as string).valorRecebidoCentavos = num(m.valor_recebido_centavos);
+    for (const h of (horas.data ?? []) as Linha[]) garantir(h.cliente_id as string).horas[h.pessoa_id as string] = num(h.horas);
+    return out;
+  }
+
+  async salvarMesCliente(competencia: string, clienteId: string, registro: RegistroMesCliente) {
+    const org_id = await this.org();
+    const dia = `${competencia}-01`;
+    const m = await this.sb
+      .from("mes_cliente")
+      .upsert(
+        { org_id, cliente_id: clienteId, competencia: dia, valor_recebido_centavos: registro.valorRecebidoCentavos },
+        { onConflict: "cliente_id,competencia" },
+      );
+    erro(m.error);
+    const linhas = Object.entries(registro.horas).map(([pessoa_id, horas]) => ({
+      org_id,
+      cliente_id: clienteId,
+      pessoa_id,
+      competencia: dia,
+      horas,
+    }));
+    if (linhas.length) {
+      const h = await this.sb.from("horas_realizadas").upsert(linhas, { onConflict: "cliente_id,pessoa_id,competencia" });
+      erro(h.error);
+    }
   }
 
   // ─── Auditoria ────────────────────────────────────────────────────────────
