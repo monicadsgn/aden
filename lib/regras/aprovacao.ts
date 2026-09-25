@@ -4,7 +4,7 @@
 // horas por tipo de entrega. Mudar um deles só vale depois que o sócio afetado aprovar;
 // até lá vale o valor antigo. Se quem mudou é o próprio (e único) afetado, vale na hora.
 // Primeiro preenchimento (campo vazio) vale na hora, com aviso. O banco repete essas
-// regras (supabase/migrations/0004) — aqui é a mesma conta, para a tela e o modo local.
+// regras (supabase/migrations/0004 a 0006) — aqui é a mesma conta, para a tela e o modo local.
 
 import { calcularComReceita, prepararMes } from "../calculo/motor";
 import { escopoDoCliente } from "../calculo/mes";
