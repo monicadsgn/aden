@@ -24,10 +24,17 @@ const scriptTema = `try{var t=localStorage.getItem("aden:tema");if(t)document.do
 async function lerConexao(): Promise<ConexaoSupabase> {
   await connection();
   const env = process.env;
-  const ler = (...nomes: string[]) => nomes.map((n) => env[n]?.trim()).find(Boolean) ?? null;
+  // tolera espaço sobrando no NOME da variável (ex.: "NEXT_PUBLIC_SUPABASE_URL ")
+  const porNome = new Map(Object.keys(env).map((k) => [k.trim(), env[k]]));
+  const ler = (...nomes: string[]) => nomes.map((n) => porNome.get(n)?.trim()).find(Boolean) ?? null;
   if (ler("NEXT_PUBLIC_MODO_DEMO") === "1") return { url: null, chave: null, faltando: [] };
   const url = ler("NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL");
   const chave = ler("NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY");
+  if (!url || !chave) {
+    // diagnóstico: só NOMES (entre aspas, para mostrar espaços), nunca valores
+    const nomes = Object.keys(env).filter((k) => k.toUpperCase().includes("SUPABASE"));
+    console.warn(`[aden] conexão Supabase incompleta. Variáveis com SUPABASE no nome: ${JSON.stringify(nomes)}`);
+  }
   return {
     url,
     chave,
