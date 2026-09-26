@@ -2,6 +2,7 @@
 
 - O Aden é a **central da agência** (tarefas, calendário, comercial, financeiro, metas), cada pessoa com seu acesso. Abre na **Visão do dia** (`/hoje`); a calculadora é ferramenta do comercial, não a entrada.
 - Sistema **próprio da Aden**. Não compartilha banco, deploy nem código em runtime com o SoftMoni ou com a Mônica Design. O SoftMoni é só referência de padrões.
+- **Ninguém da Aden (Áleff, equipe, freelancer, contador, clientes) tem acesso ao SoftMoni.** Nunca colocar no Aden link, endereço, chave, login, integração ou conector do SoftMoni, nem citar o SoftMoni em tela, texto de ajuda, PDF ou conector MCP. Reaproveitar lógica do SoftMoni = reescrever aqui dentro, sem ligação nenhuma com ele. Antes de convidar alguém da Aden para Vercel/GitHub/Supabase, avisar a Moni: o SoftMoni está na mesma conta Vercel dela.
 - **Nenhum número de negócio no código**: percentual, preço, prazo, piso, horas por entrega, modelo de cobrança. Tudo vem da configuração ou do que a pessoa digita. Campos começam vazios (`null`). Nomes citados pela Moni podem ser oferecidos como sugestão (ex.: lista de serviços), nunca números.
 - Não inventar regra de negócio: na dúvida, perguntar.
 - Dinheiro em centavos (inteiro). Percentuais de 0 a 100.

@@ -61,7 +61,7 @@ Regras que você deve seguir:
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
 - Equipe: ver_equipe e convidar_pessoa (cada papel vê só o que é dele; o banco garante).
-- Aprovação de conteúdo pelo cliente: por enquanto fica no SoftMoni (o painel do cliente do Aden está desligado).
+- Aprovação de conteúdo pelo cliente: por enquanto é feita fora do Aden (o painel do cliente do Aden está desligado).
   Tarefa em status revisao = "com o cliente", esperando a aprovação dele.
 - Clientes: ver_cliente (ficha completa) e salvar_ficha_cliente (contato e condições do contrato).
 - CRM: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
@@ -721,7 +721,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   );
 
   // ─── Painel do cliente ────────────────────────────────────────────────────
-  // Desligado por enquanto (a aprovação fica no SoftMoni): ver lib/recursos.ts.
+  // Desligado por enquanto: ver lib/recursos.ts.
   if (PAINEL_CLIENTE_ATIVO) {
 
     server.registerTool(
