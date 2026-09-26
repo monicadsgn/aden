@@ -16,7 +16,7 @@ export default function Entrar() {
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    if (repo.modo === "local" || usuario) router.replace("/calculadora");
+    if (repo.modo === "local" || usuario) router.replace("/hoje");
   }, [repo.modo, usuario, router]);
 
   return (

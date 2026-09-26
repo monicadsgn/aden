@@ -1,5 +1,6 @@
 # Aden · Gestão: regras do projeto
 
+- O Aden é a **central da agência** (tarefas, calendário, comercial, financeiro, metas), cada pessoa com seu acesso. Abre na **Visão do dia** (`/hoje`); a calculadora é ferramenta do comercial, não a entrada.
 - Sistema **próprio da Aden**. Não compartilha banco, deploy nem código em runtime com o SoftMoni ou com a Mônica Design. O SoftMoni é só referência de padrões.
 - **Nenhum número de negócio no código**: percentual, preço, prazo, piso, horas por entrega, modelo de cobrança. Tudo vem da configuração ou do que a pessoa digita. Campos começam vazios (`null`). Nomes citados pela Moni podem ser oferecidos como sugestão (ex.: lista de serviços), nunca números.
 - Não inventar regra de negócio: na dúvida, perguntar.

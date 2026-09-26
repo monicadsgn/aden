@@ -56,7 +56,7 @@ export function BotaoAjudaTela() {
 
 const EVENTO_TOUR = "aden:tour";
 export const abrirTour = () => window.dispatchEvent(new Event(EVENTO_TOUR));
-const chaveTour = (usuario: string) => `aden:tour-visto:v1:${usuario}`;
+const chaveTour = (usuario: string) => `aden:tour-visto:v2:${usuario}`;
 
 /** Tour de primeira vez: abre sozinho na primeira entrada; pode pular e rever pelo menu. */
 export function Tour() {

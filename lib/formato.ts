@@ -78,3 +78,6 @@ export function formatarDuracao(h: number | null | undefined): string {
   const r = m % 60;
   return r ? `${hh} h ${r} min` : `${hh} h`;
 }
+
+/** Só a primeira letra maiúscula ("sábado, 26 de setembro" → "Sábado, 26 de setembro"). */
+export const primeiraMaiuscula = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);

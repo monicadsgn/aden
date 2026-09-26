@@ -56,6 +56,15 @@ export default function Calculadora() {
           const s: Simulacao = { id: novoId(), nome: recebido.nome, cenarios: recebido.cenarios.slice(0, MAX_CENARIOS) };
           setSim(s);
           setAtivoId(s.cenarios[0].id);
+        } else {
+          // link direto para uma simulação guardada (ex.: propostas recentes da Visão do dia)
+          const simId = new URLSearchParams(window.location.search).get("sim");
+          const s = simId ? await repo.carregarSimulacao(simId) : null;
+          if (s) {
+            setSim(s);
+            setSalvoJson(JSON.stringify(s));
+            setAtivoId(s.cenarios[0]?.id ?? "");
+          }
         }
         await carregarLista();
       } catch (e) {

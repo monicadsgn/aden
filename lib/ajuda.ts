@@ -12,6 +12,16 @@ export interface AjudaTela {
 }
 
 export const AJUDA_TELAS: Record<string, AjudaTela> = {
+  "/hoje": {
+    titulo: "Visão do dia",
+    texto:
+      "É por aqui que cada um começa o dia: o que tem para resolver hoje, o que está atrasado, o que depende de você e um resumo das metas, do comercial e do financeiro. Clique nos números do topo para ver a lista de cada um. Sócios podem olhar as pendências um do outro no seletor do canto.",
+    termos: ["escopo"],
+  },
+  "/calendario": {
+    titulo: "Calendário",
+    texto: "As tarefas no tempo, do início ao prazo. Clique num dia para ver o que tem nele ou criar uma tarefa ali. Dá para ver só as suas, as de outro sócio ou de todo mundo.",
+  },
   "/calculadora": {
     titulo: "Calculadora de projeto",
     texto:
@@ -195,26 +205,32 @@ export interface PassoTour {
 export const TOUR: PassoTour[] = [
   {
     titulo: "Boas-vindas ao Aden",
-    texto: "Este sistema responde uma pergunta: quanto cada sócio ganha, de verdade, por hora de trabalho em cada cliente. Em 5 passos você vê como a conta funciona.",
+    texto:
+      "O Aden é a central da agência: tarefas, calendário, comercial, financeiro e metas num lugar só, sem pular de programa em programa. Cada pessoa entra com o próprio acesso e vê o que é dela.",
   },
   {
-    titulo: "1. O cliente paga",
-    texto: "Tudo começa na mensalidade que o cliente paga pelas entregas do mês (o escopo). A verba de anúncios é do cliente e não entra na conta.",
+    titulo: "Comece pela Visão do dia",
+    texto:
+      "Toda vez que abrir o Aden, você cai na Visão do dia: o que tem para resolver hoje, o que atrasou, o que depende de você (aprovações, avisos) e o que vem pela frente. Sócios podem olhar as pendências um do outro quando quiserem.",
   },
   {
-    titulo: "2. Saem custos e imposto",
-    texto: "Do que entra, saem os custos do projeto, uma parte dos custos fixos da empresa (o rateio), o imposto e a taxa do banco. O que fica é a sobra.",
+    titulo: "Tarefas e calendário",
+    texto:
+      "Tudo o que está em produção vira tarefa, com responsável, prazo e checklist. Dentro de cada tarefa tem o Start para medir o tempo. O calendário mostra tudo no mês, para ninguém perder o fio da meada.",
   },
   {
-    titulo: "3. A sobra é dividida",
-    texto: "Uma parte da sobra pode ficar guardada na empresa (reinvestimento). O resto é dividido entre os sócios pelo percentual de cada um.",
+    titulo: "Comercial",
+    texto:
+      "Na Negociação você apresenta os pacotes ao cliente e personaliza na hora. Por trás, a calculadora garante que o preço paga os custos e as horas de todo mundo. A Visão do dia mostra quantos clientes ainda cabem.",
   },
   {
-    titulo: "4. Quanto vale cada hora",
-    texto: "O sistema divide o que cada sócio recebe pelas horas que ele trabalha no cliente. Se ficar abaixo do piso (o mínimo combinado), acende o alerta.",
+    titulo: "Financeiro e metas",
+    texto:
+      "Cada pagamento que entra é registrado e dividido do jeito que vocês combinaram. A trilha de metas mostra onde a Aden está no crescimento e qual é o próximo passo.",
   },
   {
     titulo: "Por onde começar",
-    texto: "Preencha as Configurações primeiro. Depois use a Calculadora para cada proposta e as Tarefas no dia a dia. Em cada tela tem um botão \"?\", e o Glossário explica cada palavra. Dá para rever este tour pelo menu.",
+    texto:
+      "Preencha as Configurações (sócios, entregas, pacotes, metas) e crie as primeiras tarefas. Em cada tela tem um botão \"?\" e o Glossário explica cada palavra. Dá para rever este tour pelo menu.",
   },
 ];

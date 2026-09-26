@@ -66,7 +66,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titulo ? idTitulo : undefined}
         className={cx(
-          "flex w-full flex-col bg-superficie shadow-forte outline-none",
+          "sem-contorno flex w-full flex-col bg-superficie shadow-forte outline-none",
           cheia ? "h-full" : cx("max-h-[88vh] rounded-t-card sm:rounded-card", larguras[largura]),
         )}
       >

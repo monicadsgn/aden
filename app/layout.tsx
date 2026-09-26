@@ -5,7 +5,7 @@ import { ProvedorDados, type ConexaoSupabase } from "@/lib/dados/contexto";
 
 export const metadata: Metadata = {
   title: "Aden · Gestão",
-  description: "Sistema de gestão da Aden — assessoria de marketing e performance",
+  description: "A central da Aden: tarefas, calendário, comercial, financeiro e metas num lugar só",
 };
 
 export const viewport: Viewport = {

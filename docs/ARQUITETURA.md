@@ -5,6 +5,18 @@
 Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + Tailwind v4 + Vercel.
 Projeto Supabase, projeto Vercel, repositório e domínio exclusivos da Aden.
 
+## O que o Aden é (Moni, 26/09/2026)
+
+O Aden é a **central da agência**: tudo num sistema só, em vez de vários programas. Tarefas, calendário, comercial,
+financeiro, metas e clientes no mesmo lugar, cada pessoa com o próprio acesso. Ele **abre na Visão do dia** de quem
+entrou: o que tem para resolver hoje, o que atrasou, o que depende de mim (aprovações, avisos) e um resumo de metas,
+comercial e financeiro. Sócios podem ver as pendências um do outro quando quiserem (seletor "De quem"), nunca imposto
+na tela. A calculadora é uma ferramenta do comercial, não a porta de entrada. Referência de organização: o SoftMoni
+(visão do dia com cartões clicáveis, calendário, janelas de tarefa).
+
+Menu: **Dia a dia** (Visão do dia, Tarefas, Calendário; sempre aberto) · Comercial · Operação · Financeiro · Sócios ·
+Administrativo · Sistema · Ajuda.
+
 ## Áreas do sistema
 
 | Área | Conteúdo | Fase |

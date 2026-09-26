@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarDays,
   BookOpen,
   HelpCircle,
   BadgeCheck,
@@ -51,20 +52,29 @@ interface Item {
 }
 
 // Áreas do sistema (aprovadas pela Moni em 25/09/2026). Cada item é uma tela com um assunto só.
-const GRUPOS: { titulo: string; itens: Item[] }[] = [
+// O dia a dia vem primeiro e fica sempre aberto: é por onde cada um começa o dia.
+const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
+  {
+    titulo: "Dia a dia",
+    fixo: true,
+    itens: [
+      { href: "/hoje", rotulo: "Visão do dia", icone: Sun, area: "hoje" },
+      { href: "/tarefas", rotulo: "Tarefas", icone: ListChecks, area: "tarefas" },
+      { href: "/calendario", rotulo: "Calendário", icone: CalendarDays, area: "calendario" },
+    ],
+  },
   {
     titulo: "Comercial",
     itens: [
-      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora" },
       { href: "/negociacao", rotulo: "Negociação ao vivo", icone: Presentation, area: "negociacao" },
+      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora" },
       { href: "#crm", rotulo: "CRM e leads", icone: MessagesSquare, emBreve: true },
     ],
   },
   {
     titulo: "Operação",
     itens: [
-      { href: "/tarefas", rotulo: "Tarefas", icone: ListChecks, area: "tarefas" },
-      { href: "/mes", rotulo: "Visão do mês", icone: CalendarRange, area: "mes" },
+      { href: "/mes", rotulo: "Visão do mês e metas", icone: CalendarRange, area: "mes" },
       { href: "/capacidade", rotulo: "Capacidade", icone: Gauge, area: "capacidade" },
       { href: "/calibragem", rotulo: "Calibragem das horas", icone: Gauge, area: "calibragem" },
       { href: "#aprovacao", rotulo: "Aprovações do cliente", icone: BadgeCheck, emBreve: true },
@@ -152,11 +162,12 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
   return (
     <nav className="flex flex-col gap-1" aria-label="Áreas do sistema">
       {grupos.map((g) => {
-        const aberto = abertos.includes(g.titulo);
+        const aberto = g.fixo || abertos.includes(g.titulo);
         const total = g.itens.reduce((a, i) => a + (i.contador ? contagem[i.contador] : 0), 0);
         const temAtivo = g.titulo === doCaminho;
         return (
           <div key={g.titulo}>
+            {!g.fixo && (
             <button
               type="button"
               aria-expanded={aberto}
@@ -170,6 +181,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
               {!aberto && total > 0 && <span className="flex size-5 items-center justify-center rounded-full bg-erro text-[10px] text-superficie">{total}</span>}
               <ChevronDown size={15} className={cx("transition-transform", aberto && "rotate-180")} />
             </button>
+            )}
             {aberto && (
               <ul className="mb-2 flex flex-col gap-0.5 pl-1">
                 {g.itens.map((i) => {

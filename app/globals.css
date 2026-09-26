@@ -66,6 +66,11 @@ input[type="number"]::-webkit-outer-spin-button {
   outline-offset: 2px;
 }
 
+/* campo dentro de uma caixa que já mostra o foco (focus-within) */
+.sem-contorno:focus-visible {
+  outline: none;
+}
+
 /* impressão: só os resultados */
 @media print {
   .nao-imprimir { display: none !important; }

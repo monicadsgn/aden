@@ -14,6 +14,7 @@ import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
 import { calcularSolucoes } from "../calculo/solucoes";
+import { hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
 import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } from "../calculo/pacotes";
 import { estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, rotuloStatus, type Tarefa } from "../calculo/tarefas";
@@ -33,8 +34,9 @@ import {
   zCenarioConversa,
 } from "./traducao";
 
-const INSTRUCOES = `Sistema de gestão da Aden (assessoria de marketing e performance, sócios Moni e Áleff).
-Você tem o mesmo acesso de um sócio: configurações, calculadora de projeto, simulações e histórico.
+const INSTRUCOES = `Aden: a central da agência (assessoria de marketing e performance, sócios Moni e Áleff). Tudo num lugar só:
+tarefas, calendário, comercial (pacotes, negociação, calculadora), financeiro, metas e configurações.
+Você tem o mesmo acesso de um sócio. Para "o que tenho pra hoje?", comece por ver_visao_do_dia.
 
 Regras que você deve seguir:
 - NUNCA invente número de negócio (percentual, preço, piso, prazo, horas por entrega, modelo de cobrança).
@@ -54,6 +56,7 @@ Regras que você deve seguir:
 - Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
+- O Aden é a central da agência (tarefas, calendário, comercial, financeiro, metas). "O que tenho pra hoje?" → ver_visao_do_dia.
 - Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist)
   e mudar_status_tarefa. O cronômetro fica DENTRO da tarefa (botão Start no site); você não liga relógio, mas pode
   registrar um tempo que a pessoa disse com registrar_medicao. ver_calibragem mostra a média medida.
@@ -865,6 +868,38 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
   );
 
   // ─── Tarefas ──────────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "ver_visao_do_dia",
+    {
+      title: "Visão do dia",
+      description:
+        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, em aprovação e concluídas hoje; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
+      inputSchema: { socio: z.string().optional().describe("sócio (nome ou id); vazio = todo mundo") },
+    },
+    async ({ socio }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const pessoaId = socio ? resolver(config.pessoas, socio, "Sócio").id : null;
+        const [tarefas, pedidos] = await Promise.all([repo.listarTarefas(), repo.listarPedidos()]);
+        const v = montarVisaoDoDia(tarefas, pessoaId, hojeISO());
+        const cli = (id: string | null) => (id ? (config.clientes.find((c) => c.id === id)?.nome ?? null) : null);
+        const resumo = (l: typeof tarefas) => l.map((t) => ({ id: t.id, titulo: t.titulo, cliente: cli(t.clienteId), vencimento: t.vencimento, status: rotuloStatus(t.status) }));
+        return {
+          hoje: resumo(v.hoje),
+          atrasadas: resumo(v.atrasadas),
+          proximos7Dias: resumo(v.semana),
+          emAprovacao: resumo(v.emAprovacao),
+          emProducaoSemPrazo: resumo(v.emAndamento),
+          semResponsavel: resumo(v.semResponsavel),
+          concluidasHoje: v.concluidasHoje.length,
+          aprovacoesEsperando: pessoaId
+            ? pedidos.filter((p) => p.status === "pendente" && p.afetados.includes(pessoaId) && !p.aprovacoes.some((a) => a.pessoaId === pessoaId)).map((p) => p.descricao)
+            : pedidos.filter((p) => p.status === "pendente").map((p) => p.descricao),
+        };
+      }),
+  );
 
   server.registerTool(
     "listar_tarefas",
