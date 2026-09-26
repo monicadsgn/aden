@@ -7,7 +7,8 @@
 - Não inventar regra de negócio: na dúvida, perguntar.
 - Dinheiro em centavos (inteiro). Percentuais de 0 a 100.
 - Visual: só tokens de `app/tokens.css` (via classes `bg-marca`, `text-texto-suave`, `rounded-card`, `rounded-bloco`, `rounded-item`, `rounded-campo`, `rounded-botao`). Nada de cor, fonte ou arredondamento fixo em componente; `rounded-full` só para círculos de verdade.
-- Audiovisual nunca gera horas dos sócios: tipo de entrega "vídeo de terceiro" é só custo. Roteiro e direção têm horas.
+- Audiovisual nunca gera horas dos sócios. Tipo de entrega tem "Quem faz": os sócios (com tempo) ou um terceiro cadastrado (sem horas, custo do cliente; no banco `audiovisual=true` + `terceiro_id`). Roteiro e direção são dos sócios, com horas.
+- Comercial: o serviço "Atendimento e comercial" (Áleff) e os tipos "Atendimento mensal do cliente" (rotina) e "Venda e fechamento" (entrada) já existem no banco. Usar esses; nunca criar serviço ou tipo duplicado.
 - Entrada do cliente (uma vez) nunca entra no resultado da rotina mensal.
 - Ferramentas e estrutura vão embutidas na mensalidade (rateio); a proposta mostra um valor só.
 - Linguagem simples: cada tela e número importante tem uma frase dizendo o que significa (a Moni não é de números).

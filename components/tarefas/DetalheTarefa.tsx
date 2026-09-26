@@ -215,7 +215,7 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
           </Linha>
           <Linha icone={Hourglass} rotulo="Estimativa de tempo">
             <span className="px-2" title="Tempo por entrega (em Configurações → Tipos de entrega) × quantidade">
-              {est != null ? formatarDuracao(est) : tipo?.audiovisual ? "vídeo de terceiro: sem horas" : tipo ? "tipo sem tempo cadastrado" : "escolha o tipo de entrega"}
+              {est != null ? formatarDuracao(est) : tipo?.audiovisual ? "feito por terceiro: sem horas dos sócios" : tipo ? "tipo sem tempo cadastrado" : "escolha o tipo de entrega"}
             </span>
           </Linha>
           <Linha icone={Timer} rotulo="Rastrear tempo">

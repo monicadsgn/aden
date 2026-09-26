@@ -279,15 +279,15 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou alterar tipo de entrega",
       description:
-        "Unidade de esforço da calculadora (ex.: post simples, carrossel, roteiro). audiovisual=true para vídeo feito por terceiro: não gera horas, exige custo de audiovisual.",
+        "Unidade de esforço da calculadora (ex.: post simples, carrossel, roteiro). Quem faz: os sócios (padrão, com tempo) ou um terceiro cadastrado (terceiro=nome): aí não conta horas dos sócios e vira custo do cliente pelo valor do terceiro. terceiro=null volta para os sócios.",
       inputSchema: {
         id: z.string().optional().describe("id ou nome do tipo a alterar; vazio = novo"),
         nome: z.string().optional(),
         servico: opt(z.string(), "serviço (nome ou id)"),
         minutosPorUnidade: opt(z.number(), "tempo por entrega, em minutos (campo protegido)"),
         horasPorUnidade: opt(z.number(), "tempo por entrega em horas (prefira minutosPorUnidade)"),
-        audiovisual: z.boolean().optional(),
-        terceiro: opt(z.string(), "terceiro que cobra por saída (nome ou id): cada unidade = 1 saída"),
+        audiovisual: z.boolean().optional().describe("não use: é definido por 'terceiro'"),
+        terceiro: opt(z.string(), "quem faz: terceiro cadastrado (nome ou id), cada unidade = 1 saída; null = os sócios"),
         ativo: z.boolean().optional(),
       },
     },
@@ -299,7 +299,12 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...resto,
           ...(minutosPorUnidade !== undefined ? { horasPorUnidade: minutosPorUnidade == null ? null : minutosPorUnidade / 60 } : {}),
           ...(servico !== undefined ? { servicoId: servico == null ? null : resolver(antes.servicos, servico, "Serviço").id } : {}),
-          ...(terceiro !== undefined ? { terceiroId: terceiro == null ? null : resolver(antes.terceiros ?? [], terceiro, "Terceiro").id } : {}),
+          // "quem faz": terceiro escolhido = sem horas dos sócios; null = volta para os sócios
+          ...(terceiro !== undefined
+            ? terceiro == null
+              ? { terceiroId: null, audiovisual: false }
+              : { terceiroId: resolver(antes.terceiros ?? [], terceiro, "Terceiro").id, audiovisual: true }
+            : {}),
         };
         let tiposEntrega;
         if (id) {

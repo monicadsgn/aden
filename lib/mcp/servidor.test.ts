@@ -329,7 +329,9 @@ describe("conector: terceiros, pacotes e metas", () => {
     await chamar("definir_percentuais_empresa", { regraRateio: "igual", reinvestimentoPct: 0, impostoPct: 0, taxaRecebimentoPct: 0 });
     await chamar("salvar_tipo_entrega", { nome: "Post", servico: "Social media", minutosPorUnidade: 60 });
     await chamar("salvar_terceiro", { nome: "Audiovisual", valorPorSaidaReais: 300, deslocamentoMedioReais: 50, fraseCliente: "gravação e edição mensal inclusa" });
-    await chamar("salvar_tipo_entrega", { nome: "Gravação", audiovisual: true, terceiro: "Audiovisual" });
+    await chamar("salvar_tipo_entrega", { nome: "Gravação", terceiro: "Audiovisual" });
+    // escolher o terceiro já tira a entrega das horas dos sócios
+    expect(banco.config.tiposEntrega.find((t) => t.nome === "Gravação")).toMatchObject({ audiovisual: true });
     const p = await chamar("salvar_pacote", { nome: "Padrão", rotina: [{ entrega: "Post", quantidade: 4 }, { entrega: "Gravação", quantidade: 1 }], primeiroMes: [] });
     expect(p.manutencaoMensal).toBe(590);
     const [v] = await chamar("ver_pacotes");

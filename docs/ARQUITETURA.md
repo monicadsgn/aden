@@ -141,6 +141,8 @@ A decidir com a Moni (não inventar):
 - **Blocos clicáveis na calculadora**: o título de cada bloco abre uma janela (`Modal`) com o que é, o que já está
   cadastrado (números da configuração), um exemplo e atalhos (`components/calculadora/Detalhes.tsx`).
 - **Terceiros cobrados por saída** (`terceiros`, `tipos_entrega.terceiro_id`): cada unidade do tipo ligado é uma saída.
+  Na tela (Configurações → Tipos de entrega) isso é o campo **Quem faz**: "Os sócios" (com tempo) ou um terceiro
+  cadastrado (grava `audiovisual=true` + `terceiro_id`; sem horas dos sócios). O conector faz o mesmo com `terceiro`.
   custo = saídas × (valor por saída + deslocamento), deslocamento = o real do cliente (`Cenario.deslocamentos`) ou o
   médio do terceiro. Custo só do cliente (categoria audiovisual/terceiro do projeto), nunca rateado. O cliente vê só a
   frase do terceiro ("gravação e edição mensal inclusa"), nunca o valor.

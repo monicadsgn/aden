@@ -464,7 +464,7 @@ export default function Configuracoes() {
               <div className="flex flex-col gap-2">
                 <p className="text-[11px] text-texto-suave">
                   Digite o tempo em <strong>minutos</strong> (20 min, 40 min…). <Lock size={10} className="inline" /> É protegido: muda quanto cada hora vale. Roteiro e direção de
-                  gravação são tipos normais, com tempo. Vídeo editado é de terceiro e não tem tempo dos sócios.{" "}
+                  gravação são feitos pelos sócios, com tempo. Entrega feita por um terceiro (ex.: gravação) não tem tempo dos sócios: escolha em &quot;Quem faz&quot;.
                 </p>
                 <Link
                   href="/calibragem"
@@ -477,8 +477,13 @@ export default function Configuracoes() {
                     Ex.: post simples, carrossel, PDF, peça de WhatsApp, criativo de tráfego com variações, planejamento mensal, relatório.
                   </Vazio>
                 )}
-                {rascunho.tiposEntrega.map((t) => (
-                  <div key={t.id} className="grid grid-cols-[1fr_auto] items-start gap-2 rounded-bloco bg-superficie-2/60 p-3 sm:grid-cols-[1.4fr_1fr_8.5rem_auto]">
+                {rascunho.tiposEntrega.map((t) => {
+                  // "Quem faz": os sócios (tem tempo) ou um terceiro cadastrado (sem tempo dos sócios, vira custo do cliente)
+                  const terceiros = rascunho.terceiros ?? [];
+                  const semTerceiroEscolhido = !!t.audiovisual && !t.terceiroId;
+                  const quemFaz = t.terceiroId ?? (semTerceiroEscolhido ? "__terceiro" : "socios");
+                  return (
+                  <div key={t.id} className="grid grid-cols-[1fr_auto] items-start gap-2 rounded-bloco bg-superficie-2/60 p-3 sm:grid-cols-[1.4fr_1fr_1fr_8.5rem_auto]">
                     <CampoTexto className="col-span-2 sm:col-span-1" rotulo="Entrega" valor={t.nome} aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { nome: v }) })} />
                     <Selecao
                       rotulo="Serviço"
@@ -487,8 +492,22 @@ export default function Configuracoes() {
                       opcoes={rascunho.servicos.map((s) => ({ valor: s.id, rotulo: s.nome || "(sem nome)" }))}
                       aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { servicoId: v }) })}
                     />
+                    <Selecao
+                      rotulo="Quem faz"
+                      valor={quemFaz}
+                      opcoes={[
+                        { valor: "socios", rotulo: "Os sócios" },
+                        ...(semTerceiroEscolhido ? [{ valor: "__terceiro", rotulo: "Um terceiro (escolha qual)" }] : []),
+                        ...terceiros.map((x) => ({ valor: x.id, rotulo: x.nome || "(terceiro sem nome)" })),
+                      ]}
+                      aoMudar={(v) => {
+                        if (!v || v === "__terceiro") return;
+                        const patch = v === "socios" ? { audiovisual: false, terceiroId: null } : { audiovisual: true, terceiroId: v };
+                        set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, patch) });
+                      }}
+                    />
                     {t.audiovisual ? (
-                      <div className="pt-6 text-center text-[11px] leading-tight font-semibold text-texto-suave">sem tempo (terceiro)</div>
+                      <div className="pt-6 text-center text-[11px] leading-tight font-semibold text-texto-suave">sem tempo dos sócios</div>
                     ) : (
                       <Alvo campo="horasPorUnidade">
                         <CampoMinutos
@@ -504,25 +523,17 @@ export default function Configuracoes() {
                       </Alvo>
                     )}
                     <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label="Remover tipo" onClick={() => set({ tiposEntrega: rascunho.tiposEntrega.filter((x) => x.id !== t.id) })} />
-                    <div className="col-span-full flex flex-wrap items-center gap-x-5 gap-y-2">
-                      <Interruptor
-                        ligado={!!t.audiovisual}
-                        rotulo="Vídeo de terceiro (edição, motion, legenda, corte): não gera horas"
-                        aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { audiovisual: v }) })}
-                      />
-                      {(rascunho.terceiros ?? []).length > 0 && (
-                        <Selecao
-                          className="w-full sm:w-72"
-                          ariaLabel="Feito por terceiro que cobra por saída"
-                          valor={t.terceiroId ?? null}
-                          vazio="Não é cobrado por saída"
-                          opcoes={(rascunho.terceiros ?? []).map((x) => ({ valor: x.id, rotulo: `Cada unidade = 1 saída de ${x.nome || "terceiro"}` }))}
-                          aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { terceiroId: v }) })}
-                        />
-                      )}
-                    </div>
+                    {t.terceiroId && (
+                      <p className="col-span-full text-xs text-texto-suave">Não conta horas dos sócios. Vira custo do cliente, pelo valor cadastrado em Terceiros.</p>
+                    )}
+                    {semTerceiroEscolhido && (
+                      <p className="col-span-full text-xs text-aviso">
+                        Escolha em &quot;Quem faz&quot; qual terceiro faz esta entrega{terceiros.length === 0 ? " (cadastre antes na aba Terceiros)" : ""}.
+                      </p>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
                 <div>
                   <Botao
                     icone={Plus}

@@ -114,7 +114,7 @@ function EditorEntregas({
             {video ? (
               <div className="col-span-2 pb-2 2xl:col-span-2">
                 <Badge tom="info" icone={Clapperboard}>
-                  vídeo de terceiro · sem horas
+                  feito por terceiro · sem horas
                 </Badge>
               </div>
             ) : (

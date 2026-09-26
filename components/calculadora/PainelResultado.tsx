@@ -712,7 +712,7 @@ export function PainelResultado({
                         <p className="truncate text-[13px] font-semibold">{t.nome}</p>
                         <p className="text-[11px] text-texto-suave">
                           {config.tiposEntrega.find((x) => x.id === t.tipoEntregaId)?.audiovisual
-                            ? "vídeo de terceiro · só custo"
+                            ? "feito por terceiro · só custo"
                             : t.horasPorUnidade != null
                               ? `${formatarDuracao(t.horasPorUnidade)} por entrega`
                               : "sem tempo cadastrado"}
