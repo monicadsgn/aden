@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Card, EtiquetaOrigem, TituloCard, Vazio, cx, type Tom } from "@/components/ui";
 import { calcularVisaoMes, type SituacaoSocio, type VisaoSocio } from "@/lib/calculo/mes";
+import { Avatar } from "@/components/Avatar";
 import { configVazia } from "@/lib/calculo/novo";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
@@ -101,7 +102,7 @@ export default function VisaoDoMes() {
                   )}
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="flex size-8 items-center justify-center rounded-full bg-marca text-xs font-bold text-sobre-marca">{s.nome.slice(0, 1)}</span>
+                    <Avatar nome={s.nome} foto={config.pessoas.find((x) => x.id === s.id)?.fotoUrl} />
                     <span className="flex-1 text-sm font-bold">{s.nome}</span>
                     <Badge tom={st.tom} icone={st.icone}>
                       {st.rotulo}

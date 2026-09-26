@@ -42,6 +42,7 @@ import type {
 } from "@/lib/calculo/tipos";
 import { formatarDuracao, formatarHoras, formatarMoeda, formatarPct } from "@/lib/formato";
 import { BotaoAcao, ListaAlertas } from "../Alertas";
+import { Avatar } from "../Avatar";
 import { Badge, Botao, Card, EtiquetaOrigem, Forma, IconeBadge, Passo, TituloCard, cx, type Tom } from "../ui";
 
 // ─── Limites do encaixe ─────────────────────────────────────────────────────
@@ -172,7 +173,7 @@ function Barra({ pct, alerta }: { pct: number; alerta: boolean }) {
   );
 }
 
-function CartaoSocio({ p, grande }: { p: ResultadoPessoa; grande?: boolean }) {
+function CartaoSocio({ p, grande, foto }: { p: ResultadoPessoa; grande?: boolean; foto?: string | null }) {
   const semPiso = p.pisoHoraCentavos == null;
   const status: { tom: Tom; icone: LucideIcon; texto: string } | null =
     p.valorHoraCentavos == null
@@ -186,7 +187,7 @@ function CartaoSocio({ p, grande }: { p: ResultadoPessoa; grande?: boolean }) {
     <div className={cx("relative overflow-hidden rounded-bloco border p-4", p.abaixoPiso ? "border-erro/40 bg-erro-suave/40" : "border-linha bg-superficie")}>
       <span className="pointer-events-none absolute -top-6 -right-6 size-16 rounded-full bg-marca-suave/70" aria-hidden />
       <div className="relative flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-full bg-marca text-xs font-bold text-sobre-marca">{p.nome.slice(0, 1).toUpperCase()}</span>
+        <Avatar nome={p.nome} foto={foto} />
         <span className="flex-1 truncate text-sm font-bold">{p.nome}</span>
         {p.percentual != null && (
           <Badge tom={p.percentualSobreposto ? "aviso" : "marca"} title={p.percentualSobreposto ? "Percentual diferente do padrão" : undefined}>
@@ -596,7 +597,7 @@ export function PainelResultado({
               <TituloCard icone={Users} titulo="Cada sócio · rotina mensal" descricao="Valor do mês e por hora trabalhada na rotina deste projeto." />
               <div className={cx("grid gap-3 px-5 pb-5", socios.length > 1 && "sm:grid-cols-2")}>
                 {socios.map((p) => (
-                  <CartaoSocio key={p.id} p={p} grande={grande} />
+                  <CartaoSocio key={p.id} p={p} grande={grande} foto={config.pessoas.find((x) => x.id === p.id)?.fotoUrl} />
                 ))}
               </div>
             </Card>

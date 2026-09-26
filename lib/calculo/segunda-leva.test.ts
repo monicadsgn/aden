@@ -601,3 +601,13 @@ describe("distribuição de pagamentos", () => {
     expect(rep.find((r) => r.pessoaId === "m")!.faltaCentavos).toBeGreaterThan(0);
   });
 });
+
+import { recorteQuadrado } from "../imagem";
+
+describe("foto de perfil", () => {
+  it("corta no quadrado pelo centro", () => {
+    expect(recorteQuadrado(400, 300)).toEqual({ x: 50, y: 0, lado: 300 });
+    expect(recorteQuadrado(300, 500)).toEqual({ x: 0, y: 100, lado: 300 });
+    expect(recorteQuadrado(200, 200)).toEqual({ x: 0, y: 0, lado: 200 });
+  });
+});

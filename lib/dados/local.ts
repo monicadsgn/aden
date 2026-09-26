@@ -42,6 +42,15 @@ interface Banco {
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
 
+function paraDataUrl(b: Blob): Promise<string> {
+  return new Promise((ok, falha) => {
+    const r = new FileReader();
+    r.onload = () => ok(r.result as string);
+    r.onerror = () => falha(r.error);
+    r.readAsDataURL(b);
+  });
+}
+
 function ler(): Banco {
   try {
     const bruto = localStorage.getItem(CHAVE);
@@ -156,6 +165,18 @@ export class RepositorioLocal implements Repositorio {
 
   async listarMembros(): Promise<Membro[]> {
     return [{ id: "local", nome: USUARIO.nome, email: USUARIO.email, papel: "admin" }];
+  }
+
+  async salvarFotoPessoa(pessoaId: string, imagem: Blob | null): Promise<string | null> {
+    const url = imagem ? await paraDataUrl(imagem) : null;
+    const b = ler();
+    const p = b.config.pessoas.find((x) => x.id === pessoaId);
+    if (p) {
+      registrar(b, "pessoas", p.id, { foto: p.fotoUrl ? "com foto" : "sem foto" }, { foto: url ? "foto nova" : "sem foto" });
+      p.fotoUrl = url;
+    }
+    gravar(b);
+    return url;
   }
 
   async salvarConfig(alt: AlteracoesConfig): Promise<ResultadoSalvarConfig> {

@@ -19,6 +19,8 @@ export interface Usuario {
   papel: string;
   /** sócio (pessoa) ligado a este login; null = login sem sócio (ex.: o conector) */
   pessoaId: string | null;
+  /** foto de perfil do sócio ligado a este login */
+  fotoUrl?: string | null;
 }
 
 export interface Membro {
@@ -142,6 +144,8 @@ export interface Repositorio {
    */
   salvarConfig(alteracoes: AlteracoesConfig): Promise<ResultadoSalvarConfig>;
   listarMembros(): Promise<Membro[]>;
+  /** Troca a foto de perfil do sócio (imagem já reduzida). null tira a foto. Devolve o endereço novo. */
+  salvarFotoPessoa(pessoaId: string, imagem: Blob | null): Promise<string | null>;
 
   listarSimulacoes(): Promise<ResumoSimulacao[]>;
   carregarSimulacao(id: string): Promise<Simulacao | null>;

@@ -25,6 +25,8 @@ export interface Pessoa {
   ativo: boolean;
   /** login ligado a este sócio (para aprovar o que o afeta) */
   membroId?: string | null;
+  /** endereço da foto de perfil (vazio = mostra a inicial) */
+  fotoUrl?: string | null;
 }
 
 export interface Servico {

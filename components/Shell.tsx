@@ -34,6 +34,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { podeVer, type Area } from "@/lib/acesso";
 import { useDados, useVariaveisFaltando } from "@/lib/dados/contexto";
 import type { Repositorio, Usuario } from "@/lib/dados/repositorio";
+import { Avatar, TrocarFoto } from "./Avatar";
 import { Marca } from "./Marca";
 import { Badge, cx } from "./ui";
 
@@ -268,9 +269,11 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const rodape = (
     <div className="flex items-center gap-2 border-t border-linha pt-4">
-      <span className="flex size-9 items-center justify-center rounded-full bg-marca-suave text-sm font-bold text-marca-forte">
-        {(usuario?.nome ?? "?").slice(0, 1).toUpperCase()}
-      </span>
+      {usuario?.pessoaId && usuario.papel === "admin" ? (
+        <TrocarFoto pessoaId={usuario.pessoaId} nome={usuario.nome} foto={usuario.fotoUrl} tamanho="lg" tom="suave" comTexto={false} aoTrocar={() => void atualizarUsuario()} />
+      ) : (
+        <Avatar nome={usuario?.nome} foto={usuario?.fotoUrl} tamanho="lg" tom="suave" />
+      )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-semibold">{usuario?.nome}</p>
         <p className="truncate text-[11px] text-texto-suave">

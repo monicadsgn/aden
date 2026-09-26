@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { TrocarFoto } from "@/components/Avatar";
 import { CabecalhoPagina } from "@/components/Shell";
 import {
   Badge,
@@ -97,7 +98,7 @@ function Protegido({ pendente }: { pendente: ItemProtegido | null }) {
 }
 
 export default function Configuracoes() {
-  const { repo, usuario } = useDados();
+  const { repo, usuario, atualizarUsuario } = useDados();
   const [original, setOriginal] = useState<Configuracao>(configVazia());
   const [rascunho, setRascunho] = useState<Configuracao>(configVazia());
   const [membros, setMembros] = useState<Membro[]>([]);
@@ -292,6 +293,19 @@ export default function Configuracoes() {
                   const orig = original.pessoas.find((x) => x.id === p.id);
                   return (
                     <div key={p.id} className="flex flex-col gap-3 rounded-bloco bg-superficie-2/60 p-3">
+                      {orig && (
+                        <TrocarFoto
+                          pessoaId={p.id}
+                          nome={p.nome}
+                          foto={p.fotoUrl}
+                          aoTrocar={(url) => {
+                            // foto é salva na hora: atualiza o rascunho e o original para não parecer mudança pendente
+                            setOriginal((o) => ({ ...o, pessoas: atualizar(o.pessoas, p.id, { fotoUrl: url }) }));
+                            set({ pessoas: atualizar(rascunho.pessoas, p.id, { fotoUrl: url }) });
+                            if (p.id === usuario?.pessoaId) void atualizarUsuario();
+                          }}
+                        />
+                      )}
                       <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
                         <CampoTexto className="col-span-2 sm:col-span-1" rotulo="Nome" valor={p.nome} aoMudar={(v) => set({ pessoas: atualizar(rascunho.pessoas, p.id, { nome: v }) })} />
                         <Alvo campo="percentualPadrao">

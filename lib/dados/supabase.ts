@@ -70,13 +70,14 @@ export class RepositorioSupabase implements Repositorio {
     erro(error);
     if (!m) return { id: user.id, nome: user.email ?? "", email: user.email ?? "", papel: "sem_vinculo", pessoaId: null };
     this.orgId = m.org_id as string;
-    const pes = await this.sb.from("pessoas").select("id").eq("membro_id", m.id as string).limit(1).maybeSingle();
+    const pes = await this.sb.from("pessoas").select("id, foto_url").eq("membro_id", m.id as string).limit(1).maybeSingle();
     this.usuario = {
       id: user.id,
       nome: m.nome as string,
       email: m.email as string,
       papel: m.papel as string,
       pessoaId: (pes.data?.id as string | undefined) ?? null,
+      fotoUrl: (pes.data?.foto_url as string | undefined) ?? null,
     };
     return this.usuario;
   }
@@ -140,6 +141,7 @@ export class RepositorioSupabase implements Repositorio {
         capacidadeHorasMes: num(p.capacidade_horas_mes),
         ativo: p.ativo as boolean,
         membroId: (p.membro_id as string) ?? null,
+        fotoUrl: (p.foto_url as string) ?? null,
       })),
       servicos: ((ser.data ?? []) as Linha[]).map((s) => ({
         id: s.id as string,
@@ -494,6 +496,26 @@ export class RepositorioSupabase implements Repositorio {
     const { data, error } = await this.sb.from("membros").select("id, nome, email, papel").eq("org_id", org).eq("ativo", true).order("nome");
     erro(error);
     return ((data ?? []) as Linha[]).map((m) => ({ id: m.id as string, nome: m.nome as string, email: m.email as string, papel: m.papel as string }));
+  }
+
+  async salvarFotoPessoa(pessoaId: string, imagem: Blob | null): Promise<string | null> {
+    const org = await this.org();
+    const bucket = this.sb.storage.from("avatares");
+    const { data: antigos } = await bucket.list(org, { search: pessoaId });
+    let url: string | null = null;
+    if (imagem) {
+      // nome novo a cada troca: o navegador não mostra a foto velha guardada em cache
+      const caminho = `${org}/${pessoaId}-${Date.now()}.webp`;
+      const { error } = await bucket.upload(caminho, imagem, { contentType: imagem.type || "image/webp", cacheControl: "31536000" });
+      erro(error);
+      url = bucket.getPublicUrl(caminho).data.publicUrl;
+    }
+    const { error } = await this.sb.from("pessoas").update({ foto_url: url }).eq("id", pessoaId);
+    erro(error);
+    const velhos = (antigos ?? []).map((f) => `${org}/${f.name}`).filter((c) => !url?.endsWith(c));
+    if (velhos.length) await bucket.remove(velhos);
+    this.usuario = null;
+    return url;
   }
 
   // ─── Aprovações e avisos ──────────────────────────────────────────────────
