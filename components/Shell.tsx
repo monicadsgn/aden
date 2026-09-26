@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  BookOpen,
+  HelpCircle,
   BadgeCheck,
   Bell,
   Briefcase,
@@ -36,6 +38,7 @@ import type { Repositorio, Usuario } from "@/lib/dados/repositorio";
 import { Avatar, TrocarFoto } from "./Avatar";
 import { Marca } from "./Marca";
 import { RelogioRodando } from "./tarefas/RelogioRodando";
+import { abrirTour, BotaoAjudaTela, Tour } from "./Ajuda";
 import { Badge, cx } from "./ui";
 
 interface Item {
@@ -95,6 +98,10 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
       { href: "/configuracoes", rotulo: "Configurações", icone: Settings2, area: "configuracoes" },
       { href: "/historico", rotulo: "Histórico de alterações", icone: History, area: "historico" },
     ],
+  },
+  {
+    titulo: "Ajuda",
+    itens: [{ href: "/glossario", rotulo: "Glossário", icone: BookOpen, area: "glossario" }],
   },
 ];
 
@@ -279,6 +286,15 @@ export function Shell({ children }: { children: ReactNode }) {
           {repo.modo === "local" ? "dados só neste navegador" : usuario?.papel === "contador" ? "contador · só leitura" : "sócio"}
         </p>
       </div>
+      <button
+        type="button"
+        aria-label="Rever o tour do sistema"
+        title="Rever o tour do sistema"
+        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+        onClick={abrirTour}
+      >
+        <HelpCircle size={17} />
+      </button>
       <AlternarTema />
       {repo.modo === "supabase" && (
         <button
@@ -342,6 +358,7 @@ export function Shell({ children }: { children: ReactNode }) {
         )}
         <main className="min-w-0 flex-1">{children}</main>
         <RelogioRodando />
+        <Tour />
       </div>
     </div>
   );
@@ -376,6 +393,7 @@ export function CabecalhoPagina({
           {descricao && <p className="mt-0.5 max-w-2xl text-sm text-texto-suave">{descricao}</p>}
         </div>
         {acoes && <div className="nao-imprimir flex w-full flex-wrap items-center gap-2 sm:w-auto">{acoes}</div>}
+        <BotaoAjudaTela />
       </div>
     </div>
   );

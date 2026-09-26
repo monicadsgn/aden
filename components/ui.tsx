@@ -2,7 +2,8 @@
 
 // Componentes básicos de interface. Só usam os tokens de app/tokens.css.
 
-import { ChevronDown, Minus, Plus } from "lucide-react";
+import { ChevronDown, Info, Minus, Plus } from "lucide-react";
+import { Modal } from "./Modal";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { horasParaMinutos, lerMoeda, lerNumero, minutosParaHoras, moedaParaTexto, numeroParaTexto } from "@/lib/formato";
@@ -37,21 +38,49 @@ export function TituloCard({
   descricao,
   acao,
   tom,
+  detalhes,
 }: {
   icone: LucideIcon;
   titulo: string;
   descricao?: ReactNode;
   acao?: ReactNode;
   tom?: Tom;
+  /** conteúdo da janela que abre ao clicar no título (o que é, o que já está cadastrado, atalhos) */
+  detalhes?: ReactNode;
 }) {
-  return (
-    <header className="flex items-start gap-3 px-5 pt-5 pb-3">
+  const [aberto, setAberto] = useState(false);
+  const cabeca = (
+    <>
       <IconeBadge icone={icone} tom={tom} />
       <div className="min-w-0 flex-1">
-        <h2 className="text-[15px] font-semibold leading-tight">{titulo}</h2>
+        <h2 className="flex items-center gap-1.5 text-[15px] leading-tight font-semibold">
+          {titulo}
+          {detalhes && <Info size={14} className="shrink-0 text-texto-suave transition-colors group-hover:text-marca-forte" aria-hidden />}
+        </h2>
         {descricao && <p className="mt-0.5 text-xs leading-snug text-texto-suave">{descricao}</p>}
       </div>
+    </>
+  );
+  return (
+    <header className="flex items-start gap-3 px-5 pt-5 pb-3">
+      {detalhes ? (
+        <button
+          type="button"
+          className="group -m-1.5 flex min-w-0 flex-1 items-start gap-3 rounded-bloco p-1.5 text-left transition-colors hover:bg-superficie-2/70"
+          onClick={() => setAberto(true)}
+          title="Ver detalhes"
+        >
+          {cabeca}
+        </button>
+      ) : (
+        cabeca
+      )}
       {acao}
+      {detalhes && (
+        <Modal aberto={aberto} aoFechar={() => setAberto(false)} titulo={titulo} expandivel>
+          {detalhes}
+        </Modal>
+      )}
     </header>
   );
 }

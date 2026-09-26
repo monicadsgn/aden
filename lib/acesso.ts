@@ -16,12 +16,13 @@ export type Area =
   | "aprovacoes"
   | "avisos"
   | "configuracoes"
-  | "historico";
+  | "historico"
+  | "glossario";
 
 /** O que cada perfil enxerga. O contador nunca vê piso, horas, divisão entre sócios nem negociação. */
 const AREAS: Record<Papel, Area[] | "todas"> = {
   admin: "todas",
-  contador: ["pagamentos", "pdfs"],
+  contador: ["pagamentos", "pdfs", "glossario"],
   colaborador: [],
   freelancer: [],
   cliente: [],

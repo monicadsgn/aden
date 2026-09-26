@@ -31,6 +31,17 @@ import type {
   ProjetoPontual,
 } from "@/lib/calculo/tipos";
 import { formatarDuracao, formatarHoras, formatarPct, horasParaMinutos } from "@/lib/formato";
+import {
+  DetalhesComoCalcular,
+  DetalhesCustos,
+  DetalhesEntrada,
+  DetalhesPercentuais,
+  DetalhesPontuais,
+  DetalhesQuemExecuta,
+  DetalhesRotina,
+  DetalhesSemCobranca,
+  DetalhesTrafego,
+} from "./Detalhes";
 import { Badge, Botao, Card, CampoMinutos, CampoMoeda, CampoNumero, CampoPct, CampoTexto, Passo, Rotulo, Segmentado, Selecao, TituloCard, cx } from "../ui";
 
 const CATEGORIAS: { valor: CategoriaCusto; rotulo: string }[] = [
@@ -241,6 +252,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         <TituloCard
           icone={cenario.modo === "escopo" ? ListChecks : Wallet}
           titulo="Como calcular"
+          detalhes={<DetalhesComoCalcular />}
           descricao={
             cenario.modo === "escopo"
               ? "Você monta o escopo e o sistema calcula o valor mínimo que ele precisa custar."
@@ -277,6 +289,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         <TituloCard
           icone={Shapes}
           titulo="Rotina mensal"
+          detalhes={<DetalhesRotina config={config} />}
           descricao="O que acontece todo mês: planejamento, reunião mensal, roteiros, estáticos, criativos pontuais e extras. Quantidade × horas por entrega."
           acao={<Badge tom="marca">todo mês</Badge>}
         />
@@ -288,7 +301,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
       {/* Quem executa */}
       {servicosUsados.length > 0 && socios.length > 0 && (
         <Card>
-          <TituloCard icone={Users} titulo="Quem executa" descricao="Divisão das horas de cada serviço entre os sócios. Vazio = usa o padrão." />
+          <TituloCard icone={Users} titulo="Quem executa" detalhes={<DetalhesQuemExecuta config={config} />} descricao="Divisão das horas de cada serviço entre os sócios. Vazio = usa o padrão." />
           <Secao>
             <div className="flex flex-col gap-2">
               {servicosUsados.map((s) => {
@@ -342,6 +355,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         <TituloCard
           icone={Receipt}
           titulo="Custos da rotina"
+          detalhes={<DetalhesCustos config={config} m={null} />}
           descricao="Ferramentas são fixas e mensais. Audiovisual é sempre terceiro pago pela empresa, fixo ou por entrega de vídeo."
         />
         <Secao>
@@ -354,6 +368,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         <TituloCard
           icone={DoorOpen}
           titulo="Entrada do cliente"
+          detalhes={<DetalhesEntrada />}
           descricao="Acontece uma vez só: onboarding, estrutura visual e proposta de conteúdo, enxoval do perfil, primeiros estáticos e criativos. Não pesa na rotina."
           acao={<Badge tom="aviso">uma vez</Badge>}
         />
@@ -370,7 +385,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
 
       {/* Tráfego */}
       <Card id="cenario-trafego">
-        <TituloCard icone={Megaphone} titulo="Cobrança do tráfego pago" descricao="A verba de mídia é do cliente e fica por fora. Aqui é só como a Aden cobra pela gestão." />
+        <TituloCard icone={Megaphone} titulo="Cobrança do tráfego pago" detalhes={<DetalhesTrafego />} descricao="A verba de mídia é do cliente e fica por fora. Aqui é só como a Aden cobra pela gestão." />
         <Secao>
           {t.modelo == null && !temEntregaDeTrafego(config, cenario) && (
             <p className="mb-2 rounded-bloco bg-superficie-2 px-3 py-2 text-[11px] text-texto-suave">
@@ -418,7 +433,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
 
       {/* Pontuais */}
       <Card id="cenario-pontuais">
-        <TituloCard icone={Gem} titulo="Projetos pontuais" descricao="Branding e outros projetos únicos: diluídos em X meses na mensalidade ou cobrados por fora." />
+        <TituloCard icone={Gem} titulo="Projetos pontuais" detalhes={<DetalhesPontuais />} descricao="Branding e outros projetos únicos: diluídos em X meses na mensalidade ou cobrados por fora." />
         <Secao>
           <div className="flex flex-col gap-3">
             {cenario.pontuais.map((p) => (
@@ -459,7 +474,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
 
       {/* Percentuais */}
       <Card>
-        <TituloCard icone={Percent} titulo="Percentuais deste projeto" descricao="Vazio = usa o padrão da empresa. Preencher sobrepõe só neste cenário." />
+        <TituloCard icone={Percent} titulo="Percentuais deste projeto" detalhes={<DetalhesPercentuais config={config} />} descricao="Vazio = usa o padrão da empresa. Preencher sobrepõe só neste cenário." />
         <Secao>
           <div className="grid gap-3 sm:grid-cols-3">
             {(
@@ -528,6 +543,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         <TituloCard
           icone={CalendarClock}
           titulo="Meses sem cobrança"
+          detalhes={<DetalhesSemCobranca />}
           descricao='Só simulação do "paga depois do resultado". Não define regra: mostra o efeito no horizonte escolhido.'
         />
         <Secao>

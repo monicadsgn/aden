@@ -42,6 +42,17 @@ import type {
 } from "@/lib/calculo/tipos";
 import { formatarDuracao, formatarHoras, formatarMoeda, formatarPct } from "@/lib/formato";
 import { BotaoAcao, ListaAlertas } from "../Alertas";
+import { Modal } from "../Modal";
+import {
+  DetalhesCascata,
+  DetalhesDestaque,
+  DetalhesEncaixe,
+  DetalhesIndicadores,
+  DetalhesEntrada,
+  DetalhesProposta,
+  DetalhesSemCobranca,
+  DetalhesSocios,
+} from "./Detalhes";
 import { Avatar } from "../Avatar";
 import { Badge, Botao, Card, EtiquetaOrigem, Forma, IconeBadge, Passo, TituloCard, cx, type Tom } from "../ui";
 
@@ -69,14 +80,17 @@ function Destaque({
   sub,
   icone,
   grande,
+  detalhes,
 }: {
   rotulo: string;
   valor: string;
   sub?: React.ReactNode;
   icone: LucideIcon;
   grande?: boolean;
+  detalhes?: React.ReactNode;
 }) {
   const Ic = icone;
+  const [aberto, setAberto] = useState(false);
   return (
     <div className="relative overflow-hidden rounded-card bg-marca p-5 text-sobre-marca shadow-forte">
       <Forma className="-top-16 -right-12 size-52 text-sobre-marca/10" variante={2} />
@@ -84,10 +98,24 @@ function Destaque({
       <div className="relative">
         <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase opacity-85">
           <Ic size={14} /> {rotulo}
+          {detalhes && (
+            <button
+              type="button"
+              className="ml-1 inline-flex items-center gap-1 rounded-botao bg-sobre-marca/15 px-2 py-0.5 text-[10px] font-bold tracking-normal normal-case hover:bg-sobre-marca/25"
+              onClick={() => setAberto(true)}
+            >
+              <Info size={11} /> o que é?
+            </button>
+          )}
         </p>
         <p className={cx("numero mt-1 font-extrabold tracking-tight", grande ? "text-5xl sm:text-6xl" : "text-4xl")}>{valor}</p>
         {sub && <div className="mt-2 text-xs font-medium opacity-90">{sub}</div>}
       </div>
+      {detalhes && (
+        <Modal aberto={aberto} aoFechar={() => setAberto(false)} titulo={rotulo}>
+          {detalhes}
+        </Modal>
+      )}
     </div>
   );
 }
@@ -253,6 +281,7 @@ function BlocoEntrada({ e, mesesDesejados }: { e: ResultadoEntrada; mesesDesejad
       <TituloCard
         icone={DoorOpen}
         titulo="Entrada do cliente"
+        detalhes={<DetalhesEntrada />}
         descricao="Uma vez só, separada da rotina. Custo = dinheiro + horas dos sócios no piso − o que for cobrado pela entrada."
         acao={<Badge tom="aviso">uma vez</Badge>}
       />
@@ -355,6 +384,7 @@ function BlocoProposta({
       <TituloCard
         icone={Send}
         titulo="Para o cliente"
+        detalhes={<DetalhesProposta />}
         descricao="O valor único que vai na proposta. As ferramentas e a estrutura já estão dentro dele, nunca como cobrança à parte."
       />
       <div className="flex flex-col gap-3 px-5 pb-5">
@@ -423,6 +453,7 @@ function BlocoHorizonte({ h }: { h: ResultadoHorizonte }) {
   return (
     <Card>
       <TituloCard
+        detalhes={<DetalhesSemCobranca />}
         icone={CalendarClock}
         titulo={`Horizonte de ${h.meses} meses`}
         descricao={`${h.semCobranca} mês(es) sem cobrança. Só simulação: compara o que fica suspenso nesses meses.`}
@@ -514,6 +545,7 @@ export function PainelResultado({
   if (r.modo === "escopo") {
     destaque = (
       <Destaque
+        detalhes={<DetalhesDestaque modo="escopo" />}
         grande={grande}
         icone={Scale}
         rotulo="Valor mínimo mensal · rotina"
@@ -538,6 +570,7 @@ export function PainelResultado({
     const dif = m && r.minimo.possivel ? m.receitaMensalidadeCentavos - (r.minimo.mensalidadeMinimaCentavos ?? 0) : null;
     destaque = (
       <Destaque
+        detalhes={<DetalhesDestaque modo="valor" />}
         grande={grande}
         icone={PiggyBank}
         rotulo="Sobra do mês da rotina"
@@ -594,7 +627,7 @@ export function PainelResultado({
         <>
           {socios.length > 0 && (
             <Card>
-              <TituloCard icone={Users} titulo="Cada sócio · rotina mensal" descricao="Valor do mês e por hora trabalhada na rotina deste projeto." />
+              <TituloCard icone={Users} titulo="Cada sócio · rotina mensal" detalhes={<DetalhesSocios config={config} />} descricao="Valor do mês e por hora trabalhada na rotina deste projeto." />
               <div className={cx("grid gap-3 px-5 pb-5", socios.length > 1 && "sm:grid-cols-2")}>
                 {socios.map((p) => (
                   <CartaoSocio key={p.id} p={p} grande={grande} foto={config.pessoas.find((x) => x.id === p.id)?.fotoUrl} />
@@ -606,7 +639,7 @@ export function PainelResultado({
           {r.entrada && <BlocoEntrada e={r.entrada} mesesDesejados={cenario.entrada?.mesesParaPagar ?? null} />}
 
           <Card>
-            <TituloCard icone={Gauge} titulo="Indicadores por hora" descricao={`${formatarHoras(m.horasTotais)} de produção por mês neste projeto.`} />
+            <TituloCard icone={Gauge} titulo="Indicadores por hora" detalhes={<DetalhesIndicadores />} descricao={`${formatarHoras(m.horasTotais)} de produção por mês neste projeto.`} />
             <div className="grid grid-cols-2 gap-2 px-5 pb-5">
               <Indicador icone={Clock3} rotulo="Horas no mês" valor={formatarHoras(m.horasTotais)} dica="Soma das entregas × horas por entrega." />
               <Indicador icone={Coins} rotulo="Valor cobrado por hora" valor={formatarMoeda(m.valorCobradoHoraCentavos)} dica="Receita bruta ÷ horas." />
@@ -620,6 +653,7 @@ export function PainelResultado({
               <TituloCard
                 icone={Shapes}
                 titulo="O que cabe neste valor"
+                detalhes={<DetalhesEncaixe />}
                 descricao="Ajuste a mistura de entregas. A folga considera o piso por hora e a capacidade de cada sócio."
                 acao={
                   r.encaixe.disponivel ? (
@@ -720,7 +754,7 @@ export function PainelResultado({
           )}
 
           <Card>
-            <TituloCard icone={Coins} titulo="Do faturamento à divisão" descricao="Passo a passo do cálculo do mês." />
+            <TituloCard icone={Coins} titulo="Do faturamento à divisão" detalhes={<DetalhesCascata />} descricao="Passo a passo do cálculo do mês." />
             <div className="px-5 pb-5">
               <Cascata m={m} taxaFixa={config.empresa.taxaRecebimentoFixaCentavos ?? null} />
             </div>
