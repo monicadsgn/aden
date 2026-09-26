@@ -32,7 +32,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   },
   "/calendario": {
     titulo: "Calendário",
-    texto: "As tarefas no tempo, do início ao prazo. Clique num dia para ver o que tem nele ou criar uma tarefa ali. Dá para ver só as suas, as de outro sócio ou de todo mundo.",
+    texto: "As tarefas no tempo, do início ao prazo, junto com os seus compromissos do Google Agenda. Clique num dia para ver o que tem nele ou criar uma tarefa ali. Dá para ver só as suas tarefas, as de outro sócio ou de todo mundo.",
   },
   "/calculadora": {
     titulo: "Calculadora de projeto",

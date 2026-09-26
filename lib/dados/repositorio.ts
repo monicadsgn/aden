@@ -10,6 +10,7 @@ import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
+import type { EventoAgenda } from "../agenda/ics";
 import type { Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
 import type { ItemProtegido } from "../regras/aprovacao";
 
@@ -205,6 +206,13 @@ export interface Repositorio {
   listarTarefas(): Promise<Tarefa[]>;
   salvarTarefa(t: Tarefa): Promise<void>;
   removerTarefa(id: string): Promise<void>;
+
+  // ─── Google Agenda (só leitura, cada um a sua) ─────────────────────────────
+  listarAgendas(): Promise<{ id: string; nome: string; endereco: string }[]>;
+  salvarAgenda(nome: string, enderecoIcal: string): Promise<void>;
+  removerAgenda(id: string): Promise<void>;
+  /** Eventos das minhas agendas no período ("AAAA-MM-DD"). `erros` = agendas que não abriram. */
+  eventosAgenda(de: string, ate: string): Promise<{ eventos: EventoAgenda[]; erros: string[] }>;
 
   // ─── Painel do cliente ────────────────────────────────────────────────────
   /** Gera (ou troca, revogando o antigo) o código do link do painel do cliente. */

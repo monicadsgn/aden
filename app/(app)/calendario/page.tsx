@@ -3,7 +3,10 @@
 // Calendário do mês: as tarefas aparecem do início ao vencimento. Clicar num dia abre a
 // lista do dia (e dá para criar tarefa nele); clicar numa tarefa abre a janela da tarefa.
 
-import { CalendarDays, ChevronLeft, ChevronRight, MessagesSquare, Plus } from "lucide-react";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, MessagesSquare, Plus } from "lucide-react";
+import { ConectarAgenda } from "@/components/agenda/ConectarAgenda";
+import { horaDoEvento, useAgenda } from "@/components/agenda/useAgenda";
+import { eventosDoDia } from "@/lib/agenda/ics";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CabecalhoPagina } from "@/components/Shell";
@@ -41,6 +44,8 @@ export default function Calendario() {
   const quem = pessoa === undefined ? (a.usuario?.pessoaId ?? null) : pessoa;
   const hoje = hojeISO();
   const dias = useMemo(() => diasDaGrade(ref.ano, ref.mes), [ref]);
+  const agenda = useAgenda(dias[0], dias[dias.length - 1]);
+  const [conectando, setConectando] = useState(false);
   const tarefas = useMemo(() => a.tarefas.filter((t) => !quem || t.responsavelId === quem), [a.tarefas, quem]);
   const contatos = useMemo(() => leads.filter((l) => etapaAberta(l.etapa) && l.proximoContato && (!quem || l.responsavelId === quem)), [leads, quem]);
   const contatosDoDia = (d: string) => contatos.filter((l) => l.proximoContato === d);
@@ -77,6 +82,9 @@ export default function Calendario() {
             Hoje
           </Botao>
           <span className="flex-1" />
+          <Botao pequeno icone={CalendarPlus} onClick={() => setConectando(true)}>
+            {agenda.conectada ? "Google Agenda" : "Conectar Google Agenda"}
+          </Botao>
           <Selecao
             className="w-full sm:w-48"
             ariaLabel="De quem"
@@ -117,6 +125,14 @@ export default function Calendario() {
                   >
                     {Number(d.slice(8))}
                   </span>
+                  {eventosDoDia(agenda.eventos, d)
+                    .slice(0, MAX_NO_DIA)
+                    .map((e) => (
+                      <span key={e.id} className="truncate rounded-item bg-info-suave px-1.5 py-0.5 text-[10px] font-semibold text-info" title={e.titulo}>
+                        {!e.diaInteiro && <span className="tabular-nums">{horaDoEvento(e)} </span>}
+                        {e.titulo}
+                      </span>
+                    ))}
                   {contatosDoDia(d).map((l) => (
                     <span key={l.id} className="truncate rounded-item bg-marca-suave px-1.5 py-0.5 text-[10px] font-semibold text-marca-forte">
                       <MessagesSquare size={10} className="mr-1 inline" aria-hidden />{l.nome}
@@ -140,6 +156,7 @@ export default function Calendario() {
             })}
           </div>
         </div>
+        {agenda.erros.length > 0 && <p className="text-xs text-aviso">Não deu para ler: {agenda.erros.join(", ")}. Confira o endereço em Google Agenda.</p>}
         {semData > 0 && <p className="text-xs text-texto-suave">{semData} tarefa(s) aberta(s) sem data não aparecem no calendário.</p>}
       </div>
 
@@ -162,6 +179,20 @@ export default function Calendario() {
             }}
           />
         </div>
+        {dia && eventosDoDia(agenda.eventos, dia).length > 0 && (
+          <div className="mb-2 flex flex-col">
+            <p className="px-2 text-[11px] font-bold text-info uppercase">Agenda</p>
+            {eventosDoDia(agenda.eventos, dia).map((e) => (
+              <div key={e.id} className="flex items-baseline gap-2 rounded-item px-2 py-1.5 text-[13px]">
+                <span className="w-16 shrink-0 text-[11px] text-texto-suave tabular-nums">{horaDoEvento(e)}</span>
+                <span className="flex-1">
+                  {e.titulo}
+                  {e.local && <span className="text-texto-suave"> · {e.local}</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
         {dia && contatosDoDia(dia).length > 0 && (
           <div className="mb-2 flex flex-col">
             <p className="px-2 text-[11px] font-bold text-marca-forte uppercase">Falar com (CRM)</p>
@@ -180,6 +211,7 @@ export default function Calendario() {
         )}
       </Modal>
       <DetalheTarefa tarefa={tarefa} a={a} aoFechar={() => setTarefaAberta(null)} />
+      <ConectarAgenda aberto={conectando} aoFechar={() => setConectando(false)} aoMudar={() => void agenda.recarregar()} />
     </div>
   );
 }

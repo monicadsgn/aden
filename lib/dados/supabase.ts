@@ -5,6 +5,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Medicao } from "../calculo/calibragem";
 import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
+import { enderecoDeAgendaValido, type EventoAgenda } from "../agenda/ics";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, ClienteBase, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
@@ -846,6 +847,39 @@ export class RepositorioSupabase implements Repositorio {
 
   async removerTarefa(id: string) {
     await this.remover("tarefas", [id]);
+  }
+
+  // ─── Google Agenda ────────────────────────────────────────────────────────
+
+  async listarAgendas() {
+    const { data, error } = await this.sb.from("agendas_externas").select("id, nome, url_ical").order("criado_em");
+    erro(error);
+    return ((data ?? []) as Linha[]).map((a) => ({ id: a.id as string, nome: a.nome as string, endereco: a.url_ical as string }));
+  }
+
+  async salvarAgenda(nome: string, enderecoIcal: string) {
+    const url = enderecoIcal.trim();
+    if (!enderecoDeAgendaValido(url)) throw new Error("Esse não parece o endereço secreto do Google Agenda (começa com https://calendar.google.com/calendar/ical/ e termina em .ics).");
+    const org_id = await this.org();
+    const { data: membro, error: e1 } = await this.sb.rpc("meu_membro", { org: org_id });
+    erro(e1);
+    const { error } = await this.sb.from("agendas_externas").insert({ org_id, membro_id: membro, nome: nome.trim() || "Minha agenda", url_ical: url });
+    erro(error);
+  }
+
+  async removerAgenda(id: string) {
+    const { error } = await this.sb.from("agendas_externas").delete().eq("id", id);
+    erro(error);
+  }
+
+  async eventosAgenda(de: string, ate: string) {
+    const { data } = await this.sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return { eventos: [], erros: [] };
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const r = await fetch(`/api/agenda?de=${de}&ate=${ate}&tz=${encodeURIComponent(tz)}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return { eventos: [], erros: ["agenda"] };
+    return (await r.json()) as { eventos: EventoAgenda[]; erros: string[] };
   }
 
   // ─── Painel do cliente ────────────────────────────────────────────────────

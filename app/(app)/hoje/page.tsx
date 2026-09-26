@@ -27,6 +27,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { podeVer } from "@/lib/acesso";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ConectarAgenda } from "@/components/agenda/ConectarAgenda";
+import { horaDoEvento, useAgenda } from "@/components/agenda/useAgenda";
 import { DetalheTarefa } from "@/components/tarefas/DetalheTarefa";
 import { LinhaTarefa } from "@/components/tarefas/LinhaTarefa";
 import { useTarefas } from "@/components/tarefas/useTarefas";
@@ -110,6 +112,9 @@ export default function VisaoDoDia() {
   const [aberto, setAberto] = useState<Chave | null>(null);
   const [tarefaAberta, setTarefaAberta] = useState<string | null>(null);
   const [rapida, setRapida] = useState("");
+  const [conectando, setConectando] = useState(false);
+  const hojeAgenda = hojeISO();
+  const agenda = useAgenda(hojeAgenda, hojeAgenda);
 
   // quem não é sócio (ex.: contador) começa na área dele
   useEffect(() => {
@@ -197,8 +202,8 @@ export default function VisaoDoDia() {
   };
 
   // próximos 7 dias, agrupados por dia
-  const agenda = new Map<string, Tarefa[]>();
-  for (const t of v.semana) agenda.set(t.vencimento!, [...(agenda.get(t.vencimento!) ?? []), t]);
+  const proximos = new Map<string, Tarefa[]>();
+  for (const t of v.semana) proximos.set(t.vencimento!, [...(proximos.get(t.vencimento!) ?? []), t]);
 
   return (
     <div className="pb-16">
@@ -347,11 +352,11 @@ export default function VisaoDoDia() {
             </Bloco>
 
             <Bloco titulo="Próximos dias" icone={CalendarDays} acao={<LinkPequeno href="/calendario">Calendário</LinkPequeno>}>
-              {agenda.size === 0 ? (
+              {proximos.size === 0 ? (
                 <p className="text-xs text-texto-suave">Nada com prazo nos próximos 7 dias.</p>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {[...agenda].map(([dia, ts]) => (
+                  {[...proximos].map(([dia, ts]) => (
                     <div key={dia}>
                       <p className="px-2 text-[11px] font-bold text-texto-suave">
                         {primeiraMaiuscula(new Date(`${dia}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short" }))}
@@ -368,6 +373,35 @@ export default function VisaoDoDia() {
 
           {/* coluna lateral: o que depende de mim e o resumo de tudo */}
           <div className="flex flex-col gap-5">
+            {minhaVisao && (
+              <Bloco
+                titulo="Agenda de hoje"
+                icone={CalendarDays}
+                acao={
+                  <button type="button" className="text-[11px] font-semibold text-marca-forte hover:underline" onClick={() => setConectando(true)}>
+                    {agenda.conectada ? "Google Agenda" : "Conectar"}
+                  </button>
+                }
+              >
+                {agenda.conectada === false ? (
+                  <p className="text-xs text-texto-suave">Conecte o seu Google Agenda para ver os compromissos do dia aqui.</p>
+                ) : agenda.eventos.length === 0 ? (
+                  <p className="text-xs text-texto-suave">{agenda.conectada ? "Nenhum compromisso hoje." : "…"}</p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {agenda.eventos.map((e) => (
+                      <li key={e.id} className="flex items-baseline gap-2 text-[13px]">
+                        <span className="w-14 shrink-0 text-[11px] font-semibold text-info tabular-nums">{horaDoEvento(e)}</span>
+                        <span className="min-w-0 flex-1">
+                          {e.titulo}
+                          {e.local && <span className="block truncate text-[11px] text-texto-suave">{e.local}</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Bloco>
+            )}
             {minhaVisao && (
               <Bloco titulo="Depende de mim" icone={ShieldCheck}>
                 {aprovacoes.length === 0 && avisosNovos.length === 0 ? (
@@ -494,6 +528,7 @@ export default function VisaoDoDia() {
         </div>
       </div>
       <DetalheTarefa tarefa={tarefa} a={a} aoFechar={() => setTarefaAberta(null)} />
+      <ConectarAgenda aberto={conectando} aoFechar={() => setConectando(false)} aoMudar={() => void agenda.recarregar()} />
     </div>
   );
 }

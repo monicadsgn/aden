@@ -174,6 +174,17 @@ aprovação) → o cliente aprova (fica marcada, a equipe conclui ao publicar) o
 envio + prazo de aprovação do contrato. Respostas guardadas em histórico (`respostas_cliente`). Tutorial de 4 passos
 na primeira visita, "?" reabre. Peças entregues somem do painel depois de 60 dias (só organização da tela).
 
+## Google Agenda (26/09/2026)
+
+Só leitura, sem app OAuth: cada pessoa cola o "endereço secreto no formato iCal" da própria agenda
+(`agendas_externas`, só o dono lê, SEM auditoria para o endereço não aparecer no Histórico). A rota `/api/agenda` recebe
+o token da sessão, lê as agendas DAQUELA pessoa pelo banco (RLS) e busca no Google; só aceita endereços
+`https://calendar.google.com/calendar/ical/…/*.ics` (o servidor não busca qualquer endereço). Leitor em
+`lib/agenda/ics.ts`: fuso (TZID/UTC → fuso de quem vê), dia inteiro, repetição (diária, semanal com dias, mensal pelo
+dia, anual, INTERVAL/COUNT/UNTIL), EXDATE, ocorrência alterada, cancelado. Aparece no calendário e em "Agenda de
+hoje" na Visão do dia. Criar evento no Google pelo Aden fica para quando houver app OAuth da Aden. O conector não lê
+agendas (são pessoais); no claude.ai já existe o conector do Google Agenda.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```

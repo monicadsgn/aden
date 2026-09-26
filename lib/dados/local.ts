@@ -410,6 +410,22 @@ export class RepositorioLocal implements Repositorio {
     gravar(b);
   }
 
+  // ─── Google Agenda: só com o banco conectado (o servidor busca no Google) ────
+
+  async listarAgendas() {
+    return [];
+  }
+
+  async salvarAgenda(): Promise<void> {
+    throw new Error("A agenda do Google só funciona com o banco conectado.");
+  }
+
+  async removerAgenda() {}
+
+  async eventosAgenda() {
+    return { eventos: [], erros: [] };
+  }
+
   // ─── Painel do cliente ────────────────────────────────────────────────────
 
   async gerarLinkPainel(clienteId: string) {
