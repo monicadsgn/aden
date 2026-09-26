@@ -455,13 +455,13 @@ function BlocoHorizonte({ h }: { h: ResultadoHorizonte }) {
       <TituloCard
         detalhes={<DetalhesSemCobranca />}
         icone={CalendarClock}
-        titulo={`Horizonte de ${h.meses} meses`}
+        titulo={`Conta em ${h.meses} meses`}
         descricao={`${h.semCobranca} mês(es) sem cobrança. Só simulação: compara o que fica suspenso nesses meses.`}
       />
       <div className="px-5 pb-5">
         {h.opcoesIguais && h.semCobranca > 0 && (
           <p className="mb-3 rounded-bloco bg-info-suave px-3 py-2 text-xs font-medium text-info">
-            Este cenário não tem cobrança de tráfego, então as opções A e B dão o mesmo resultado.
+            Esta versão não tem cobrança de tráfego, então as opções A e B dão o mesmo resultado.
           </p>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
@@ -475,7 +475,7 @@ function BlocoHorizonte({ h }: { h: ResultadoHorizonte }) {
                   <span className="text-[13px] font-bold">{ROTULO_SUSPENSAO[o].texto}</span>
                   {escolhida && (
                     <Badge tom="marca" icone={CheckCircle2}>
-                      vale neste cenário
+                      vale nesta versão
                     </Badge>
                   )}
                 </div>
@@ -555,7 +555,7 @@ export function PainelResultado({
             <>
               {r.minimo.criterio === "piso"
                 ? `O menor valor em que todos os sócios com horas atingem o piso (quem define o mínimo: ${limitante?.nome ?? "—"}).`
-                : "Ponto de equilíbrio: cobre custos, impostos e taxas. Não há piso configurado para quem tem horas."}
+                : "O mínimo que cobre custos, impostos e taxas, sem sobra. Não há piso configurado para quem tem horas."}
               {m && m.receitaTrafegoCentavos > 0 && (
                 <span className="mt-1 block">+ {formatarMoeda(m.receitaTrafegoCentavos)} da cobrança de tráfego = receita de {formatarMoeda(m.receitaBrutaCentavos)}</span>
               )}
@@ -733,7 +733,7 @@ export function PainelResultado({
                         ) : t.folga === 0 ? (
                           <Badge tom="aviso">no limite</Badge>
                         ) : t.naoResolve ? (
-                          <Badge tom="neutro" title="Mesmo zerando só este tipo, o cenário continua não cabendo. Combine com outros ou revise o valor.">sozinho não resolve</Badge>
+                          <Badge tom="neutro" title="Mesmo zerando só este tipo, a versão continua abaixo do piso. Combine com outros ou revise o valor.">sozinho não resolve</Badge>
                         ) : (
                           <Badge tom="erro">tirar {-t.folga}</Badge>
                         )}

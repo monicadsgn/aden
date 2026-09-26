@@ -92,8 +92,8 @@ export function DetalhesComoCalcular() {
     <Detalhe
       oQueE={
         <>
-          Há dois jeitos de usar a calculadora. <strong>Escopo → valor mínimo:</strong> você diz o que vai entregar e o sistema calcula o menor
-          valor que paga os custos e deixa cada sócio no piso. <strong>Valor → o que cabe:</strong> você diz quanto o cliente quer pagar e o sistema
+          Há dois jeitos de usar a calculadora. <strong>Do que entregar ao preço:</strong> você diz o que vai entregar e o sistema calcula o menor
+          valor que paga os custos e deixa cada sócio no piso. <strong>Do preço ao que entregar:</strong> você diz quanto o cliente quer pagar e o sistema
           mostra se vale a pena e quantas entregas cabem.
         </>
       }
@@ -209,7 +209,7 @@ export function DetalhesPercentuais({ config }: { config: Configuracao }) {
   const e = config.empresa;
   return (
     <Detalhe
-      oQueE="Os percentuais da empresa valem para todos os clientes. Aqui dá para trocar só neste cenário, sem mexer no padrão (ex.: uma negociação especial). Deixe vazio para usar o padrão."
+      oQueE="Os percentuais da empresa valem para todos os clientes. Aqui dá para trocar só nesta versão, sem mexer no padrão (ex.: uma negociação especial). Deixe vazio para usar o padrão."
       exemplo="Reinvestimento padrão de 10%, mas neste cliente estratégico vocês topam 0%: preencha 0 aqui."
       atalhos={[{ rotulo: "Editar o padrão da empresa", secao: "regras" }]}
       termos={["reinvestimento"]}
@@ -233,7 +233,7 @@ export function DetalhesSemCobranca() {
   return (
     <Detalhe
       oQueE="Serve para simular meses em que o cliente não paga (ex.: férias, pausa combinada). O sistema mostra a média do período, para você ver se o cliente continua valendo a pena."
-      exemplo="Horizonte de 12 meses com 1 mês sem cobrança: a hora de cada sócio é a média dos 12 meses, contando o mês sem receita."
+      exemplo="Conta em 12 meses com 1 mês sem cobrança: a hora de cada sócio é a média dos 12 meses, contando o mês sem receita."
     />
   );
 }

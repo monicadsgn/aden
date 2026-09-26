@@ -721,7 +721,7 @@ export default function Configuracoes() {
                           escopo contratado definido
                         </Badge>
                       ) : (
-                        <Badge tom="aviso" title="Abra a calculadora, escolha este cliente no cenário e use 'Guardar como escopo contratado'.">
+                        <Badge tom="aviso" title="Abra a calculadora, escolha este cliente em “Como calcular” e use 'Guardar como escopo contratado'.">
                           sem escopo: horas fora da tela Mês
                         </Badge>
                       )}

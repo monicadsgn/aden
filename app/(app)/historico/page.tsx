@@ -18,7 +18,7 @@ const TABELAS: Record<string, string> = {
   clientes: "Cliente",
   contratos: "Contrato",
   simulacoes: "Simulação",
-  simulacao_cenarios: "Cenário",
+  simulacao_cenarios: "Versão",
   membros: "Acesso",
 };
 
@@ -51,8 +51,8 @@ const CAMPOS: Record<string, string> = {
   servico_id: "serviço",
   servicoId: "serviço",
   status: "status",
-  entradas: "entradas do cenário",
-  cenarios: "cenários",
+  entradas: "entradas da versão",
+  cenarios: "versões",
 };
 
 const IGNORAR = new Set(["id", "org_id", "atualizado_em", "atualizado_por", "criado_em", "criado_por", "ordem", "resultado", "config_snapshot"]);

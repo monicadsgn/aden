@@ -57,7 +57,7 @@ const MODELOS_TRAFEGO: { valor: ModeloTrafego; rotulo: string }[] = [
   { valor: "por_campanha", rotulo: "Por campanha" },
   { valor: "percentual_verba", rotulo: "Percentual da verba" },
   { valor: "incluido", rotulo: "Incluído na mensalidade" },
-  { valor: "sem_trafego", rotulo: "Não há tráfego neste cenário" },
+  { valor: "sem_trafego", rotulo: "Não há tráfego nesta versão" },
 ];
 
 function Diferente({ ativo }: { ativo: boolean }) {
@@ -306,8 +306,8 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
             valor={cenario.modo}
             aoMudar={(v) => set({ modo: v })}
             opcoes={[
-              { valor: "escopo", rotulo: "Escopo → valor mínimo", icone: ListChecks },
-              { valor: "valor", rotulo: "Valor → o que cabe", icone: Wallet },
+              { valor: "escopo", rotulo: "Do que entregar ao preço", icone: ListChecks },
+              { valor: "valor", rotulo: "Do preço ao que entregar", icone: Wallet },
             ]}
           />
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -431,7 +431,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         <Secao>
           {t.modelo == null && !temEntregaDeTrafego(config, cenario) && (
             <p className="mb-2 rounded-bloco bg-superficie-2 px-3 py-2 text-[11px] text-texto-suave">
-              Este cenário não tem nenhuma entrega de tráfego, então conta como “sem tráfego”. Só precisa escolher o modelo se incluir entregas de tráfego.
+              Esta versão não tem nenhuma entrega de tráfego, então conta como “sem tráfego”. Só precisa escolher o modelo se incluir entregas de tráfego.
             </p>
           )}
           <Selecao
@@ -516,7 +516,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
 
       {/* Percentuais */}
       <Card>
-        <TituloCard icone={Percent} titulo="Percentuais deste projeto" detalhes={<DetalhesPercentuais config={config} />} descricao="Vazio = usa o padrão da empresa. Preencher sobrepõe só neste cenário." />
+        <TituloCard icone={Percent} titulo="Percentuais deste projeto" detalhes={<DetalhesPercentuais config={config} />} descricao="Vazio = usa o padrão da empresa. Preencher troca só nesta versão." />
         <Secao>
           <div className="grid gap-3 sm:grid-cols-3">
             {(
@@ -586,12 +586,12 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
           icone={CalendarClock}
           titulo="Meses sem cobrança"
           detalhes={<DetalhesSemCobranca />}
-          descricao='Só simulação do "paga depois do resultado". Não define regra: mostra o efeito no horizonte escolhido.'
+          descricao='Só simulação do "paga depois do resultado". Não define regra: mostra o efeito na conta dos meses escolhidos.'
         />
         <Secao>
           <div className="grid gap-3 sm:grid-cols-2">
             <CampoNumero rotulo="Meses sem cobrança" sufixo="meses" placeholder="0" valor={cenario.mesesSemCobranca} aoMudar={(v) => set({ mesesSemCobranca: v })} />
-            <CampoNumero rotulo="Horizonte da simulação" sufixo="meses" valor={cenario.horizonteMeses} aoMudar={(v) => set({ horizonteMeses: v })} />
+            <CampoNumero rotulo="Ver a conta em quantos meses" sufixo="meses" valor={cenario.horizonteMeses} aoMudar={(v) => set({ horizonteMeses: v })} />
           </div>
           <div className="mt-3">
             <Rotulo>O que fica suspenso nesses meses</Rotulo>

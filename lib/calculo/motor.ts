@@ -362,7 +362,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       percentuaisValidos = false;
       alertas.push({
         nivel: "erro",
-        texto: `Defina o percentual de ${faltando.map((s) => s.pessoa.nome).join(", ")} (padrão nas configurações ou neste cenário).`,
+        texto: `Defina o percentual de ${faltando.map((s) => s.pessoa.nome).join(", ")} (padrão nas configurações ou nesta versão).`,
         explica: "Cada sócio precisa ter a parte dele na sobra. Ex.: 50% e 50%, ou 60% e 40%. Sem isso, não dá para dizer quanto cada um ganha.",
         acao: { rotulo: "Definir o percentual", destino: { tipo: "config", secao: "socios", campo: "percentualPadrao" } },
       });
@@ -450,7 +450,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         if (temEntregaDeTrafego(config, cenario))
           alertas.push({
             nivel: "aviso",
-            texto: "Este cenário tem entrega de tráfego, mas o modelo de cobrança do tráfego não foi escolhido: nenhuma cobrança de tráfego entrou na conta.",
+            texto: "Esta versão tem entrega de tráfego, mas o modelo de cobrança do tráfego não foi escolhido: nenhuma cobrança de tráfego entrou na conta.",
             explica: "Tráfego pode ser cobrado de jeitos diferentes (valor fixo, % da verba etc.). Enquanto o jeito não é escolhido, nenhuma cobrança de tráfego entra na conta. Escolha no bloco Tráfego.",
             acao: { rotulo: "Escolher o modelo", destino: { tipo: "cenario", bloco: "trafego" } },
           });
@@ -502,7 +502,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     if (dobro) alertas.push(dobro);
   }
   if (mei && sob.impostoPct != null && sob.impostoPct !== 0)
-    alertas.push({ nivel: "info", texto: "No MEI o imposto é o valor fixo por mês: o imposto em % deste cenário foi ignorado.", explica: "No MEI você paga um valor fixo (o DAS), e não um % sobre o que fatura. Por isso o imposto em % deste cenário não foi usado." });
+    alertas.push({ nivel: "info", texto: "No MEI o imposto é o valor fixo por mês: o imposto em % desta versão foi ignorado.", explica: "No MEI você paga um valor fixo (o DAS), e não um % sobre o que fatura. Por isso o imposto em % desta versão não foi usado." });
 
   const custosProjeto = somaCategorias(custosCat) + custoPontualDiluido;
 
@@ -776,8 +776,8 @@ export function calcularHorizonte(
     if (N > 0)
       alertas.push({
         nivel: "aviso",
-        texto: "Informe o horizonte da simulação (em meses) para ver o efeito dos meses sem cobrança.",
-        explica: "Horizonte é por quantos meses você quer ver a conta. Ex.: 12 meses com 2 sem cobrança mostra a média real do ano. Sem o horizonte, não dá para medir o efeito desses meses.",
+        texto: "Informe em quantos meses ver a conta, para ver o efeito dos meses sem cobrança.",
+        explica: "É por quantos meses você quer ver a conta. Ex.: 12 meses com 2 sem cobrança mostra a média real do ano. Sem esse número, não dá para medir o efeito desses meses.",
         acao: { rotulo: "Informar o horizonte", destino: { tipo: "cenario", bloco: "semcobranca" } },
       });
     return { horizonte: null, alertas };
@@ -785,7 +785,7 @@ export function calcularHorizonte(
   if (N > M) {
     alertas.push({
       nivel: "erro",
-      texto: "Os meses sem cobrança passam do horizonte da simulação.",
+      texto: "Os meses sem cobrança passam do número de meses da conta.",
       explica: "Não dá para ter mais meses sem cobrança do que meses na simulação. Ex.: num horizonte de 6 meses cabem no máximo 6 sem cobrança.",
       acao: { rotulo: "Corrigir", destino: { tipo: "cenario", bloco: "semcobranca" } },
     });

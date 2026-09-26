@@ -10,6 +10,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  Circle,
   Clock,
   Flag,
   Hourglass,
@@ -48,6 +49,7 @@ import { useDados } from "@/lib/dados/contexto";
 import type { AvisoSocio, Pedido, ResumoSimulacao } from "@/lib/dados/repositorio";
 import { formatarMoeda, formatarPct, primeiraMaiuscula } from "@/lib/formato";
 import { linkConfig } from "@/lib/navegacao";
+import { passosParaComecar, type PassoComecar } from "@/lib/regras/pendencias";
 
 type Chave = "hoje" | "atrasadas" | "semana" | "aprovacao" | "concluidas";
 
@@ -87,6 +89,51 @@ function Bloco({ titulo, icone: Ic, acao, children }: { titulo: string; icone: L
         {acao}
       </div>
       <div className="px-4 pb-4">{children}</div>
+    </Card>
+  );
+}
+
+/** Enquanto faltar o básico da configuração, mostra por onde começar (some sozinho quando tudo estiver pronto). */
+function ParaComecar({ passos }: { passos: PassoComecar[] }) {
+  const prontos = passos.filter((p) => p.faltando.length === 0).length;
+  if (prontos === passos.length) return null;
+  const proximo = passos.find((p) => p.faltando.length > 0);
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center gap-2 px-4 pt-4 pb-1">
+        <Flag size={16} className="text-marca-forte" />
+        <h2 className="flex-1 text-sm font-bold">Para começar</h2>
+        <span className="numero text-xs font-semibold text-texto-suave">
+          {prontos} de {passos.length} prontos
+        </span>
+      </div>
+      <p className="px-4 text-xs text-texto-suave">Faltam alguns números para o Aden fazer as contas. Um passo de cada vez, na ordem:</p>
+      <ol className="flex flex-col gap-1 px-4 pt-2 pb-4">
+        {passos.map((p) => {
+          const pronto = p.faltando.length === 0;
+          const href = p.secao === "clientes" ? "/clientes" : linkConfig(p.secao);
+          return (
+            <li key={p.secao}>
+              <Link
+                href={href}
+                title={pronto ? "Pronto" : `Falta: ${p.faltando.join(", ")}`}
+                className={cx(
+                  "flex items-center gap-2 rounded-item px-2 py-1.5 text-[13px]",
+                  pronto ? "text-texto-suave line-through" : p === proximo ? "bg-marca-tinta font-semibold" : "hover:bg-superficie-2",
+                )}
+              >
+                {pronto ? <CheckCircle2 size={15} className="shrink-0 text-ok" /> : <Circle size={15} className="shrink-0 text-texto-suave" />}
+                <span className="flex-1">{p.rotulo}</span>
+                {p === proximo && (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-marca-forte">
+                    Preencher <ArrowRight size={12} />
+                  </span>
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
     </Card>
   );
 }
@@ -248,6 +295,8 @@ export default function VisaoDoDia() {
 
       <div className="mx-auto flex max-w-[1300px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
         {a.erro && !tarefa && <p className="rounded-card bg-erro-suave px-4 py-3 text-sm text-erro">{a.erro}</p>}
+
+        {socio && <ParaComecar passos={passosParaComecar(cfg)} />}
 
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">

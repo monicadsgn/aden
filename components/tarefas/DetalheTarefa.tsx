@@ -96,10 +96,10 @@ export function BotaoRelogio({ t, a, pequeno }: { t: Tarefa; a: AcoesTarefas; pe
         rodando ? "bg-marca text-sobre-marca" : "bg-superficie-2 text-texto hover:bg-linha",
       )}
       aria-label={rodando ? `Pausar o tempo de ${t.titulo}` : `Começar a contar o tempo de ${t.titulo}`}
-      title={rodando ? "Pausar" : "Start: começar a contar o tempo"}
+      title={rodando ? "Pausar" : "Começar a contar o tempo"}
     >
       {rodando ? <Pause size={pequeno ? 12 : 13} /> : <Play size={pequeno ? 12 : 13} />}
-      {seg > 0 ? relogio(seg) : "Start"}
+      {seg > 0 ? relogio(seg) : "Começar"}
     </button>
   );
 }
@@ -319,7 +319,7 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
         <p className="mt-2 rounded-bloco bg-marca-tinta px-3 py-2 text-[11px] text-texto-suave">
           {cal.situacao === "calibrado"
             ? `${tipo?.nome} já está calibrado (média ${formatarMinutos(cal.mediaMinutos)} por entrega). O tempo continua contando para acompanhar.`
-            : `Calibragem de ${tipo?.nome}: ${cal.medicoes} de ${cal.alvo} entregas medidas. Dê Start ao começar e conclua a tarefa ao terminar.`}{" "}
+            : `Calibragem de ${tipo?.nome}: ${cal.medicoes} de ${cal.alvo} entregas medidas. Aperte Começar ao iniciar e conclua a tarefa ao terminar.`}{" "}
           <Link href="/calibragem" className="font-semibold text-marca-forte underline">
             Ver calibragem
           </Link>

@@ -24,7 +24,7 @@ const LETRAS = ["A", "B", "C"];
 const MAX_CENARIOS = 3;
 
 function novaSimulacao(): Simulacao {
-  return { id: novoId(), nome: "Nova simulação", cenarios: [novoCenario("Cenário A")] };
+  return { id: novoId(), nome: "Nova simulação", cenarios: [novoCenario("Versão A")] };
 }
 
 export default function Calculadora() {
@@ -206,8 +206,8 @@ export default function Calculadora() {
 
   const adicionarCenario = (base?: typeof ativo) => {
     if (sim.cenarios.length >= MAX_CENARIOS) return;
-    const letra = LETRAS.find((l) => !sim.cenarios.some((c) => c.nome === `Cenário ${l}`)) ?? String(sim.cenarios.length + 1);
-    const c = base ? duplicarCenario(base, `Cenário ${letra}`) : novoCenario(`Cenário ${letra}`);
+    const letra = LETRAS.find((l) => !sim.cenarios.some((c) => c.nome === `Versão ${l}`)) ?? String(sim.cenarios.length + 1);
+    const c = base ? duplicarCenario(base, `Versão ${letra}`) : novoCenario(`Versão ${letra}`);
     setSim((s) => ({ ...s, cenarios: [...s.cenarios, c] }));
     setAtivoId(c.id);
   };
@@ -229,7 +229,7 @@ export default function Calculadora() {
         icone={Calculator}
         selo="Vendas"
         titulo="Calculadora de projeto"
-        descricao="Simule um cliente antes de fechar: do escopo ao valor mínimo, ou do valor ao que cabe dentro dele."
+        descricao="A proposta vista por dentro, só para os sócios: se o preço paga os custos e a hora de cada um."
         acoes={
           <Botao variante="primario" icone={Presentation} onClick={abrirApresentacao}>
             Ver como o cliente
@@ -294,7 +294,7 @@ export default function Calculadora() {
         )}
 
         {/* abas de cenário */}
-        <div className="nao-imprimir flex flex-wrap items-center gap-2" role="tablist" aria-label="Cenários">
+        <div className="nao-imprimir flex flex-wrap items-center gap-2" role="tablist" aria-label="Versões">
           {sim.cenarios.map((c, i) => {
             const erros = resultados[i].alertas.filter((a) => a.nivel === "erro").length;
             const sel = c.id === ativo.id;
@@ -310,7 +310,7 @@ export default function Calculadora() {
                   <span className={cx("flex size-6 items-center justify-center rounded-full text-[11px]", sel ? "bg-sobre-marca/20" : "bg-marca-suave text-marca-forte")}>{i + 1}</span>
                   {sel ? (
                     <input
-                      aria-label="Nome do cenário"
+                      aria-label="Nome da versão"
                       className="bg-transparent font-bold focus:outline-none"
                       style={{ width: `${Math.min(28, Math.max(6, c.nome.length + 1))}ch` }}
                       value={c.nome}
@@ -334,7 +334,7 @@ export default function Calculadora() {
           })}
           {sim.cenarios.length < MAX_CENARIOS && (
             <Botao pequeno variante="fantasma" icone={Plus} onClick={() => adicionarCenario()}>
-              Cenário ({sim.cenarios.length}/{MAX_CENARIOS})
+              Versão ({sim.cenarios.length}/{MAX_CENARIOS})
             </Botao>
           )}
           {lista.length > 0 && !lista.some((l) => l.id === sim.id) && (

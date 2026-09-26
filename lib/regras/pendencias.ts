@@ -57,3 +57,35 @@ export function camposFaltando(c: Configuracao): Faltando {
   }
   return out;
 }
+
+export interface PassoComecar {
+  secao: SecaoConfig;
+  rotulo: string;
+  /** o que ainda falta nesta seção; vazio = pronto */
+  faltando: string[];
+}
+
+// Ordem de quem começa do zero: primeiro quem são os sócios, depois o que a Aden vende, depois as regras.
+// Limites e avisos ficam de fora (vazio = sem aviso, é escolha) e metas também (os sócios decidem quando).
+const ORDEM_COMECAR: { secao: SecaoConfig; rotulo: string }[] = [
+  { secao: "socios", rotulo: "Sócios: % de cada um, piso e horas no mês" },
+  { secao: "servicos", rotulo: "Serviços: quem executa cada um" },
+  { secao: "tipos", rotulo: "Tipos de entrega: quanto tempo leva cada um" },
+  { secao: "custos", rotulo: "Custos fixos: quanto a empresa paga por mês" },
+  { secao: "terceiros", rotulo: "Terceiros: valor por saída" },
+  { secao: "pacotes", rotulo: "Pacotes: confirmar as quantidades" },
+  { secao: "regras", rotulo: "Regras da empresa: imposto, reinvestimento e divisão dos pagamentos" },
+  { secao: "clientes", rotulo: "Clientes: valor e escopo de cada um" },
+];
+
+/** Card "Para começar" da Visão do dia: os passos, na ordem, com o que falta em cada um. */
+export function passosParaComecar(c: Configuracao): PassoComecar[] {
+  const f = camposFaltando(c);
+  // passo que só existe quando tem o que fazer: sem terceiro, pacote ou cliente cadastrado, ele não aparece
+  const opcionais: Partial<Record<SecaoConfig, number>> = {
+    terceiros: (c.terceiros ?? []).filter((x) => x.ativo).length,
+    pacotes: (c.pacotes ?? []).filter((x) => x.ativo).length,
+    clientes: c.clientes.filter((x) => x.ativo).length,
+  };
+  return ORDEM_COMECAR.filter((p) => opcionais[p.secao] !== 0).map((p) => ({ ...p, faltando: f[p.secao] }));
+}

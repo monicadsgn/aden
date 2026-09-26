@@ -129,7 +129,7 @@ export default function Tarefas() {
         icone={ListChecks}
         selo="Dia a dia"
         titulo="Tarefas"
-        descricao="O que está em produção. Abra a tarefa e dê Start ao começar: o tempo medido calibra quanto cada entrega leva de verdade."
+        descricao="O que está em produção. Abra a tarefa e aperte Começar ao iniciar: o tempo medido calibra quanto cada entrega leva de verdade."
         acoes={
           podeCriar ? (
             <Botao variante="primario" icone={Plus} onClick={() => void criar("Nova tarefa", true)}>
@@ -186,7 +186,7 @@ export default function Tarefas() {
 
         {a.tarefas.length === 0 ? (
           <Vazio icone={ListChecks} titulo="Nenhuma tarefa ainda">
-            Crie a primeira no campo acima. Dentro dela tem o botão Start, para medir quanto tempo a entrega leva.
+            Crie a primeira no campo acima. Dentro dela tem o botão Começar, para medir quanto tempo a entrega leva.
           </Vazio>
         ) : visao === "quadro" ? (
           <Quadro tarefas={filtradas} a={a} abrir={abrir} />

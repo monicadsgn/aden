@@ -33,7 +33,7 @@ export function Comparacao({
       rotulo: "Modo",
       valores: cenarios.map((c) => (
         <Badge key={c.id} tom="marca">
-          {c.modo === "escopo" ? "escopo → mínimo" : "valor → o que cabe"}
+          {c.modo === "escopo" ? "do que entregar ao preço" : "do preço ao que entregar"}
         </Badge>
       )),
     },
@@ -162,7 +162,7 @@ export function Comparacao({
 
   return (
     <Card>
-      <TituloCard icone={Columns3} titulo="Comparação lado a lado" descricao="Os cenários desta simulação. Clique no nome para editar." />
+      <TituloCard icone={Columns3} titulo="Comparação lado a lado" descricao="As versões desta simulação. Clique no nome para editar." />
       <div className="overflow-x-auto px-2 pb-4 sm:px-5">
         <table className="w-full min-w-[520px] border-separate border-spacing-0 text-[13px]">
           <thead>
