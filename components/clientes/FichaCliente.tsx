@@ -125,7 +125,7 @@ export function FichaCliente({
       const cen = c.valorMensalCentavos != null ? { ...base, modo: "valor" as const, mensalidadeCentavos: c.valorMensalCentavos } : base;
       const r = await guardarEscopo(repo, config, c.id, cen);
       await aoRecarregar();
-      setMsg(r.gravado ? `Escopo do pacote ${p.nome} guardado.` : `Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: espera aprovação em Sócios → Aprovações.`);
+      setMsg(r.gravado ? `Escopo do pacote ${p.nome} guardado.` : `Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: espera aprovação em Sócios → Pedidos e avisos.`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Não deu para guardar o escopo.");
     }
@@ -266,7 +266,7 @@ export function FichaCliente({
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-texto-suave">Sem escopo guardado: as horas deste cliente não entram na Visão do mês.</p>
+                <p className="text-xs text-texto-suave">Sem escopo guardado: as horas deste cliente não entram na tela Mês.</p>
               )}
               {(config.pacotes ?? []).some((p) => p.ativo) && (
                 <div className="mt-3 flex items-center gap-2">
@@ -315,7 +315,7 @@ export function FichaCliente({
               <Link href="/pagamentos" className="inline-flex items-center gap-1.5 rounded-botao bg-marca px-3 py-1.5 text-xs font-semibold text-sobre-marca">
                 <Wallet size={13} /> Registrar pagamento
               </Link>
-              <Link href="/saude" className="inline-flex items-center gap-1.5 rounded-botao border border-linha px-3 py-1.5 text-xs font-semibold">
+              <Link href="/mes?aba=clientes" className="inline-flex items-center gap-1.5 rounded-botao border border-linha px-3 py-1.5 text-xs font-semibold">
                 Ver a saúde deste cliente
               </Link>
             </div>
@@ -340,11 +340,11 @@ export function FichaCliente({
         {aba === "comercial" && (
           <div className="flex flex-col gap-3">
             {!lead ? (
-              <p className="text-xs text-texto-suave">Este cliente não veio pelo CRM do Aden.</p>
+              <p className="text-xs text-texto-suave">Este cliente não veio pelos leads do Aden.</p>
             ) : (
               <>
                 <p className="text-sm">
-                  Veio do CRM{lead.origem && ` (por ${lead.origem})`}: {rotuloEtapa(lead.etapa)}
+                  Veio dos leads{lead.origem && ` (por ${lead.origem})`}: {rotuloEtapa(lead.etapa)}
                   {lead.fechadoEm && ` em ${new Date(lead.fechadoEm).toLocaleDateString("pt-BR")}`}.{" "}
                   <Link href={`/crm?lead=${lead.id}`} className="font-semibold text-marca-forte underline">
                     Abrir o lead

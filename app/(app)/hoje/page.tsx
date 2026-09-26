@@ -254,7 +254,7 @@ export default function VisaoDoDia() {
             <Cartao rotulo="Para hoje" valor={v.hoje.length} icone={Sun} tom="destaque" ativo={aberto === "hoje"} aoClicar={() => setAberto(aberto === "hoje" ? null : "hoje")} />
             <Cartao rotulo="Atrasadas" valor={v.atrasadas.length} icone={AlertTriangle} tom="alerta" ativo={aberto === "atrasadas"} aoClicar={() => setAberto(aberto === "atrasadas" ? null : "atrasadas")} />
             <Cartao rotulo="Próximos 7 dias" valor={v.semana.length} icone={CalendarDays} ativo={aberto === "semana"} aoClicar={() => setAberto(aberto === "semana" ? null : "semana")} />
-            <Cartao rotulo="Em aprovação" valor={v.emAprovacao.length} icone={Hourglass} ativo={aberto === "aprovacao"} aoClicar={() => setAberto(aberto === "aprovacao" ? null : "aprovacao")} />
+            <Cartao rotulo="Com o cliente" valor={v.emAprovacao.length} icone={Hourglass} ativo={aberto === "aprovacao"} aoClicar={() => setAberto(aberto === "aprovacao" ? null : "aprovacao")} />
             <Cartao rotulo="Concluídas hoje" valor={v.concluidasHoje.length} icone={CheckCircle2} ativo={aberto === "concluidas"} aoClicar={() => setAberto(aberto === "concluidas" ? null : "concluidas")} />
           </div>
           {aberto && (
@@ -309,7 +309,7 @@ export default function VisaoDoDia() {
               )}
               {falarCom.length > 0 && (
                 <div className="mb-2 flex flex-col">
-                  <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">Falar com (CRM)</p>
+                  <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">Falar com (leads)</p>
                   {falarCom.map((l) => (
                     <Link key={l.id} href={`/crm?lead=${l.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-item px-2 py-2 hover:bg-superficie-2/70">
                       <MessagesSquare size={16} className="shrink-0 text-marca-forte" />
@@ -406,7 +406,7 @@ export default function VisaoDoDia() {
             {minhaVisao && socio && (
               <Bloco titulo="Depende de mim" icone={ShieldCheck}>
                 {aprovacoes.length === 0 && avisosNovos.length === 0 ? (
-                  <p className="text-xs text-texto-suave">Nenhuma aprovação nem aviso esperando você.</p>
+                  <p className="text-xs text-texto-suave">Nenhum pedido entre sócios nem aviso esperando você.</p>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {aprovacoes.length > 0 && (
@@ -417,7 +417,7 @@ export default function VisaoDoDia() {
                       </Link>
                     )}
                     {avisosNovos.length > 0 && (
-                      <Link href="/avisos" className="flex items-center gap-2 rounded-bloco bg-info-suave px-3 py-2 text-xs font-semibold text-info hover:opacity-90">
+                      <Link href="/aprovacoes?aba=avisos" className="flex items-center gap-2 rounded-bloco bg-info-suave px-3 py-2 text-xs font-semibold text-info hover:opacity-90">
                         <Bell size={15} />
                         <span className="flex-1">{avisosNovos.length === 1 ? "1 aviso novo" : `${avisosNovos.length} avisos novos`}</span>
                         <ArrowRight size={13} />
@@ -429,7 +429,7 @@ export default function VisaoDoDia() {
             )}
 
             {socio && (
-            <Bloco titulo="Metas" icone={Rocket} acao={<LinkPequeno href="/mes">Visão do mês</LinkPequeno>}>
+            <Bloco titulo="Metas" icone={Rocket} acao={<LinkPequeno href="/mes">Mês</LinkPequeno>}>
               {!trilha.degraus.length ? (
                 <p className="text-xs text-texto-suave">
                   A trilha de crescimento ainda não foi definida.{" "}
@@ -459,7 +459,7 @@ export default function VisaoDoDia() {
             )}
 
             {socio && (
-            <Bloco titulo="Comercial" icone={Sparkles} acao={<LinkPequeno href="/crm">CRM</LinkPequeno>}>
+            <Bloco titulo="Comercial" icone={Sparkles} acao={<LinkPequeno href="/crm">Leads</LinkPequeno>}>
               {leads.length > 0 && (
                 <p className="mb-2 text-xs">
                   <strong>{funil.abertos}</strong> lead{funil.abertos === 1 ? "" : "s"} em negociação
@@ -499,7 +499,7 @@ export default function VisaoDoDia() {
             )}
 
             {socio && (
-            <Bloco titulo="Financeiro do mês" icone={Wallet} acao={<LinkPequeno href="/pagamentos">Registrar pagamento</LinkPequeno>}>
+            <Bloco titulo="Financeiro do mês" icone={Wallet} acao={<LinkPequeno href="/pagamentos">Pagamentos</LinkPequeno>}>
               <p className="text-[11px] text-texto-suave">Recebido este mês</p>
               <p className="numero text-xl font-extrabold">
                 {formatarMoeda(financeiro.recebido)}

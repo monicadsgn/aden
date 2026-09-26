@@ -55,7 +55,7 @@ Regras que você deve seguir:
 - Proteção dos sócios: ${REGRAS_PROTECAO}
   Você (o conector) não é sócio: toda mudança sua em piso, % dos sócios, divisão de horas ou tempo por entrega
   vira pedido de aprovação para o sócio afetado (exceto campo que estava vazio). Diga isso a quem está conversando.
-  Você nunca aprova pedidos; quem aprova é o sócio, no site (Sócios → Aprovações).
+  Você nunca aprova pedidos; quem aprova é o sócio, no site (Sócios → Pedidos e avisos).
 - Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
@@ -743,7 +743,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Enviar peça para o cliente aprovar",
       description:
-        "Marca a tarefa para aparecer no painel do cliente e manda para aprovação (status Em aprovação). Opcional: a legenda que o cliente vai ler. As artes são anexadas pelo site.",
+        "Marca a tarefa para aparecer no painel do cliente e manda para aprovação (status Com o cliente). Opcional: a legenda que o cliente vai ler. As artes são anexadas pelo site.",
       inputSchema: { id: z.string().describe("id da tarefa"), legenda: z.string().optional() },
     },
     async ({ id, legenda }) =>
@@ -1219,7 +1219,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Visão do dia",
       description:
-        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, em aprovação e concluídas hoje; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
+        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, com o cliente e concluídas hoje; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
       inputSchema: { socio: z.string().optional().describe("sócio (nome ou id); vazio = todo mundo") },
     },
     async ({ socio }) =>
@@ -1349,7 +1349,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "mudar_status_tarefa",
     {
       title: "Mudar o status de uma tarefa",
-      description: "a_fazer, em_producao, revisao (em aprovação) ou concluida. Concluir encerra o tempo medido (conta na calibragem).",
+      description: "a_fazer, em_producao, revisao (com o cliente, esperando a aprovação dele) ou concluida. Concluir encerra o tempo medido (conta na calibragem).",
       inputSchema: { id: z.string(), status: z.enum(["a_fazer", "em_producao", "revisao", "concluida"]) },
     },
     async ({ id, status }) =>
@@ -1566,7 +1566,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           custosFixos: d.custosFixos.map((c) => ({ nome: c.nome, valor: paraReais(c.valorCentavos) })),
           impostoFixo: paraReais(d.impostoFixoCentavos),
           teto: d.teto ? { teto: paraReais(d.teto.tetoCentavos), recebidoNoAno: paraReais(d.teto.acumuladoAnoCentavos), pct: Math.round(d.teto.pct * 10) / 10 } : null,
-          pdf: "No site: Financeiro → PDFs e relatórios → Resumo para o contador.",
+          pdf: "No site: Dinheiro e mês → Relatórios → Resumo para o contador.",
         };
       }),
   );

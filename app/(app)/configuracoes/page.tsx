@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  History,
   KeyRound,
+  Timer,
   Package,
   Trophy,
   Truck,
@@ -68,7 +70,7 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "custos", rotulo: "Custos fixos", icone: Building2, frase: "O que a empresa paga todo mês, tenha cliente ou não. É dividido entre os clientes." },
   { id: "terceiros", rotulo: "Terceiros", icone: Truck, frase: "Serviços terceirizados cobrados por saída (ex.: audiovisual). Custo só do cliente que recebe." },
   { id: "pacotes", rotulo: "Pacotes", icone: Package, frase: "Pacotes fechados para a negociação. O preço sai do cálculo, nunca digitado." },
-  { id: "metas", rotulo: "Metas", icone: Trophy, frase: "A trilha de crescimento em degraus, com a ação de cada degrau. Aparece na Visão do mês." },
+  { id: "metas", rotulo: "Metas", icone: Trophy, frase: "A trilha de crescimento em degraus, com a ação de cada degrau. Aparece na tela Mês." },
   { id: "equipe", rotulo: "Equipe e acessos", icone: KeyRound, frase: "Quem entra no Aden e o que cada um vê: sócios, equipe, freelancers e contador." },
   { id: "regras", rotulo: "Regras da empresa", icone: Scale, frase: "Regime e imposto, como dividir o custo fixo, reinvestimento, taxas e como distribuir cada pagamento." },
   { id: "limites", rotulo: "Limites e avisos", icone: Gauge, frase: "Quando o sistema acende um alerta. Vazio = sem aviso." },
@@ -235,9 +237,14 @@ export default function Configuracoes() {
     <div className="pb-28">
       <CabecalhoPagina
         icone={Settings2}
-        selo="Sistema"
+        selo="Ajustes"
         titulo="Configurações"
         descricao="Regras padrão da empresa, uma seção de cada vez. Nada aqui vem preenchido. Toda alteração fica registrada com autor e data."
+        acoes={
+          <Link href="/historico" className="inline-flex items-center gap-1.5 rounded-botao border border-linha bg-superficie px-3 py-2 text-xs font-semibold hover:border-marca">
+            <History size={14} /> Histórico de alterações
+          </Link>
+        }
       />
 
       <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
@@ -378,7 +385,7 @@ export default function Configuracoes() {
                     <strong className="text-texto">Piso por hora:</strong> o mínimo que cada hora de trabalho precisa pagar. Abaixo disso, o sistema acende o alerta.
                   </p>
                   <p>
-                    <strong className="text-texto">Horas no mês:</strong> quanto cada um consegue produzir por mês. A Visão do mês compara com o que os clientes pedem.
+                    <strong className="text-texto">Horas no mês:</strong> quanto cada um consegue produzir por mês. A tela Mês compara com o que os clientes pedem.
                   </p>
                 </div>
                 <div>
@@ -458,11 +465,13 @@ export default function Configuracoes() {
                 <p className="text-[11px] text-texto-suave">
                   Digite o tempo em <strong>minutos</strong> (20 min, 40 min…). <Lock size={10} className="inline" /> É protegido: muda quanto cada hora vale. Roteiro e direção de
                   gravação são tipos normais, com tempo. Vídeo editado é de terceiro e não tem tempo dos sócios.{" "}
-                  <Link href="/calibragem" className="font-semibold text-marca-forte underline">
-                    Ver o tempo medido pelo cronômetro
-                  </Link>
-                  .
                 </p>
+                <Link
+                  href="/calibragem"
+                  className="inline-flex items-center gap-1.5 self-start rounded-botao border border-linha bg-superficie px-3 py-2 text-xs font-semibold hover:border-marca"
+                >
+                  <Timer size={14} /> Calibragem: o tempo medido nas tarefas
+                </Link>
                 {rascunho.tiposEntrega.length === 0 && (
                   <Vazio icone={Clock3} titulo="Nenhum tipo de entrega">
                     Ex.: post simples, carrossel, PDF, peça de WhatsApp, criativo de tráfego com variações, planejamento mensal, relatório.
@@ -668,7 +677,7 @@ export default function Configuracoes() {
                 <CampoPct rotulo="Avisar a partir de (% do teto)" valor={e.avisoTetoPct ?? null} aoMudar={(v) => setE({ avisoTetoPct: v })} />
                 <Explica>Quando a soma do ano projetada chegar a esta porcentagem do teto, o sistema avisa antes de estourar.</Explica>
                 <CampoPct rotulo="Folga sobrando abaixo de (% das horas)" valor={e.ociosidadePct ?? null} aoMudar={(v) => setE({ ociosidadePct: v })} />
-                <Explica>Se os clientes usarem menos que isso das horas de um sócio, a Visão do mês mostra que ele tem espaço sobrando.</Explica>
+                <Explica>Se os clientes usarem menos que isso das horas de um sócio, a tela Mês mostra que ele tem espaço sobrando.</Explica>
                 <CampoMoeda rotulo="Arredondar a proposta para cima, de" valor={e.arredondamentoPropostaCentavos ?? null} aoMudar={(v) => setE({ arredondamentoPropostaCentavos: v })} />
                 <Explica>O valor que vai para o cliente sobe até o próximo múltiplo deste valor, para sair um número redondo.</Explica>
                 <Alvo campo="medicoesCalibragem">
@@ -678,7 +687,7 @@ export default function Configuracoes() {
                 <CampoPct rotulo="Sugerir novo tempo quando a média diferir mais de" valor={e.diferencaSugerirPct ?? null} aoMudar={(v) => setE({ diferencaSugerirPct: v })} />
                 <Explica>Vazio = qualquer diferença de 1 minuto ou mais já vira sugestão de atualizar o tempo cadastrado.</Explica>
                 <CampoNumero rotulo="Lead parado na etapa depois de" sufixo="dias" valor={e.diasLeadParado ?? null} aoMudar={(v) => setE({ diasLeadParado: v })} />
-                <Explica>No CRM, o card do lead fica em destaque quando passa esse tempo sem mudar de etapa. Vazio = nunca destaca.</Explica>
+                <Explica>Em Leads, o card do lead fica em destaque quando passa esse tempo sem mudar de etapa. Vazio = nunca destaca.</Explica>
               </div>
             )}
 
@@ -713,7 +722,7 @@ export default function Configuracoes() {
                         </Badge>
                       ) : (
                         <Badge tom="aviso" title="Abra a calculadora, escolha este cliente no cenário e use 'Guardar como escopo contratado'.">
-                          sem escopo: horas fora da Visão do mês
+                          sem escopo: horas fora da tela Mês
                         </Badge>
                       )}
                     </div>

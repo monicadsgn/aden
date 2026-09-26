@@ -13,10 +13,10 @@ import { Modal } from "./Modal";
 import { Botao, cx } from "./ui";
 
 /** Botão "?" no cabeçalho: pra que serve a tela e quando usar. */
-export function BotaoAjudaTela() {
+export function BotaoAjudaTela({ chave }: { chave?: string }) {
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);
-  const ajuda = AJUDA_TELAS[caminho];
+  const ajuda = AJUDA_TELAS[chave ?? caminho] ?? AJUDA_TELAS[caminho];
   if (!ajuda) return null;
   return (
     <>
@@ -44,11 +44,11 @@ export function BotaoAjudaTela() {
                 ) : null;
               })}
             </div>
-            <Link href="/glossario" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-marca-forte underline" onClick={() => setAberto(false)}>
-              <BookOpen size={12} /> Ver o glossário completo
-            </Link>
           </div>
         )}
+        <Link href="/glossario" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-marca-forte underline" onClick={() => setAberto(false)}>
+          <BookOpen size={12} /> Ver o glossário completo
+        </Link>
       </Modal>
     </>
   );
@@ -56,7 +56,7 @@ export function BotaoAjudaTela() {
 
 const EVENTO_TOUR = "aden:tour";
 export const abrirTour = () => window.dispatchEvent(new Event(EVENTO_TOUR));
-const chaveTour = (usuario: string) => `aden:tour-visto:v2:${usuario}`;
+const chaveTour = (usuario: string) => `aden:tour-visto:v3:${usuario}`;
 
 /** Tour de primeira vez: abre sozinho na primeira entrada; pode pular e rever pelo menu. */
 export function Tour() {

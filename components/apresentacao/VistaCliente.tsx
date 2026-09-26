@@ -32,10 +32,14 @@ export function VistaCliente({
       <div className="relative overflow-hidden rounded-card bg-marca p-6 text-sobre-marca shadow-forte">
         <p className="text-xs font-bold tracking-[0.14em] uppercase opacity-80">Investimento mensal</p>
         <p className="numero mt-1 text-5xl font-extrabold tracking-tight sm:text-6xl">{vista.valorCentavos != null ? formatarMoeda(vista.valorCentavos) : "—"}</p>
+        {vista.valorCentavos == null ? (
+          <p className="mt-2 text-sm opacity-90">Escolha as entregas abaixo para ver o investimento.</p>
+        ) : (
         <p className="mt-2 text-sm opacity-90">
           Um valor só, com {vista.incluiTrafego ? "gestão de tráfego, " : ""}produção, planejamento e todas as ferramentas incluídos.
           {vista.verbaMidiaCentavos ? " A verba de anúncios é paga por vocês direto na plataforma." : ""}
         </p>
+        )}
         <span className="absolute top-4 right-4">
           <SinalDiscreto sinal={vista.sinal} />
         </span>

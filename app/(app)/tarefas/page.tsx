@@ -127,7 +127,7 @@ export default function Tarefas() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={ListChecks}
-        selo="Operação"
+        selo="Dia a dia"
         titulo="Tarefas"
         descricao="O que está em produção. Abra a tarefa e dê Start ao começar: o tempo medido calibra quanto cada entrega leva de verdade."
         acoes={

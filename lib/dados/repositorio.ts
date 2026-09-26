@@ -245,7 +245,7 @@ export interface Repositorio {
   painelCliente(token: string): Promise<PainelCliente | null>;
   /** Resposta do cliente pelo link: aprovar ou pedir ajuste. */
   responderPeca(token: string, tarefaId: string, decisao: "aprovar" | "ajustar", texto: string): Promise<void>;
-  /** Manda a peça para o cliente aprovar (status "em aprovação", aparece no painel). */
+  /** Manda a peça para o cliente aprovar (status "com o cliente", aparece no painel). */
   enviarParaCliente(tarefaId: string): Promise<void>;
   /** Sobe uma arte da peça e devolve o endereço. */
   enviarArquivoPeca(tarefaId: string, arquivo: File): Promise<ArquivoPeca>;

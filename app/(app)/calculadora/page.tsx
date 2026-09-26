@@ -118,13 +118,13 @@ export default function Calculadora() {
       setConfig(await repo.carregarConfig());
       setPedidos(await repo.listarPedidos().catch(() => []));
       if (r.gravado)
-        setMensagem({ tom: "ok", texto: `Escopo contratado de ${cliente.nome} guardado. Ele já conta na Visão do mês e na Saúde dos clientes.` });
+        setMensagem({ tom: "ok", texto: `Escopo contratado de ${cliente.nome} guardado. Ele já conta na tela Mês.` });
       else if (r.pedido?.status === "aplicado")
         setMensagem({ tom: "ok", texto: `Guardado como exceção: fica abaixo do seu piso, e você mesma aprovou. Ficou no histórico.` });
       else
         setMensagem({
           tom: "erro",
-          texto: `Este escopo fica abaixo do piso de ${r.abaixo.map((a) => a.nome).join(" e ")}. Ele só vale depois que ${r.pedido?.aguardando.map(nomePessoa).join(" e ")} aprovar a exceção (em Sócios → Aprovações).`,
+          texto: `Este escopo fica abaixo do piso de ${r.abaixo.map((a) => a.nome).join(" e ")}. Ele só vale depois que ${r.pedido?.aguardando.map(nomePessoa).join(" e ")} aprovar a exceção (em Sócios → Pedidos e avisos).`,
         });
     } catch (e) {
       setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao guardar o escopo." });
@@ -227,12 +227,12 @@ export default function Calculadora() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={Calculator}
-        selo="Comercial"
+        selo="Vendas"
         titulo="Calculadora de projeto"
         descricao="Simule um cliente antes de fechar: do escopo ao valor mínimo, ou do valor ao que cabe dentro dele."
         acoes={
           <Botao variante="primario" icone={Presentation} onClick={abrirApresentacao}>
-            Modo apresentação
+            Ver como o cliente
           </Botao>
         }
       />

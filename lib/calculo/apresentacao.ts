@@ -70,7 +70,9 @@ export function vistaApresentacao(config: Configuracao, estado: EstadoApresentac
   const semServico = config.tiposEntrega.filter((t) => t.ativo && !t.servicoId);
   if (semServico.length)
     servicos.push({ servicoId: null, nome: "Outras entregas", ligado: true, itens: semServico.map((t) => ({ tipoEntregaId: t.id, nome: t.nome, quantidade: qtd.get(t.id) ?? 0 })) });
-  const valor = cenario.modo === "valor" ? (r.mes ? r.mes.receitaBrutaCentavos : null) : (r.proposta?.valorCentavos ?? null);
+  // sem nenhuma entrega escolhida não há preço para mostrar (senão aparece só a parte do custo fixo)
+  const temEntrega = cenario.entregas.some((l) => l.tipoEntregaId && v0(l.quantidade) > 0);
+  const valor = cenario.modo === "valor" ? (r.mes ? r.mes.receitaBrutaCentavos : null) : temEntrega ? (r.proposta?.valorCentavos ?? null) : null;
   return {
     servicos: servicos.filter((s) => s.itens.length > 0),
     valorCentavos: valor,

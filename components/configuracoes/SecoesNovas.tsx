@@ -213,7 +213,7 @@ export function SecaoPacotes({ rascunho, set }: Props) {
           <div className="flex flex-wrap gap-4">
             <Interruptor
               ligado={p.padrao}
-              rotulo="Pacote padrão (a Visão do mês conta quantos deste ainda cabem)"
+              rotulo="Pacote padrão (a tela Mês conta quantos deste ainda cabem)"
               aoMudar={(v) => setLista(lista.map((x) => (x.id === p.id ? { ...x, padrao: v } : v ? { ...x, padrao: false } : x)))}
             />
             <Interruptor ligado={p.ativo} rotulo="Aparece na negociação" aoMudar={(v) => setLista(atualizar(lista, p.id, { ativo: v }))} />
@@ -258,7 +258,7 @@ export function SecaoMetas({ rascunho, set }: Props) {
     <div className="flex flex-col gap-3">
       <p className="text-[11px] text-texto-suave">
         A trilha de crescimento da Aden, em degraus, na ordem em que vocês querem chegar. Cada degrau tem um critério, um alvo e o que fazer quando chegar lá. Aparece
-        no topo da Visão do mês. Degrau batido fica marcado como conquistado, com a data.
+        no topo da tela Mês. Degrau batido fica marcado como conquistado, com a data.
       </p>
       {lista.length === 0 && (
         <Vazio icone={Trophy} titulo="Nenhuma meta ainda">

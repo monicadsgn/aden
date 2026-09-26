@@ -196,7 +196,7 @@ export default function Calendario() {
         )}
         {dia && contatosDoDia(dia).length > 0 && (
           <div className="mb-2 flex flex-col">
-            <p className="px-2 text-[11px] font-bold text-marca-forte uppercase">Falar com (CRM)</p>
+            <p className="px-2 text-[11px] font-bold text-marca-forte uppercase">Falar com (leads)</p>
             {contatosDoDia(dia).map((l) => (
               <Link key={l.id} href={`/crm?lead=${l.id}`} className="rounded-item px-2 py-2 text-[13px] font-medium hover:bg-superficie-2/70">
                 <MessagesSquare size={10} className="mr-1 inline" aria-hidden />{l.nome}

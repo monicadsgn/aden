@@ -23,7 +23,7 @@ export interface VisaoDoDia {
   semana: Tarefa[];
   /** em produção agora, sem prazo */
   emAndamento: Tarefa[];
-  /** paradas em "em aprovação" */
+  /** paradas em "com o cliente" (esperando a aprovação dele) */
   emAprovacao: Tarefa[];
   /** abertas sem ninguém responsável (só aparece em "todos") */
   semResponsavel: Tarefa[];

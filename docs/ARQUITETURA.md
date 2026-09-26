@@ -14,8 +14,21 @@ comercial e financeiro. Sócios podem ver as pendências um do outro quando quis
 na tela. A calculadora é uma ferramenta do comercial, não a porta de entrada. Referência de organização: o SoftMoni
 (visão do dia com cartões clicáveis, calendário, janelas de tarefa).
 
-Menu: **Dia a dia** (Visão do dia, Tarefas, Calendário; sempre aberto) · Comercial · Operação · Financeiro · Sócios ·
-Administrativo · Sistema · Ajuda.
+Menu (reorganizado na auditoria de usabilidade, aprovada pela Moni em 26/09/2026): **Dia a dia** (Visão do dia,
+Tarefas, Calendário; sempre aberto) · **Clientes** (Clientes e contratos, Leads) · **Vendas** (Proposta) ·
+**Dinheiro e mês** (Mês, Pagamentos, Relatórios) · **Sócios** (Pedidos e avisos) · Configurações no fim. Glossário e
+tour no rodapé (livrinho e "?").
+
+- **Mês** (`/mes`) junta, em abas, o que antes eram quatro telas: Resumo e metas (antiga Visão do mês), Horas
+  (Capacidade), Cada cliente (Saúde dos clientes) e Sócios (Repasse). As rotas antigas redirecionam para a aba.
+  As abas são componentes em `components/mes/`, abertos por `components/PaginaComAbas.tsx` (aba no endereço
+  `?aba=`; o "?" do topo usa a chave `rota#aba` de `lib/ajuda.ts`).
+- **Pedidos e avisos** (`/aprovacoes`): abas "Pedidos entre sócios" e "Avisos" (`/avisos` redireciona).
+- **Proposta** é a antiga Negociação ao vivo. A calculadora saiu do menu: é a proposta vista por dentro, aberta pelo
+  botão "Só para os sócios" (pede confirmação) ou pelos links do CRM, da ficha e dos relatórios.
+- Calibragem (botão em Configurações → Tipos de entrega) e Histórico (botão no topo das Configurações) saíram do menu.
+- Nomes: a tarefa em status `revisao` aparece como **Com o cliente** (esperando a aprovação dele); "aprovação"
+  sozinha fica só para os pedidos entre sócios.
 
 ## Áreas do sistema
 

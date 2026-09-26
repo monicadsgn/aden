@@ -391,6 +391,11 @@ describe("modo apresentação", () => {
     expect(v.valorCentavos).toBeGreaterThan(0);
   });
 
+  it("sem nenhuma entrega escolhida, não mostra preço", () => {
+    const v = vistaApresentacao(config(), { cenario: cenario([]), desligados: {} });
+    expect(v.valorCentavos).toBeNull();
+  });
+
   it("sinal discreto acende abaixo do piso", () => {
     const c = config();
     const cen = cenario([["post", 30]], "valor", 200000);

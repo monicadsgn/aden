@@ -83,8 +83,8 @@ export default function Pagamentos() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={Wallet}
-        selo="Financeiro"
-        titulo="Registrar pagamento"
+        selo="Dinheiro e mês"
+        titulo="Pagamentos"
         descricao="Cada pagamento que cai, mesmo atrasado ou em pedaços. O sistema mostra na hora para onde vai cada real: custos, imposto, reinvestimento e cada sócio."
       />
       <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">

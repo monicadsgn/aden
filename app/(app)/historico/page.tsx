@@ -104,7 +104,7 @@ export default function Historico() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={History}
-        selo="Sistema"
+        selo="Configurações"
         titulo="Histórico de alterações"
         descricao="Toda alteração em valores, percentuais e configurações, com autor e data. Registrado pelo banco e sem possibilidade de edição."
       />

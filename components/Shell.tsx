@@ -4,25 +4,17 @@ import {
   CalendarDays,
   BookOpen,
   HelpCircle,
-  BadgeCheck,
-  Bell,
   Briefcase,
-  Calculator,
   CalendarRange,
   ChevronDown,
   ListChecks,
   FileDown,
   FileSignature,
-  Gauge,
-  HandCoins,
-  HeartPulse,
-  History,
   LogOut,
   Menu,
   MessagesSquare,
   Moon,
   Presentation,
-  Scale,
   Settings2,
   ShieldCheck,
   Sun,
@@ -32,7 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { podeVer, type Area } from "@/lib/acesso";
 import { useDados, useVariaveisFaltando } from "@/lib/dados/contexto";
 import type { Repositorio, Usuario } from "@/lib/dados/repositorio";
@@ -46,13 +38,15 @@ interface Item {
   href: string;
   rotulo: string;
   icone: LucideIcon;
-  area?: Area;
-  emBreve?: boolean;
-  contador?: "aprovacoes" | "avisos";
+  area: Area;
+  /** outras rotas que acendem este item (telas abertas a partir dele) */
+  tambem?: string[];
+  contador?: boolean;
 }
 
-// Áreas do sistema (aprovadas pela Moni em 25/09/2026). Cada item é uma tela com um assunto só.
+// Áreas do sistema (reorganizadas na auditoria de 26/09/2026: 5 grupos, uma tela por assunto).
 // O dia a dia vem primeiro e fica sempre aberto: é por onde cada um começa o dia.
+// Configurações fica sozinha no fim; o glossário e o tour ficam no rodapé.
 const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
   {
     titulo: "Dia a dia",
@@ -64,57 +58,36 @@ const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
     ],
   },
   {
-    titulo: "Comercial",
+    titulo: "Clientes",
     itens: [
-      { href: "/crm", rotulo: "CRM e leads", icone: MessagesSquare, area: "crm" },
-      { href: "/negociacao", rotulo: "Negociação ao vivo", icone: Presentation, area: "negociacao" },
-      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora" },
+      { href: "/clientes", rotulo: "Clientes e contratos", icone: FileSignature, area: "clientes" },
+      { href: "/crm", rotulo: "Leads", icone: MessagesSquare, area: "crm" },
     ],
   },
   {
-    titulo: "Operação",
-    itens: [
-      { href: "/mes", rotulo: "Visão do mês e metas", icone: CalendarRange, area: "mes" },
-      { href: "/capacidade", rotulo: "Capacidade", icone: Gauge, area: "capacidade" },
-      { href: "/calibragem", rotulo: "Calibragem das horas", icone: Gauge, area: "calibragem" },
-      { href: "#aprovacao", rotulo: "Aprovações do cliente", icone: BadgeCheck, emBreve: true },
-    ],
+    titulo: "Vendas",
+    itens: [{ href: "/negociacao", rotulo: "Proposta", icone: Presentation, area: "negociacao", tambem: ["/calculadora"] }],
   },
   {
-    titulo: "Financeiro",
+    titulo: "Dinheiro e mês",
     itens: [
-      { href: "/saude", rotulo: "Saúde dos clientes", icone: HeartPulse, area: "saude" },
-      { href: "/pagamentos", rotulo: "Registrar pagamento", icone: Wallet, area: "pagamentos" },
-      { href: "/repasse", rotulo: "Repasse dos sócios", icone: HandCoins, area: "repasse" },
-      { href: "/pdfs", rotulo: "PDFs e relatórios", icone: FileDown, area: "pdfs" },
+      { href: "/mes", rotulo: "Mês", icone: CalendarRange, area: "mes", tambem: ["/capacidade", "/saude", "/repasse"] },
+      { href: "/pagamentos", rotulo: "Pagamentos", icone: Wallet, area: "pagamentos" },
+      { href: "/pdfs", rotulo: "Relatórios", icone: FileDown, area: "pdfs" },
     ],
   },
   {
     titulo: "Sócios",
-    itens: [
-      { href: "/aprovacoes", rotulo: "Aprovações", icone: ShieldCheck, area: "aprovacoes", contador: "aprovacoes" },
-      { href: "/avisos", rotulo: "Avisos", icone: Bell, area: "avisos", contador: "avisos" },
-    ],
+    itens: [{ href: "/aprovacoes", rotulo: "Pedidos e avisos", icone: ShieldCheck, area: "aprovacoes", contador: true, tambem: ["/avisos"] }],
   },
   {
-    titulo: "Administrativo",
-    itens: [
-      { href: "/clientes", rotulo: "Clientes e contratos", icone: FileSignature, area: "clientes" },
-      { href: "#decisoes", rotulo: "Decisões", icone: Scale, emBreve: true },
-    ],
-  },
-  {
-    titulo: "Sistema",
-    itens: [
-      { href: "/configuracoes", rotulo: "Configurações", icone: Settings2, area: "configuracoes" },
-      { href: "/historico", rotulo: "Histórico de alterações", icone: History, area: "historico" },
-    ],
-  },
-  {
-    titulo: "Ajuda",
-    itens: [{ href: "/glossario", rotulo: "Glossário", icone: BookOpen, area: "glossario" }],
+    titulo: "Ajustes",
+    fixo: true,
+    itens: [{ href: "/configuracoes", rotulo: "Configurações", icone: Settings2, area: "configuracoes", tambem: ["/calibragem", "/historico"] }],
   },
 ];
+
+const acende = (caminho: string, i: Item) => [i.href, ...(i.tambem ?? [])].some((h) => caminho.startsWith(h));
 
 const CHAVE_MENU = "aden:menu-aberto";
 
@@ -132,8 +105,8 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
   const caminho = usePathname();
   const { repo, usuario } = useDados();
   const papel = usuario?.papel ?? "sem_vinculo";
-  const grupos = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter((i) => i.emBreve ? papel === "admin" : i.area && podeVer(papel, i.area)) })).filter((g) => g.itens.length);
-  const doCaminho = grupos.find((g) => g.itens.some((i) => !i.emBreve && caminho.startsWith(i.href)))?.titulo;
+  const grupos = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter((i) => podeVer(papel, i.area)) })).filter((g) => g.itens.length);
+  const doCaminho = grupos.find((g) => g.itens.some((i) => acende(caminho, i)))?.titulo;
   const [abertos, setAbertos] = useState<string[]>([]);
   const [contagem, setContagem] = useState({ aprovacoes: 0, avisos: 0 });
 
@@ -163,10 +136,10 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
     <nav className="flex flex-col gap-1" aria-label="Áreas do sistema">
       {grupos.map((g) => {
         const aberto = g.fixo || abertos.includes(g.titulo);
-        const total = g.itens.reduce((a, i) => a + (i.contador ? contagem[i.contador] : 0), 0);
+        const total = g.itens.reduce((a, i) => a + (i.contador ? contagem.aprovacoes + contagem.avisos : 0), 0);
         const temAtivo = g.titulo === doCaminho;
         return (
-          <div key={g.titulo}>
+          <div key={g.titulo} className={cx(g.titulo === "Ajustes" && "mt-2 border-t border-linha pt-3")}>
             {!g.fixo && (
             <button
               type="button"
@@ -185,19 +158,9 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
             {aberto && (
               <ul className="mb-2 flex flex-col gap-0.5 pl-1">
                 {g.itens.map((i) => {
-                  const ativo = !i.emBreve && caminho.startsWith(i.href);
+                  const ativo = acende(caminho, i);
                   const Ic = i.icone;
-                  if (i.emBreve)
-                    return (
-                      <li key={i.href}>
-                        <span className="flex cursor-default items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-medium text-texto-suave/60" title="Próximas fases">
-                          <Ic size={17} strokeWidth={1.9} />
-                          <span className="flex-1 truncate">{i.rotulo}</span>
-                          <span className="text-[9px] font-bold tracking-wide uppercase">breve</span>
-                        </span>
-                      </li>
-                    );
-                  const n = i.contador ? contagem[i.contador] : 0;
+                  const n = i.contador ? contagem.aprovacoes + contagem.avisos : 0;
                   return (
                     <li key={i.href}>
                       <Link
@@ -308,6 +271,14 @@ export function Shell({ children }: { children: ReactNode }) {
       >
         <HelpCircle size={17} />
       </button>
+      <Link
+        href="/glossario"
+        aria-label="Glossário: o que quer dizer cada palavra"
+        title="Glossário: o que quer dizer cada palavra"
+        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+      >
+        <BookOpen size={17} />
+      </Link>
       <AlternarTema />
       {repo.modo === "supabase" && (
         <button
@@ -377,19 +348,29 @@ export function Shell({ children }: { children: ReactNode }) {
   );
 }
 
+/** Tela aberta como aba de outra (ex.: abas da tela Mês): o cabeçalho vira só a linha de ações. */
+/** Valor = classe de largura máxima da tela que abriu a aba (para alinhar tudo). */
+export const Embutida = createContext<string | null>(null);
+
 export function CabecalhoPagina({
   icone: Icone,
   titulo,
   descricao,
   acoes,
   selo,
+  ajuda,
 }: {
   icone: LucideIcon;
   titulo: string;
   descricao?: ReactNode;
   acoes?: ReactNode;
   selo?: string;
+  /** chave do texto do "?" em lib/ajuda.ts; padrão: a rota */
+  ajuda?: string;
 }) {
+  const embutida = useContext(Embutida);
+  if (embutida)
+    return acoes ? <div className={cx("nao-imprimir mx-auto flex flex-wrap items-center justify-end gap-2 px-4 pt-4 sm:px-6 lg:px-8", embutida)}>{acoes}</div> : null;
   return (
     <div className="relative overflow-hidden border-b border-linha bg-marca-tinta/60">
       <svg className="pointer-events-none absolute -top-24 -right-16 size-72 text-marca/10" viewBox="-100 -100 200 200" aria-hidden>
@@ -406,7 +387,7 @@ export function CabecalhoPagina({
           {descricao && <p className="mt-0.5 max-w-2xl text-sm text-texto-suave">{descricao}</p>}
         </div>
         {acoes && <div className="nao-imprimir flex w-full flex-wrap items-center gap-2 sm:w-auto">{acoes}</div>}
-        <BotaoAjudaTela />
+        <BotaoAjudaTela chave={ajuda} />
       </div>
     </div>
   );

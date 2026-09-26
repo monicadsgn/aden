@@ -1,7 +1,6 @@
 "use client";
 
 import { Eye, FileDown, HandCoins, Save, X } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { VistaCliente } from "@/components/apresentacao/VistaCliente";
@@ -109,7 +108,9 @@ export default function Negociacao() {
     }
   };
 
+  // Os detalhes mostram piso, horas e divisão: nunca abrir sem querer com o cliente olhando.
   const verDetalhes = () => {
+    if (!confirm("Os detalhes mostram números internos (piso, horas, divisão entre os sócios). Abrir agora, longe da tela do cliente?")) return;
     enviarCenario({ origem: "apresentacao", nome: `Negociação · ${nomeCliente || "cliente novo"}`, cenarios: [cen] });
     router.push("/calculadora");
   };
@@ -142,6 +143,13 @@ export default function Negociacao() {
     router.push("/imprimir/proposta");
   };
 
+  // Sair volta para onde a pessoa estava (CRM, ficha do cliente…); sem histórico, para a Visão do dia.
+  const sair = () => {
+    const veioDoAden = document.referrer.startsWith(window.location.origin) && !document.referrer.includes("/negociacao");
+    if (veioDoAden && window.history.length > 1) router.back();
+    else router.push("/hoje");
+  };
+
   if (!carregado) return null;
 
   return (
@@ -151,12 +159,18 @@ export default function Negociacao() {
         <div className="min-w-0 flex-1">
           <CampoTexto ariaLabel="Nome do cliente" placeholder="Nome do cliente" valor={nomeCliente} aoMudar={setNomeCliente} className="max-w-xs" />
         </div>
-        <Botao icone={Eye} onClick={verDetalhes}>
-          Ver detalhes
-        </Botao>
-        <Link href="/calculadora" aria-label="Sair da apresentação" className="flex size-10 items-center justify-center rounded-item hover:bg-superficie-2">
+        <button
+          type="button"
+          onClick={verDetalhes}
+          title="Números internos, só para os sócios"
+          className="flex items-center gap-1.5 rounded-botao px-2.5 py-2 text-xs font-semibold text-texto-suave hover:bg-superficie-2 hover:text-texto"
+        >
+          <Eye size={14} />
+          <span className="hidden sm:inline">Só para os sócios</span>
+        </button>
+        <button type="button" onClick={sair} aria-label="Sair da proposta" className="flex size-10 items-center justify-center rounded-item hover:bg-superficie-2">
           <X size={20} />
-        </Link>
+        </button>
       </header>
 
       <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6 sm:px-8">

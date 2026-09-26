@@ -53,7 +53,7 @@ export default function Crm() {
         const id = new URLSearchParams(window.location.search).get("lead");
         if (id) setAberto(id);
       } catch (e) {
-        setErro(e instanceof Error ? e.message : "Erro ao carregar o CRM.");
+        setErro(e instanceof Error ? e.message : "Erro ao carregar os leads.");
       } finally {
         setCarregado(true);
       }
@@ -87,7 +87,7 @@ export default function Crm() {
     setConfig(c);
     setLeads(ls);
     if (r.escopo && !r.escopo.gravado)
-      setErro(`${l.nome} virou cliente. O escopo ficou abaixo do piso de ${r.escopo.abaixo.map((a) => a.nome).join(" e ")}: espera a aprovação em Sócios → Aprovações.`);
+      setErro(`${l.nome} virou cliente. O escopo ficou abaixo do piso de ${r.escopo.abaixo.map((a) => a.nome).join(" e ")}: espera a aprovação em Sócios → Pedidos e avisos.`);
   };
 
   if (!carregado) return null;
@@ -100,8 +100,8 @@ export default function Crm() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={Handshake}
-        selo="Comercial"
-        titulo="CRM"
+        selo="Clientes"
+        titulo="Leads"
         descricao="Cada pessoa interessada na Aden, da primeira mensagem até fechar. Arraste o card para mudar de etapa; clique para ver a ficha."
       />
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">

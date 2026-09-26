@@ -46,8 +46,8 @@ export default function Pdfs() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={FileDown}
-        selo="Financeiro"
-        titulo="PDFs e relatórios"
+        selo="Dinheiro e mês"
+        titulo="Relatórios"
         descricao="Cada PDF mostra só o que faz sentido para quem vai receber. As cores e a fonte seguem a identidade do sistema e trocam junto com ela."
       />
       <div className="mx-auto grid max-w-[1100px] gap-4 px-4 py-6 sm:px-6 md:grid-cols-3 lg:px-8">

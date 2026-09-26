@@ -19,7 +19,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
     termos: ["escopo"],
   },
   "/crm": {
-    titulo: "CRM",
+    titulo: "Leads",
     texto:
       "Cada pessoa interessada na Aden, da primeira mensagem até fechar. Anote cada conversa na ficha do lead e marque o próximo contato: ele aparece na sua Visão do dia. Quando fechar, um clique cria o cliente com a proposta combinada.",
     termos: ["lead", "escopo"],
@@ -37,31 +37,42 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/calculadora": {
     titulo: "Calculadora de projeto",
     texto:
-      "Serve para descobrir quanto cobrar de um cliente, ou o que cabe no valor que ele quer pagar. Use antes de mandar uma proposta: monte as entregas do mês e veja se a hora de cada sócio fica acima do piso. Clique no título de qualquer bloco para ver o que ele significa e o que já está cadastrado.",
+      "É a proposta vista por dentro, só para os sócios: mostra se o preço paga os custos e a hora de cada um. Monte as entregas do mês e veja se a hora de cada sócio fica acima do piso. Clique no título de qualquer bloco para ver o que ele significa.",
     termos: ["escopo", "piso", "rateio", "sobra", "valor-por-hora"],
   },
   "/negociacao": {
-    titulo: "Negociação ao vivo",
+    titulo: "Proposta",
     texto:
-      "É a calculadora com cara de apresentação, para mostrar ao cliente durante a conversa. Ele vê só o que pode ver: entregas e valor, nunca custos nem a divisão entre sócios. Use em reunião, ligando e desligando entregas até chegar num acordo.",
+      "A tela para mostrar ao cliente durante a conversa: escolha um pacote e personalize na hora. Ele vê só entregas e valor, nunca custos nem a divisão entre sócios. O botão \"Só para os sócios\" abre os números internos: use longe da tela do cliente.",
     termos: ["escopo"],
   },
   "/tarefas": {
     titulo: "Tarefas",
     texto:
-      "Tudo o que está em produção, com o relógio dentro de cada tarefa. Ao começar a fazer uma entrega, abra a tarefa e aperte Start; ao terminar, marque como concluída. O tempo medido ensina o sistema quanto cada entrega leva de verdade.",
+      "Tudo o que está em produção, com o relógio dentro de cada tarefa. Ao começar uma entrega, aperte Começar; ao terminar, marque como concluída. O tempo medido ensina o sistema quanto cada entrega leva de verdade.",
     termos: ["tempo-por-entrega", "calibragem"],
   },
-  "/mes": {
-    titulo: "Visão do mês",
+  "/mes#resumo": {
+    titulo: "Mês · Resumo e metas",
     texto:
-      "Mostra onde a Aden está na trilha de crescimento e quanto espaço ainda tem para vender. O primeiro número diz quantos clientes do pacote padrão ainda cabem com as horas livres de hoje. Use no começo do mês e antes de fechar um contrato.",
+      "Mostra onde a Aden está na trilha de crescimento e quanto espaço ainda tem para vender. O primeiro número diz quantos clientes do pacote padrão ainda cabem com as horas livres de hoje. As outras abas trazem o detalhe: horas, cada cliente e o que cada sócio recebeu.",
     termos: ["capacidade", "teto-mei"],
   },
-  "/capacidade": {
-    titulo: "Capacidade",
+  "/mes#horas": {
+    titulo: "Mês · Horas",
     texto: "O detalhe das horas: quanto cada cliente pede de cada sócio e quanto sobra para cada um no mês. Use para redistribuir o trabalho ou planejar a próxima contratação.",
     termos: ["capacidade", "tempo-por-entrega"],
+  },
+  "/mes#clientes": {
+    titulo: "Mês · Cada cliente",
+    texto:
+      "Mostra, cliente por cliente, se o que foi combinado está pagando bem as horas de verdade. Quando um cliente fica abaixo do piso, aparecem os caminhos: subir o valor, cortar entregas ou os dois. Use no fim de cada mês.",
+    termos: ["piso", "valor-por-hora", "escopo"],
+  },
+  "/mes#socios": {
+    titulo: "Mês · Sócios",
+    texto: "Mostra quanto cada sócio já tem para receber no mês, com base nos pagamentos que entraram. Use na hora de fazer o repasse (a transferência para cada sócio).",
+    termos: ["sobra", "reinvestimento", "ordem-distribuicao"],
   },
   "/calibragem": {
     titulo: "Calibragem das horas",
@@ -69,43 +80,31 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
       "Compara o tempo cadastrado de cada entrega com o tempo medido nas tarefas. Quando a média real fica diferente, o sistema sugere atualizar. Olhe de vez em quando, principalmente depois de medir as primeiras entregas de cada tipo.",
     termos: ["calibragem", "tempo-por-entrega"],
   },
-  "/saude": {
-    titulo: "Saúde dos clientes",
-    texto:
-      "Mostra, cliente por cliente, se o que foi combinado está pagando bem as horas de verdade. Quando um cliente está no prejuízo, aparecem os caminhos: subir o valor, cortar entregas ou os dois. Use no fim de cada mês.",
-    termos: ["piso", "valor-por-hora", "escopo"],
-  },
   "/pagamentos": {
-    titulo: "Registrar pagamento",
+    titulo: "Pagamentos",
     texto:
       "Anote aqui cada pagamento que cai, com o mês a que ele se refere. O sistema mostra quanto de cada pagamento vai para custos, empresa e cada sócio, e quem está atrasado. Use sempre que entrar dinheiro de cliente.",
     termos: ["ordem-distribuicao"],
   },
-  "/repasse": {
-    titulo: "Repasse dos sócios",
-    texto:
-      "Mostra quanto cada sócio já tem para receber no mês, com base nos pagamentos que entraram. Use na hora de fazer o repasse (a transferência para cada sócio).",
-    termos: ["sobra", "reinvestimento", "ordem-distribuicao"],
-  },
   "/pdfs": {
-    titulo: "PDFs e relatórios",
+    titulo: "Relatórios",
     texto:
       "Gera os documentos para baixar: a proposta para o cliente, o resumo para o contador e o relatório de cada sócio. Cada um mostra só o que aquela pessoa pode ver.",
   },
-  "/aprovacoes": {
-    titulo: "Aprovações",
+  "/aprovacoes#pedidos": {
+    titulo: "Pedidos entre sócios",
     texto:
       "Mudanças que mexem no bolso de um sócio (piso, percentual, divisão de horas, tempo por entrega) só valem depois que ele aprova. Aqui ficam os pedidos esperando resposta, e o histórico de tudo que foi decidido.",
     termos: ["piso", "excecao"],
   },
-  "/avisos": {
+  "/aprovacoes#avisos": {
     titulo: "Avisos",
     texto: "Recados do sistema para você: quem mudou o quê, e quanto isso muda no seu bolso por mês. Marque como lido depois de ver.",
   },
   "/configuracoes": {
     titulo: "Configurações",
     texto:
-      "É a base de tudo: sócios, serviços, entregas, custos fixos, regras da empresa e clientes. Comece por aqui: sem esses números a calculadora não tem o que calcular. As abas com bolinha têm campo faltando.",
+      "É a base de tudo: sócios, serviços, entregas, custos fixos, regras da empresa e clientes. Comece por aqui: sem esses números a proposta não tem o que calcular. As abas marcadas com \"falta preencher\" têm campo vazio; o histórico de alterações fica no botão do topo.",
     termos: ["piso", "capacidade", "rateio", "reinvestimento", "ordem-distribuicao"],
   },
   "/historico": {
@@ -224,31 +223,31 @@ export const TOUR: PassoTour[] = [
   {
     titulo: "Boas-vindas ao Aden",
     texto:
-      "O Aden é a central da agência: tarefas, calendário, comercial, financeiro e metas num lugar só, sem pular de programa em programa. Cada pessoa entra com o próprio acesso e vê o que é dela.",
+      "O Aden é a central da agência: tarefas, calendário, clientes, vendas, dinheiro e metas num lugar só, sem pular de programa em programa. Cada pessoa entra com o próprio acesso e vê o que é dela.",
   },
   {
     titulo: "Comece pela Visão do dia",
     texto:
-      "Toda vez que abrir o Aden, você cai na Visão do dia: o que tem para resolver hoje, o que atrasou, o que depende de você (aprovações, avisos) e o que vem pela frente. Sócios podem olhar as pendências um do outro quando quiserem.",
+      "Toda vez que abrir o Aden, você cai na Visão do dia: o que tem para resolver hoje, o que atrasou, o que depende de você e o que vem pela frente. Enquanto faltar configurar o básico, ela mostra por onde começar.",
   },
   {
     titulo: "Tarefas e calendário",
     texto:
-      "Tudo o que está em produção vira tarefa, com responsável, prazo e checklist. Dentro de cada tarefa tem o Start para medir o tempo. O calendário mostra tudo no mês, para ninguém perder o fio da meada.",
+      "Tudo o que está em produção vira tarefa, com responsável, prazo e checklist. Dentro de cada tarefa tem o botão Começar para medir o tempo. O calendário mostra tudo no mês, para ninguém perder o fio da meada.",
   },
   {
-    titulo: "Comercial",
+    titulo: "Clientes e vendas",
     texto:
-      "Na Negociação você apresenta os pacotes ao cliente e personaliza na hora. Por trás, a calculadora garante que o preço paga os custos e as horas de todo mundo. A Visão do dia mostra quantos clientes ainda cabem.",
+      "Em Leads fica quem se interessou; ao fechar, vira cliente com ficha e contrato. Em Proposta você mostra os pacotes ao cliente e personaliza na hora, e por trás o sistema confere se o preço paga os custos e as horas de todo mundo.",
   },
   {
-    titulo: "Financeiro e metas",
+    titulo: "Dinheiro e mês",
     texto:
-      "Cada pagamento que entra é registrado e dividido do jeito que vocês combinaram. A trilha de metas mostra onde a Aden está no crescimento e qual é o próximo passo.",
+      "Cada pagamento que entra é registrado e dividido do jeito que vocês combinaram. A tela Mês junta as metas, as horas, cada cliente e o que cada sócio recebeu, em abas.",
   },
   {
     titulo: "Por onde começar",
     texto:
-      "Preencha as Configurações (sócios, entregas, pacotes, metas) e crie as primeiras tarefas. Em cada tela tem um botão \"?\" e o Glossário explica cada palavra. Dá para rever este tour pelo menu.",
+      "Preencha as Configurações (no fim do menu) e crie as primeiras tarefas. Em cada tela tem um botão \"?\", e o livrinho no rodapé abre o Glossário. O \"?\" do rodapé mostra este tour de novo.",
   },
 ];

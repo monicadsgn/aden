@@ -119,9 +119,9 @@ export default function Clientes() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={Building2}
-        selo="Administrativo"
+        selo="Clientes"
         titulo="Clientes e contratos"
-        descricao="A ficha de cada cliente: contato, contrato, escopo, tarefas, pagamentos e a conversa que veio do CRM."
+        descricao="A ficha de cada cliente: contato, contrato, escopo, tarefas, pagamentos e a conversa de antes de fechar."
       />
       <div className="mx-auto flex max-w-[1300px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
         {erro && <p className="rounded-card bg-erro-suave px-4 py-3 text-sm text-erro">{erro}</p>}
@@ -144,7 +144,7 @@ export default function Clientes() {
 
         {ativos.length === 0 ? (
           <Vazio icone={Users} titulo="Nenhum cliente ativo">
-            Crie aqui, ou feche um lead no CRM: ele vira cliente com a proposta combinada.
+            Crie aqui, ou feche um lead em Leads: ele vira cliente com a proposta combinada.
           </Vazio>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{ativos.map(cartao)}</div>

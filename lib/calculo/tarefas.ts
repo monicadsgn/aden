@@ -76,7 +76,7 @@ export function situacaoPeca(t: Pick<Tarefa, "status" | "clienteAprovouEm" | "fe
 export const STATUS: { valor: StatusTarefa; rotulo: string }[] = [
   { valor: "a_fazer", rotulo: "A fazer" },
   { valor: "em_producao", rotulo: "Em produção" },
-  { valor: "revisao", rotulo: "Em aprovação" },
+  { valor: "revisao", rotulo: "Com o cliente" },
   { valor: "concluida", rotulo: "Concluída" },
 ];
 export const rotuloStatus = (s: StatusTarefa) => STATUS.find((x) => x.valor === s)?.rotulo ?? s;

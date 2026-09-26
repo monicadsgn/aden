@@ -79,7 +79,7 @@ export default function Calibragem() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={Gauge}
-        selo="Operação"
+        selo="Configurações"
         titulo="Calibragem das horas"
         descricao="Quanto cada entrega leva de verdade (média do tempo medido nas tarefas) contra o tempo cadastrado. Quando a média fica diferente, o sistema sugere atualizar o tempo."
         acoes={
@@ -104,7 +104,7 @@ export default function Calibragem() {
           <TituloCard
             icone={Gauge}
             titulo="Cada tipo de entrega"
-            descricao="Calibrado = já tem as medições pedidas. A partir daí a média medida estima as horas reais na Saúde dos clientes; o tempo cadastrado só muda se vocês aprovarem."
+            descricao="Calibrado = já tem as medições pedidas. A partir daí a média medida estima as horas reais na tela Mês (aba Cada cliente); o tempo cadastrado só muda se vocês aprovarem."
           />
           <div className="divide-y divide-linha px-5 pb-3">
             {lista.length === 0 && (
