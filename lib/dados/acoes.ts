@@ -1,8 +1,11 @@
 // Ações que valem igual no site, no modo demonstração e no conector do Claude:
 // avisos para os sócios e guardar escopo com a regra do piso.
 
+import { moverLead, type Lead } from "../calculo/crm";
+import { pacoteParaCenario } from "../calculo/pacotes";
 import { calcularCenario } from "../calculo/motor";
-import type { Cenario, Configuracao } from "../calculo/tipos";
+import { novoId } from "../calculo/novo";
+import type { Cenario, ClienteBase, Configuracao } from "../calculo/tipos";
 import { formatarMoeda, formatarPct, formatarDuracao } from "../formato";
 import { aplicarItens, assinaturaCenario, impactoNoBolso, sociosAbaixoDoPiso, type ItemProtegido } from "../regras/aprovacao";
 import type { NovoAviso, Repositorio, ResultadoPedido, Usuario } from "./repositorio";
@@ -169,4 +172,52 @@ async function gravarValorContrato(repo: Repositorio, config: Configuracao, clie
 /** Assinatura de uma proposta (conteúdo + valor): a exceção aprovada vale só para ela. */
 export function assinaturaProposta(cenario: Cenario, valorCentavos: number | null): string {
   return `${assinaturaCenario(cenario)}:${valorCentavos ?? ""}`;
+}
+
+// ─── CRM: lead ganho vira cliente ───────────────────────────────────────────
+
+export interface ResultadoGanho {
+  clienteId: string;
+  /** escopo guardado a partir da proposta ou do pacote (null = lead sem proposta nem pacote) */
+  escopo: ResultadoGuardarEscopo | null;
+}
+
+/**
+ * Fechou: cria o cliente (ativo, entra no rateio), guarda o escopo a partir da proposta
+ * ligada (ou do pacote) pelas mesmas regras da calculadora (abaixo do piso vira pedido de
+ * exceção) e marca o lead como ganho, ligado ao cliente.
+ */
+export async function ganharLead(repo: Repositorio, config: Configuracao, lead: Lead): Promise<ResultadoGanho> {
+  if (lead.clienteId) return { clienteId: lead.clienteId, escopo: null };
+  const cliente: ClienteBase = {
+    id: novoId(),
+    nome: lead.nome,
+    interno: false,
+    participaRateio: true,
+    valorMensalCentavos: lead.valorEstimadoCentavos,
+    ativo: true,
+    escopo: null,
+  };
+  await repo.salvarConfig({
+    pessoas: { salvar: [], remover: [] },
+    servicos: { salvar: [], remover: [] },
+    tiposEntrega: { salvar: [], remover: [] },
+    custosFixos: { salvar: [], remover: [] },
+    clientes: { salvar: [cliente], remover: [] },
+  });
+  let cenario: Cenario | null = null;
+  if (lead.simulacaoId) cenario = (await repo.carregarSimulacao(lead.simulacaoId))?.cenarios[0] ?? null;
+  if (!cenario && lead.pacoteId) {
+    const p = (config.pacotes ?? []).find((x) => x.id === lead.pacoteId);
+    if (p) cenario = pacoteParaCenario(p);
+  }
+  let escopo: ResultadoGuardarEscopo | null = null;
+  if (cenario) {
+    const cfg = await repo.carregarConfig();
+    const comValor: Cenario =
+      lead.valorEstimadoCentavos != null ? { ...cenario, modo: "valor", mensalidadeCentavos: lead.valorEstimadoCentavos } : cenario;
+    escopo = await guardarEscopo(repo, cfg, cliente.id, comValor);
+  }
+  await repo.salvarLead({ ...moverLead(lead, "ganho"), clienteId: cliente.id });
+  return { clienteId: cliente.id, escopo };
 }

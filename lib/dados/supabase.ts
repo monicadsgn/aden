@@ -4,6 +4,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Medicao } from "../calculo/calibragem";
 import type { Tarefa } from "../calculo/tarefas";
+import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, ClienteBase, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
@@ -125,6 +126,7 @@ export class RepositorioSupabase implements Repositorio {
         ordemDistribuicao: (e?.ordem_distribuicao as Configuracao["empresa"]["ordemDistribuicao"]) ?? null,
         medicoesCalibragem: num(e?.medicoes_calibragem),
         diferencaSugerirPct: num(e?.diferenca_sugerir_pct),
+        diasLeadParado: num(e?.dias_lead_parado),
         reinvestimentoPct: num(e?.reinvestimento_pct),
         impostoPct: num(e?.imposto_pct),
         taxaRecebimentoPct: num(e?.taxa_recebimento_pct),
@@ -256,6 +258,7 @@ export class RepositorioSupabase implements Repositorio {
         ordem_distribuicao: a.empresa.ordemDistribuicao ?? null,
         medicoes_calibragem: a.empresa.medicoesCalibragem ?? null,
         diferenca_sugerir_pct: a.empresa.diferencaSugerirPct ?? null,
+        dias_lead_parado: a.empresa.diasLeadParado ?? null,
         reinvestimento_pct: a.empresa.reinvestimentoPct,
         imposto_pct: a.empresa.impostoPct,
         taxa_recebimento_pct: a.empresa.taxaRecebimentoPct,
@@ -794,6 +797,101 @@ export class RepositorioSupabase implements Repositorio {
 
   async removerTarefa(id: string) {
     await this.remover("tarefas", [id]);
+  }
+
+  // ─── CRM ──────────────────────────────────────────────────────────────────
+
+  async listarLeads(): Promise<Lead[]> {
+    const org = await this.org();
+    const { data, error } = await this.sb.from("leads").select("*").eq("org_id", org).order("criado_em", { ascending: false }).limit(2000);
+    erro(error);
+    return ((data ?? []) as Linha[]).map((l) => ({
+      id: l.id as string,
+      nome: l.nome as string,
+      contato: (l.contato as string) ?? "",
+      telefone: (l.telefone as string) ?? "",
+      email: (l.email as string) ?? "",
+      instagram: (l.instagram as string) ?? "",
+      origem: (l.origem as string) ?? "",
+      etapa: l.etapa as Lead["etapa"],
+      entrouNaEtapaEm: l.entrou_na_etapa_em as string,
+      pacoteId: (l.pacote_id as string) ?? null,
+      simulacaoId: (l.simulacao_id as string) ?? null,
+      valorEstimadoCentavos: num(l.valor_estimado_centavos),
+      responsavelId: (l.responsavel_id as string) ?? null,
+      proximoContato: (l.proximo_contato as string) ?? null,
+      proximaAcao: (l.proxima_acao as string) ?? "",
+      observacoes: (l.observacoes as string) ?? "",
+      motivoPerda: (l.motivo_perda as string) ?? "",
+      clienteId: (l.cliente_id as string) ?? null,
+      criadoEm: l.criado_em as string,
+      fechadoEm: (l.fechado_em as string) ?? null,
+    }));
+  }
+
+  async salvarLead(l: Lead) {
+    const org_id = await this.org();
+    const vazio = (t: string) => (t.trim() ? t : null);
+    const { error } = await this.sb.from("leads").upsert({
+      id: l.id,
+      org_id,
+      nome: l.nome,
+      contato: vazio(l.contato),
+      telefone: vazio(l.telefone),
+      email: vazio(l.email),
+      instagram: vazio(l.instagram),
+      origem: vazio(l.origem),
+      etapa: l.etapa,
+      entrou_na_etapa_em: l.entrouNaEtapaEm,
+      pacote_id: l.pacoteId,
+      simulacao_id: l.simulacaoId,
+      valor_estimado_centavos: l.valorEstimadoCentavos,
+      responsavel_id: l.responsavelId,
+      proximo_contato: l.proximoContato,
+      proxima_acao: vazio(l.proximaAcao),
+      observacoes: vazio(l.observacoes),
+      motivo_perda: vazio(l.motivoPerda),
+      cliente_id: l.clienteId,
+      criado_em: l.criadoEm,
+      fechado_em: l.fechadoEm,
+    });
+    erro(error);
+  }
+
+  async removerLead(id: string) {
+    await this.remover("leads", [id]);
+  }
+
+  async listarInteracoes(leadId: string): Promise<InteracaoLead[]> {
+    const { data, error } = await this.sb.from("lead_interacoes").select("*").eq("lead_id", leadId).order("em", { ascending: false });
+    erro(error);
+    return ((data ?? []) as Linha[]).map((i) => ({
+      id: i.id as string,
+      leadId: i.lead_id as string,
+      tipo: i.tipo as InteracaoLead["tipo"],
+      texto: i.texto as string,
+      em: i.em as string,
+      autorNome: (i.autor_nome as string) ?? null,
+    }));
+  }
+
+  async salvarInteracao(i: InteracaoLead) {
+    const org_id = await this.org();
+    const autor = await this.usuarioAtual();
+    const { error } = await this.sb.from("lead_interacoes").upsert({
+      id: i.id,
+      org_id,
+      lead_id: i.leadId,
+      tipo: i.tipo,
+      texto: i.texto,
+      em: i.em,
+      autor_nome: i.autorNome ?? autor?.nome ?? null,
+    });
+    erro(error);
+  }
+
+  async removerInteracao(id: string) {
+    await this.remover("lead_interacoes", [id]);
   }
 
   // ─── Pagamentos ───────────────────────────────────────────────────────────

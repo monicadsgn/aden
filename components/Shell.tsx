@@ -66,9 +66,9 @@ const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
   {
     titulo: "Comercial",
     itens: [
+      { href: "/crm", rotulo: "CRM e leads", icone: MessagesSquare, area: "crm" },
       { href: "/negociacao", rotulo: "Negociação ao vivo", icone: Presentation, area: "negociacao" },
       { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora" },
-      { href: "#crm", rotulo: "CRM e leads", icone: MessagesSquare, emBreve: true },
     ],
   },
   {

@@ -18,6 +18,12 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
       "É por aqui que cada um começa o dia: o que tem para resolver hoje, o que está atrasado, o que depende de você e um resumo das metas, do comercial e do financeiro. Clique nos números do topo para ver a lista de cada um. Sócios podem olhar as pendências um do outro no seletor do canto.",
     termos: ["escopo"],
   },
+  "/crm": {
+    titulo: "CRM",
+    texto:
+      "Cada pessoa interessada na Aden, da primeira mensagem até fechar. Anote cada conversa na ficha do lead e marque o próximo contato: ele aparece na sua Visão do dia. Quando fechar, um clique cria o cliente com a proposta combinada.",
+    termos: ["lead", "escopo"],
+  },
   "/calendario": {
     titulo: "Calendário",
     texto: "As tarefas no tempo, do início ao prazo. Clique num dia para ver o que tem nele ou criar uma tarefa ali. Dá para ver só as suas, as de outro sócio ou de todo mundo.",
@@ -114,6 +120,12 @@ export interface Termo {
 }
 
 export const GLOSSARIO: Termo[] = [
+  {
+    id: "lead",
+    termo: "Lead",
+    frase: "Alguém que mostrou interesse na Aden mas ainda não fechou. Fica no CRM até virar cliente (ganho) ou desistir (perdido).",
+    exemplo: "Uma loja que mandou mensagem no Instagram pedindo orçamento é um lead na etapa \"Lead recebido\".",
+  },
   {
     id: "piso",
     termo: "Piso (por hora)",

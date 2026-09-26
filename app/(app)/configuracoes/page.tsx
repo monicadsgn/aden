@@ -673,6 +673,8 @@ export default function Configuracoes() {
                 <Explica>O cronômetro pede para medir as primeiras entregas de cada tipo. Depois desse número, para de pedir e passa a usar a média medida.</Explica>
                 <CampoPct rotulo="Sugerir novo tempo quando a média diferir mais de" valor={e.diferencaSugerirPct ?? null} aoMudar={(v) => setE({ diferencaSugerirPct: v })} />
                 <Explica>Vazio = qualquer diferença de 1 minuto ou mais já vira sugestão de atualizar o tempo cadastrado.</Explica>
+                <CampoNumero rotulo="Lead parado na etapa depois de" sufixo="dias" valor={e.diasLeadParado ?? null} aoMudar={(v) => setE({ diasLeadParado: v })} />
+                <Explica>No CRM, o card do lead fica em destaque quando passa esse tempo sem mudar de etapa. Vazio = nunca destaca.</Explica>
               </div>
             )}
 

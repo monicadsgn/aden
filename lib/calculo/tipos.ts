@@ -171,6 +171,8 @@ export interface ConfigEmpresa {
   medicoesCalibragem?: number | null;
   /** sugerir atualizar o padrão quando a média medida diferir mais que este %; vazio = qualquer diferença */
   diferencaSugerirPct?: Pct;
+  /** lead parado na mesma etapa há este número de dias acende o aviso no CRM; vazio = nunca */
+  diasLeadParado?: number | null;
 }
 
 export interface Configuracao {

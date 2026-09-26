@@ -7,6 +7,7 @@ import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
 import type { Tarefa } from "../calculo/tarefas";
+import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, Configuracao } from "../calculo/tipos";
 import { afetados, aplicarItens, separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
@@ -40,6 +41,8 @@ interface Banco {
   medicoes?: Medicao[];
   pagamentos?: Pagamento[];
   tarefas?: Tarefa[];
+  leads?: Lead[];
+  interacoes?: InteracaoLead[];
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -403,6 +406,52 @@ export class RepositorioLocal implements Repositorio {
     b.tarefas = (b.tarefas ?? []).filter((x) => x.id !== id);
     // a medição fica (conta na calibragem), só perde o vínculo
     b.medicoes = (b.medicoes ?? []).map((m) => (m.tarefaId === id ? { ...m, tarefaId: null } : m));
+    gravar(b);
+  }
+
+  // ─── CRM ──────────────────────────────────────────────────────────────────
+
+  async listarLeads() {
+    return (ler().leads ?? []).slice();
+  }
+
+  async salvarLead(l: Lead) {
+    const b = ler();
+    const lista = b.leads ?? [];
+    const i = lista.findIndex((x) => x.id === l.id);
+    registrar(b, "leads", l.id, i >= 0 ? lista[i] : null, l);
+    if (i >= 0) lista[i] = l;
+    else lista.unshift(l);
+    b.leads = lista;
+    gravar(b);
+  }
+
+  async removerLead(id: string) {
+    const b = ler();
+    registrar(b, "leads", id, b.leads?.find((x) => x.id === id), null);
+    b.leads = (b.leads ?? []).filter((x) => x.id !== id);
+    b.interacoes = (b.interacoes ?? []).filter((x) => x.leadId !== id);
+    gravar(b);
+  }
+
+  async listarInteracoes(leadId: string) {
+    return (ler().interacoes ?? []).filter((i) => i.leadId === leadId).sort((a, b) => b.em.localeCompare(a.em));
+  }
+
+  async salvarInteracao(i: InteracaoLead) {
+    const b = ler();
+    const lista = b.interacoes ?? [];
+    const novo = { ...i, autorNome: i.autorNome ?? USUARIO.nome };
+    const k = lista.findIndex((x) => x.id === i.id);
+    if (k >= 0) lista[k] = novo;
+    else lista.push(novo);
+    b.interacoes = lista;
+    gravar(b);
+  }
+
+  async removerInteracao(id: string) {
+    const b = ler();
+    b.interacoes = (b.interacoes ?? []).filter((x) => x.id !== id);
     gravar(b);
   }
 

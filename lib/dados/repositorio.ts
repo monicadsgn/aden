@@ -9,6 +9,7 @@ import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Tarefa } from "../calculo/tarefas";
+import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
 import type { ItemProtegido } from "../regras/aprovacao";
 
@@ -183,6 +184,14 @@ export interface Repositorio {
   listarTarefas(): Promise<Tarefa[]>;
   salvarTarefa(t: Tarefa): Promise<void>;
   removerTarefa(id: string): Promise<void>;
+
+  // ─── CRM ──────────────────────────────────────────────────────────────────
+  listarLeads(): Promise<Lead[]>;
+  salvarLead(l: Lead): Promise<void>;
+  removerLead(id: string): Promise<void>;
+  listarInteracoes(leadId: string): Promise<InteracaoLead[]>;
+  salvarInteracao(i: InteracaoLead): Promise<void>;
+  removerInteracao(id: string): Promise<void>;
 
   // ─── Pagamentos ───────────────────────────────────────────────────────────
   listarPagamentos(): Promise<Pagamento[]>;

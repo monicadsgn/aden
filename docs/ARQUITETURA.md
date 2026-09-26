@@ -145,6 +145,15 @@ A decidir com a Moni (não inventar):
   com horas no pacote, horas livres ÷ horas do pacote, o menor; N = 0 vira "hora do próximo passo" (ação do degrau).
   O detalhe de horas foi para Operação → Capacidade.
 
+## CRM (26/09/2026)
+
+Etapas iguais às do SoftMoni: lead recebido → contato feito → proposta enviada → ganho / perdido (com motivo).
+Card mostra há quantos dias está na etapa; "parado" só acende com `dias_lead_parado` configurado (vazio = nunca).
+Próximo contato aparece na Visão do dia ("Falar com") e no calendário. Taxa de fechamento = ganhos ÷ (ganhos +
+perdidos). Valor estimado: digitado, ou o preço calculado do pacote de interesse. **Fechou** (`ganharLead`): cria o
+cliente (ativo, no rateio), guarda o escopo a partir da simulação ligada (ou do pacote) com o valor estimado, pelas
+mesmas regras da calculadora (abaixo do piso = pedido de exceção), e liga o lead ao cliente.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```
@@ -255,7 +264,8 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 
 **Comercial / CRM**
 - ✅ `simulacoes`, ✅ `simulacao_cenarios` (entradas + fotografia do resultado e da configuração usada)
-- `funil_etapas`, `leads`, `criterios_qualificacao`, `lead_criterios`, `interacoes`, `propostas`
+- ✅ `leads` (etapa, dias na etapa, contato, origem, pacote/simulação ligados, valor estimado, responsável, próximo contato, motivo da perda, cliente criado), ✅ `lead_interacoes` (histórico da conversa)
+- Depois: `criterios_qualificacao`, `lead_criterios`, `propostas` (documento enviado)
 
 **Clientes e contratos**
 - ✅ `clientes` (interno?, entra no rateio?), ✅ `contratos` (status, valor mensal, **escopo contratado** em jsonb)

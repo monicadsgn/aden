@@ -13,6 +13,7 @@ import {
   Clock,
   Flag,
   Hourglass,
+  MessagesSquare,
   Package,
   Plus,
   Rocket,
@@ -32,6 +33,7 @@ import { useTarefas } from "@/components/tarefas/useTarefas";
 import { Avatar } from "@/components/Avatar";
 import { BotaoAjudaTela } from "@/components/Ajuda";
 import { Card, cx } from "@/components/ui";
+import { contatosParaHoje, resumoFunil, type Lead } from "@/lib/calculo/crm";
 import { hojeISO, montarVisaoDoDia, somarDias } from "@/lib/calculo/dia";
 import { calcularVisaoMes } from "@/lib/calculo/mes";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "@/lib/calculo/metas";
@@ -102,6 +104,7 @@ export default function VisaoDoDia() {
   const [avisos, setAvisos] = useState<AvisoSocio[]>([]);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [sims, setSims] = useState<ResumoSimulacao[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [deQuem, setDeQuem] = useState<string | null | undefined>(undefined);
   const [aberto, setAberto] = useState<Chave | null>(null);
   const [tarefaAberta, setTarefaAberta] = useState<string | null>(null);
@@ -113,6 +116,7 @@ export default function VisaoDoDia() {
   }, [usuario, router]);
 
   useEffect(() => {
+    repo.listarLeads().then(setLeads).catch(() => {});
     Promise.all([repo.listarPedidos(), repo.listarAvisos(), repo.listarPagamentos(), repo.listarSimulacoes()])
       .then(([p, av, pg, s]) => {
         setPedidos(p);
@@ -161,6 +165,8 @@ export default function VisaoDoDia() {
     aprovacao: v.emAprovacao,
     concluidas: v.concluidasHoje,
   };
+  const falarCom = contatosParaHoje(leads, pessoa, hoje);
+  const funil = resumoFunil(leads, hoje);
   const paraResolver = [...v.atrasadas, ...v.hoje, ...v.emAndamento];
   const nomeDe = (id: string | null) => cfg.pessoas.find((p) => p.id === id)?.nome ?? "";
   const minhaVisao = pessoa != null && pessoa === eu;
@@ -263,9 +269,26 @@ export default function VisaoDoDia() {
                   aria-label="Nova tarefa para hoje"
                 />
               </div>
-              {paraResolver.length === 0 ? (
+              {falarCom.length > 0 && (
+                <div className="mb-2 flex flex-col">
+                  <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">Falar com (CRM)</p>
+                  {falarCom.map((l) => (
+                    <Link key={l.id} href={`/crm?lead=${l.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-item px-2 py-2 hover:bg-superficie-2/70">
+                      <MessagesSquare size={16} className="shrink-0 text-marca-forte" />
+                      <span className="min-w-0 flex-1 basis-40 truncate text-[13px] font-medium">
+                        {l.nome}
+                        {l.proximaAcao && <span className="font-normal text-texto-suave"> · {l.proximaAcao}</span>}
+                      </span>
+                      <span className={cx("text-[11px]", l.proximoContato! < hoje ? "font-semibold text-erro" : "text-texto-suave")}>
+                        {l.proximoContato === hoje ? "hoje" : `desde ${new Date(`${l.proximoContato}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+              {paraResolver.length === 0 && falarCom.length === 0 ? (
                 <p className="rounded-bloco bg-ok-suave px-4 py-6 text-center text-sm text-ok">Tudo em dia por aqui. 🎉</p>
-              ) : (
+              ) : paraResolver.length === 0 ? null : (
                 <div className="flex flex-col">
                   {v.atrasadas.length > 0 && <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-erro uppercase">Atrasadas</p>}
                   {v.atrasadas.map((t) => (
@@ -366,7 +389,14 @@ export default function VisaoDoDia() {
               )}
             </Bloco>
 
-            <Bloco titulo="Comercial" icone={Sparkles} acao={<LinkPequeno href="/negociacao">Negociar</LinkPequeno>}>
+            <Bloco titulo="Comercial" icone={Sparkles} acao={<LinkPequeno href="/crm">CRM</LinkPequeno>}>
+              {leads.length > 0 && (
+                <p className="mb-2 text-xs">
+                  <strong>{funil.abertos}</strong> lead{funil.abertos === 1 ? "" : "s"} em negociação
+                  {funil.valorEmAbertoCentavos > 0 && ` (${formatarMoeda(funil.valorEmAbertoCentavos)}/mês)`}
+                  {funil.ganhosNoMes > 0 && ` · ${funil.ganhosNoMes} fechado${funil.ganhosNoMes === 1 ? "" : "s"} este mês`}.
+                </p>
+              )}
               {espaco?.cabem != null ? (
                 <p className="text-sm">
                   {espaco.cabem > 0 ? (

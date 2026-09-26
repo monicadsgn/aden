@@ -14,12 +14,13 @@ import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
 import { calcularSolucoes } from "../calculo/solucoes";
+import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, rotuloEtapa, type Lead } from "../calculo/crm";
 import { hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
 import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } from "../calculo/pacotes";
 import { estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, rotuloStatus, type Tarefa } from "../calculo/tarefas";
 import type { Configuracao, Meta, Pacote } from "../calculo/tipos";
-import { descreverItem, guardarEscopo } from "../dados/acoes";
+import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
 import { REGRAS_PROTECAO } from "../regras/aprovacao";
 import type { RepositorioSupabase } from "../dados/supabase";
@@ -56,6 +57,7 @@ Regras que você deve seguir:
 - Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
+- CRM: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
 - O Aden é a central da agência (tarefas, calendário, comercial, financeiro, metas). "O que tenho pra hoje?" → ver_visao_do_dia.
 - Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist)
   e mudar_status_tarefa. O cronômetro fica DENTRO da tarefa (botão Start no site); você não liga relógio, mas pode
@@ -674,6 +676,164 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         const alvo = resolver(await repo.listarSimulacoes(), id, "Simulação");
         await repo.removerSimulacao(alvo.id);
         return { removida: alvo.nome };
+      }),
+  );
+
+  // ─── CRM ──────────────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "listar_leads",
+    {
+      title: "Listar leads do CRM",
+      description: "Leads do funil com etapa, dias na etapa, valor estimado, próximo contato e responsável. Por padrão só os em aberto. Inclui o resumo do funil.",
+      inputSchema: { incluirFechados: z.boolean().optional() },
+    },
+    async ({ incluirFechados }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const leads = await repo.listarLeads();
+        const nome = (id: string | null) => (id ? (config.pessoas.find((p) => p.id === id)?.nome ?? null) : null);
+        const r = resumoFunil(leads);
+        return {
+          resumo: { ...r, valorEmAberto: paraReais(r.valorEmAbertoCentavos), valorGanhoNoMes: paraReais(r.valorGanhoNoMesCentavos) },
+          leads: leads
+            .filter((l) => incluirFechados || etapaAberta(l.etapa))
+            .map((l) => ({
+              id: l.id,
+              nome: l.nome,
+              etapa: rotuloEtapa(l.etapa),
+              diasNaEtapa: diasNaEtapa(l),
+              valorEstimadoMensal: paraReais(l.valorEstimadoCentavos),
+              pacote: (config.pacotes ?? []).find((p) => p.id === l.pacoteId)?.nome ?? null,
+              responsavel: nome(l.responsavelId),
+              proximoContato: l.proximoContato,
+              proximaAcao: l.proximaAcao,
+              contato: [l.contato, l.telefone, l.instagram, l.email].filter(Boolean).join(" · "),
+              origem: l.origem,
+              observacoes: l.observacoes,
+              motivoPerda: l.motivoPerda || null,
+            })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_lead",
+    {
+      title: "Criar ou editar lead",
+      description:
+        "Cria um lead (sem id) ou edita (com id). Só os campos enviados mudam. Valor estimado em reais por mês; só grave o que a pessoa disse (ou o preço calculado do pacote). Datas em AAAA-MM-DD.",
+      inputSchema: {
+        id: z.string().optional().describe("id ou nome do lead"),
+        nome: z.string().optional(),
+        contato: z.string().optional(),
+        telefone: z.string().optional(),
+        email: z.string().optional(),
+        instagram: z.string().optional(),
+        origem: z.string().optional(),
+        pacote: z.string().nullable().optional().describe("pacote de interesse (nome ou id)"),
+        valorEstimadoReais: opt(z.number(), "valor estimado por mês"),
+        responsavel: z.string().nullable().optional().describe("sócio (nome ou id)"),
+        proximoContato: z.string().nullable().optional(),
+        proximaAcao: z.string().optional(),
+        observacoes: z.string().optional(),
+      },
+    },
+    async (e) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const leads = await repo.listarLeads();
+        const antes = e.id ? resolver(leads.map((l) => ({ ...l })), e.id, "Lead") : null;
+        if (!antes && !e.nome) throw new Error("Informe o nome do lead novo.");
+        if (e.proximoContato && !/^\d{4}-\d{2}-\d{2}$/.test(e.proximoContato)) throw new Error("Data inválida. Use AAAA-MM-DD.");
+        const base = antes ?? novoLead(novoId(), e.nome!);
+        const l: Lead = {
+          ...base,
+          ...(e.nome != null && { nome: e.nome }),
+          ...(e.contato != null && { contato: e.contato }),
+          ...(e.telefone != null && { telefone: e.telefone }),
+          ...(e.email != null && { email: e.email }),
+          ...(e.instagram != null && { instagram: e.instagram }),
+          ...(e.origem != null && { origem: e.origem }),
+          ...(e.pacote !== undefined && { pacoteId: e.pacote ? resolver(config.pacotes ?? [], e.pacote, "Pacote").id : null }),
+          ...(e.valorEstimadoReais !== undefined && { valorEstimadoCentavos: paraCentavos(e.valorEstimadoReais) }),
+          ...(e.responsavel !== undefined && { responsavelId: e.responsavel ? resolver(config.pessoas, e.responsavel, "Sócio").id : null }),
+          ...(e.proximoContato !== undefined && { proximoContato: e.proximoContato }),
+          ...(e.proximaAcao != null && { proximaAcao: e.proximaAcao }),
+          ...(e.observacoes != null && { observacoes: e.observacoes }),
+        };
+        await repo.salvarLead(l);
+        return { salvo: l.nome, id: l.id, criado: !antes };
+      }),
+  );
+
+  server.registerTool(
+    "mover_lead",
+    {
+      title: "Mudar a etapa do lead",
+      description:
+        "lead_recebido, contato_feito, proposta_enviada ou perdido (com motivo). Para GANHO use ganhar_lead, que também cria o cliente.",
+      inputSchema: {
+        id: z.string().describe("id ou nome do lead"),
+        etapa: z.enum(["lead_recebido", "contato_feito", "proposta_enviada", "perdido"]),
+        motivoPerda: z.string().optional(),
+      },
+    },
+    async ({ id, etapa, motivoPerda }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const l = resolver(await repo.listarLeads(), id, "Lead");
+        const novo = { ...moverLead(l, etapa), ...(etapa === "perdido" && { motivoPerda: motivoPerda ?? "" }) };
+        await repo.salvarLead(novo);
+        return { lead: l.nome, etapa: rotuloEtapa(etapa) };
+      }),
+  );
+
+  server.registerTool(
+    "ganhar_lead",
+    {
+      title: "Lead fechou: virar cliente",
+      description:
+        "Marca o lead como ganho e cria o cliente, guardando o escopo a partir da proposta ligada (ou do pacote) com o valor estimado. Abaixo do piso de um sócio, o escopo vira pedido de exceção. Confirme com quem está conversando antes.",
+      inputSchema: { id: z.string().describe("id ou nome do lead") },
+    },
+    async ({ id }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const l = resolver(await repo.listarLeads(), id, "Lead");
+        const r = await ganharLead(repo, config, l);
+        return {
+          cliente: l.nome,
+          clienteId: r.clienteId,
+          escopo: r.escopo == null ? "sem proposta nem pacote ligado" : r.escopo.gravado ? "guardado" : `esperando aprovação de ${r.escopo.abaixo.map((a) => a.nome).join(" e ")}`,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "registrar_conversa_lead",
+    {
+      title: "Registrar conversa com o lead",
+      description: "Anota no histórico do lead o que foi conversado (nota, whatsapp, ligação, reunião, e-mail ou proposta). Opcional: já marca o próximo contato.",
+      inputSchema: {
+        id: z.string().describe("id ou nome do lead"),
+        texto: z.string(),
+        tipo: z.enum(["nota", "ligacao", "whatsapp", "reuniao", "email", "proposta"]).optional(),
+        proximoContato: z.string().optional().describe("AAAA-MM-DD"),
+        proximaAcao: z.string().optional(),
+      },
+    },
+    async ({ id, texto, tipo, proximoContato, proximaAcao }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const l = resolver(await repo.listarLeads(), id, "Lead");
+        await repo.salvarInteracao({ id: novoId(), leadId: l.id, tipo: tipo ?? "nota", texto, em: new Date().toISOString(), autorNome: "Claude (conector)" });
+        if (proximoContato || proximaAcao)
+          await repo.salvarLead({ ...l, ...(proximoContato && { proximoContato }), ...(proximaAcao != null && { proximaAcao }) });
+        return { registrado: l.nome };
       }),
   );
 

@@ -63,7 +63,7 @@ function Linha({ icone: Ic, rotulo, children }: { icone: LucideIcon; rotulo: str
 }
 
 const campoLeve =
-  "h-8 w-full min-w-0 rounded-item border border-transparent bg-transparent px-2 text-[13px] text-texto hover:border-linha hover:bg-superficie-2/60 focus:border-marca focus:bg-superficie focus:outline-none";
+  "sem-contorno h-8 w-full min-w-0 rounded-item border border-transparent bg-transparent px-2 text-[13px] text-texto hover:border-linha hover:bg-superficie-2/60 focus:border-marca focus:bg-superficie focus:outline-none";
 
 /** Hook do relógio: atualiza a cada segundo enquanto roda. */
 export function useAgora(rodando: boolean) {

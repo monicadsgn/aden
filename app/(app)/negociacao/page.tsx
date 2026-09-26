@@ -54,6 +54,9 @@ export default function Negociacao() {
           setEstado({ cenario: cen, desligados: {} });
           setNomeCliente(c.clientes.find((x) => x.id === cen.clienteId)?.nome ?? "");
         } else if ((c.pacotes ?? []).some((p) => p.ativo)) {
+          // vindo do CRM: já com o nome do lead
+          const nome = new URLSearchParams(window.location.search).get("cliente");
+          if (nome) setNomeCliente(nome);
           // primeiro passo: escolher um pacote
           setEscolhendo(true);
         }

@@ -83,6 +83,17 @@ class BancoFalso {
     this.avisos.push(...a.map((x) => ({ ...x, id: novoId(), criadoEm: "", lidoEm: null })));
   }
   async marcarAvisoLido() {}
+  leads: import("../calculo/crm").Lead[] = [];
+  interacoes: import("../calculo/crm").InteracaoLead[] = [];
+  async listarLeads() {
+    return structuredClone(this.leads);
+  }
+  async salvarLead(l: import("../calculo/crm").Lead) {
+    this.leads = [...this.leads.filter((x) => x.id !== l.id), l];
+  }
+  async salvarInteracao(i: import("../calculo/crm").InteracaoLead) {
+    this.interacoes.push(i);
+  }
   tarefas: import("../calculo/tarefas").Tarefa[] = [];
   async listarTarefas() {
     return this.tarefas;
@@ -319,5 +330,22 @@ describe("conector: terceiros, pacotes e metas", () => {
     const m = await chamar("ver_metas");
     expect(m.degraus[0]).toMatchObject({ alvo: 5000, atual: 0, conquistada: false, acao: "primeira terceirização" });
     expect(m.degrauAtual).toBe(1);
+  });
+});
+
+describe("conector: CRM", () => {
+  it("lead do começo ao fim: cria, conversa, fecha e vira cliente", async () => {
+    await chamar("salvar_lead", { nome: "Loja Aurora", origem: "indicação", valorEstimadoReais: 1800, proximoContato: "2026-09-30" });
+    await expect(chamar("salvar_lead", { id: "Loja Aurora", proximoContato: "30/09" })).rejects.toThrow(/AAAA-MM-DD/);
+    await chamar("registrar_conversa_lead", { id: "Loja Aurora", texto: "Pediu proposta", tipo: "whatsapp", proximaAcao: "mandar proposta" });
+    await chamar("mover_lead", { id: "Loja Aurora", etapa: "proposta_enviada" });
+    const l = await chamar("listar_leads");
+    expect(l.leads[0]).toMatchObject({ nome: "Loja Aurora", etapa: "Proposta enviada", valorEstimadoMensal: 1800, proximaAcao: "mandar proposta" });
+    expect(banco.interacoes).toHaveLength(1);
+    const g = await chamar("ganhar_lead", { id: "Loja Aurora" });
+    expect(g.escopo).toMatch(/sem proposta/);
+    expect(banco.config.clientes.map((c) => c.nome)).toContain("Loja Aurora");
+    expect(banco.leads[0]).toMatchObject({ etapa: "ganho", clienteId: g.clienteId });
+    expect((await chamar("listar_leads")).leads).toHaveLength(0);
   });
 });

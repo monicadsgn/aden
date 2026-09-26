@@ -3,14 +3,17 @@
 // Calendário do mês: as tarefas aparecem do início ao vencimento. Clicar num dia abre a
 // lista do dia (e dá para criar tarefa nele); clicar numa tarefa abre a janela da tarefa.
 
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, MessagesSquare, Plus } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Modal } from "@/components/Modal";
 import { COR_STATUS, DetalheTarefa } from "@/components/tarefas/DetalheTarefa";
 import { LinhaTarefa } from "@/components/tarefas/LinhaTarefa";
 import { useTarefas } from "@/components/tarefas/useTarefas";
 import { Botao, Selecao, cx } from "@/components/ui";
+import { etapaAberta, type Lead } from "@/lib/calculo/crm";
+import { useDados } from "@/lib/dados/contexto";
 import { diasDaGrade, hojeISO, tarefasDoDia } from "@/lib/calculo/dia";
 import { novoId } from "@/lib/calculo/novo";
 import { novaTarefa } from "@/lib/calculo/tarefas";
@@ -29,11 +32,18 @@ export default function Calendario() {
   const [dia, setDia] = useState<string | null>(null);
   const [tarefaAberta, setTarefaAberta] = useState<string | null>(null);
   const [nova, setNova] = useState("");
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const { repo } = useDados();
+  useEffect(() => {
+    repo.listarLeads().then(setLeads).catch(() => {});
+  }, [repo]);
 
   const quem = pessoa === undefined ? (a.usuario?.pessoaId ?? null) : pessoa;
   const hoje = hojeISO();
   const dias = useMemo(() => diasDaGrade(ref.ano, ref.mes), [ref]);
   const tarefas = useMemo(() => a.tarefas.filter((t) => !quem || t.responsavelId === quem), [a.tarefas, quem]);
+  const contatos = useMemo(() => leads.filter((l) => etapaAberta(l.etapa) && l.proximoContato && (!quem || l.responsavelId === quem)), [leads, quem]);
+  const contatosDoDia = (d: string) => contatos.filter((l) => l.proximoContato === d);
   const mesPrefixo = `${ref.ano}-${String(ref.mes + 1).padStart(2, "0")}`;
   const semData = tarefas.filter((t) => t.status !== "concluida" && !t.vencimento && !t.inicio).length;
 
@@ -107,6 +117,11 @@ export default function Calendario() {
                   >
                     {Number(d.slice(8))}
                   </span>
+                  {contatosDoDia(d).map((l) => (
+                    <span key={l.id} className="truncate rounded-item bg-marca-suave px-1.5 py-0.5 text-[10px] font-semibold text-marca-forte">
+                      <MessagesSquare size={10} className="mr-1 inline" aria-hidden />{l.nome}
+                    </span>
+                  ))}
                   {ts.slice(0, MAX_NO_DIA).map((t) => (
                     <span
                       key={t.id}
@@ -147,6 +162,17 @@ export default function Calendario() {
             }}
           />
         </div>
+        {dia && contatosDoDia(dia).length > 0 && (
+          <div className="mb-2 flex flex-col">
+            <p className="px-2 text-[11px] font-bold text-marca-forte uppercase">Falar com (CRM)</p>
+            {contatosDoDia(dia).map((l) => (
+              <Link key={l.id} href={`/crm?lead=${l.id}`} className="rounded-item px-2 py-2 text-[13px] font-medium hover:bg-superficie-2/70">
+                <MessagesSquare size={10} className="mr-1 inline" aria-hidden />{l.nome}
+                {l.proximaAcao && <span className="font-normal text-texto-suave"> · {l.proximaAcao}</span>}
+              </Link>
+            ))}
+          </div>
+        )}
         {doDia.length === 0 ? (
           <p className="py-4 text-center text-xs text-texto-suave">Nada neste dia.</p>
         ) : (
