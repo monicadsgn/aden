@@ -154,6 +154,14 @@ perdidos). Valor estimado: digitado, ou o preço calculado do pacote de interess
 cliente (ativo, no rateio), guarda o escopo a partir da simulação ligada (ou do pacote) com o valor estimado, pelas
 mesmas regras da calculadora (abaixo do piso = pedido de exceção), e liga o lead ao cliente.
 
+## Clientes e contratos (26/09/2026)
+
+Ficha do cliente (`/clientes`, `components/clientes/FichaCliente.tsx`): dados, contrato, tarefas, pagamentos e a
+conversa do CRM. Nenhuma condição vem pronta. Contas (`lib/calculo/clientes.ts`): fidelidade até = início + prazo
+mínimo; avisar se não renovar até = fim − aviso prévio; vencimento do mês = dia do pagamento (dia 31 em mês de 30 vira
+30). A Visão do dia lembra: pagamento que vence hoje e ainda não entrou; contrato que termina neste mês (ou já dentro
+do aviso prévio); último dia do aviso prévio quando cai neste mês. Sem número fixo de dias.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```
@@ -273,7 +281,8 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - ✅ `servicos`, ✅ `servico_divisao`, ✅ `tipos_entrega` (horas por unidade, calibrar desde)
 - ✅ `terceiros` (valor por saída, deslocamento médio, frase do cliente), ✅ `pacotes` (frases, rotina e entrada em jsonb, padrão), ✅ `metas` (critério, alvo, ação, conquistada em)
 - ✅ `tarefas` (status, prioridade, responsável, datas, checklist em jsonb), ✅ `medicoes` (cronômetro; `tarefa_id`, `unidades`), ✅ `pagamentos` (cada pagamento, mês de referência e data)
-- Fase 2 amplia `contratos`: prazo mínimo, vencimento, limite de rodadas, prazo de aprovação, prazo de entrega, aviso prévio, condição de início da cobrança, modelo de cobrança do tráfego, versão/aditivos
+- ✅ `clientes` ganhou a ficha (contato, telefone, e-mail, Instagram, segmento, observações, cliente desde); ✅ `contratos` ganhou fim, prazo mínimo, dia do pagamento, aviso prévio, rodadas de alteração, prazo de aprovação, prazo de entrega, início da cobrança e outras condições
+- Depois: modelo de cobrança do tráfego no contrato, versão/aditivos
 - `contrato_entregas` (tipo de entrega, quantidade/mês), `metas_resultado` (métrica, fonte, alvo, prazo, atingida em)
 
 **Decisões**

@@ -183,6 +183,27 @@ export class RepositorioSupabase implements Repositorio {
           ativo: c.ativo as boolean,
           valorMensalCentavos: num(contrato?.valor_mensal_centavos),
           escopo: (contrato?.escopo as Cenario | null) ?? null,
+          contato: (c.contato as string) ?? "",
+          telefone: (c.telefone as string) ?? "",
+          email: (c.email as string) ?? "",
+          instagram: (c.instagram as string) ?? "",
+          segmento: (c.segmento as string) ?? "",
+          observacoes: (c.observacoes as string) ?? "",
+          clienteDesde: (c.cliente_desde as string) ?? null,
+          contrato: contrato
+            ? {
+                inicio: (contrato.inicio as string) ?? null,
+                fim: (contrato.fim as string) ?? null,
+                prazoMinimoMeses: num(contrato.prazo_minimo_meses),
+                diaPagamento: num(contrato.dia_pagamento),
+                avisoPrevioDias: num(contrato.aviso_previo_dias),
+                limiteRodadas: num(contrato.limite_rodadas),
+                prazoAprovacaoDias: num(contrato.prazo_aprovacao_dias),
+                prazoEntregaDias: num(contrato.prazo_entrega_dias),
+                inicioCobranca: (contrato.inicio_cobranca as string) ?? "",
+                observacoes: (contrato.observacoes as string) ?? "",
+              }
+            : null,
         };
       }),
       terceiros: ((ter.data ?? []) as Linha[]).map((t) => ({
@@ -359,26 +380,39 @@ export class RepositorioSupabase implements Repositorio {
         interno: c.interno,
         participa_rateio: c.participaRateio,
         ativo: c.ativo,
+        contato: c.contato || null,
+        telefone: c.telefone || null,
+        email: c.email || null,
+        instagram: c.instagram || null,
+        segmento: c.segmento || null,
+        observacoes: c.observacoes || null,
+        cliente_desde: c.clienteDesde ?? null,
       })),
     );
-    // valor mensal mora no contrato ativo do cliente
+    // valor mensal e condições moram no contrato ativo do cliente
     for (const c of a.clientes.salvar) {
-      const { data, error } = await this.sb
-        .from("contratos")
-        .select("id, valor_mensal_centavos")
-        .eq("cliente_id", c.id)
-        .eq("status", "ativo")
-        .maybeSingle();
+      const { data, error } = await this.sb.from("contratos").select("id, valor_mensal_centavos").eq("cliente_id", c.id).eq("status", "ativo").maybeSingle();
       erro(error);
+      const k = c.contrato;
+      const condicoes = k
+        ? {
+            inicio: k.inicio,
+            fim: k.fim,
+            prazo_minimo_meses: k.prazoMinimoMeses,
+            dia_pagamento: k.diaPagamento,
+            aviso_previo_dias: k.avisoPrevioDias,
+            limite_rodadas: k.limiteRodadas,
+            prazo_aprovacao_dias: k.prazoAprovacaoDias,
+            prazo_entrega_dias: k.prazoEntregaDias,
+            inicio_cobranca: k.inicioCobranca || null,
+            observacoes: k.observacoes || null,
+          }
+        : {};
       if (data) {
-        if (num(data.valor_mensal_centavos) !== c.valorMensalCentavos) {
-          const r = await this.sb.from("contratos").update({ valor_mensal_centavos: c.valorMensalCentavos }).eq("id", data.id);
-          erro(r.error);
-        }
-      } else if (c.valorMensalCentavos != null) {
-        const r = await this.sb
-          .from("contratos")
-          .insert({ org_id, cliente_id: c.id, status: "ativo", valor_mensal_centavos: c.valorMensalCentavos });
+        const r = await this.sb.from("contratos").update({ valor_mensal_centavos: c.valorMensalCentavos, ...condicoes }).eq("id", data.id);
+        erro(r.error);
+      } else if (c.valorMensalCentavos != null || k) {
+        const r = await this.sb.from("contratos").insert({ org_id, cliente_id: c.id, status: "ativo", valor_mensal_centavos: c.valorMensalCentavos, ...condicoes });
         erro(r.error);
       }
     }

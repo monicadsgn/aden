@@ -8,6 +8,7 @@ import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Card, TituloCard, Vazio, cx } from "@/components/ui";
 import { configVazia } from "@/lib/calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, type Pagamento } from "@/lib/calculo/pagamentos";
+import { clienteNoMes } from "@/lib/calculo/clientes";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
 import { competenciaAtual } from "@/lib/dados/repositorio";
@@ -37,7 +38,7 @@ export default function Repasse() {
   }, [repo]);
 
   const distribuicoes = useMemo(
-    () => config.clientes.filter((c) => c.ativo && !c.interno).map((c) => distribuirPagamentos(config, c, competencia, pagamentos, hoje())),
+    () => config.clientes.filter((c) => c.ativo && !c.interno && clienteNoMes(c, competencia)).map((c) => distribuirPagamentos(config, c, competencia, pagamentos, hoje())),
     [config, competencia, pagamentos],
   );
   const repasse = useMemo(() => repasseDosSocios(config, distribuicoes), [config, distribuicoes]);

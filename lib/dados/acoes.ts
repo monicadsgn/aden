@@ -4,6 +4,7 @@
 import { moverLead, type Lead } from "../calculo/crm";
 import { pacoteParaCenario } from "../calculo/pacotes";
 import { calcularCenario } from "../calculo/motor";
+import { hojeISO } from "../calculo/dia";
 import { novoId } from "../calculo/novo";
 import type { Cenario, ClienteBase, Configuracao } from "../calculo/tipos";
 import { formatarMoeda, formatarPct, formatarDuracao } from "../formato";
@@ -197,6 +198,11 @@ export async function ganharLead(repo: Repositorio, config: Configuracao, lead: 
     valorMensalCentavos: lead.valorEstimadoCentavos,
     ativo: true,
     escopo: null,
+    contato: lead.contato,
+    telefone: lead.telefone,
+    email: lead.email,
+    instagram: lead.instagram,
+    clienteDesde: hojeISO(),
   };
   await repo.salvarConfig({
     pessoas: { salvar: [], remover: [] },
@@ -220,4 +226,15 @@ export async function ganharLead(repo: Repositorio, config: Configuracao, lead: 
   }
   await repo.salvarLead({ ...moverLead(lead, "ganho"), clienteId: cliente.id });
   return { clienteId: cliente.id, escopo };
+}
+
+/** Salva só a ficha de um cliente (dados, contrato, valor). */
+export async function salvarCliente(repo: Repositorio, cliente: ClienteBase) {
+  return repo.salvarConfig({
+    pessoas: { salvar: [], remover: [] },
+    servicos: { salvar: [], remover: [] },
+    tiposEntrega: { salvar: [], remover: [] },
+    custosFixos: { salvar: [], remover: [] },
+    clientes: { salvar: [cliente], remover: [] },
+  });
 }

@@ -99,7 +99,7 @@ const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
   {
     titulo: "Administrativo",
     itens: [
-      { href: "#clientes", rotulo: "Clientes e contratos", icone: FileSignature, emBreve: true },
+      { href: "/clientes", rotulo: "Clientes e contratos", icone: FileSignature, area: "clientes" },
       { href: "#decisoes", rotulo: "Decisões", icone: Scale, emBreve: true },
     ],
   },

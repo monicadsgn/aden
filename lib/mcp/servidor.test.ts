@@ -349,3 +349,14 @@ describe("conector: CRM", () => {
     expect((await chamar("listar_leads")).leads).toHaveLength(0);
   });
 });
+
+describe("conector: clientes", () => {
+  it("ficha e contrato do cliente", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await chamar("salvar_ficha_cliente", { cliente: "Olinda", telefone: "81 9999", diaPagamento: 10, inicioContrato: "2026-01-15", prazoMinimoMeses: 6 });
+    await expect(chamar("salvar_ficha_cliente", { cliente: "Olinda", fimContrato: "15/01" })).rejects.toThrow(/AAAA-MM-DD/);
+    const f = await chamar("ver_cliente", { cliente: "Olinda" });
+    expect(f.contato.telefone).toBe("81 9999");
+    expect(f.contrato).toMatchObject({ valorMensal: 1500, diaPagamento: 10, fidelidadeAte: "2026-07-15" });
+  });
+});

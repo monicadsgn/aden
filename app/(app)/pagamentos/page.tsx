@@ -7,6 +7,7 @@ import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Card, CampoMoeda, CampoTexto, Rotulo, Selecao, TituloCard, Vazio, cx } from "@/components/ui";
 import { configVazia, novoId } from "@/lib/calculo/novo";
 import { distribuirPagamentos, type Pagamento } from "@/lib/calculo/pagamentos";
+import { clienteNoMes } from "@/lib/calculo/clientes";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { Destinos, SITUACAO } from "@/components/financeiro";
 import { useDados } from "@/lib/dados/contexto";
@@ -74,7 +75,7 @@ export default function Pagamentos() {
     }
   };
 
-  const distribuicoes = useMemo(() => ativos.map((c) => distribuirPagamentos(config, c, competencia, pagamentos, hoje())), [ativos, config, competencia, pagamentos]);
+  const distribuicoes = useMemo(() => ativos.filter((c) => clienteNoMes(c, competencia)).map((c) => distribuirPagamentos(config, c, competencia, pagamentos, hoje())), [ativos, config, competencia, pagamentos]);
 
   if (!carregado) return null;
 

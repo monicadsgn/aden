@@ -14,6 +14,7 @@ import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
 import { calcularSolucoes } from "../calculo/solucoes";
+import { clienteNoMes, contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio } from "../calculo/clientes";
 import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, rotuloEtapa, type Lead } from "../calculo/crm";
 import { hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
@@ -57,6 +58,7 @@ Regras que você deve seguir:
 - Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
+- Clientes: ver_cliente (ficha completa) e salvar_ficha_cliente (contato e condições do contrato).
 - CRM: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
 - O Aden é a central da agência (tarefas, calendário, comercial, financeiro, metas). "O que tenho pra hoje?" → ver_visao_do_dia.
 - Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist)
@@ -676,6 +678,112 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         const alvo = resolver(await repo.listarSimulacoes(), id, "Simulação");
         await repo.removerSimulacao(alvo.id);
         return { removida: alvo.nome };
+      }),
+  );
+
+  // ─── Clientes e contratos ─────────────────────────────────────────────────
+
+  server.registerTool(
+    "ver_cliente",
+    {
+      title: "Ficha do cliente",
+      description: "Tudo de um cliente: contato, contrato (valor, dia do pagamento, datas, prazos), escopo contratado, tarefas abertas, pagamentos recentes e o lead de origem.",
+      inputSchema: { cliente: z.string().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const [tarefas, pagamentos, leads] = await Promise.all([repo.listarTarefas(), repo.listarPagamentos(), repo.listarLeads()]);
+        const k = c.contrato ?? contratoVazio();
+        const lead = leads.find((l) => l.clienteId === c.id);
+        return {
+          nome: c.nome,
+          ativo: c.ativo,
+          segmento: c.segmento || null,
+          contato: { pessoa: c.contato || null, telefone: c.telefone || null, email: c.email || null, instagram: c.instagram || null },
+          clienteDesde: c.clienteDesde ?? null,
+          observacoes: c.observacoes || null,
+          contrato: {
+            valorMensal: paraReais(c.valorMensalCentavos),
+            ...k,
+            fidelidadeAte: fimDaFidelidade(k),
+            avisarSeNaoRenovarAte: prazoDoAvisoPrevio(k),
+          },
+          escopo: (c.escopo?.entregas ?? [])
+            .filter((l) => (l.quantidade ?? 0) > 0)
+            .map((l) => ({ entrega: config.tiposEntrega.find((t) => t.id === l.tipoEntregaId)?.nome ?? "?", quantidadeMes: l.quantidade })),
+          tarefasAbertas: tarefas.filter((t) => t.clienteId === c.id && t.status !== "concluida").map((t) => ({ titulo: t.titulo, status: rotuloStatus(t.status), vencimento: t.vencimento })),
+          pagamentosRecentes: pagamentos
+            .filter((p) => p.clienteId === c.id)
+            .sort((a, b) => b.recebidoEm.localeCompare(a.recebidoEm))
+            .slice(0, 6)
+            .map((p) => ({ valor: paraReais(p.valorCentavos), recebidoEm: p.recebidoEm, mes: p.competencia })),
+          veioDoCrm: lead ? { lead: lead.nome, origem: lead.origem || null, fechadoEm: lead.fechadoEm } : null,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_ficha_cliente",
+    {
+      title: "Editar a ficha e o contrato do cliente",
+      description:
+        "Muda dados de contato e condições do contrato de um cliente existente (para criar cliente use salvar_cliente). Só os campos enviados mudam. Só grave o que foi combinado de verdade. Datas em AAAA-MM-DD.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id"),
+        contato: z.string().optional(),
+        telefone: z.string().optional(),
+        email: z.string().optional(),
+        instagram: z.string().optional(),
+        segmento: z.string().optional(),
+        observacoes: z.string().optional(),
+        clienteDesde: z.string().nullable().optional(),
+        inicioContrato: z.string().nullable().optional(),
+        fimContrato: z.string().nullable().optional(),
+        prazoMinimoMeses: z.number().int().positive().nullable().optional(),
+        diaPagamento: z.number().int().min(1).max(31).nullable().optional(),
+        avisoPrevioDias: z.number().int().nonnegative().nullable().optional(),
+        limiteRodadas: z.number().int().nonnegative().nullable().optional(),
+        prazoAprovacaoDias: z.number().int().nonnegative().nullable().optional(),
+        prazoEntregaDias: z.number().int().nonnegative().nullable().optional(),
+        inicioCobranca: z.string().optional(),
+        condicoes: z.string().optional().describe("outras condições do contrato"),
+      },
+    },
+    async (e) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, e.cliente, "Cliente");
+        for (const d of [e.clienteDesde, e.inicioContrato, e.fimContrato]) if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error(`Data inválida: ${d}. Use AAAA-MM-DD.`);
+        const k = c.contrato ?? contratoVazio();
+        const def = <T,>(v: T | undefined, atual: T) => (v === undefined ? atual : v);
+        const novo = {
+          ...c,
+          contato: def(e.contato, c.contato),
+          telefone: def(e.telefone, c.telefone),
+          email: def(e.email, c.email),
+          instagram: def(e.instagram, c.instagram),
+          segmento: def(e.segmento, c.segmento),
+          observacoes: def(e.observacoes, c.observacoes),
+          clienteDesde: def(e.clienteDesde, c.clienteDesde ?? null),
+          contrato: {
+            ...k,
+            inicio: def(e.inicioContrato, k.inicio),
+            fim: def(e.fimContrato, k.fim),
+            prazoMinimoMeses: def(e.prazoMinimoMeses, k.prazoMinimoMeses),
+            diaPagamento: def(e.diaPagamento, k.diaPagamento),
+            avisoPrevioDias: def(e.avisoPrevioDias, k.avisoPrevioDias),
+            limiteRodadas: def(e.limiteRodadas, k.limiteRodadas),
+            prazoAprovacaoDias: def(e.prazoAprovacaoDias, k.prazoAprovacaoDias),
+            prazoEntregaDias: def(e.prazoEntregaDias, k.prazoEntregaDias),
+            inicioCobranca: def(e.inicioCobranca, k.inicioCobranca),
+            observacoes: def(e.condicoes, k.observacoes),
+          },
+        };
+        return salvarDiferenca(repo, config, { ...config, clientes: config.clientes.map((x) => (x.id === c.id ? novo : x)) });
       }),
   );
 
@@ -1319,7 +1427,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         const mes = competencia ?? competenciaAtual();
         const [config, pagamentos] = await Promise.all([repo.carregarConfig(), repo.listarPagamentos()]);
         const hoje = new Date().toISOString().slice(0, 10);
-        const dist = config.clientes.filter((c) => c.ativo && !c.interno).map((c) => distribuirPagamentos(config, c, mes, pagamentos, hoje));
+        const dist = config.clientes.filter((c) => c.ativo && !c.interno && clienteNoMes(c, mes)).map((c) => distribuirPagamentos(config, c, mes, pagamentos, hoje));
         return {
           competencia: mes,
           clientes: dist.map((d) => ({

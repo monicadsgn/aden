@@ -33,6 +33,7 @@ import { useTarefas } from "@/components/tarefas/useTarefas";
 import { Avatar } from "@/components/Avatar";
 import { BotaoAjudaTela } from "@/components/Ajuda";
 import { Card, cx } from "@/components/ui";
+import { clienteNoMes, lembretesDeContrato } from "@/lib/calculo/clientes";
 import { contatosParaHoje, resumoFunil, type Lead } from "@/lib/calculo/crm";
 import { hojeISO, montarVisaoDoDia, somarDias } from "@/lib/calculo/dia";
 import { calcularVisaoMes } from "@/lib/calculo/mes";
@@ -147,11 +148,15 @@ export default function VisaoDoDia() {
     const clientes = cfg.clientes.filter((c) => c.ativo && !c.interno);
     const mes = mesDe(hoje);
     const anterior = mesDe(somarDias(`${mes}-01`, -1));
-    const doMes = clientes.map((c) => distribuirPagamentos(cfg, c, mes, pagamentos, hoje));
-    const atrasados = clientes.map((c) => distribuirPagamentos(cfg, c, anterior, pagamentos, hoje)).filter((d) => d.situacao === "atrasado");
+    const doMes = clientes.filter((c) => clienteNoMes(c, mes)).map((c) => distribuirPagamentos(cfg, c, mes, pagamentos, hoje));
+    const atrasados = clientes
+      .filter((c) => clienteNoMes(c, anterior))
+      .map((c) => distribuirPagamentos(cfg, c, anterior, pagamentos, hoje))
+      .filter((d) => d.situacao === "atrasado");
     return {
+      recebidoPor: new Map(doMes.map((d) => [d.clienteId, d.recebidoCentavos])),
       recebido: doMes.reduce((s, d) => s + d.recebidoCentavos, 0),
-      contratado: clientes.reduce((s, c) => s + (c.valorMensalCentavos ?? 0), 0),
+      contratado: clientes.filter((c) => clienteNoMes(c, mes)).reduce((s, c) => s + (c.valorMensalCentavos ?? 0), 0),
       atrasados,
     };
   }, [cfg, pagamentos, hoje]);
@@ -166,6 +171,7 @@ export default function VisaoDoDia() {
     concluidas: v.concluidasHoje,
   };
   const falarCom = contatosParaHoje(leads, pessoa, hoje);
+  const lembretes = lembretesDeContrato(cfg.clientes, (id) => financeiro.recebidoPor.get(id) ?? 0, hoje);
   const funil = resumoFunil(leads, hoje);
   const paraResolver = [...v.atrasadas, ...v.hoje, ...v.emAndamento];
   const nomeDe = (id: string | null) => cfg.pessoas.find((p) => p.id === id)?.nome ?? "";
@@ -436,6 +442,19 @@ export default function VisaoDoDia() {
               {financeiro.contratado > 0 && (
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-superficie-2">
                   <div className="h-full rounded-full bg-ok" style={{ width: `${Math.min(100, (financeiro.recebido / financeiro.contratado) * 100)}%` }} />
+                </div>
+              )}
+              {lembretes.length > 0 && (
+                <div className="mt-3 flex flex-col gap-1">
+                  {lembretes.map((l) => (
+                    <Link key={`${l.clienteId}-${l.texto}`} href={`/clientes?cliente=${l.clienteId}`} className="flex items-center gap-2 rounded-item bg-aviso-suave px-2 py-1.5 text-[11px] text-aviso hover:opacity-90">
+                      <CalendarDays size={12} />
+                      <span className="flex-1">
+                        <strong>{l.cliente}</strong>: {l.texto}
+                        {l.data !== hoje && ` (${new Date(`${l.data}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })})`}
+                      </span>
+                    </Link>
+                  ))}
                 </div>
               )}
               {financeiro.atrasados.length > 0 && (

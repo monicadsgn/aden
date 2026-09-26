@@ -680,6 +680,13 @@ export default function Configuracoes() {
 
             {secao === "clientes" && (
               <div className="flex flex-col gap-2">
+                <p className="text-[11px] text-texto-suave">
+                  Aqui fica só o básico para as contas. Contato, contrato, tarefas e pagamentos de cada cliente ficam na{" "}
+                  <Link href="/clientes" className="font-semibold text-marca-forte underline">
+                    ficha do cliente
+                  </Link>
+                  .
+                </p>
                 {rascunho.clientes.length === 0 && (
                   <Vazio icone={Receipt} titulo="Nenhum cliente cadastrado">
                     Cadastre os clientes atuais. O escopo de cada um é guardado pela calculadora.

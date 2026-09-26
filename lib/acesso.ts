@@ -4,6 +4,7 @@
 export type Papel = "admin" | "contador" | "colaborador" | "freelancer" | "cliente" | "sem_vinculo";
 
 export type Area =
+  | "clientes"
   | "crm"
   | "hoje"
   | "calendario"

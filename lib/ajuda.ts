@@ -24,6 +24,12 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
       "Cada pessoa interessada na Aden, da primeira mensagem até fechar. Anote cada conversa na ficha do lead e marque o próximo contato: ele aparece na sua Visão do dia. Quando fechar, um clique cria o cliente com a proposta combinada.",
     termos: ["lead", "escopo"],
   },
+  "/clientes": {
+    titulo: "Clientes e contratos",
+    texto:
+      "A ficha de cada cliente: contato, contrato, escopo, tarefas, pagamentos e a conversa de antes de fechar. Preencha o dia do pagamento e as datas do contrato: o que vence aparece na sua Visão do dia.",
+    termos: ["escopo", "rateio"],
+  },
   "/calendario": {
     titulo: "Calendário",
     texto: "As tarefas no tempo, do início ao prazo. Clique num dia para ver o que tem nele ou criar uma tarefa ali. Dá para ver só as suas, as de outro sócio ou de todo mundo.",

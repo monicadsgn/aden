@@ -132,6 +132,35 @@ export interface ClienteBase {
   ativo: boolean;
   /** escopo contratado (cenário da calculadora) — base da visão do mês e da saúde do cliente */
   escopo?: Cenario | null;
+  // ficha do cliente (tudo opcional, começa vazio)
+  contato?: string;
+  telefone?: string;
+  email?: string;
+  instagram?: string;
+  segmento?: string;
+  observacoes?: string;
+  /** "AAAA-MM-DD" */
+  clienteDesde?: string | null;
+  /** condições do contrato ativo */
+  contrato?: DadosContrato | null;
+}
+
+/** Condições combinadas com o cliente. Nenhuma vem pronta: é o que foi assinado. */
+export interface DadosContrato {
+  /** "AAAA-MM-DD" */
+  inicio: string | null;
+  fim: string | null;
+  prazoMinimoMeses: number | null;
+  /** dia do mês em que o cliente paga */
+  diaPagamento: number | null;
+  avisoPrevioDias: number | null;
+  /** rodadas de alteração incluídas por peça */
+  limiteRodadas: number | null;
+  prazoAprovacaoDias: number | null;
+  prazoEntregaDias: number | null;
+  /** quando começa a cobrança (texto livre: "na assinatura", "após o onboarding"…) */
+  inicioCobranca: string;
+  observacoes: string;
 }
 
 export type RegraRateio = "igual" | "proporcional";
