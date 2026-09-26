@@ -25,6 +25,7 @@ import type { Configuracao, Meta, Pacote } from "../calculo/tipos";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
 import { REGRAS_PROTECAO } from "../regras/aprovacao";
+import { PAINEL_CLIENTE_ATIVO } from "../recursos";
 import type { RepositorioSupabase } from "../dados/supabase";
 import {
   cenarioParaConversa,
@@ -60,8 +61,8 @@ Regras que você deve seguir:
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
 - Equipe: ver_equipe e convidar_pessoa (cada papel vê só o que é dele; o banco garante).
-- Painel do cliente: link_painel_cliente (link para o cliente ver e aprovar) e enviar_para_cliente_aprovar.
-  listar_tarefas mostra o que o cliente respondeu (aprovou ou pediu ajuste).
+- Aprovação de conteúdo pelo cliente: por enquanto fica no SoftMoni (o painel do cliente do Aden está desligado).
+  Tarefa em status revisao = "com o cliente", esperando a aprovação dele.
 - Clientes: ver_cliente (ficha completa) e salvar_ficha_cliente (contato e condições do contrato).
 - CRM: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
 - O Aden é a central da agência (tarefas, calendário, comercial, financeiro, metas). "O que tenho pra hoje?" → ver_visao_do_dia.
@@ -720,43 +721,47 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   );
 
   // ─── Painel do cliente ────────────────────────────────────────────────────
+  // Desligado por enquanto (a aprovação fica no SoftMoni): ver lib/recursos.ts.
+  if (PAINEL_CLIENTE_ATIVO) {
 
-  server.registerTool(
-    "link_painel_cliente",
-    {
-      title: "Link do painel do cliente",
-      description:
-        "Devolve o link do painel do cliente (onde ele vê e aprova as peças). Cria o link se ainda não existir. novo=true troca o link (o antigo para de funcionar): só se a pessoa pedir.",
-      inputSchema: { cliente: z.string().describe("nome ou id"), novo: z.boolean().optional() },
-    },
-    async ({ cliente, novo }) =>
-      executar(async () => {
-        const repo = await obterRepo();
-        const c = resolver((await repo.carregarConfig()).clientes, cliente, "Cliente");
-        const token = c.painelToken && !novo ? c.painelToken : await repo.gerarLinkPainel(c.id);
-        return { cliente: c.nome, link: `${origem}/c/${token}` };
-      }),
-  );
+    server.registerTool(
+      "link_painel_cliente",
+      {
+        title: "Link do painel do cliente",
+        description:
+          "Devolve o link do painel do cliente (onde ele vê e aprova as peças). Cria o link se ainda não existir. novo=true troca o link (o antigo para de funcionar): só se a pessoa pedir.",
+        inputSchema: { cliente: z.string().describe("nome ou id"), novo: z.boolean().optional() },
+      },
+      async ({ cliente, novo }) =>
+        executar(async () => {
+          const repo = await obterRepo();
+          const c = resolver((await repo.carregarConfig()).clientes, cliente, "Cliente");
+          const token = c.painelToken && !novo ? c.painelToken : await repo.gerarLinkPainel(c.id);
+          return { cliente: c.nome, link: `${origem}/c/${token}` };
+        }),
+    );
 
-  server.registerTool(
-    "enviar_para_cliente_aprovar",
-    {
-      title: "Enviar peça para o cliente aprovar",
-      description:
-        "Marca a tarefa para aparecer no painel do cliente e manda para aprovação (status Com o cliente). Opcional: a legenda que o cliente vai ler. As artes são anexadas pelo site.",
-      inputSchema: { id: z.string().describe("id da tarefa"), legenda: z.string().optional() },
-    },
-    async ({ id, legenda }) =>
-      executar(async () => {
-        const repo = await obterRepo();
-        const t = (await repo.listarTarefas()).find((x) => x.id === id);
-        if (!t) throw new Error("Tarefa não encontrada.");
-        if (!t.clienteId) throw new Error("A tarefa não tem cliente: ligue a um cliente antes.");
-        await repo.salvarTarefa({ ...t, visivelCliente: true, ...(legenda != null && { legenda }) });
-        await repo.enviarParaCliente(t.id);
-        return { enviada: t.titulo };
-      }),
-  );
+    server.registerTool(
+      "enviar_para_cliente_aprovar",
+      {
+        title: "Enviar peça para o cliente aprovar",
+        description:
+          "Marca a tarefa para aparecer no painel do cliente e manda para aprovação (status Com o cliente). Opcional: a legenda que o cliente vai ler. As artes são anexadas pelo site.",
+        inputSchema: { id: z.string().describe("id da tarefa"), legenda: z.string().optional() },
+      },
+      async ({ id, legenda }) =>
+        executar(async () => {
+          const repo = await obterRepo();
+          const t = (await repo.listarTarefas()).find((x) => x.id === id);
+          if (!t) throw new Error("Tarefa não encontrada.");
+          if (!t.clienteId) throw new Error("A tarefa não tem cliente: ligue a um cliente antes.");
+          await repo.salvarTarefa({ ...t, visivelCliente: true, ...(legenda != null && { legenda }) });
+          await repo.enviarParaCliente(t.id);
+          return { enviada: t.titulo };
+        }),
+    );
+  }
+
 
   // ─── Clientes e contratos ─────────────────────────────────────────────────
 

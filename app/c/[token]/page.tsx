@@ -12,6 +12,7 @@ import { aprovarAte } from "@/lib/calculo/painel";
 import { situacaoPeca, type SituacaoPeca } from "@/lib/calculo/tarefas";
 import { useDados } from "@/lib/dados/contexto";
 import type { PainelCliente } from "@/lib/dados/repositorio";
+import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
 
 type Peca = PainelCliente["pecas"][number];
 
@@ -59,6 +60,8 @@ export default function PainelDoCliente() {
   const chaveTutorial = `aden:painel-tutorial:${token}`;
 
   const carregar = useCallback(async () => {
+    // painel desligado (lib/recursos.ts): nenhum link abre
+    if (!PAINEL_CLIENTE_ATIVO) return setPainel(null);
     try {
       setPainel(await repo.painelCliente(token));
     } catch {

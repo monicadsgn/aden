@@ -10,6 +10,7 @@ import type { Configuracao } from "../calculo/tipos";
 import { afetados, aplicarItens, separarProtegidas } from "../regras/aprovacao";
 import type { AlteracoesConfig, AvisoSocio, DadosExcecao, NovoAviso, Pedido, RegistroAuditoria, ResultadoSalvarConfig, Simulacao } from "../dados/repositorio";
 import type { RepositorioSupabase } from "../dados/supabase";
+import { PAINEL_CLIENTE_ATIVO } from "../recursos";
 import { criarServidorMcp } from "./servidor";
 
 function aplicar<T extends { id: string }>(lista: T[], d: { salvar: T[]; remover: string[] }) {
@@ -370,7 +371,14 @@ describe("conector: clientes", () => {
 });
 
 describe("conector: painel do cliente", () => {
-  it("link e envio para aprovação", async () => {
+  it("desligado: o conector não oferece as ferramentas do painel", async () => {
+    const nomes = (await cliente.listTools()).tools.map((t) => t.name);
+    expect(nomes.includes("link_painel_cliente")).toBe(PAINEL_CLIENTE_ATIVO);
+    expect(nomes.includes("enviar_para_cliente_aprovar")).toBe(PAINEL_CLIENTE_ATIVO);
+  });
+
+  // só roda quando o painel for religado (lib/recursos.ts)
+  it.runIf(PAINEL_CLIENTE_ATIVO)("link e envio para aprovação", async () => {
     await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
     const l1 = await chamar("link_painel_cliente", { cliente: "Olinda" });
     expect(l1.link).toMatch(/\/c\/t{48}$/);

@@ -177,6 +177,11 @@ do aviso prévio); último dia do aviso prévio quando cai neste mês. Sem núme
 
 ## Painel do cliente (26/09/2026)
 
+**Desligado** (`PAINEL_CLIENTE_ATIVO = false` em `lib/recursos.ts`, decisão da Moni em 26/09/2026): por enquanto a
+aprovação de conteúdo (Olinda, StadiumPlay) fica no SoftMoni. Com a chave desligada somem o link na ficha, o "Para o
+cliente" na tarefa e as duas ferramentas do conector, e nenhum link `/c/…` abre. Banco, funções e código continuam.
+Se os sócios decidirem migrar, a ideia é trazer as etapas (planejado, agendada, publicada) e os avisos do SoftMoni.
+
 Link só do cliente (`/c/<código>`), sem login. O código é aleatório (48 caracteres) e fica em `clientes.painel_token`;
 "gerar outro" revoga o antigo. O cliente só chega aos dados por duas funções do banco (`painel_cliente`,
 `responder_peca`, security definer, liberadas para anon): elas devolvem só as tarefas do cliente marcadas
