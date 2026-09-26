@@ -409,13 +409,22 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
     {
       title: "Visão do mês (capacidade)",
       description:
-        "Soma as horas de todos os clientes ativos (pelo escopo contratado) e compara com a capacidade de cada sócio: horas usadas, livres, afogado ou com folga. Também faturamento mensal e projeção contra o teto do regime. Use para responder se dá para pegar cliente novo.",
+        "Espaço para vender: quantos clientes do pacote padrão ainda cabem (pelas horas livres), a trilha de metas (degrau atual e quanto falta), horas de cada sócio e de cada cliente, faturamento e teto do regime. Fale em tom de crescimento: quando não couber mais, é hora do próximo passo da trilha.",
       inputSchema: {},
     },
     async () =>
       executar(async () => {
-        const v = calcularVisaoMes(await (await obterRepo()).carregarConfig());
+        const config = await (await obterRepo()).carregarConfig();
+        const v = calcularVisaoMes(config);
+        const padrao = pacotePadrao(config);
+        const espaco = padrao ? espacoPraVender(config, padrao, v) : null;
+        const trilha = calcularTrilha(config, v);
+        const atual = trilha.atual != null ? trilha.degraus[trilha.atual] : null;
         return {
+          espacoParaVender: espaco
+            ? { pacotePadrao: padrao!.nome, cabemMais: espaco.cabem, faltaParaCalcular: espaco.faltando }
+            : "nenhum pacote padrão marcado",
+          degrauAtual: atual ? { nome: atual.meta.nome, progressoPct: atual.progressoPct == null ? null : Math.round(atual.progressoPct), acao: atual.meta.acao } : null,
           socios: v.socios.map((s) => ({
             nome: s.nome,
             capacidadeHorasMes: s.capacidadeHorasMes,

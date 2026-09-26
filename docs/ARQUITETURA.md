@@ -108,6 +108,31 @@ A decidir com a Moni (não inventar):
 - **Perfis:** "sócio" (admin) hoje; "contador" preparado no banco (papel `contador`, só leitura de pagamentos, clientes,
   custos fixos e configuração da empresa) e em `lib/acesso.ts`. Falta só o convite.
 
+## Terceira leva (pedidos da Moni em 26/09/2026)
+
+- **Ajuda dentro do sistema** (`lib/ajuda.ts`, `components/Ajuda.tsx`): tour de primeira vez (até 6 passos, pular e
+  rever pelo menu), botão "?" no cabeçalho de cada tela (até 3 frases), glossário no menu (frase + exemplo) e
+  "O que isso quer dizer?" em todo aviso (`Alerta.explica` é obrigatório; o TypeScript não deixa criar aviso sem).
+- **Blocos clicáveis na calculadora**: o título de cada bloco abre uma janela (`Modal`) com o que é, o que já está
+  cadastrado (números da configuração), um exemplo e atalhos (`components/calculadora/Detalhes.tsx`).
+- **Terceiros cobrados por saída** (`terceiros`, `tipos_entrega.terceiro_id`): cada unidade do tipo ligado é uma saída.
+  custo = saídas × (valor por saída + deslocamento), deslocamento = o real do cliente (`Cenario.deslocamentos`) ou o
+  médio do terceiro. Custo só do cliente (categoria audiovisual/terceiro do projeto), nunca rateado. O cliente vê só a
+  frase do terceiro ("gravação e edição mensal inclusa"), nunca o valor.
+- **Pacotes fechados** (`pacotes`, `lib/calculo/pacotes.ts`): guardam só o que é entregue (rotina e primeiro mês).
+  Manutenção mensal = valor mínimo do escopo da rotina (modo escopo, cliente novo, arredondado como a proposta).
+  Primeiro mês = (custos em dinheiro da entrada + horas da entrada × piso) ÷ (1 − imposto% − taxa%), arredondado.
+  Quantidade vazia = "a confirmar". Negociação começa escolhendo o pacote; o cliente vê nome, frases e valor;
+  "Personalizar" abre + e − e mostra a diferença em relação ao pacote. Abaixo do piso: o sinal discreto de sempre.
+  Pacote inicial cadastrado: Social media padrão (7 reels, 8 estáticos = Post simples, 7 roteiros, 1 gravação,
+  1 planejamento, 1 reunião; primeiro mês: onboarding, enxoval do perfil, estrutura visual, quantidades a confirmar).
+- **Trilha de metas** (`metas`, `lib/calculo/metas.ts`): degraus definidos pelos sócios (nunca pelo sistema), com
+  critério (faturamento mensal, número de clientes, quanto cada sócio recebe no mês = o menor entre eles, uso da
+  capacidade), alvo e ação. Degrau batido guarda a data (e continua conquistado se o número cair).
+- **Visão do mês** em tom de crescimento: trilha no topo; "cabem mais N clientes do pacote padrão" = para cada sócio
+  com horas no pacote, horas livres ÷ horas do pacote, o menor; N = 0 vira "hora do próximo passo" (ação do degrau).
+  O detalhe de horas foi para Operação → Capacidade.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```
@@ -224,6 +249,7 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - ✅ `clientes` (interno?, entra no rateio?), ✅ `contratos` (status, valor mensal, **escopo contratado** em jsonb)
 - ✅ `mes_cliente` (valor recebido no mês), ✅ `horas_realizadas` (horas reais por sócio e mês)
 - ✅ `servicos`, ✅ `servico_divisao`, ✅ `tipos_entrega` (horas por unidade, calibrar desde)
+- ✅ `terceiros` (valor por saída, deslocamento médio, frase do cliente), ✅ `pacotes` (frases, rotina e entrada em jsonb, padrão), ✅ `metas` (critério, alvo, ação, conquistada em)
 - ✅ `tarefas` (status, prioridade, responsável, datas, checklist em jsonb), ✅ `medicoes` (cronômetro; `tarefa_id`, `unidades`), ✅ `pagamentos` (cada pagamento, mês de referência e data)
 - Fase 2 amplia `contratos`: prazo mínimo, vencimento, limite de rodadas, prazo de aprovação, prazo de entrega, aviso prévio, condição de início da cobrança, modelo de cobrança do tráfego, versão/aditivos
 - `contrato_entregas` (tipo de entrega, quantidade/mês), `metas_resultado` (métrica, fonte, alvo, prazo, atingida em)

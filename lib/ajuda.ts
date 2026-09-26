@@ -33,8 +33,13 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/mes": {
     titulo: "Visão do mês",
     texto:
-      "Mostra, somando todos os clientes, quantas horas cada sócio vai trabalhar no mês e se ainda cabe cliente novo. Use antes de fechar um contrato, para não passar da capacidade de ninguém.",
+      "Mostra onde a Aden está na trilha de crescimento e quanto espaço ainda tem para vender. O primeiro número diz quantos clientes do pacote padrão ainda cabem com as horas livres de hoje. Use no começo do mês e antes de fechar um contrato.",
     termos: ["capacidade", "teto-mei"],
+  },
+  "/capacidade": {
+    titulo: "Capacidade",
+    texto: "O detalhe das horas: quanto cada cliente pede de cada sócio e quanto sobra para cada um no mês. Use para redistribuir o trabalho ou planejar a próxima contratação.",
+    termos: ["capacidade", "tempo-por-entrega"],
   },
   "/calibragem": {
     titulo: "Calibragem das horas",

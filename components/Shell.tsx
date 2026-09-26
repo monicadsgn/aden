@@ -65,6 +65,7 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
     itens: [
       { href: "/tarefas", rotulo: "Tarefas", icone: ListChecks, area: "tarefas" },
       { href: "/mes", rotulo: "Visão do mês", icone: CalendarRange, area: "mes" },
+      { href: "/capacidade", rotulo: "Capacidade", icone: Gauge, area: "capacidade" },
       { href: "/calibragem", rotulo: "Calibragem das horas", icone: Gauge, area: "calibragem" },
       { href: "#aprovacao", rotulo: "Aprovações do cliente", icone: BadgeCheck, emBreve: true },
     ],

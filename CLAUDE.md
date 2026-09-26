@@ -17,3 +17,7 @@
 - Tempo por entrega na tela é em minutos (`CampoMinutos`); por dentro, horas.
 - Todo aviso tem `acao` (botão para o campo que resolve). Campo opcional vazio é `lembrete`, não erro.
 - Tela do cliente (apresentação, PDF de proposta) só recebe `VistaApresentacao`/`DocumentoProposta`: nada interno. Há teste de render travando isso.
+- Terceiro cobrado por saída: custo = saídas × (valor + deslocamento), só do cliente, nunca rateado; o cliente nunca vê o valor.
+- Pacote não tem preço digitado: sai do cálculo (`lib/calculo/pacotes.ts`). Metas: só os sócios cadastram.
+- Todo `Alerta` tem `explica` (o que isso quer dizer, com exemplo). Textos de ajuda ficam em `lib/ajuda.ts`.
+- Visão do mês fala em crescimento ("hora do próximo passo"), nunca "não cabe"/"bloqueado" (há teste).
