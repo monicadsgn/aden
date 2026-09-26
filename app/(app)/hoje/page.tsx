@@ -41,7 +41,7 @@ import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "@/lib/calcul
 import { novoId } from "@/lib/calculo/novo";
 import { pacotePadrao } from "@/lib/calculo/pacotes";
 import { distribuirPagamentos, type Pagamento } from "@/lib/calculo/pagamentos";
-import { novaTarefa, type Tarefa } from "@/lib/calculo/tarefas";
+import { novaTarefa, situacaoPeca, type Tarefa } from "@/lib/calculo/tarefas";
 import { useDados } from "@/lib/dados/contexto";
 import type { AvisoSocio, Pedido, ResumoSimulacao } from "@/lib/dados/repositorio";
 import { formatarMoeda, formatarPct, primeiraMaiuscula } from "@/lib/formato";
@@ -171,9 +171,17 @@ export default function VisaoDoDia() {
     concluidas: v.concluidasHoje,
   };
   const falarCom = contatosParaHoje(leads, pessoa, hoje);
+  // o cliente respondeu pelo painel: ajuste pedido ou aprovada (ainda não concluída)
+  const respostasCliente = a.tarefas.filter((t) => {
+    if (!t.visivelCliente || t.status === "concluida" || (pessoa && t.responsavelId !== pessoa)) return false;
+    const s = situacaoPeca(t);
+    return s === "ajuste" || s === "aprovada";
+  });
   const lembretes = lembretesDeContrato(cfg.clientes, (id) => financeiro.recebidoPor.get(id) ?? 0, hoje);
   const funil = resumoFunil(leads, hoje);
-  const paraResolver = [...v.atrasadas, ...v.hoje, ...v.emAndamento];
+  const respondidas = new Set(respostasCliente.map((t) => t.id));
+  const emAndamento = v.emAndamento.filter((t) => !respondidas.has(t.id));
+  const paraResolver = [...v.atrasadas, ...v.hoje, ...emAndamento];
   const nomeDe = (id: string | null) => cfg.pessoas.find((p) => p.id === id)?.nome ?? "";
   const minhaVisao = pessoa != null && pessoa === eu;
   const quem = pessoa == null ? "de todo mundo" : minhaVisao ? "" : `de ${nomeDe(pessoa)}`;
@@ -275,6 +283,24 @@ export default function VisaoDoDia() {
                   aria-label="Nova tarefa para hoje"
                 />
               </div>
+              {respostasCliente.length > 0 && (
+                <div className="mb-2 flex flex-col">
+                  <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">O cliente respondeu</p>
+                  {respostasCliente.map((t) => (
+                    <button key={t.id} type="button" onClick={() => setTarefaAberta(t.id)} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-item px-2 py-2 text-left hover:bg-superficie-2/70">
+                      {situacaoPeca(t) === "aprovada" ? <CheckCircle2 size={16} className="shrink-0 text-ok" /> : <AlertTriangle size={16} className="shrink-0 text-erro" />}
+                      <span className="min-w-0 flex-1 basis-40 truncate text-[13px] font-medium">
+                        {t.titulo}
+                        <span className="font-normal text-texto-suave">
+                          {" "}
+                          · {cfg.clientes.find((c) => c.id === t.clienteId)?.nome}
+                          {situacaoPeca(t) === "aprovada" ? " aprovou" : ` pediu: ${t.feedbackCliente ?? "ajuste"}`}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {falarCom.length > 0 && (
                 <div className="mb-2 flex flex-col">
                   <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">Falar com (CRM)</p>
@@ -292,7 +318,7 @@ export default function VisaoDoDia() {
                   ))}
                 </div>
               )}
-              {paraResolver.length === 0 && falarCom.length === 0 ? (
+              {paraResolver.length === 0 && falarCom.length === 0 && respostasCliente.length === 0 ? (
                 <p className="rounded-bloco bg-ok-suave px-4 py-6 text-center text-sm text-ok">Tudo em dia por aqui. 🎉</p>
               ) : paraResolver.length === 0 ? null : (
                 <div className="flex flex-col">
@@ -304,8 +330,8 @@ export default function VisaoDoDia() {
                   {v.hoje.map((t) => (
                     <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />
                   ))}
-                  {v.emAndamento.length > 0 && <p className="px-2 pt-2 text-[11px] font-bold tracking-wide text-texto-suave uppercase">Em produção, sem prazo</p>}
-                  {v.emAndamento.map((t) => (
+                  {emAndamento.length > 0 && <p className="px-2 pt-2 text-[11px] font-bold tracking-wide text-texto-suave uppercase">Em produção, sem prazo</p>}
+                  {emAndamento.map((t) => (
                     <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />
                   ))}
                 </div>

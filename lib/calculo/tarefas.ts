@@ -33,6 +33,44 @@ export interface Tarefa {
   etapas: EtapaTarefa[];
   criadoEm: string;
   concluidaEm: string | null;
+  // ─── painel do cliente ───
+  /** aparece no painel do cliente */
+  visivelCliente?: boolean;
+  /** texto que vai junto com a peça (legenda do post) */
+  legenda?: string;
+  /** artes da peça (endereços no Storage) */
+  arquivos?: ArquivoPeca[];
+  /** quando foi enviada para o cliente aprovar (as respostas abaixo são do cliente: só o banco escreve) */
+  enviadaClienteEm?: string | null;
+  rodadas?: number;
+  feedbackCliente?: string | null;
+  feedbackEm?: string | null;
+  clienteAprovouEm?: string | null;
+  respostasCliente?: RespostaCliente[];
+}
+
+export interface ArquivoPeca {
+  url: string;
+  nome: string;
+  tipo: string;
+}
+
+export interface RespostaCliente {
+  decisao: "aprovar" | "ajustar";
+  texto: string;
+  em: string;
+}
+
+/** Situação da peça para o cliente. */
+export type SituacaoPeca = "producao" | "aguardando" | "aprovada" | "ajuste" | "entregue";
+
+export function situacaoPeca(t: Pick<Tarefa, "status" | "clienteAprovouEm" | "feedbackEm" | "enviadaClienteEm">): SituacaoPeca {
+  if (t.clienteAprovouEm) return "aprovada";
+  if (t.status === "revisao") return "aguardando";
+  if (t.status === "concluida") return "entregue";
+  // voltou para produção depois de um pedido de ajuste do cliente
+  if (t.feedbackEm && (!t.enviadaClienteEm || t.feedbackEm > t.enviadaClienteEm)) return "ajuste";
+  return "producao";
 }
 
 export const STATUS: { valor: StatusTarefa; rotulo: string }[] = [

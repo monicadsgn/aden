@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Modal } from "../Modal";
+import { LinkPainel } from "./LinkPainel";
 import { DetalheTarefa } from "../tarefas/DetalheTarefa";
 import { LinhaTarefa } from "../tarefas/LinhaTarefa";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
@@ -189,6 +190,9 @@ export function FichaCliente({
             <div className="flex flex-col justify-end gap-2 pb-1">
               <Interruptor ligado={c.ativo} rotulo="Cliente ativo" aoMudar={(v) => set({ ativo: v })} />
               <Interruptor ligado={c.participaRateio} rotulo="Divide os custos fixos (rateio)" aoMudar={(v) => set({ participaRateio: v })} />
+            </div>
+            <div className="sm:col-span-2">
+              <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />
             </div>
             <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave sm:col-span-2">
               Observações

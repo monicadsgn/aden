@@ -8,6 +8,7 @@ import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
 import type { Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
+import { aplicarResposta, montarPainel } from "../calculo/painel";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, Configuracao } from "../calculo/tipos";
 import { afetados, aplicarItens, separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
@@ -407,6 +408,46 @@ export class RepositorioLocal implements Repositorio {
     // a medição fica (conta na calibragem), só perde o vínculo
     b.medicoes = (b.medicoes ?? []).map((m) => (m.tarefaId === id ? { ...m, tarefaId: null } : m));
     gravar(b);
+  }
+
+  // ─── Painel do cliente ────────────────────────────────────────────────────
+
+  async gerarLinkPainel(clienteId: string) {
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(24)), (x) => x.toString(16).padStart(2, "0")).join("");
+    const b = ler();
+    b.config.clientes = b.config.clientes.map((c) => (c.id === clienteId ? { ...c, painelToken: token } : c));
+    gravar(b);
+    return token;
+  }
+
+  async painelCliente(token: string) {
+    const b = ler();
+    const c = b.config.clientes.find((x) => x.painelToken === token && x.ativo);
+    return c ? montarPainel(c, b.tarefas ?? []) : null;
+  }
+
+  async responderPeca(token: string, tarefaId: string, decisao: "aprovar" | "ajustar", texto: string) {
+    const b = ler();
+    const c = b.config.clientes.find((x) => x.painelToken === token && x.ativo);
+    if (!c) throw new Error("Link inválido.");
+    const t = (b.tarefas ?? []).find((x) => x.id === tarefaId && x.clienteId === c.id);
+    if (!t) throw new Error("Peça não encontrada.");
+    const nova = aplicarResposta(t, decisao, texto);
+    registrar(b, "tarefas", t.id, t, nova);
+    b.tarefas = (b.tarefas ?? []).map((x) => (x.id === t.id ? nova : x));
+    gravar(b);
+  }
+
+  async enviarParaCliente(tarefaId: string) {
+    const b = ler();
+    b.tarefas = (b.tarefas ?? []).map((t) =>
+      t.id === tarefaId ? { ...t, status: "revisao" as const, visivelCliente: true, enviadaClienteEm: new Date().toISOString(), clienteAprovouEm: null } : t,
+    );
+    gravar(b);
+  }
+
+  async enviarArquivoPeca(_tarefaId: string, arquivo: File) {
+    return { url: await paraDataUrl(arquivo), nome: arquivo.name, tipo: arquivo.type };
   }
 
   // ─── CRM ──────────────────────────────────────────────────────────────────

@@ -80,6 +80,7 @@ export default function Clientes() {
     setClientes((l) => [...l, c]);
     setNovo("");
     await salvarCliente(repo, c);
+    await a.recarregar();
     setAberto(c.id);
   };
 
@@ -165,7 +166,10 @@ export default function Clientes() {
         situacaoMes={cliente ? (situacao.get(cliente.id) ?? null) : null}
         leads={leads}
         aoSalvar={salvar}
-        aoRecarregar={recarregar}
+        aoRecarregar={async () => {
+          await recarregar();
+          await a.recarregar();
+        }}
         aoFechar={() => setAberto(null)}
       />
     </div>

@@ -21,15 +21,15 @@ export function useTarefas() {
   const [erro, setErro] = useState<string | null>(null);
 
   const recarregar = useCallback(async () => {
-    const [t, m] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes()]);
+    const [t, m, c] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes(), repo.carregarConfig()]);
     setTarefas(t);
     setMedicoes(m);
+    setConfig(c);
   }, [repo]);
 
   useEffect(() => {
     (async () => {
       try {
-        setConfig(await repo.carregarConfig());
         await recarregar();
       } catch (e) {
         setErro(e instanceof Error ? e.message : "Erro ao carregar as tarefas.");
@@ -38,8 +38,14 @@ export function useTarefas() {
       }
     })();
     const ao = () => void recarregar().catch(() => {});
+    // voltou para a aba: busca de novo (o cliente pode ter respondido pelo painel)
+    const aoVoltar = () => document.visibilityState === "visible" && ao();
     window.addEventListener("aden:relogio", ao);
-    return () => window.removeEventListener("aden:relogio", ao);
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => {
+      window.removeEventListener("aden:relogio", ao);
+      document.removeEventListener("visibilitychange", aoVoltar);
+    };
   }, [repo, recarregar]);
 
   const tentar = async (f: () => Promise<void>) => {
@@ -123,7 +129,26 @@ export function useTarefas() {
       avisarRelogio();
     });
 
-  return { config, tarefas, medicoes, carregado, erro, setErro, salvar, start, pausarTarefa, status, remover, zerarTempo, usuario };
+  /** Manda a peça para o cliente aprovar (aparece no painel dele). */
+  const enviarParaCliente = (t: Tarefa) =>
+    tentar(async () => {
+      await repo.salvarTarefa({ ...t, visivelCliente: true });
+      await repo.enviarParaCliente(t.id);
+      await recarregar();
+      avisarRelogio();
+    });
+
+  /** Sobe as artes e junta na peça. */
+  const anexarArquivos = (t: Tarefa, arquivos: File[]) =>
+    tentar(async () => {
+      const novos = [];
+      for (const f of arquivos) novos.push(await repo.enviarArquivoPeca(t.id, f));
+      const nova = { ...t, arquivos: [...(t.arquivos ?? []), ...novos] };
+      setTarefas((l) => l.map((x) => (x.id === t.id ? nova : x)));
+      await repo.salvarTarefa(nova);
+    });
+
+  return { config, tarefas, medicoes, carregado, erro, setErro, salvar, start, pausarTarefa, status, remover, zerarTempo, enviarParaCliente, anexarArquivos, recarregar, usuario };
 }
 
 export type AcoesTarefas = ReturnType<typeof useTarefas>;

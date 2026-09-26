@@ -3,7 +3,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Medicao } from "../calculo/calibragem";
-import type { Tarefa } from "../calculo/tarefas";
+import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -16,6 +16,7 @@ import type {
   DadosExcecao,
   Membro,
   NovoAviso,
+  PainelCliente,
   Pedido,
   RegistroAuditoria,
   Repositorio,
@@ -190,6 +191,7 @@ export class RepositorioSupabase implements Repositorio {
           segmento: (c.segmento as string) ?? "",
           observacoes: (c.observacoes as string) ?? "",
           clienteDesde: (c.cliente_desde as string) ?? null,
+          painelToken: (c.painel_token as string) ?? null,
           contrato: contrato
             ? {
                 inicio: (contrato.inicio as string) ?? null,
@@ -804,6 +806,15 @@ export class RepositorioSupabase implements Repositorio {
       etapas: Array.isArray(t.etapas) ? (t.etapas as Tarefa["etapas"]) : [],
       criadoEm: t.criado_em as string,
       concluidaEm: (t.concluida_em as string) ?? null,
+      visivelCliente: (t.visivel_cliente as boolean) ?? false,
+      legenda: (t.legenda as string) ?? "",
+      arquivos: Array.isArray(t.arquivos) ? (t.arquivos as ArquivoPeca[]) : [],
+      enviadaClienteEm: (t.enviada_cliente_em as string) ?? null,
+      rodadas: Number(t.rodadas ?? 0),
+      feedbackCliente: (t.feedback_cliente as string) ?? null,
+      feedbackEm: (t.feedback_em as string) ?? null,
+      clienteAprovouEm: (t.cliente_aprovou_em as string) ?? null,
+      respostasCliente: Array.isArray(t.respostas_cliente) ? (t.respostas_cliente as RespostaCliente[]) : [],
     }));
   }
 
@@ -825,12 +836,56 @@ export class RepositorioSupabase implements Repositorio {
       etapas: t.etapas,
       criado_em: t.criadoEm,
       concluida_em: t.concluidaEm,
+      // as respostas do cliente (rodadas, feedback, aprovação) só o banco escreve
+      visivel_cliente: t.visivelCliente ?? false,
+      legenda: t.legenda || null,
+      arquivos: t.arquivos ?? [],
     });
     erro(error);
   }
 
   async removerTarefa(id: string) {
     await this.remover("tarefas", [id]);
+  }
+
+  // ─── Painel do cliente ────────────────────────────────────────────────────
+
+  async gerarLinkPainel(clienteId: string): Promise<string> {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    const { error } = await this.sb.from("clientes").update({ painel_token: token }).eq("id", clienteId);
+    erro(error);
+    return token;
+  }
+
+  async painelCliente(token: string): Promise<PainelCliente | null> {
+    const { data, error } = await this.sb.rpc("painel_cliente", { p_token: token });
+    erro(error);
+    return (data as PainelCliente | null) ?? null;
+  }
+
+  async responderPeca(token: string, tarefaId: string, decisao: "aprovar" | "ajustar", texto: string) {
+    const { error } = await this.sb.rpc("responder_peca", { p_token: token, p_tarefa: tarefaId, p_decisao: decisao, p_texto: texto });
+    erro(error);
+  }
+
+  async enviarParaCliente(tarefaId: string) {
+    const { error } = await this.sb
+      .from("tarefas")
+      .update({ status: "revisao", visivel_cliente: true, enviada_cliente_em: new Date().toISOString(), cliente_aprovou_em: null })
+      .eq("id", tarefaId);
+    erro(error);
+  }
+
+  async enviarArquivoPeca(tarefaId: string, arquivo: File): Promise<ArquivoPeca> {
+    const org = await this.org();
+    const ext = (arquivo.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const aleatorio = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, "0")).join("");
+    const caminho = `${org}/${tarefaId}/${aleatorio}.${ext}`;
+    const bucket = this.sb.storage.from("pecas");
+    const { error } = await bucket.upload(caminho, arquivo, { contentType: arquivo.type, cacheControl: "31536000" });
+    erro(error);
+    return { url: bucket.getPublicUrl(caminho).data.publicUrl, nome: arquivo.name, tipo: arquivo.type };
   }
 
   // ─── CRM ──────────────────────────────────────────────────────────────────

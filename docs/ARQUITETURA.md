@@ -162,6 +162,18 @@ mínimo; avisar se não renovar até = fim − aviso prévio; vencimento do mês
 30). A Visão do dia lembra: pagamento que vence hoje e ainda não entrou; contrato que termina neste mês (ou já dentro
 do aviso prévio); último dia do aviso prévio quando cai neste mês. Sem número fixo de dias.
 
+## Painel do cliente (26/09/2026)
+
+Link só do cliente (`/c/<código>`), sem login. O código é aleatório (48 caracteres) e fica em `clientes.painel_token`;
+"gerar outro" revoga o antigo. O cliente só chega aos dados por duas funções do banco (`painel_cliente`,
+`responder_peca`, security definer, liberadas para anon): elas devolvem só as tarefas do cliente marcadas
+"aparece no painel" (título, legenda, artes, prazo, respostas) e nada interno. Artes no bucket `pecas` (leitura pelo
+endereço, escrita de sócio). Fluxo: a equipe marca a tarefa, sobe a arte e a legenda e "envia para aprovar" (status Em
+aprovação) → o cliente aprova (fica marcada, a equipe conclui ao publicar) ou pede ajuste (volta para Em produção,
++1 rodada, o texto aparece na tarefa e na Visão do dia). Rodadas usadas × limite do contrato e prazo para aprovar =
+envio + prazo de aprovação do contrato. Respostas guardadas em histórico (`respostas_cliente`). Tutorial de 4 passos
+na primeira visita, "?" reabre. Peças entregues somem do painel depois de 60 dias (só organização da tela).
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```
@@ -292,7 +304,7 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - `capacidade_membros` (vigência), `ausencias`, `entregas_mes`, `tarefas`, `apontamentos`
 
 **Aprovação (painel do cliente)**
-- `pecas`, `peca_versoes` (vence em), `aprovacoes` (rodada, dentro do limite)
+- ✅ na própria `tarefas`: `visivel_cliente`, `legenda`, `arquivos`, `enviada_cliente_em`, `rodadas`, `feedback_cliente`, `cliente_aprovou_em`, `respostas_cliente`; ✅ `clientes.painel_token`
 
 **Financeiro**
 - `contas`, `categorias`, `fornecedores`, `lancamentos`, `recorrencias`, ✅ `custos_fixos` (Fase 1), `rateios`, `distribuicoes`, `fechamentos`

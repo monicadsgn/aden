@@ -94,6 +94,14 @@ class BancoFalso {
   async salvarInteracao(i: import("../calculo/crm").InteracaoLead) {
     this.interacoes.push(i);
   }
+  async gerarLinkPainel(clienteId: string) {
+    const c = this.config.clientes.find((x) => x.id === clienteId)!;
+    c.painelToken = "t".repeat(48);
+    return c.painelToken;
+  }
+  async enviarParaCliente(id: string) {
+    this.tarefas = this.tarefas.map((t) => (t.id === id ? { ...t, status: "revisao" as const, visivelCliente: true, enviadaClienteEm: "agora" } : t));
+  }
   tarefas: import("../calculo/tarefas").Tarefa[] = [];
   async listarTarefas() {
     return this.tarefas;
@@ -358,5 +366,20 @@ describe("conector: clientes", () => {
     const f = await chamar("ver_cliente", { cliente: "Olinda" });
     expect(f.contato.telefone).toBe("81 9999");
     expect(f.contrato).toMatchObject({ valorMensal: 1500, diaPagamento: 10, fidelidadeAte: "2026-07-15" });
+  });
+});
+
+describe("conector: painel do cliente", () => {
+  it("link e envio para aprovação", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    const l1 = await chamar("link_painel_cliente", { cliente: "Olinda" });
+    expect(l1.link).toMatch(/\/c\/t{48}$/);
+    const t = await chamar("salvar_tarefa", { titulo: "Post dia 10" });
+    await expect(chamar("enviar_para_cliente_aprovar", { id: t.id })).rejects.toThrow(/não tem cliente/);
+    await chamar("salvar_tarefa", { id: t.id, cliente: "Olinda" });
+    await chamar("enviar_para_cliente_aprovar", { id: t.id, legenda: "Oi!" });
+    expect(banco.tarefas[0]).toMatchObject({ status: "revisao", visivelCliente: true, legenda: "Oi!" });
+    const [lt] = await chamar("listar_tarefas");
+    expect(lt.noPainelDoCliente).toBe("aguardando");
   });
 });

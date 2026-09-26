@@ -40,6 +40,7 @@ import {
   type Tarefa,
 } from "@/lib/calculo/tarefas";
 import { formatarDuracao } from "@/lib/formato";
+import { ParaCliente } from "./ParaCliente";
 import type { AcoesTarefas } from "./useTarefas";
 
 export const COR_STATUS: Record<StatusTarefa, string> = {
@@ -324,6 +325,8 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
           </Link>
         </p>
       )}
+
+      {t.clienteId && <ParaCliente t={t} a={a} />}
 
       <div className="mt-4">
         <p className="mb-1 text-xs font-semibold text-texto-suave">Descrição</p>

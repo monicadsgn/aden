@@ -58,7 +58,7 @@ export async function atenderMcp(req: Request, senhaNoEndereco: string | null): 
 
   // sem estado entre requisições: cada chamada cria servidor + transporte (bom na Vercel)
   const transporte = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-  const servidor = criarServidorMcp(obterRepo);
+  const servidor = criarServidorMcp(obterRepo, new URL(req.url).origin);
   await servidor.connect(transporte);
   return transporte.handleRequest(req);
 }

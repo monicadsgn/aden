@@ -8,7 +8,7 @@
 import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
-import type { Tarefa } from "../calculo/tarefas";
+import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
 import type { ItemProtegido } from "../regras/aprovacao";
@@ -91,6 +91,27 @@ export interface AvisoSocio {
 }
 
 export type NovoAviso = Omit<AvisoSocio, "id" | "criadoEm" | "lidoEm">;
+
+/** O que o cliente vê no painel: só as peças, nunca horas, valores ou sócios. */
+export interface PainelCliente {
+  cliente: string;
+  limiteRodadas: number | null;
+  prazoAprovacaoDias: number | null;
+  pecas: {
+    id: string;
+    titulo: string;
+    legenda: string | null;
+    arquivos: ArquivoPeca[];
+    status: Tarefa["status"];
+    vencimento: string | null;
+    enviadaEm: string | null;
+    rodadas: number;
+    feedback: string | null;
+    feedbackEm: string | null;
+    aprovadaEm: string | null;
+    respostas: RespostaCliente[];
+  }[];
+}
 
 /** O que aconteceu ao salvar as configurações. */
 export interface ResultadoSalvarConfig {
@@ -184,6 +205,18 @@ export interface Repositorio {
   listarTarefas(): Promise<Tarefa[]>;
   salvarTarefa(t: Tarefa): Promise<void>;
   removerTarefa(id: string): Promise<void>;
+
+  // ─── Painel do cliente ────────────────────────────────────────────────────
+  /** Gera (ou troca, revogando o antigo) o código do link do painel do cliente. */
+  gerarLinkPainel(clienteId: string): Promise<string>;
+  /** O que o cliente vê pelo link (sem login). null = link inválido. */
+  painelCliente(token: string): Promise<PainelCliente | null>;
+  /** Resposta do cliente pelo link: aprovar ou pedir ajuste. */
+  responderPeca(token: string, tarefaId: string, decisao: "aprovar" | "ajustar", texto: string): Promise<void>;
+  /** Manda a peça para o cliente aprovar (status "em aprovação", aparece no painel). */
+  enviarParaCliente(tarefaId: string): Promise<void>;
+  /** Sobe uma arte da peça e devolve o endereço. */
+  enviarArquivoPeca(tarefaId: string, arquivo: File): Promise<ArquivoPeca>;
 
   // ─── CRM ──────────────────────────────────────────────────────────────────
   listarLeads(): Promise<Lead[]>;

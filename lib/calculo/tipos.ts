@@ -143,6 +143,8 @@ export interface ClienteBase {
   clienteDesde?: string | null;
   /** condições do contrato ativo */
   contrato?: DadosContrato | null;
+  /** código do link do painel do cliente (só se muda por gerarLinkPainel) */
+  painelToken?: string | null;
 }
 
 /** Condições combinadas com o cliente. Nenhuma vem pronta: é o que foi assinado. */

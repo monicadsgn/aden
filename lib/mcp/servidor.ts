@@ -19,7 +19,7 @@ import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, rotuloEtapa
 import { hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
 import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } from "../calculo/pacotes";
-import { estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, rotuloStatus, type Tarefa } from "../calculo/tarefas";
+import { estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, rotuloStatus, situacaoPeca, type Tarefa } from "../calculo/tarefas";
 import type { Configuracao, Meta, Pacote } from "../calculo/tipos";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
@@ -58,6 +58,8 @@ Regras que você deve seguir:
 - Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
+- Painel do cliente: link_painel_cliente (link para o cliente ver e aprovar) e enviar_para_cliente_aprovar.
+  listar_tarefas mostra o que o cliente respondeu (aprovou ou pediu ajuste).
 - Clientes: ver_cliente (ficha completa) e salvar_ficha_cliente (contato e condições do contrato).
 - CRM: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
 - O Aden é a central da agência (tarefas, calendário, comercial, financeiro, metas). "O que tenho pra hoje?" → ver_visao_do_dia.
@@ -123,7 +125,7 @@ function aplicar<T extends object>(alvo: T, patch: Partial<Record<keyof T, unkno
   return out;
 }
 
-export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>): McpServer {
+export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, origem = ""): McpServer {
   const server = new McpServer({ name: "aden", version: "1.0.0" }, { instructions: INSTRUCOES });
 
   // ─── Leitura ──────────────────────────────────────────────────────────────
@@ -681,6 +683,45 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
       }),
   );
 
+  // ─── Painel do cliente ────────────────────────────────────────────────────
+
+  server.registerTool(
+    "link_painel_cliente",
+    {
+      title: "Link do painel do cliente",
+      description:
+        "Devolve o link do painel do cliente (onde ele vê e aprova as peças). Cria o link se ainda não existir. novo=true troca o link (o antigo para de funcionar): só se a pessoa pedir.",
+      inputSchema: { cliente: z.string().describe("nome ou id"), novo: z.boolean().optional() },
+    },
+    async ({ cliente, novo }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const c = resolver((await repo.carregarConfig()).clientes, cliente, "Cliente");
+        const token = c.painelToken && !novo ? c.painelToken : await repo.gerarLinkPainel(c.id);
+        return { cliente: c.nome, link: `${origem}/c/${token}` };
+      }),
+  );
+
+  server.registerTool(
+    "enviar_para_cliente_aprovar",
+    {
+      title: "Enviar peça para o cliente aprovar",
+      description:
+        "Marca a tarefa para aparecer no painel do cliente e manda para aprovação (status Em aprovação). Opcional: a legenda que o cliente vai ler. As artes são anexadas pelo site.",
+      inputSchema: { id: z.string().describe("id da tarefa"), legenda: z.string().optional() },
+    },
+    async ({ id, legenda }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const t = (await repo.listarTarefas()).find((x) => x.id === id);
+        if (!t) throw new Error("Tarefa não encontrada.");
+        if (!t.clienteId) throw new Error("A tarefa não tem cliente: ligue a um cliente antes.");
+        await repo.salvarTarefa({ ...t, visivelCliente: true, ...(legenda != null && { legenda }) });
+        await repo.enviarParaCliente(t.id);
+        return { enviada: t.titulo };
+      }),
+  );
+
   // ─── Clientes e contratos ─────────────────────────────────────────────────
 
   server.registerTool(
@@ -1206,6 +1247,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
               estimativaMin: est == null ? null : Math.round(est * 60),
               tempoMedidoMin: m ? Math.round(segundosDaMedicao(m) / 60) : 0,
               relogio: m?.estado ?? "nunca ligado",
+              ...(t.visivelCliente && {
+                noPainelDoCliente: situacaoPeca(t),
+                pedidoDoCliente: situacaoPeca(t) === "ajuste" ? t.feedbackCliente : null,
+                ajustesPedidos: t.rodadas ?? 0,
+              }),
             };
           });
       }),

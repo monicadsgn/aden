@@ -27,7 +27,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/clientes": {
     titulo: "Clientes e contratos",
     texto:
-      "A ficha de cada cliente: contato, contrato, escopo, tarefas, pagamentos e a conversa de antes de fechar. Preencha o dia do pagamento e as datas do contrato: o que vence aparece na sua Visão do dia.",
+      "A ficha de cada cliente: contato, contrato, escopo, tarefas, pagamentos e a conversa de antes de fechar. Na aba Dados fica o link do painel do cliente, onde ele vê e aprova as peças. Preencha o dia do pagamento e as datas do contrato: o que vence aparece na sua Visão do dia.",
     termos: ["escopo", "rateio"],
   },
   "/calendario": {
