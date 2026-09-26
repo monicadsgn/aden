@@ -1,5 +1,5 @@
-// Perfis de acesso. Hoje só existe "sócio" (admin). O perfil "contador" já está previsto
-// no banco (papel 'contador', só leitura da área financeira) e aqui; falta só o convite.
+// Perfis de acesso. Sócio (admin), equipe (colaborador), freelancer e contador.
+// O que cada um vê de verdade é garantido pelo banco (RLS, migration 0018); aqui é o menu.
 
 export type Papel = "admin" | "contador" | "colaborador" | "freelancer" | "cliente" | "sem_vinculo";
 
@@ -28,8 +28,9 @@ export type Area =
 const AREAS: Record<Papel, Area[] | "todas"> = {
   admin: "todas",
   contador: ["pagamentos", "pdfs", "glossario"],
-  colaborador: [],
-  freelancer: [],
+  // equipe: o dia a dia (tarefas, calendário); o que ela vê dentro disso o banco filtra
+  colaborador: ["hoje", "tarefas", "calendario", "glossario"],
+  freelancer: ["hoje", "tarefas", "calendario", "glossario"],
   cliente: [],
   sem_vinculo: [],
 };
@@ -47,3 +48,13 @@ export function pdfsPermitidos(papel: string): ("proposta" | "contador" | "socio
 }
 
 export const ehSocio = (papel: string) => papel === "admin";
+
+/** Quem pode criar tarefa (freelancer só trabalha nas que recebe). */
+export const podeCriarTarefa = (papel: string) => papel === "admin" || papel === "colaborador";
+
+export const PAPEIS: { valor: Papel; rotulo: string; explica: string }[] = [
+  { valor: "admin", rotulo: "Sócio", explica: "Vê e faz tudo: financeiro, comercial, configurações e aprovações." },
+  { valor: "colaborador", rotulo: "Equipe", explica: "Vê e mexe em todas as tarefas e no calendário. Não vê valores, piso nem financeiro." },
+  { valor: "freelancer", rotulo: "Freelancer", explica: "Vê só as tarefas em que é responsável. Não vê valores, piso nem financeiro." },
+  { valor: "contador", rotulo: "Contador", explica: "Só o financeiro: pagamentos e o resumo para o contador." },
+];

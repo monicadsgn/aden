@@ -14,6 +14,8 @@ export default function Entrar() {
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [primeiro, setPrimeiro] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
     if (repo.modo === "local" || usuario) router.replace("/hoje");
@@ -28,9 +30,20 @@ export default function Entrar() {
         onSubmit={async (e) => {
           e.preventDefault();
           setErro(null);
+          setAviso(null);
           setEnviando(true);
           try {
-            await repo.entrar(email, senha);
+            if (primeiro) {
+              if (senha.length < 8) throw new Error("Use uma senha com pelo menos 8 caracteres.");
+              const r = await repo.criarConta(email, senha);
+              if (r === "confirmar") {
+                setAviso("Pronto! Enviamos um e-mail para confirmar. Clique no link e depois volte aqui para entrar.");
+                setPrimeiro(false);
+                return;
+              }
+            } else {
+              await repo.entrar(email, senha);
+            }
             await atualizarUsuario();
           } catch (x) {
             setErro(x instanceof Error ? x.message : "Não foi possível entrar.");
@@ -40,8 +53,10 @@ export default function Entrar() {
         }}
       >
         <Marca />
-        <h1 className="mt-6 text-xl font-bold">Entrar</h1>
-        <p className="mt-1 text-sm text-texto-suave">Acesso da equipe Aden.</p>
+        <h1 className="mt-6 text-xl font-bold">{primeiro ? "Primeiro acesso" : "Entrar"}</h1>
+        <p className="mt-1 text-sm text-texto-suave">
+          {primeiro ? "Recebeu um convite? Use o e-mail do convite e crie a sua senha." : "Acesso da equipe Aden."}
+        </p>
         <div className="mt-6 flex flex-col gap-3">
           <CampoTexto rotulo="E-mail" valor={email} aoMudar={setEmail} placeholder="voce@aden…" />
           <div>
@@ -57,9 +72,21 @@ export default function Entrar() {
             />
           </div>
           {erro && <p className="rounded-campo bg-erro-suave px-3 py-2 text-xs font-semibold text-erro">{erro}</p>}
+          {aviso && <p className="rounded-campo bg-ok-suave px-3 py-2 text-xs font-semibold text-ok">{aviso}</p>}
           <Botao type="submit" variante="primario" disabled={enviando} className="mt-2 w-full">
-            <Lock size={15} /> {enviando ? "Entrando…" : "Entrar"} <ArrowRight size={15} />
+            <Lock size={15} /> {enviando ? "Um momento…" : primeiro ? "Criar minha senha" : "Entrar"} <ArrowRight size={15} />
           </Botao>
+          <button
+            type="button"
+            className="text-xs font-semibold text-marca-forte hover:underline"
+            onClick={() => {
+              setPrimeiro(!primeiro);
+              setErro(null);
+              setAviso(null);
+            }}
+          >
+            {primeiro ? "Já tenho senha: entrar" : "Primeiro acesso? Criar senha"}
+          </button>
         </div>
       </form>
     </div>

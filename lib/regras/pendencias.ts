@@ -8,7 +8,7 @@ export type Faltando = Record<SecaoConfig, string[]>;
 export function camposFaltando(c: Configuracao): Faltando {
   const e = c.empresa;
   const socios = c.pessoas.filter((p) => p.ativo && p.socio);
-  const out: Faltando = { socios: [], servicos: [], tipos: [], custos: [], terceiros: [], pacotes: [], metas: [], regras: [], limites: [], clientes: [] };
+  const out: Faltando = { socios: [], servicos: [], tipos: [], custos: [], terceiros: [], pacotes: [], metas: [], equipe: [], regras: [], limites: [], clientes: [] };
 
   if (!socios.length) out.socios.push("nenhum sócio cadastrado");
   for (const p of socios) {

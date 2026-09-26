@@ -7,6 +7,7 @@ import { BotaoRelogio, COR_STATUS, DetalheTarefa } from "@/components/tarefas/De
 import { LinhaTarefa, MetaTarefa } from "@/components/tarefas/LinhaTarefa";
 import { useTarefas, type AcoesTarefas } from "@/components/tarefas/useTarefas";
 import { Botao, Card, Segmentado, Selecao, Vazio, cx } from "@/components/ui";
+import { podeCriarTarefa } from "@/lib/acesso";
 import { novoId } from "@/lib/calculo/novo";
 import { agruparPorPrazo, novaTarefa, ROTULO_GRUPO, STATUS, type StatusTarefa, type Tarefa } from "@/lib/calculo/tarefas";
 
@@ -118,6 +119,7 @@ export default function Tarefas() {
   };
 
   const tarefaAberta = a.tarefas.find((t) => t.id === aberta) ?? null;
+  const podeCriar = podeCriarTarefa(a.usuario?.papel ?? "admin");
 
   if (!a.carregado) return null;
 
@@ -129,9 +131,11 @@ export default function Tarefas() {
         titulo="Tarefas"
         descricao="O que está em produção. Abra a tarefa e dê Start ao começar: o tempo medido calibra quanto cada entrega leva de verdade."
         acoes={
-          <Botao variante="primario" icone={Plus} onClick={() => void criar("Nova tarefa", true)}>
-            Nova tarefa
-          </Botao>
+          podeCriar ? (
+            <Botao variante="primario" icone={Plus} onClick={() => void criar("Nova tarefa", true)}>
+              Nova tarefa
+            </Botao>
+          ) : undefined
         }
       />
       <div className="mx-auto flex max-w-[1300px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
@@ -167,7 +171,7 @@ export default function Tarefas() {
           />
         </div>
 
-        <input
+        {podeCriar && <input
           className="h-11 w-full rounded-botao border border-linha bg-superficie px-4 text-sm placeholder:text-texto-suave focus:border-marca focus:ring-2 focus:ring-marca/20 focus:outline-none"
           placeholder="Nova tarefa rápida: escreva e aperte Enter"
           value={rapida}
@@ -178,7 +182,7 @@ export default function Tarefas() {
               setRapida("");
             }
           }}
-        />
+        />}
 
         {a.tarefas.length === 0 ? (
           <Vazio icone={ListChecks} titulo="Nenhuma tarefa ainda">

@@ -164,6 +164,18 @@ export class RepositorioLocal implements Repositorio {
   }
   async entrar() {}
   async sair() {}
+  async criarConta(): Promise<"ok" | "confirmar"> {
+    throw new Error("Contas só existem com o banco conectado.");
+  }
+
+  async listarEquipe() {
+    return { membros: [{ id: "local", nome: USUARIO.nome, email: USUARIO.email, papel: "admin", ativo: true }], convites: [] };
+  }
+  async convidar(): Promise<void> {
+    throw new Error("Convites só funcionam com o banco conectado.");
+  }
+  async cancelarConvite() {}
+  async mudarAcesso() {}
 
   async carregarConfig() {
     return ler().config;

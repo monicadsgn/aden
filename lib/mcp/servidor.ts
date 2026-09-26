@@ -16,6 +16,7 @@ import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calcu
 import { calcularSolucoes } from "../calculo/solucoes";
 import { clienteNoMes, contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio } from "../calculo/clientes";
 import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, rotuloEtapa, type Lead } from "../calculo/crm";
+import { PAPEIS } from "../acesso";
 import { hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
 import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } from "../calculo/pacotes";
@@ -58,6 +59,7 @@ Regras que você deve seguir:
 - Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
+- Equipe: ver_equipe e convidar_pessoa (cada papel vê só o que é dele; o banco garante).
 - Painel do cliente: link_painel_cliente (link para o cliente ver e aprovar) e enviar_para_cliente_aprovar.
   listar_tarefas mostra o que o cliente respondeu (aprovou ou pediu ajuste).
 - Clientes: ver_cliente (ficha completa) e salvar_ficha_cliente (contato e condições do contrato).
@@ -680,6 +682,40 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const alvo = resolver(await repo.listarSimulacoes(), id, "Simulação");
         await repo.removerSimulacao(alvo.id);
         return { removida: alvo.nome };
+      }),
+  );
+
+  // ─── Equipe e acessos ─────────────────────────────────────────────────────
+
+  server.registerTool(
+    "ver_equipe",
+    {
+      title: "Equipe e acessos",
+      description: "Quem tem acesso ao Aden (sócio, equipe, freelancer, contador), se está ativo, e os convites esperando o primeiro acesso.",
+      inputSchema: {},
+    },
+    async () =>
+      executar(async () => {
+        const r = await (await obterRepo()).listarEquipe();
+        return {
+          membros: r.membros.map((m) => ({ nome: m.nome, email: m.email, acesso: PAPEIS.find((p) => p.valor === m.papel)?.rotulo ?? m.papel, ativo: m.ativo })),
+          convitesAbertos: r.convites.map((c) => ({ nome: c.nome, email: c.email, acesso: PAPEIS.find((p) => p.valor === c.papel)?.rotulo ?? c.papel })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "convidar_pessoa",
+    {
+      title: "Convidar alguém para o Aden",
+      description:
+        "Cria o convite por e-mail. A pessoa entra em /entrar → 'Primeiro acesso? Criar senha' com esse e-mail. Acessos: admin (sócio, tudo), colaborador (equipe: todas as tarefas, sem valores), freelancer (só as tarefas dele), contador (só financeiro). Confirme o acesso com quem está conversando; sócio só se pedirem explicitamente.",
+      inputSchema: { nome: z.string(), email: z.string().email(), acesso: z.enum(["admin", "colaborador", "freelancer", "contador"]) },
+    },
+    async ({ nome, email, acesso }) =>
+      executar(async () => {
+        await (await obterRepo()).convidar(nome, email, acesso);
+        return { convidado: nome, email: email.toLowerCase(), comoEntrar: `${origem}/entrar → "Primeiro acesso? Criar senha"` };
       }),
   );
 

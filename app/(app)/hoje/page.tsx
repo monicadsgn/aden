@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { podeVer } from "@/lib/acesso";
+import { podeCriarTarefa, podeVer } from "@/lib/acesso";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ConectarAgenda } from "@/components/agenda/ConectarAgenda";
 import { horaDoEvento, useAgenda } from "@/components/agenda/useAgenda";
@@ -134,6 +134,7 @@ export default function VisaoDoDia() {
   }, [repo]);
 
   const cfg = a.config;
+  const socio = usuario?.papel === "admin" || repo.modo === "local";
   const eu = usuario?.pessoaId ?? null;
   const pessoa = deQuem === undefined ? eu : deQuem;
   const socios = cfg.pessoas.filter((p) => p.ativo && p.socio);
@@ -221,7 +222,7 @@ export default function VisaoDoDia() {
               {usuario?.nome && repo.modo !== "local" ? `, ${usuario.nome.split(" ")[0]}` : ""}
             </h1>
           </div>
-          {socios.length > 1 && (
+          {socio && socios.length > 1 && (
             <div className="flex items-center gap-1 rounded-botao bg-superficie-2 p-1" role="radiogroup" aria-label="De quem">
               {[...socios.map((p) => ({ id: p.id as string | null, nome: p.id === eu ? "Minhas" : p.nome, foto: p.fotoUrl })), { id: null, nome: "Todos", foto: undefined }].map((o) => (
                 <button
@@ -277,7 +278,7 @@ export default function VisaoDoDia() {
               icone={Flag}
               acao={<LinkPequeno href="/tarefas">Todas as tarefas</LinkPequeno>}
             >
-              <div className="mb-2 flex items-center gap-2 rounded-botao border border-linha bg-superficie px-3 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
+              {podeCriarTarefa(usuario?.papel ?? "admin") && <div className="mb-2 flex items-center gap-2 rounded-botao border border-linha bg-superficie px-3 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
                 <Plus size={15} className="text-texto-suave" />
                 <input
                   className="h-10 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-suave sem-contorno"
@@ -287,7 +288,7 @@ export default function VisaoDoDia() {
                   onKeyDown={(e) => e.key === "Enter" && void criar()}
                   aria-label="Nova tarefa para hoje"
                 />
-              </div>
+              </div>}
               {respostasCliente.length > 0 && (
                 <div className="mb-2 flex flex-col">
                   <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">O cliente respondeu</p>
@@ -402,7 +403,7 @@ export default function VisaoDoDia() {
                 )}
               </Bloco>
             )}
-            {minhaVisao && (
+            {minhaVisao && socio && (
               <Bloco titulo="Depende de mim" icone={ShieldCheck}>
                 {aprovacoes.length === 0 && avisosNovos.length === 0 ? (
                   <p className="text-xs text-texto-suave">Nenhuma aprovação nem aviso esperando você.</p>
@@ -427,6 +428,7 @@ export default function VisaoDoDia() {
               </Bloco>
             )}
 
+            {socio && (
             <Bloco titulo="Metas" icone={Rocket} acao={<LinkPequeno href="/mes">Visão do mês</LinkPequeno>}>
               {!trilha.degraus.length ? (
                 <p className="text-xs text-texto-suave">
@@ -454,7 +456,9 @@ export default function VisaoDoDia() {
                 <p className="text-xs text-ok">Todos os degraus conquistados!</p>
               )}
             </Bloco>
+            )}
 
+            {socio && (
             <Bloco titulo="Comercial" icone={Sparkles} acao={<LinkPequeno href="/crm">CRM</LinkPequeno>}>
               {leads.length > 0 && (
                 <p className="mb-2 text-xs">
@@ -492,7 +496,9 @@ export default function VisaoDoDia() {
                 </div>
               )}
             </Bloco>
+            )}
 
+            {socio && (
             <Bloco titulo="Financeiro do mês" icone={Wallet} acao={<LinkPequeno href="/pagamentos">Registrar pagamento</LinkPequeno>}>
               <p className="text-[11px] text-texto-suave">Recebido este mês</p>
               <p className="numero text-xl font-extrabold">
@@ -524,6 +530,7 @@ export default function VisaoDoDia() {
                 </p>
               )}
             </Bloco>
+            )}
           </div>
         </div>
       </div>

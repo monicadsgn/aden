@@ -277,7 +277,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
         <Marca />
         <p className="max-w-sm text-sm text-texto-suave">
-          Seu login ({usuario.email}) ainda não está vinculado à Aden. Peça a um sócio para vincular seu acesso.
+          Seu login ({usuario.email}) ainda não tem acesso à Aden. Peça a um sócio para te convidar com este e-mail (Configurações → Equipe e acessos) e entre de novo.
         </p>
         <button className="text-sm font-semibold text-marca-forte underline" onClick={async () => { await repo.sair(); await atualizarUsuario(); }}>
           Sair

@@ -23,3 +23,4 @@
 - Todo `Alerta` tem `explica` (o que isso quer dizer, com exemplo). Textos de ajuda ficam em `lib/ajuda.ts`.
 - Visão do mês fala em crescimento ("hora do próximo passo"), nunca "não cabe"/"bloqueado" (há teste).
 - Painel do cliente (`/c/[token]`): o cliente só lê/responde pelas funções `painel_cliente`/`responder_peca` (nunca tabela direta). Nada interno sai delas; campos de resposta do cliente só o banco escreve.
+- Acessos: sócio (admin) vê tudo; equipe/freelancer só tarefas (RLS da migration 0018, nomes via `equipe_nomes`). Tabela nova com dado sensível: leitura só `eh_membro` (sócio), nunca liberar para a equipe sem pensar.

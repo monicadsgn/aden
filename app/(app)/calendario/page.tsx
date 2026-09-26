@@ -18,6 +18,7 @@ import { Botao, Selecao, cx } from "@/components/ui";
 import { etapaAberta, type Lead } from "@/lib/calculo/crm";
 import { useDados } from "@/lib/dados/contexto";
 import { diasDaGrade, hojeISO, tarefasDoDia } from "@/lib/calculo/dia";
+import { podeCriarTarefa } from "@/lib/acesso";
 import { novoId } from "@/lib/calculo/novo";
 import { novaTarefa } from "@/lib/calculo/tarefas";
 import { primeiraMaiuscula } from "@/lib/formato";
@@ -165,7 +166,7 @@ export default function Calendario() {
         aoFechar={() => setDia(null)}
         titulo={dia ? primeiraMaiuscula(new Date(`${dia}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })) : ""}
       >
-        <div className="mb-3 flex items-center gap-2 rounded-botao border border-linha px-3 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
+        {podeCriarTarefa(a.usuario?.papel ?? "admin") && <div className="mb-3 flex items-center gap-2 rounded-botao border border-linha px-3 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
           <Plus size={15} className="text-texto-suave" />
           <input
             className="h-10 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-suave sem-contorno"
@@ -178,7 +179,7 @@ export default function Calendario() {
               setNova("");
             }}
           />
-        </div>
+        </div>}
         {dia && eventosDoDia(agenda.eventos, dia).length > 0 && (
           <div className="mb-2 flex flex-col">
             <p className="px-2 text-[11px] font-bold text-info uppercase">Agenda</p>

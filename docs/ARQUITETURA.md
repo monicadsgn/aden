@@ -185,6 +185,16 @@ dia, anual, INTERVAL/COUNT/UNTIL), EXDATE, ocorrência alterada, cancelado. Apar
 hoje" na Visão do dia. Criar evento no Google pelo Aden fica para quando houver app OAuth da Aden. O conector não lê
 agendas (são pessoais); no claude.ai já existe o conector do Google Agenda.
 
+## Equipe e acessos (26/09/2026)
+
+Papéis: **sócio** (admin, tudo), **equipe** (colaborador: todas as tarefas e o calendário, cria tarefas), **freelancer**
+(só as tarefas em que é responsável), **contador** (só financeiro). Quem garante é o banco (migration 0018):
+`eh_membro` passou a ser só sócio; a equipe tem regras próprias em `tarefas`, `medicoes` (só o próprio tempo),
+`tipos_entrega` e `servicos`, e recebe nomes de pessoas e clientes por `equipe_nomes()` (só nome e foto, nunca piso,
+percentual, valor ou link do painel). Convite por e-mail (`convites`); no primeiro acesso a pessoa cria a senha em
+/entrar e `aceitar_convite()` a torna membro (equipe e freelancer ganham uma "pessoa" não sócia para receber tarefas).
+Sócio não muda o próprio acesso. Testado no banco com um freelancer de mentira dentro de transação desfeita.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```

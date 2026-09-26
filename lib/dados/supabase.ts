@@ -3,6 +3,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Medicao } from "../calculo/calibragem";
+import { configVazia } from "../calculo/novo";
 import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import { enderecoDeAgendaValido, type EventoAgenda } from "../agenda/ics";
@@ -16,6 +17,8 @@ import type {
   AvisoSocio,
   DadosExcecao,
   Membro,
+  Convite,
+  MembroEquipe,
   NovoAviso,
   PainelCliente,
   Pedido,
@@ -64,26 +67,42 @@ export class RepositorioSupabase implements Repositorio {
     const { data } = await this.sb.auth.getSession();
     const user = data.session?.user;
     if (!user) return null;
-    const { data: m, error } = await this.sb
-      .from("membros")
-      .select("id, org_id, nome, email, papel")
-      .eq("user_id", user.id)
-      .eq("ativo", true)
-      .limit(1)
-      .maybeSingle();
+    const buscar = () => this.sb.from("membros").select("id, org_id, nome, email, papel").eq("user_id", user.id).eq("ativo", true).limit(1).maybeSingle();
+    let { data: m, error } = await buscar();
     erro(error);
+    if (!m) {
+      // primeiro acesso de quem foi convidado: vira membro com o papel do convite
+      const { data: aceito } = await this.sb.rpc("aceitar_convite");
+      if (aceito) ({ data: m, error } = await buscar());
+      erro(error);
+    }
     if (!m) return { id: user.id, nome: user.email ?? "", email: user.email ?? "", papel: "sem_vinculo", pessoaId: null };
     this.orgId = m.org_id as string;
-    const pes = await this.sb.from("pessoas").select("id, foto_url").eq("membro_id", m.id as string).limit(1).maybeSingle();
+    // pessoa ligada a este login (a equipe não lê a tabela de pessoas: vem pela função)
+    const { data: pessoaId } = await this.sb.rpc("minha_pessoa", { org: this.orgId });
+    let fotoUrl: string | null = null;
+    if (pessoaId) {
+      const nomes = await this.sb.rpc("equipe_nomes", { org: this.orgId });
+      fotoUrl = ((nomes.data?.pessoas ?? []) as { id: string; fotoUrl: string | null }[]).find((p) => p.id === pessoaId)?.fotoUrl ?? null;
+    }
     this.usuario = {
       id: user.id,
       nome: m.nome as string,
       email: m.email as string,
       papel: m.papel as string,
-      pessoaId: (pes.data?.id as string | undefined) ?? null,
-      fotoUrl: (pes.data?.foto_url as string | undefined) ?? null,
+      pessoaId: (pessoaId as string | null) ?? null,
+      fotoUrl,
     };
     return this.usuario;
+  }
+
+  /** Primeiro acesso: cria a senha de quem foi convidado. "confirmar" = falta clicar no e-mail. */
+  async criarConta(email: string, senha: string): Promise<"ok" | "confirmar"> {
+    const { data, error } = await this.sb.auth.signUp({ email: email.trim().toLowerCase(), password: senha });
+    if (error) throw new Error(error.message.includes("already registered") ? "Esse e-mail já tem conta. Use Entrar." : error.message);
+    this.usuario = null;
+    this.orgId = null;
+    return data.session ? "ok" : "confirmar";
   }
 
   async entrar(email: string, senha: string) {
@@ -103,6 +122,7 @@ export class RepositorioSupabase implements Repositorio {
 
   async carregarConfig(): Promise<Configuracao> {
     const org = await this.org();
+    if (this.usuario && (this.usuario.papel === "colaborador" || this.usuario.papel === "freelancer")) return this.configDaEquipe(org);
     const [emp, pes, ser, div, tip, cus, cli, con, ter, pac, met] = await Promise.all([
       this.sb.from("configuracoes_empresa").select("*").eq("org_id", org).maybeSingle(),
       this.sb.from("pessoas").select("*").eq("org_id", org).order("ordem"),
@@ -847,6 +867,68 @@ export class RepositorioSupabase implements Repositorio {
 
   async removerTarefa(id: string) {
     await this.remover("tarefas", [id]);
+  }
+
+  /** O que a equipe (não sócia) precisa para as tarefas: nomes, tipos de entrega e serviços. Nada de valores. */
+  private async configDaEquipe(org: string): Promise<Configuracao> {
+    const [nomes, tip, ser] = await Promise.all([
+      this.sb.rpc("equipe_nomes", { org }),
+      this.sb.from("tipos_entrega").select("*").eq("org_id", org).order("ordem"),
+      this.sb.from("servicos").select("id, nome, ativo").eq("org_id", org).order("ordem"),
+    ]);
+    for (const r of [nomes, tip, ser]) erro(r.error);
+    const n = (nomes.data ?? { pessoas: [], clientes: [] }) as { pessoas: { id: string; nome: string; socio: boolean; ativo: boolean; fotoUrl: string | null }[]; clientes: { id: string; nome: string; ativo: boolean }[] };
+    const c = configVazia();
+    c.pessoas = n.pessoas.map((p) => ({ id: p.id, nome: p.nome, socio: p.socio, ativo: p.ativo, fotoUrl: p.fotoUrl, percentualPadrao: null, pisoHoraCentavos: null, capacidadeHorasMes: null }));
+    c.clientes = n.clientes.map((k) => ({ id: k.id, nome: k.nome, ativo: k.ativo, interno: false, participaRateio: false, valorMensalCentavos: null }));
+    c.servicos = ((ser.data ?? []) as Linha[]).map((s) => ({ id: s.id as string, nome: s.nome as string, ativo: s.ativo as boolean, divisaoPadrao: {} }));
+    c.tiposEntrega = ((tip.data ?? []) as Linha[]).map((t) => ({
+      id: t.id as string,
+      nome: t.nome as string,
+      servicoId: (t.servico_id as string) ?? null,
+      horasPorUnidade: num(t.horas_por_unidade),
+      audiovisual: (t.audiovisual as boolean) ?? false,
+      ativo: t.ativo as boolean,
+      calibrarDesde: (t.calibrar_desde as string) ?? null,
+      terceiroId: (t.terceiro_id as string) ?? null,
+    }));
+    return c;
+  }
+
+  // ─── Equipe e acessos ─────────────────────────────────────────────────────
+
+  async listarEquipe(): Promise<{ membros: MembroEquipe[]; convites: Convite[] }> {
+    const org = await this.org();
+    const [m, c] = await Promise.all([
+      this.sb.from("membros").select("id, nome, email, papel, ativo").eq("org_id", org).order("nome"),
+      this.sb.from("convites").select("id, nome, email, papel, criado_em").eq("org_id", org).is("aceito_em", null).order("criado_em"),
+    ]);
+    erro(m.error);
+    erro(c.error);
+    return {
+      membros: ((m.data ?? []) as Linha[]).map((x) => ({ id: x.id as string, nome: x.nome as string, email: x.email as string, papel: x.papel as string, ativo: x.ativo as boolean })),
+      convites: ((c.data ?? []) as Linha[]).map((x) => ({ id: x.id as string, nome: x.nome as string, email: x.email as string, papel: x.papel as string, criadoEm: x.criado_em as string })),
+    };
+  }
+
+  async convidar(nome: string, email: string, papel: string) {
+    const org_id = await this.org();
+    const { error } = await this.sb.from("convites").insert({ org_id, nome: nome.trim(), email: email.trim().toLowerCase(), papel });
+    if (error?.code === "23505") throw new Error("Já existe um convite aberto para esse e-mail.");
+    erro(error);
+  }
+
+  async cancelarConvite(id: string) {
+    const { error } = await this.sb.from("convites").delete().eq("id", id);
+    erro(error);
+  }
+
+  async mudarAcesso(membroId: string, patch: { papel?: string; ativo?: boolean }) {
+    const eu = await this.usuarioAtual();
+    const { data } = await this.sb.from("membros").select("user_id").eq("id", membroId).maybeSingle();
+    if (data?.user_id === eu?.id) throw new Error("Você não pode mudar o seu próprio acesso.");
+    const { error } = await this.sb.from("membros").update(patch).eq("id", membroId);
+    erro(error);
   }
 
   // ─── Google Agenda ────────────────────────────────────────────────────────

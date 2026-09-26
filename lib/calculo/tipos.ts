@@ -343,7 +343,7 @@ export interface Cenario {
  */
 export type NivelAlerta = "erro" | "aviso" | "lembrete" | "info";
 
-export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "metas" | "regras" | "limites" | "clientes";
+export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "metas" | "equipe" | "regras" | "limites" | "clientes";
 
 /** Onde se resolve o alerta: um campo das configurações ou um bloco do cenário. */
 export type DestinoAlerta = { tipo: "config"; secao: SecaoConfig; campo?: string } | { tipo: "cenario"; bloco: string };

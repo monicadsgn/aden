@@ -26,6 +26,22 @@ export interface Usuario {
   fotoUrl?: string | null;
 }
 
+export interface MembroEquipe {
+  id: string;
+  nome: string;
+  email: string;
+  papel: string;
+  ativo: boolean;
+}
+
+export interface Convite {
+  id: string;
+  nome: string;
+  email: string;
+  papel: string;
+  criadoEm: string;
+}
+
 export interface Membro {
   id: string;
   nome: string;
@@ -163,6 +179,14 @@ export interface Repositorio {
   usuarioAtual(): Promise<Usuario | null>;
   entrar(email: string, senha: string): Promise<void>;
   sair(): Promise<void>;
+  /** Primeiro acesso de quem foi convidado. "confirmar" = falta clicar no link do e-mail. */
+  criarConta(email: string, senha: string): Promise<"ok" | "confirmar">;
+
+  // ─── Equipe e acessos (só sócios) ─────────────────────────────────────────
+  listarEquipe(): Promise<{ membros: MembroEquipe[]; convites: Convite[] }>;
+  convidar(nome: string, email: string, papel: string): Promise<void>;
+  cancelarConvite(id: string): Promise<void>;
+  mudarAcesso(membroId: string, patch: { papel?: string; ativo?: boolean }): Promise<void>;
 
   carregarConfig(): Promise<Configuracao>;
   /**

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  KeyRound,
   Package,
   Trophy,
   Truck,
@@ -26,6 +27,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { TrocarFoto } from "@/components/Avatar";
 import { OQueQuerDizer } from "@/components/Alertas";
+import { SecaoEquipe } from "@/components/configuracoes/SecaoEquipe";
 import { SecaoMetas, SecaoPacotes, SecaoTerceiros } from "@/components/configuracoes/SecoesNovas";
 import { CabecalhoPagina } from "@/components/Shell";
 import {
@@ -67,6 +69,7 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "terceiros", rotulo: "Terceiros", icone: Truck, frase: "Serviços terceirizados cobrados por saída (ex.: audiovisual). Custo só do cliente que recebe." },
   { id: "pacotes", rotulo: "Pacotes", icone: Package, frase: "Pacotes fechados para a negociação. O preço sai do cálculo, nunca digitado." },
   { id: "metas", rotulo: "Metas", icone: Trophy, frase: "A trilha de crescimento em degraus, com a ação de cada degrau. Aparece na Visão do mês." },
+  { id: "equipe", rotulo: "Equipe e acessos", icone: KeyRound, frase: "Quem entra no Aden e o que cada um vê: sócios, equipe, freelancers e contador." },
   { id: "regras", rotulo: "Regras da empresa", icone: Scale, frase: "Regime e imposto, como dividir o custo fixo, reinvestimento, taxas e como distribuir cada pagamento." },
   { id: "limites", rotulo: "Limites e avisos", icone: Gauge, frase: "Quando o sistema acende um alerta. Vazio = sem aviso." },
   { id: "clientes", rotulo: "Clientes", icone: Receipt, frase: "Clientes ativos e o valor mensal de cada um. É a base do rateio e da visão do mês." },
@@ -557,6 +560,7 @@ export default function Configuracoes() {
             {secao === "terceiros" && <SecaoTerceiros rascunho={rascunho} set={set} />}
             {secao === "pacotes" && <SecaoPacotes rascunho={rascunho} set={set} />}
             {secao === "metas" && <SecaoMetas rascunho={rascunho} set={set} />}
+            {secao === "equipe" && <SecaoEquipe />}
 
             {secao === "regras" && (
               <div className="flex flex-col gap-5">
