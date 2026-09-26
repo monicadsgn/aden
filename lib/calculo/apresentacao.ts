@@ -5,7 +5,8 @@
 // discreto (ok / atenção) quando algum sócio fica abaixo do piso — sem nenhuma palavra.
 
 import { ajustarQuantidade, calcularCenario } from "./motor";
-import type { Cenario, Configuracao, Id } from "./tipos";
+import { diferencaDoPacote, frasesParaCliente, precoDoCenario, precoDoPacote } from "./pacotes";
+import type { Cenario, Configuracao, Id, Pacote } from "./tipos";
 
 const v0 = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? 0 : v);
 
@@ -128,5 +129,48 @@ export function pacoteQueCabe(config: Configuracao, cenario: Cenario, valorCenta
     cenario: c,
     cabe: cabe(c),
     tirados: [...tirados].map(([id, q]) => ({ tipoEntregaId: id, nome: config.tiposEntrega.find((t) => t.id === id)?.nome ?? "", quantidade: q })),
+  };
+}
+
+// ─── Pacote fechado na negociação ────────────────────────────────────────────
+
+/**
+ * O que o cliente vê de um pacote: nome, descrição, frases do que está incluso e os dois
+ * valores (mensal e primeiro mês). Quantidades só aparecem ao personalizar. Nunca horas,
+ * custos nem o valor pago a terceiro.
+ */
+export interface VistaPacote {
+  nome: string;
+  descricao: string;
+  frases: string[];
+  mensalCentavos: number | null;
+  entradaCentavos: number | null;
+  entradaAConfirmar: boolean;
+  /** personalizado: quanto o mensal mudou em relação ao pacote original */
+  diferencaMensalCentavos: number | null;
+  /** para o "personalizar": as entregas do pacote e as quantidades atuais */
+  itens: ItemVista[];
+  sinal: Sinal;
+}
+
+export function vistaPacote(config: Configuracao, pacote: Pacote, estado: EstadoApresentacao): VistaPacote {
+  const cen = estado.cenario;
+  const atual = precoDoCenario(config, cen);
+  const original = precoDoPacote(config, pacote);
+  const mensal = cen.modo === "valor" ? (atual.resultado.mes?.receitaBrutaCentavos ?? null) : atual.mensalCentavos;
+  const qtd = new Map<Id, number>();
+  for (const l of cen.entregas) if (l.tipoEntregaId) qtd.set(l.tipoEntregaId, (qtd.get(l.tipoEntregaId) ?? 0) + v0(l.quantidade));
+  const ids = [...new Set([...pacote.rotina.map((i) => i.tipoEntregaId), ...qtd.keys()])];
+  const mudou = diferencaDoPacote(pacote, cen).length > 0 || cen.modo === "valor";
+  return {
+    nome: pacote.nome,
+    descricao: pacote.descricao,
+    frases: frasesParaCliente(config, pacote, cen),
+    mensalCentavos: mensal,
+    entradaCentavos: atual.entradaCentavos,
+    entradaAConfirmar: atual.entradaAConfirmar,
+    diferencaMensalCentavos: mudou && mensal != null && original.mensalCentavos != null ? mensal - original.mensalCentavos : null,
+    itens: ids.map((id) => ({ tipoEntregaId: id, nome: config.tiposEntrega.find((t) => t.id === id)?.nome ?? "", quantidade: qtd.get(id) ?? 0 })),
+    sinal: sinalDoCenario(config, cen),
   };
 }

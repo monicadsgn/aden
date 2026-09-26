@@ -53,6 +53,9 @@ class BancoFalso {
     this.config.tiposEntrega = aplicar(this.config.tiposEntrega, a.tiposEntrega);
     this.config.custosFixos = aplicar(this.config.custosFixos, a.custosFixos);
     this.config.clientes = aplicar(this.config.clientes, a.clientes);
+    if (a.terceiros) this.config.terceiros = aplicar(this.config.terceiros ?? [], a.terceiros);
+    if (a.pacotes) this.config.pacotes = aplicar(this.config.pacotes ?? [], a.pacotes);
+    if (a.metas) this.config.metas = aplicar(this.config.metas ?? [], a.metas);
     this.historico.push({ id: String(this.historico.length), tabela: "config", registroId: "-", acao: "alterou", antes: null, depois: null, autor: "Claude (conector)", em: "" });
   }
   async listarMembros() {
@@ -296,5 +299,25 @@ describe("conector MCP da Aden", () => {
   it("nome inexistente gera erro claro, sem gravar nada", async () => {
     await expect(chamar("salvar_tipo_entrega", { nome: "X", servico: "Inexistente" })).rejects.toThrow(/Serviço "Inexistente" não encontrado/);
     expect(banco.config.tiposEntrega).toHaveLength(0);
+  });
+});
+
+describe("conector: terceiros, pacotes e metas", () => {
+  it("pacote tem preço calculado; meta só com o que foi dito", async () => {
+    await chamar("salvar_socio", { nome: "Moni", percentualPadrao: 100, pisoHoraReais: 60 });
+    await chamar("salvar_servico", { nome: "Social media", divisao: { Moni: 100 } });
+    await chamar("definir_percentuais_empresa", { regraRateio: "igual", reinvestimentoPct: 0, impostoPct: 0, taxaRecebimentoPct: 0 });
+    await chamar("salvar_tipo_entrega", { nome: "Post", servico: "Social media", minutosPorUnidade: 60 });
+    await chamar("salvar_terceiro", { nome: "Audiovisual", valorPorSaidaReais: 300, deslocamentoMedioReais: 50, fraseCliente: "gravação e edição mensal inclusa" });
+    await chamar("salvar_tipo_entrega", { nome: "Gravação", audiovisual: true, terceiro: "Audiovisual" });
+    const p = await chamar("salvar_pacote", { nome: "Padrão", rotina: [{ entrega: "Post", quantidade: 4 }, { entrega: "Gravação", quantidade: 1 }], primeiroMes: [] });
+    expect(p.manutencaoMensal).toBe(590);
+    const [v] = await chamar("ver_pacotes");
+    expect(v.oQueOClienteLe).toContain("gravação e edição mensal inclusa");
+    expect(v.padrao).toBe(true);
+    await chamar("salvar_meta", { nome: "Primeiro degrau", criterio: "faturamento_mensal", alvo: 5000, acao: "primeira terceirização" });
+    const m = await chamar("ver_metas");
+    expect(m.degraus[0]).toMatchObject({ alvo: 5000, atual: 0, conquistada: false, acao: "primeira terceirização" });
+    expect(m.degrauAtual).toBe(1);
   });
 });

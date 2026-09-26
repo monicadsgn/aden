@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { VistaCliente } from "@/components/apresentacao/VistaCliente";
+import { EscolherPacote, VistaPacoteCliente } from "@/components/apresentacao/VistaPacote";
 import { Marca } from "@/components/Marca";
 import { Botao, CampoMoeda, CampoTexto, Selecao, cx } from "@/components/ui";
-import { alternarServico, pacoteQueCabe, vistaApresentacao, type EstadoApresentacao } from "@/lib/calculo/apresentacao";
+import { alternarServico, pacoteQueCabe, vistaApresentacao, vistaPacote, type EstadoApresentacao } from "@/lib/calculo/apresentacao";
+import { frasesParaCliente, pacoteParaCenario, precoDoPacote } from "@/lib/calculo/pacotes";
 import { ajustarQuantidade, calcularCenario } from "@/lib/calculo/motor";
 import { configVazia, duplicarCenario, novoCenario, novoId } from "@/lib/calculo/novo";
 import type { Configuracao, Id } from "@/lib/calculo/tipos";
@@ -37,6 +39,8 @@ export default function Negociacao() {
   const [soTenho, setSoTenho] = useState<number | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [carregado, setCarregado] = useState(false);
+  const [escolhendo, setEscolhendo] = useState(false);
+  const [personalizando, setPersonalizando] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -49,6 +53,9 @@ export default function Negociacao() {
           const cen = recebido.cenarios[0];
           setEstado({ cenario: cen, desligados: {} });
           setNomeCliente(c.clientes.find((x) => x.id === cen.clienteId)?.nome ?? "");
+        } else if ((c.pacotes ?? []).some((p) => p.ativo)) {
+          // primeiro passo: escolher um pacote
+          setEscolhendo(true);
         }
       } finally {
         setCarregado(true);
@@ -58,6 +65,19 @@ export default function Negociacao() {
 
   const vista = useMemo(() => vistaApresentacao(config, estado), [config, estado]);
   const cen = estado.cenario;
+  const pacotesAtivos = (config.pacotes ?? []).filter((p) => p.ativo);
+  const vPacote = useMemo(() => {
+    const p = (config.pacotes ?? []).find((x) => x.ativo && x.id === estado.cenario.pacoteId);
+    return p ? vistaPacote(config, p, estado) : null;
+  }, [config, estado]);
+
+  const escolherPacote = (id: Id) => {
+    const p = pacotesAtivos.find((x) => x.id === id);
+    if (!p) return;
+    setEstado({ cenario: pacoteParaCenario(p, { clienteId: cen.clienteId }), desligados: {} });
+    setPersonalizando(false);
+    setEscolhendo(false);
+  };
 
   const mudarQuantidade = (tipoId: Id, delta: number) => setEstado((e) => ({ ...e, cenario: ajustarQuantidade(e.cenario, tipoId, delta) }));
   const trocarServico = (servicoId: Id) => setEstado((e) => alternarServico(config, e, servicoId));
@@ -137,7 +157,45 @@ export default function Negociacao() {
       </header>
 
       <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6 sm:px-8">
-        <VistaCliente vista={vista} aoMudarQuantidade={mudarQuantidade} aoAlternarServico={trocarServico} />
+        {escolhendo ? (
+          <EscolherPacote
+            pacotes={pacotesAtivos.map((p) => ({
+              id: p.id,
+              nome: p.nome,
+              descricao: p.descricao,
+              frases: frasesParaCliente(config, p, pacoteParaCenario(p)),
+              mensalCentavos: precoDoPacote(config, p).mensalCentavos,
+            }))}
+            aoEscolher={escolherPacote}
+            aoMontarDoZero={() => {
+              setEstado({ cenario: { ...novoCenario("Proposta"), clienteId: cen.clienteId }, desligados: {} });
+              setEscolhendo(false);
+            }}
+          />
+        ) : vPacote ? (
+          <>
+            <VistaPacoteCliente
+              vista={vPacote}
+              personalizando={personalizando}
+              aoPersonalizar={() => setPersonalizando(!personalizando)}
+              aoMudarQuantidade={mudarQuantidade}
+            />
+            {pacotesAtivos.length > 0 && (
+              <button type="button" onClick={() => setEscolhendo(true)} className="self-start text-xs font-semibold text-texto-suave underline hover:text-texto">
+                Trocar de pacote
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <VistaCliente vista={vista} aoMudarQuantidade={mudarQuantidade} aoAlternarServico={trocarServico} />
+            {pacotesAtivos.length > 0 && (
+              <button type="button" onClick={() => setEscolhendo(true)} className="self-start text-xs font-semibold text-texto-suave underline hover:text-texto">
+                Escolher um pacote
+              </button>
+            )}
+          </>
+        )}
 
         <section className="flex flex-col gap-3 rounded-card border border-linha bg-superficie p-5 shadow-card">
           <div className="flex flex-wrap items-end gap-3">

@@ -42,6 +42,7 @@ import {
   DetalhesSemCobranca,
   DetalhesTrafego,
 } from "./Detalhes";
+import { formatarMoeda } from "@/lib/formato";
 import { Badge, Botao, Card, CampoMinutos, CampoMoeda, CampoNumero, CampoPct, CampoTexto, Passo, Rotulo, Segmentado, Selecao, TituloCard, cx } from "../ui";
 
 const CATEGORIAS: { valor: CategoriaCusto; rotulo: string }[] = [
@@ -220,6 +221,46 @@ function EditorCustos({
 
 // ─── Editor completo ────────────────────────────────────────────────────────
 
+/** Terceiros cobrados por saída usados no cenário: o custo entra sozinho; aqui só se ajusta o deslocamento real do cliente. */
+function CustosDeTerceiros({ cenario, config, aoMudar }: { cenario: Cenario; config: Configuracao; aoMudar: (d: Record<string, number | null>) => void }) {
+  const saidas = new Map<string, number>();
+  for (const l of cenario.entregas) {
+    const t = config.tiposEntrega.find((x) => x.id === l.tipoEntregaId);
+    if (t?.terceiroId && (l.quantidade ?? 0) > 0) saidas.set(t.terceiroId, (saidas.get(t.terceiroId) ?? 0) + (l.quantidade ?? 0));
+  }
+  const usados = (config.terceiros ?? []).filter((t) => saidas.has(t.id));
+  if (!usados.length) return null;
+  const desloc = cenario.deslocamentos ?? {};
+  return (
+    <div className="mt-4 flex flex-col gap-2">
+      <p className="text-xs font-bold text-texto-suave">Terceiros (custo por saída, só deste cliente)</p>
+      {usados.map((t) => {
+        const n = saidas.get(t.id)!;
+        const d = desloc[t.id] ?? t.deslocamentoMedioCentavos;
+        const total = n * ((t.valorPorSaidaCentavos ?? 0) + (d ?? 0));
+        return (
+          <div key={t.id} className="grid items-end gap-3 rounded-bloco bg-superficie-2/60 p-3 sm:grid-cols-[1fr_12rem]">
+            <div className="text-[13px]">
+              <p className="font-semibold">{t.nome}</p>
+              <p className="text-[11px] text-texto-suave">
+                {n} saída{n === 1 ? "" : "s"} × ({t.valorPorSaidaCentavos != null ? formatarMoeda(t.valorPorSaidaCentavos) : "valor vazio"} +{" "}
+                {d != null ? formatarMoeda(d) : "deslocamento vazio"}) = <strong className="text-texto">{formatarMoeda(total)}</strong> por mês
+              </p>
+            </div>
+            <CampoMoeda
+              rotulo="Deslocamento real deste cliente"
+              placeholder={t.deslocamentoMedioCentavos != null ? `médio: ${formatarMoeda(t.deslocamentoMedioCentavos)}` : "vazio"}
+              valor={desloc[t.id] ?? null}
+              aoMudar={(v) => aoMudar({ ...desloc, [t.id]: v })}
+            />
+          </div>
+        );
+      })}
+      <p className="text-[11px] text-texto-suave">Cliente longe custa mais deslocamento. Vazio = usa o médio de Configurações → Terceiros.</p>
+    </div>
+  );
+}
+
 function Secao({ children }: { children: ReactNode }) {
   return <div className="px-5 pb-5">{children}</div>;
 }
@@ -360,6 +401,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         />
         <Secao>
           <EditorCustos linhas={cenario.custos} config={config} aoMudar={(custos) => set({ custos })} />
+          <CustosDeTerceiros cenario={cenario} config={config} aoMudar={(deslocamentos) => set({ deslocamentos })} />
         </Secao>
       </Card>
 

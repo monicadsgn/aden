@@ -195,6 +195,14 @@ export class RepositorioLocal implements Repositorio {
     b.config.tiposEntrega = aplicar(b, "tipos_entrega", b.config.tiposEntrega, a.tiposEntrega);
     b.config.custosFixos = aplicar(b, "custos_fixos", b.config.custosFixos, a.custosFixos);
     b.config.clientes = aplicar(b, "clientes", b.config.clientes, a.clientes);
+    if (a.terceiros) b.config.terceiros = aplicar(b, "terceiros", b.config.terceiros ?? [], a.terceiros);
+    if (a.pacotes) {
+      // só um pacote padrão
+      const padrao = a.pacotes.salvar.find((p) => p.padrao);
+      if (padrao) b.config.pacotes = (b.config.pacotes ?? []).map((p) => (p.id !== padrao.id && p.padrao ? { ...p, padrao: false } : p));
+      b.config.pacotes = aplicar(b, "pacotes", b.config.pacotes ?? [], a.pacotes);
+    }
+    if (a.metas) b.config.metas = aplicar(b, "metas", b.config.metas ?? [], a.metas);
 
     let pedido: ResultadoPedido | null = null;
     if (sep.itens.length)

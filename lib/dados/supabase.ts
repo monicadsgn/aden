@@ -6,7 +6,7 @@ import type { Medicao } from "../calculo/calibragem";
 import type { Tarefa } from "../calculo/tarefas";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
-import type { Cenario, ClienteBase, Configuracao, CustoFixo, Pessoa, ResultadoCenario, Servico, TipoEntrega } from "../calculo/tipos";
+import type { Cenario, ClienteBase, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
 import { separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
 import { avisosDaMudanca } from "./acoes";
 import type {
@@ -100,7 +100,7 @@ export class RepositorioSupabase implements Repositorio {
 
   async carregarConfig(): Promise<Configuracao> {
     const org = await this.org();
-    const [emp, pes, ser, div, tip, cus, cli, con] = await Promise.all([
+    const [emp, pes, ser, div, tip, cus, cli, con, ter, pac, met] = await Promise.all([
       this.sb.from("configuracoes_empresa").select("*").eq("org_id", org).maybeSingle(),
       this.sb.from("pessoas").select("*").eq("org_id", org).order("ordem"),
       this.sb.from("servicos").select("*").eq("org_id", org).order("ordem"),
@@ -109,8 +109,11 @@ export class RepositorioSupabase implements Repositorio {
       this.sb.from("custos_fixos").select("*").eq("org_id", org).order("nome"),
       this.sb.from("clientes").select("*").eq("org_id", org).order("nome"),
       this.sb.from("contratos").select("*").eq("org_id", org).eq("status", "ativo"),
+      this.sb.from("terceiros").select("*").eq("org_id", org).order("ordem"),
+      this.sb.from("pacotes").select("*").eq("org_id", org).order("ordem"),
+      this.sb.from("metas").select("*").eq("org_id", org).order("ordem"),
     ]);
-    for (const r of [emp, pes, ser, div, tip, cus, cli, con]) erro(r.error);
+    for (const r of [emp, pes, ser, div, tip, cus, cli, con, ter, pac, met]) erro(r.error);
 
     const e = emp.data as Linha | null;
     const divisoes = (div.data ?? []) as Linha[];
@@ -160,6 +163,7 @@ export class RepositorioSupabase implements Repositorio {
         audiovisual: (t.audiovisual as boolean) ?? false,
         ativo: t.ativo as boolean,
         calibrarDesde: (t.calibrar_desde as string) ?? null,
+        terceiroId: (t.terceiro_id as string) ?? null,
       })),
       custosFixos: ((cus.data ?? []) as Linha[]).map((c) => ({
         id: c.id as string,
@@ -179,6 +183,33 @@ export class RepositorioSupabase implements Repositorio {
           escopo: (contrato?.escopo as Cenario | null) ?? null,
         };
       }),
+      terceiros: ((ter.data ?? []) as Linha[]).map((t) => ({
+        id: t.id as string,
+        nome: t.nome as string,
+        inclui: (t.inclui as string) ?? "",
+        fraseCliente: (t.frase_cliente as string) ?? "",
+        valorPorSaidaCentavos: num(t.valor_por_saida_centavos),
+        deslocamentoMedioCentavos: num(t.deslocamento_medio_centavos),
+        ativo: t.ativo as boolean,
+      })),
+      pacotes: ((pac.data ?? []) as Linha[]).map((p) => ({
+        id: p.id as string,
+        nome: p.nome as string,
+        descricao: (p.descricao as string) ?? "",
+        itensCliente: Array.isArray(p.itens_cliente) ? (p.itens_cliente as string[]) : [],
+        rotina: Array.isArray(p.rotina) ? (p.rotina as Pacote["rotina"]) : [],
+        entrada: Array.isArray(p.entrada) ? (p.entrada as Pacote["entrada"]) : [],
+        padrao: (p.padrao as boolean) ?? false,
+        ativo: p.ativo as boolean,
+      })),
+      metas: ((met.data ?? []) as Linha[]).map((m) => ({
+        id: m.id as string,
+        nome: m.nome as string,
+        criterio: (m.criterio as Meta["criterio"]) ?? null,
+        alvo: num(m.alvo),
+        acao: (m.acao as string) ?? "",
+        conquistadaEm: (m.conquistada_em as string) ?? null,
+      })),
     };
   }
 
@@ -273,6 +304,22 @@ export class RepositorioSupabase implements Repositorio {
       }
     }
 
+    // terceiros antes dos tipos de entrega (o tipo aponta para o terceiro)
+    await this.upsert(
+      "terceiros",
+      (a.terceiros?.salvar ?? []).map((t: Terceiro, i) => ({
+        id: t.id,
+        org_id,
+        nome: t.nome,
+        inclui: t.inclui || null,
+        frase_cliente: t.fraseCliente || null,
+        valor_por_saida_centavos: t.valorPorSaidaCentavos,
+        deslocamento_medio_centavos: t.deslocamentoMedioCentavos,
+        ativo: t.ativo,
+        ordem: i,
+      })),
+    );
+
     await this.upsert(
       "tipos_entrega",
       a.tiposEntrega.salvar.map((t: TipoEntrega, i) => ({
@@ -284,6 +331,7 @@ export class RepositorioSupabase implements Repositorio {
         audiovisual: t.audiovisual ?? false,
         ativo: t.ativo,
         calibrar_desde: t.calibrarDesde ?? null,
+        terceiro_id: t.terceiroId ?? null,
         ordem: i,
       })),
     );
@@ -332,10 +380,48 @@ export class RepositorioSupabase implements Repositorio {
       }
     }
 
+    // só um pacote padrão: desmarca antes de marcar outro (índice único)
+    const novoPadrao = (a.pacotes?.salvar ?? []).find((p) => p.padrao);
+    if (novoPadrao) {
+      const r = await this.sb.from("pacotes").update({ padrao: false }).eq("org_id", org_id).eq("padrao", true).neq("id", novoPadrao.id);
+      erro(r.error);
+    }
+    await this.upsert(
+      "pacotes",
+      (a.pacotes?.salvar ?? []).map((p: Pacote, i) => ({
+        id: p.id,
+        org_id,
+        nome: p.nome,
+        descricao: p.descricao || null,
+        itens_cliente: p.itensCliente,
+        rotina: p.rotina,
+        entrada: p.entrada,
+        padrao: p.padrao,
+        ativo: p.ativo,
+        ordem: i,
+      })),
+    );
+    await this.upsert(
+      "metas",
+      (a.metas?.salvar ?? []).map((m: Meta, i) => ({
+        id: m.id,
+        org_id,
+        nome: m.nome,
+        criterio: m.criterio,
+        alvo: m.alvo,
+        acao: m.acao || null,
+        conquistada_em: m.conquistadaEm,
+        ordem: i,
+      })),
+    );
+
     // remoções por último, na ordem inversa das dependências
+    await this.remover("metas", a.metas?.remover ?? []);
+    await this.remover("pacotes", a.pacotes?.remover ?? []);
     await this.remover("clientes", a.clientes.remover);
     await this.remover("custos_fixos", a.custosFixos.remover);
     await this.remover("tipos_entrega", a.tiposEntrega.remover);
+    await this.remover("terceiros", a.terceiros?.remover ?? []);
     await this.remover("servicos", a.servicos.remover);
     await this.remover("pessoas", a.pessoas.remover);
   }

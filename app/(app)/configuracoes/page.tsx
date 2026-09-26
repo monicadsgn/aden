@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  Package,
+  Trophy,
+  Truck,
   Building2,
   Check,
   Clock3,
@@ -23,6 +26,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { TrocarFoto } from "@/components/Avatar";
 import { OQueQuerDizer } from "@/components/Alertas";
+import { SecaoMetas, SecaoPacotes, SecaoTerceiros } from "@/components/configuracoes/SecoesNovas";
 import { CabecalhoPagina } from "@/components/Shell";
 import {
   Badge,
@@ -60,6 +64,9 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "servicos", rotulo: "Serviços", icone: Layers, frase: "O que a Aden vende e quem executa as horas de cada serviço." },
   { id: "tipos", rotulo: "Tipos de entrega", icone: Shapes, frase: "Quanto tempo leva cada entrega (post, carrossel, roteiro…). É a base de todas as horas." },
   { id: "custos", rotulo: "Custos fixos", icone: Building2, frase: "O que a empresa paga todo mês, tenha cliente ou não. É dividido entre os clientes." },
+  { id: "terceiros", rotulo: "Terceiros", icone: Truck, frase: "Serviços terceirizados cobrados por saída (ex.: audiovisual). Custo só do cliente que recebe." },
+  { id: "pacotes", rotulo: "Pacotes", icone: Package, frase: "Pacotes fechados para a negociação. O preço sai do cálculo, nunca digitado." },
+  { id: "metas", rotulo: "Metas", icone: Trophy, frase: "A trilha de crescimento em degraus, com a ação de cada degrau. Aparece na Visão do mês." },
   { id: "regras", rotulo: "Regras da empresa", icone: Scale, frase: "Regime e imposto, como dividir o custo fixo, reinvestimento, taxas e como distribuir cada pagamento." },
   { id: "limites", rotulo: "Limites e avisos", icone: Gauge, frase: "Quando o sistema acende um alerta. Vazio = sem aviso." },
   { id: "clientes", rotulo: "Clientes", icone: Receipt, frase: "Clientes ativos e o valor mensal de cada um. É a base do rateio e da visão do mês." },
@@ -165,6 +172,9 @@ export default function Configuracoes() {
       tiposEntrega: diferenca(original.tiposEntrega, rascunho.tiposEntrega),
       custosFixos: diferenca(original.custosFixos, rascunho.custosFixos),
       clientes: diferenca(original.clientes, rascunho.clientes),
+      terceiros: diferenca(original.terceiros ?? [], rascunho.terceiros ?? []),
+      pacotes: diferenca(original.pacotes ?? [], rascunho.pacotes ?? []),
+      metas: diferenca(original.metas ?? [], rascunho.metas ?? []),
     }),
     [original, rascunho],
   );
@@ -482,12 +492,22 @@ export default function Configuracoes() {
                       </Alvo>
                     )}
                     <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label="Remover tipo" onClick={() => set({ tiposEntrega: rascunho.tiposEntrega.filter((x) => x.id !== t.id) })} />
-                    <div className="col-span-full">
+                    <div className="col-span-full flex flex-wrap items-center gap-x-5 gap-y-2">
                       <Interruptor
                         ligado={!!t.audiovisual}
                         rotulo="Vídeo de terceiro (edição, motion, legenda, corte): não gera horas"
                         aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { audiovisual: v }) })}
                       />
+                      {(rascunho.terceiros ?? []).length > 0 && (
+                        <Selecao
+                          className="w-full sm:w-72"
+                          ariaLabel="Feito por terceiro que cobra por saída"
+                          valor={t.terceiroId ?? null}
+                          vazio="Não é cobrado por saída"
+                          opcoes={(rascunho.terceiros ?? []).map((x) => ({ valor: x.id, rotulo: `Cada unidade = 1 saída de ${x.nome || "terceiro"}` }))}
+                          aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { terceiroId: v }) })}
+                        />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -533,6 +553,10 @@ export default function Configuracoes() {
                 </div>
               </div>
             )}
+
+            {secao === "terceiros" && <SecaoTerceiros rascunho={rascunho} set={set} />}
+            {secao === "pacotes" && <SecaoPacotes rascunho={rascunho} set={set} />}
+            {secao === "metas" && <SecaoMetas rascunho={rascunho} set={set} />}
 
             {secao === "regras" && (
               <div className="flex flex-col gap-5">

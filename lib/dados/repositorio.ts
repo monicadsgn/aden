@@ -9,7 +9,7 @@ import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Tarefa } from "../calculo/tarefas";
-import type { Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Pessoa, ResultadoCenario, Servico, TipoEntrega } from "../calculo/tipos";
+import type { Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
 import type { ItemProtegido } from "../regras/aprovacao";
 
 export interface Usuario {
@@ -130,6 +130,9 @@ export interface AlteracoesConfig {
   tiposEntrega: { salvar: TipoEntrega[]; remover: string[] };
   custosFixos: { salvar: CustoFixo[]; remover: string[] };
   clientes: { salvar: ClienteBase[]; remover: string[] };
+  terceiros?: { salvar: Terceiro[]; remover: string[] };
+  pacotes?: { salvar: Pacote[]; remover: string[] };
+  metas?: { salvar: Meta[]; remover: string[] };
 }
 
 export interface Repositorio {
@@ -206,6 +209,8 @@ export function diferenca<T extends { id: string }>(antes: T[], depois: T[]): { 
 export function temAlteracoes(a: AlteracoesConfig): boolean {
   return (
     !!a.empresa ||
-    [a.pessoas, a.servicos, a.tiposEntrega, a.custosFixos, a.clientes].some((d) => d.salvar.length > 0 || d.remover.length > 0)
+    ([a.pessoas, a.servicos, a.tiposEntrega, a.custosFixos, a.clientes, a.terceiros, a.pacotes, a.metas] as ({ salvar: unknown[]; remover: string[] } | undefined)[])
+      .filter((d) => !!d)
+      .some((d) => d!.salvar.length > 0 || d!.remover.length > 0)
   );
 }

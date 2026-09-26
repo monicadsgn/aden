@@ -20,6 +20,7 @@ import type {
   CategoriaCusto,
   Cenario,
   Configuracao,
+  Terceiro,
   Encaixe,
   EncaixeTipo,
   Id,
@@ -121,6 +122,7 @@ function somarCustos(
   config: Configuracao,
   alertas: Alerta[],
   prefixo: string,
+  deslocamentos?: Record<Id, number | null>,
 ): Record<CategoriaCusto, number> {
   const tot = custosVazios();
   for (const c of custos) {
@@ -144,7 +146,48 @@ function somarCustos(
       tot[c.categoria] += valor * (quantidades.get(c.tipoEntregaId) ?? 0);
     }
   }
+  for (const [tipoId, qtd] of quantidades) {
+    const t = custoTerceiroPorSaida(config, tipoId, deslocamentos, alertas, prefixo);
+    if (t && qtd > 0) tot[t.categoria] += qtd * t.porSaidaCentavos;
+  }
   return tot;
+}
+
+/**
+ * Terceiro que cobra por saída (ex.: audiovisual): cada unidade da entrega é uma saída.
+ * custo da saída = valor por saída + deslocamento (o real do cliente, ou o médio do terceiro).
+ * É custo do cliente que recebe a gravação, nunca rateado.
+ */
+export function custoTerceiroPorSaida(
+  config: Configuracao,
+  tipoId: Id,
+  deslocamentos: Record<Id, number | null> | undefined,
+  alertas: Alerta[] | null,
+  prefixo = "",
+): { categoria: CategoriaCusto; porSaidaCentavos: number; terceiro: Terceiro } | null {
+  const tipo = config.tiposEntrega.find((t) => t.id === tipoId);
+  const terc = tipo?.terceiroId ? (config.terceiros ?? []).find((x) => x.id === tipo.terceiroId) : undefined;
+  if (!tipo || !terc) return null;
+  if (terc.valorPorSaidaCentavos == null)
+    alertas?.push({
+      nivel: "erro",
+      texto: `${prefixo}"${tipo.nome}" é feito por ${terc.nome}, mas o valor por saída não foi preenchido: o custo ficou de fora.`,
+      explica: `Cada ${tipo.nome.toLowerCase()} é uma saída do terceiro, e cada saída tem um preço. Ex.: R$ 300 por saída + R$ 40 de Uber = R$ 340 por mês para 1 saída. Sem o valor, o resultado parece melhor do que é.`,
+      acao: { rotulo: "Preencher o valor por saída", destino: { tipo: "config", secao: "terceiros" } },
+    });
+  const desloc = deslocamentos?.[terc.id] ?? terc.deslocamentoMedioCentavos;
+  if (desloc == null)
+    alertas?.push({
+      nivel: "lembrete",
+      texto: `${prefixo}Deslocamento de ${terc.nome} não preenchido: contado como R$ 0 por saída.`,
+      explica: "É o gasto para o terceiro chegar até o cliente (Uber, gasolina). Ex.: R$ 40 por saída. Preencha o médio em Terceiros, ou o real deste cliente no bloco de custos.",
+      acao: { rotulo: "Preencher o deslocamento", destino: { tipo: "config", secao: "terceiros" } },
+    });
+  return {
+    categoria: tipo.audiovisual ? "audiovisual" : "terceiro",
+    porSaidaCentavos: v0(terc.valorPorSaidaCentavos) + v0(desloc),
+    terceiro: terc,
+  };
 }
 
 interface LinhaHoras {
@@ -263,7 +306,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
 
   // Horas: entregas do mês + pontuais diluídos
   const linhasHoras = horasDasEntregas(cenario.entregas, config, 1, alertas, "");
-  const custosCat = somarCustos(cenario.custos, quantidadesPorTipo(cenario.entregas), config, alertas, "");
+  const custosCat = somarCustos(cenario.custos, quantidadesPorTipo(cenario.entregas), config, alertas, "", cenario.deslocamentos);
   let custoPontualDiluido = 0;
 
   if (!opcoes.ignorarPontuais) {
@@ -290,7 +333,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       }
       const pref = `${nome}: `;
       linhasHoras.push(...horasDasEntregas(p.entregas, config, p.meses, alertas, pref));
-      const c = somarCustos(p.custos, quantidadesPorTipo(p.entregas), config, alertas, pref);
+      const c = somarCustos(p.custos, quantidadesPorTipo(p.entregas), config, alertas, pref, cenario.deslocamentos);
       custoPontualDiluido += somaCategorias(c) / p.meses;
     }
   }
@@ -957,6 +1000,8 @@ function alertasAudiovisualBloco(config: Configuracao, entregas: LinhaEntrega[],
   for (const [tipoId, qtd] of quantidadesPorTipo(entregas)) {
     const tipo = config.tiposEntrega.find((t) => t.id === tipoId);
     if (!tipo?.audiovisual || qtd <= 0) continue;
+    // feito por terceiro cadastrado: o custo vem do valor por saída
+    if (tipo.terceiroId && (config.terceiros ?? []).some((t) => t.id === tipo.terceiroId)) continue;
     const temPorEntrega = custos.some(
       (c) => c.categoria === "audiovisual" && c.forma === "por_entrega" && c.tipoEntregaId === tipoId && v0(c.valorCentavos) > 0,
     );

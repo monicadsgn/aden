@@ -51,6 +51,67 @@ export interface TipoEntrega {
   ativo: boolean;
   /** medições do cronômetro antes desta data não contam (recalibrar quando o processo muda) */
   calibrarDesde?: string | null;
+  /**
+   * Entrega feita por um terceiro que cobra por saída (ex.: gravação). Cada unidade é uma
+   * saída: custo = quantidade × (valor por saída + deslocamento). Custo só do cliente, nunca rateado.
+   */
+  terceiroId?: Id | null;
+}
+
+/** Serviço terceirizado cobrado por saída (ex.: audiovisual: vai ao cliente, grava, edita e entrega). */
+export interface Terceiro {
+  id: Id;
+  /** nome do serviço (ex.: Audiovisual); não precisa do nome da pessoa */
+  nome: string;
+  /** o que inclui (interno), ex.: gravação e edição */
+  inclui: string;
+  /** o que o cliente lê na negociação, ex.: "gravação e edição mensal inclusa". Nunca o valor. */
+  fraseCliente: string;
+  valorPorSaidaCentavos: Centavos;
+  /** deslocamento médio estimado por saída (o escopo de cada cliente pode trocar pelo real) */
+  deslocamentoMedioCentavos: Centavos;
+  ativo: boolean;
+}
+
+/** Uma entrega do pacote: tipo e quantidade (null = a confirmar). */
+export interface ItemPacote {
+  tipoEntregaId: Id;
+  quantidade: number | null;
+}
+
+/**
+ * Pacote fechado para a negociação. Horas e preço nunca são digitados: saem do cálculo
+ * (rotina → mensalidade mínima; entrada → valor do primeiro mês).
+ */
+export interface Pacote {
+  id: Id;
+  nome: string;
+  /** descrição em linguagem de cliente */
+  descricao: string;
+  /** o que está incluso, em frases simples (o cliente não vê quantidades nem horas) */
+  itensCliente: string[];
+  /** manutenção mensal */
+  rotina: ItemPacote[];
+  /** primeiro mês (entrada: onboarding, enxoval, estrutura visual) */
+  entrada: ItemPacote[];
+  /** o pacote de referência para "cabem mais N clientes" */
+  padrao: boolean;
+  ativo: boolean;
+}
+
+export type CriterioMeta = "faturamento_mensal" | "clientes" | "recebido_socio" | "uso_capacidade";
+
+/** Degrau da trilha de crescimento. Os sócios definem; o sistema nunca cadastra sozinho. */
+export interface Meta {
+  id: Id;
+  nome: string;
+  criterio: CriterioMeta | null;
+  /** faturamento e recebido: centavos; clientes: quantidade; uso da capacidade: % */
+  alvo: number | null;
+  /** o que fazer ao chegar lá, em texto livre (ex.: "primeira terceirização") */
+  acao: string;
+  /** quando o degrau foi batido pela primeira vez */
+  conquistadaEm: string | null;
 }
 
 export interface CustoFixo {
@@ -119,6 +180,10 @@ export interface Configuracao {
   tiposEntrega: TipoEntrega[];
   custosFixos: CustoFixo[];
   clientes: ClienteBase[];
+  terceiros?: Terceiro[];
+  pacotes?: Pacote[];
+  /** trilha de metas, na ordem dos degraus */
+  metas?: Meta[];
 }
 
 // ─── Cenário ────────────────────────────────────────────────────────────────
@@ -231,6 +296,10 @@ export interface Cenario {
   suspensaoSemCobranca?: SuspensaoSemCobranca | null;
   horizonteMeses: number | null;
   sobreposicoes: Sobreposicoes;
+  /** deslocamento real deste cliente por saída, por terceiro (vazio = usa o médio do terceiro) */
+  deslocamentos?: Record<Id, number | null>;
+  /** pacote de onde o cenário saiu (para mostrar a diferença na negociação) */
+  pacoteId?: Id | null;
 }
 
 // ─── Resultado ──────────────────────────────────────────────────────────────
@@ -241,7 +310,7 @@ export interface Cenario {
  */
 export type NivelAlerta = "erro" | "aviso" | "lembrete" | "info";
 
-export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "regras" | "limites" | "clientes";
+export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "metas" | "regras" | "limites" | "clientes";
 
 /** Onde se resolve o alerta: um campo das configurações ou um bloco do cenário. */
 export type DestinoAlerta = { tipo: "config"; secao: SecaoConfig; campo?: string } | { tipo: "cenario"; bloco: string };

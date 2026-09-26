@@ -14,8 +14,10 @@ import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
 import { calcularSolucoes } from "../calculo/solucoes";
+import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
+import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } from "../calculo/pacotes";
 import { estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, rotuloStatus, type Tarefa } from "../calculo/tarefas";
-import type { Configuracao } from "../calculo/tipos";
+import type { Configuracao, Meta, Pacote } from "../calculo/tipos";
 import { descreverItem, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
 import { REGRAS_PROTECAO } from "../regras/aprovacao";
@@ -55,6 +57,9 @@ Regras que você deve seguir:
 - Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist)
   e mudar_status_tarefa. O cronômetro fica DENTRO da tarefa (botão Start no site); você não liga relógio, mas pode
   registrar um tempo que a pessoa disse com registrar_medicao. ver_calibragem mostra a média medida.
+- Pacotes: ver_pacotes mostra os preços CALCULADOS (nunca digitados). salvar_pacote só guarda o que é entregue.
+- Terceiros (salvar_terceiro): custo por saída + deslocamento, só do cliente que recebe; o cliente nunca vê o valor.
+- Metas (ver_metas, salvar_meta): trilha de crescimento em degraus. Só cadastre metas que os sócios definiram.
 - Sem regra de rateio (com custo fixo cadastrado) a calculadora não calcula: diga o motivo, não invente o resultado.
 - Antes de alterar configurações, confirme com quem está conversando o que vai mudar.
 - Tudo o que você alterar fica registrado no Histórico com o seu nome.
@@ -83,6 +88,9 @@ async function salvarDiferenca(repo: RepositorioSupabase, antes: Configuracao, d
     tiposEntrega: diferenca(antes.tiposEntrega, depois.tiposEntrega),
     custosFixos: diferenca(antes.custosFixos, depois.custosFixos),
     clientes: diferenca(antes.clientes, depois.clientes),
+    terceiros: diferenca(antes.terceiros ?? [], depois.terceiros ?? []),
+    pacotes: diferenca(antes.pacotes ?? [], depois.pacotes ?? []),
+    metas: diferenca(antes.metas ?? [], depois.metas ?? []),
   };
   if (!temAlteracoes(alt)) return "Nada mudou.";
   const r = await repo.salvarConfig(alt);
@@ -267,10 +275,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         minutosPorUnidade: opt(z.number(), "tempo por entrega, em minutos (campo protegido)"),
         horasPorUnidade: opt(z.number(), "tempo por entrega em horas (prefira minutosPorUnidade)"),
         audiovisual: z.boolean().optional(),
+        terceiro: opt(z.string(), "terceiro que cobra por saída (nome ou id): cada unidade = 1 saída"),
         ativo: z.boolean().optional(),
       },
     },
-    async ({ id, servico, minutosPorUnidade, ...resto }) =>
+    async ({ id, servico, minutosPorUnidade, terceiro, ...resto }) =>
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
@@ -278,6 +287,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
           ...resto,
           ...(minutosPorUnidade !== undefined ? { horasPorUnidade: minutosPorUnidade == null ? null : minutosPorUnidade / 60 } : {}),
           ...(servico !== undefined ? { servicoId: servico == null ? null : resolver(antes.servicos, servico, "Serviço").id } : {}),
+          ...(terceiro !== undefined ? { terceiroId: terceiro == null ? null : resolver(antes.terceiros ?? [], terceiro, "Terceiro").id } : {}),
         };
         let tiposEntrega;
         if (id) {
@@ -652,6 +662,196 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         const alvo = resolver(await repo.listarSimulacoes(), id, "Simulação");
         await repo.removerSimulacao(alvo.id);
         return { removida: alvo.nome };
+      }),
+  );
+
+  // ─── Terceiros, pacotes e metas ───────────────────────────────────────────
+
+  server.registerTool(
+    "salvar_terceiro",
+    {
+      title: "Criar ou alterar terceiro (cobrado por saída)",
+      description:
+        "Serviço terceirizado cobrado por saída (ex.: Audiovisual: grava e edita). Custo do cliente = saídas × (valor por saída + deslocamento). Nunca rateado. Só grave valores que a pessoa disse. Ligue a um tipo de entrega com salvar_tipo_entrega (terceiro).",
+      inputSchema: {
+        id: z.string().optional().describe("id ou nome do terceiro a alterar; vazio = novo"),
+        nome: z.string().optional(),
+        inclui: z.string().optional(),
+        fraseCliente: z.string().optional().describe("o que o cliente lê, ex.: gravação e edição mensal inclusa"),
+        valorPorSaidaReais: opt(z.number(), "valor por saída em reais"),
+        deslocamentoMedioReais: opt(z.number(), "deslocamento médio por saída em reais"),
+        ativo: z.boolean().optional(),
+      },
+    },
+    async ({ id, valorPorSaidaReais, deslocamentoMedioReais, ...resto }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const antes = await repo.carregarConfig();
+        const lista = antes.terceiros ?? [];
+        const patch = {
+          ...resto,
+          ...(valorPorSaidaReais !== undefined ? { valorPorSaidaCentavos: paraCentavos(valorPorSaidaReais) } : {}),
+          ...(deslocamentoMedioReais !== undefined ? { deslocamentoMedioCentavos: paraCentavos(deslocamentoMedioReais) } : {}),
+        };
+        let terceiros;
+        if (id) {
+          const alvo = resolver(lista, id, "Terceiro");
+          terceiros = lista.map((t) => (t.id === alvo.id ? aplicar(t, patch) : t));
+        } else {
+          if (!resto.nome) throw new Error("Informe o nome do serviço terceirizado.");
+          terceiros = [
+            ...lista,
+            aplicar({ id: novoId(), nome: resto.nome, inclui: "", fraseCliente: "", valorPorSaidaCentavos: null, deslocamentoMedioCentavos: null, ativo: true }, patch),
+          ];
+        }
+        return salvarDiferenca(repo, antes, { ...antes, terceiros });
+      }),
+  );
+
+  server.registerTool(
+    "ver_pacotes",
+    {
+      title: "Pacotes e preços calculados",
+      description:
+        "Pacotes fechados da negociação: frases que o cliente lê, entregas (rotina e primeiro mês) e os preços CALCULADOS (manutenção mensal e primeiro mês). Preço nunca é digitado.",
+      inputSchema: {},
+    },
+    async () =>
+      executar(async () => {
+        const config = await (await obterRepo()).carregarConfig();
+        const nome = (id: string) => config.tiposEntrega.find((t) => t.id === id)?.nome ?? id;
+        return (config.pacotes ?? []).map((p) => {
+          const preco = precoDoPacote(config, p);
+          return {
+            id: p.id,
+            nome: p.nome,
+            padrao: p.padrao,
+            ativo: p.ativo,
+            descricao: p.descricao,
+            oQueOClienteLe: frasesParaCliente(config, p, pacoteParaCenario(p)),
+            rotinaMensal: p.rotina.map((i) => ({ entrega: nome(i.tipoEntregaId), quantidade: i.quantidade })),
+            primeiroMes: p.entrada.map((i) => ({ entrega: nome(i.tipoEntregaId), quantidade: i.quantidade ?? "a confirmar" })),
+            manutencaoMensal: paraReais(preco.mensalCentavos),
+            primeiroMesValor: preco.entradaAConfirmar ? "a confirmar (faltam quantidades)" : paraReais(preco.entradaCentavos),
+            motivoSemPreco: preco.motivo,
+          };
+        });
+      }),
+  );
+
+  server.registerTool(
+    "salvar_pacote",
+    {
+      title: "Criar ou alterar pacote",
+      description:
+        "Pacote fechado para a negociação: nome, descrição para o cliente, frases do que está incluso e as entregas (rotina mensal e primeiro mês). NÃO existe campo de preço: sai do cálculo. Quantidade null = a confirmar. Listas enviadas substituem as antigas.",
+      inputSchema: {
+        id: z.string().optional().describe("id ou nome do pacote a alterar; vazio = novo"),
+        nome: z.string().optional(),
+        descricao: z.string().optional(),
+        frasesCliente: z.array(z.string()).optional(),
+        rotina: z.array(z.object({ entrega: z.string(), quantidade: z.number().nonnegative().nullable() })).optional(),
+        primeiroMes: z.array(z.object({ entrega: z.string(), quantidade: z.number().nonnegative().nullable() })).optional(),
+        padrao: z.boolean().optional(),
+        ativo: z.boolean().optional(),
+      },
+    },
+    async ({ id, nome, descricao, frasesCliente, rotina, primeiroMes, padrao, ativo }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const antes = await repo.carregarConfig();
+        const lista = antes.pacotes ?? [];
+        const itens = (l: { entrega: string; quantidade: number | null }[]) =>
+          l.map((i) => ({ tipoEntregaId: resolver(antes.tiposEntrega, i.entrega, "Tipo de entrega").id, quantidade: i.quantidade }));
+        const alvo = id ? resolver(lista, id, "Pacote") : null;
+        if (!alvo && !nome) throw new Error("Informe o nome do pacote novo.");
+        const base: Pacote = alvo ?? { id: novoId(), nome: nome!, descricao: "", itensCliente: [], rotina: [], entrada: [], padrao: lista.length === 0, ativo: true };
+        const novo: Pacote = {
+          ...base,
+          ...(nome != null && { nome }),
+          ...(descricao != null && { descricao }),
+          ...(frasesCliente && { itensCliente: frasesCliente }),
+          ...(rotina && { rotina: itens(rotina) }),
+          ...(primeiroMes && { entrada: itens(primeiroMes) }),
+          ...(padrao != null && { padrao }),
+          ...(ativo != null && { ativo }),
+        };
+        const pacotes = alvo ? lista.map((p) => (p.id === alvo.id ? novo : novo.padrao ? { ...p, padrao: false } : p)) : [...lista.map((p) => (novo.padrao ? { ...p, padrao: false } : p)), novo];
+        await salvarDiferenca(repo, antes, { ...antes, pacotes });
+        const preco = precoDoPacote({ ...antes, pacotes }, novo);
+        return { salvo: novo.nome, manutencaoMensal: paraReais(preco.mensalCentavos), primeiroMes: preco.entradaAConfirmar ? "a confirmar" : paraReais(preco.entradaCentavos) };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_meta",
+    {
+      title: "Criar ou alterar degrau da trilha de metas",
+      description:
+        "Degrau da trilha de crescimento (Visão do mês). SÓ cadastre metas que os sócios definiram na conversa; nunca invente. Critério: faturamento_mensal (alvo em reais), clientes (quantidade), recebido_socio (reais por sócio no mês), uso_capacidade (%). A ordem é a da lista (posicao começa em 1).",
+      inputSchema: {
+        id: z.string().optional().describe("id ou nome do degrau a alterar; vazio = novo"),
+        nome: z.string().optional(),
+        criterio: z.enum(["faturamento_mensal", "clientes", "recebido_socio", "uso_capacidade"]).optional(),
+        alvo: z.number().positive().optional().describe("reais, quantidade de clientes ou %"),
+        acao: z.string().optional().describe("o que fazer ao chegar lá"),
+        posicao: z.number().int().positive().optional(),
+      },
+    },
+    async ({ id, nome, criterio, alvo, acao, posicao }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const antes = await repo.carregarConfig();
+        let lista = [...(antes.metas ?? [])];
+        const existente = id ? resolver(lista, id, "Meta") : null;
+        if (!existente && !nome) throw new Error("Informe o nome do degrau.");
+        const crit = criterio ?? existente?.criterio ?? null;
+        const alvoInterno = alvo === undefined ? undefined : crit && unidadeDoCriterio(crit) === "moeda" ? paraCentavos(alvo) : alvo;
+        const m: Meta = {
+          ...(existente ?? { id: novoId(), nome: nome!, criterio: null, alvo: null, acao: "", conquistadaEm: null }),
+          ...(nome != null && { nome }),
+          ...(criterio != null && { criterio }),
+          ...(alvoInterno !== undefined && { alvo: alvoInterno }),
+          ...(acao != null && { acao }),
+        };
+        lista = lista.filter((x) => x.id !== m.id);
+        const pos = posicao != null ? Math.min(posicao - 1, lista.length) : existente ? (antes.metas ?? []).findIndex((x) => x.id === m.id) : lista.length;
+        lista.splice(pos, 0, m);
+        return salvarDiferenca(repo, antes, { ...antes, metas: lista });
+      }),
+  );
+
+  server.registerTool(
+    "ver_metas",
+    {
+      title: "Trilha de metas",
+      description: "Degraus da trilha de crescimento: valor atual, alvo, progresso, quanto falta, conquistados (com data), o degrau atual e quantos clientes do pacote padrão ainda cabem.",
+      inputSchema: {},
+    },
+    async () =>
+      executar(async () => {
+        const config = await (await obterRepo()).carregarConfig();
+        const visao = calcularVisaoMes(config);
+        const t = calcularTrilha(config, visao);
+        const fmt = (crit: Meta["criterio"], v: number | null) => (v == null || !crit ? v : unidadeDoCriterio(crit) === "moeda" ? paraReais(v) : Math.round(v * 10) / 10);
+        const padrao = pacotePadrao(config);
+        const espaco = padrao ? espacoPraVender(config, padrao, visao) : null;
+        return {
+          degraus: t.degraus.map((d, i) => ({
+            posicao: i + 1,
+            nome: d.meta.nome,
+            criterio: d.meta.criterio,
+            alvo: fmt(d.meta.criterio, d.meta.alvo),
+            atual: fmt(d.meta.criterio, d.valor),
+            falta: fmt(d.meta.criterio, d.falta),
+            progressoPct: d.progressoPct == null ? null : Math.round(d.progressoPct),
+            conquistada: d.batida,
+            conquistadaEm: d.meta.conquistadaEm,
+            acao: d.meta.acao,
+          })),
+          degrauAtual: t.atual == null ? null : t.atual + 1,
+          cabemMaisDoPacotePadrao: espaco ? { pacote: espaco.pacote.nome, cabem: espaco.cabem, faltaParaCalcular: espaco.faltando } : "nenhum pacote padrão",
+        };
       }),
   );
 

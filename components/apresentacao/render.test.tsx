@@ -9,6 +9,9 @@ import { configVazia, novoCenario } from "@/lib/calculo/novo";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { PropostaDoc } from "../impressao/Proposta";
 import { VistaCliente } from "./VistaCliente";
+import { VistaPacoteCliente } from "./VistaPacote";
+import { vistaPacote } from "@/lib/calculo/apresentacao";
+import { pacoteParaCenario } from "@/lib/calculo/pacotes";
 
 function config(): Configuracao {
   const c = configVazia();
@@ -26,6 +29,19 @@ function config(): Configuracao {
 const PROIBIDO = /piso|preju[ií]zo|hora|\bh\b|mônica|áleff|reinvest|rateio|custo fixo|divis[ãa]o|percentual|%/i;
 
 describe("tela do cliente e PDF", () => {
+  it("pacote fechado: só nome, frases e valor; nunca o valor do terceiro, horas ou quantidades", () => {
+    const c = config();
+    c.terceiros = [{ id: "av", nome: "Audiovisual", inclui: "", fraseCliente: "gravação e edição mensal inclusa", valorPorSaidaCentavos: 31700, deslocamentoMedioCentavos: 4300, ativo: true }];
+    c.tiposEntrega.push({ id: "grav", nome: "Gravação", servicoId: null, horasPorUnidade: null, audiovisual: true, terceiroId: "av", ativo: true });
+    const pk = { id: "p", nome: "Social media padrão", descricao: "", itensCliente: ["posts em dias alternados"], rotina: [{ tipoEntregaId: "post", quantidade: 8 }, { tipoEntregaId: "grav", quantidade: 1 }], entrada: [], padrao: true, ativo: true };
+    const html = renderToStaticMarkup(<VistaPacoteCliente vista={vistaPacote(c, pk, { cenario: pacoteParaCenario(pk), desligados: {} })} aoPersonalizar={() => {}} />);
+    const texto = html.replace(/<[^>]+>/g, " ");
+    expect(texto).not.toMatch(PROIBIDO);
+    expect(texto).not.toMatch(/317|360,00|43,00|Post simples|\b8\b/);
+    expect(texto).toContain("gravação e edição mensal inclusa");
+    expect(texto).toContain("Social media padrão");
+  });
+
   it("modo apresentação: nenhum dado interno nem palavra como piso ou prejuízo", () => {
     const c = config();
     const cen = novoCenario("x");

@@ -8,7 +8,7 @@ export type Faltando = Record<SecaoConfig, string[]>;
 export function camposFaltando(c: Configuracao): Faltando {
   const e = c.empresa;
   const socios = c.pessoas.filter((p) => p.ativo && p.socio);
-  const out: Faltando = { socios: [], servicos: [], tipos: [], custos: [], regras: [], limites: [], clientes: [] };
+  const out: Faltando = { socios: [], servicos: [], tipos: [], custos: [], terceiros: [], pacotes: [], metas: [], regras: [], limites: [], clientes: [] };
 
   if (!socios.length) out.socios.push("nenhum sócio cadastrado");
   for (const p of socios) {
@@ -26,6 +26,16 @@ export function camposFaltando(c: Configuracao): Faltando {
     if (!t.audiovisual && !t.servicoId) out.tipos.push(`serviço de ${t.nome || "entrega sem nome"}`);
   }
   for (const f of c.custosFixos.filter((x) => x.ativo)) if (f.valorMensalCentavos == null) out.custos.push(`valor de ${f.nome || "custo sem nome"}`);
+
+  for (const t of (c.terceiros ?? []).filter((x) => x.ativo)) {
+    if (t.valorPorSaidaCentavos == null) out.terceiros.push(`valor por saída de ${t.nome || "terceiro sem nome"}`);
+    if (t.deslocamentoMedioCentavos == null) out.terceiros.push(`deslocamento médio de ${t.nome || "terceiro sem nome"}`);
+  }
+  for (const p of (c.pacotes ?? []).filter((x) => x.ativo)) {
+    const nome = p.nome || "pacote sem nome";
+    if ([...p.rotina, ...p.entrada].some((i) => i.quantidade == null)) out.pacotes.push(`quantidades a confirmar em ${nome}`);
+  }
+  // metas: os sócios decidem se e quando cadastrar; nunca aparece como "falta preencher"
 
   if (e.regime == null) out.regras.push("regime da empresa");
   if (e.regime === "mei" && e.impostoFixoMensalCentavos == null) out.regras.push("imposto fixo por mês");

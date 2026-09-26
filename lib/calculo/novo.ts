@@ -16,6 +16,9 @@ export function configVazia(): Configuracao {
     tiposEntrega: [],
     custosFixos: [],
     clientes: [],
+    terceiros: [],
+    pacotes: [],
+    metas: [],
   };
 }
 
