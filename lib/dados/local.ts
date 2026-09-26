@@ -6,6 +6,7 @@
 import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
+import type { Tarefa } from "../calculo/tarefas";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, Configuracao } from "../calculo/tipos";
 import { afetados, aplicarItens, separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
@@ -38,6 +39,7 @@ interface Banco {
   avisos?: AvisoSocio[];
   medicoes?: Medicao[];
   pagamentos?: Pagamento[];
+  tarefas?: Tarefa[];
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -367,6 +369,32 @@ export class RepositorioLocal implements Repositorio {
     const b = ler();
     registrar(b, "medicoes", id, b.medicoes?.find((x) => x.id === id), null);
     b.medicoes = (b.medicoes ?? []).filter((x) => x.id !== id);
+    gravar(b);
+  }
+
+  // ─── Tarefas ──────────────────────────────────────────────────────────────
+
+  async listarTarefas() {
+    return (ler().tarefas ?? []).slice();
+  }
+
+  async salvarTarefa(t: Tarefa) {
+    const b = ler();
+    const lista = b.tarefas ?? [];
+    const i = lista.findIndex((x) => x.id === t.id);
+    registrar(b, "tarefas", t.id, i >= 0 ? lista[i] : null, t);
+    if (i >= 0) lista[i] = t;
+    else lista.unshift(t);
+    b.tarefas = lista;
+    gravar(b);
+  }
+
+  async removerTarefa(id: string) {
+    const b = ler();
+    registrar(b, "tarefas", id, b.tarefas?.find((x) => x.id === id), null);
+    b.tarefas = (b.tarefas ?? []).filter((x) => x.id !== id);
+    // a medição fica (conta na calibragem), só perde o vínculo
+    b.medicoes = (b.medicoes ?? []).map((m) => (m.tarefaId === id ? { ...m, tarefaId: null } : m));
     gravar(b);
   }
 

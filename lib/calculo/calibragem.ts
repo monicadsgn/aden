@@ -25,7 +25,13 @@ export interface Medicao {
   /** quando foi parado (concluído) */
   fim: string | null;
   criadoEm: string;
+  /** tarefa em que o relógio foi ligado (null = medição avulsa) */
+  tarefaId?: Id | null;
+  /** quantas entregas esse tempo cobre (padrão 1): a média divide por elas */
+  unidades?: number;
 }
+
+const unidadesDe = (m: Medicao) => Math.max(1, m.unidades ?? 1);
 
 /** Segundos totais de uma medição, contando o trecho que ainda está rodando. */
 export function segundosDaMedicao(m: Medicao, agora: Date = new Date()): number {
@@ -58,7 +64,7 @@ export type SituacaoCalibragem = "sem_medicao" | "calibrando" | "calibrado";
 export interface CalibragemTipo {
   tipoEntregaId: Id;
   nome: string;
-  /** medições concluídas que contam (depois de "calibrar desde") */
+  /** entregas medidas que contam (depois de "calibrar desde"); uma tarefa de 12 posts conta 12 */
   medicoes: number;
   /** quantas são pedidas para calibrar; null = não configurado */
   alvo: number | null;
@@ -92,7 +98,7 @@ export function calcularCalibragem(config: Configuracao, medicoes: Medicao[]): C
     .filter((t) => t.ativo && !t.audiovisual)
     .map((t) => {
       const ms = medicoesQueContam(t, medicoes);
-      const n = ms.length;
+      const n = ms.reduce((a, m) => a + unidadesDe(m), 0);
       const media = n ? ms.reduce((a, m) => a + m.acumuladoSegundos, 0) / n / 60 : null;
       const padrao = minutos(t.horasPorUnidade);
       const situacao: SituacaoCalibragem = n === 0 ? "sem_medicao" : alvo != null && n >= alvo ? "calibrado" : "calibrando";

@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BotaoAcao } from "@/components/Alertas";
+import { BotaoAcao, OQueQuerDizer } from "@/components/Alertas";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Card, CampoMoeda, CampoNumero, EtiquetaOrigem, Vazio, cx } from "@/components/ui";
 import { calcularCalibragem, type CalibragemTipo } from "@/lib/calculo/calibragem";
@@ -211,6 +211,7 @@ function CartaoCliente({
           <div className="flex flex-wrap items-center gap-2 rounded-bloco bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
             <span className="flex-1">{s.bloqueio.texto}</span>
             <BotaoAcao a={s.bloqueio} />
+            <OQueQuerDizer explica={s.bloqueio.explica} />
           </div>
         )}
 

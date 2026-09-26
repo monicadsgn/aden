@@ -3,6 +3,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Medicao } from "../calculo/calibragem";
+import type { Tarefa } from "../calculo/tarefas";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, ClienteBase, Configuracao, CustoFixo, Pessoa, ResultadoCenario, Servico, TipoEntrega } from "../calculo/tipos";
@@ -631,6 +632,8 @@ export class RepositorioSupabase implements Repositorio {
       retomadoEm: (m.retomado_em as string) ?? null,
       fim: (m.fim as string) ?? null,
       criadoEm: m.criado_em as string,
+      tarefaId: (m.tarefa_id as string) ?? null,
+      unidades: Number(m.unidades ?? 1),
     }));
   }
 
@@ -647,12 +650,64 @@ export class RepositorioSupabase implements Repositorio {
       retomado_em: m.retomadoEm,
       fim: m.fim,
       criado_em: m.criadoEm,
+      tarefa_id: m.tarefaId ?? null,
+      unidades: Math.max(1, m.unidades ?? 1),
     });
     erro(error);
   }
 
   async removerMedicao(id: string) {
     await this.remover("medicoes", [id]);
+  }
+
+  // ─── Tarefas ──────────────────────────────────────────────────────────────
+
+  async listarTarefas(): Promise<Tarefa[]> {
+    const org = await this.org();
+    const { data, error } = await this.sb.from("tarefas").select("*").eq("org_id", org).order("criado_em", { ascending: false }).limit(1000);
+    erro(error);
+    return ((data ?? []) as Linha[]).map((t) => ({
+      id: t.id as string,
+      titulo: t.titulo as string,
+      clienteId: (t.cliente_id as string) ?? null,
+      tipoEntregaId: (t.tipo_entrega_id as string) ?? null,
+      quantidade: Number(t.quantidade ?? 1),
+      status: t.status as Tarefa["status"],
+      prioridade: (t.prioridade as Tarefa["prioridade"]) ?? null,
+      responsavelId: (t.responsavel_id as string) ?? null,
+      inicio: (t.inicio as string) ?? null,
+      vencimento: (t.vencimento as string) ?? null,
+      descricao: (t.descricao as string) ?? "",
+      etapas: Array.isArray(t.etapas) ? (t.etapas as Tarefa["etapas"]) : [],
+      criadoEm: t.criado_em as string,
+      concluidaEm: (t.concluida_em as string) ?? null,
+    }));
+  }
+
+  async salvarTarefa(t: Tarefa) {
+    const org_id = await this.org();
+    const { error } = await this.sb.from("tarefas").upsert({
+      id: t.id,
+      org_id,
+      titulo: t.titulo,
+      cliente_id: t.clienteId,
+      tipo_entrega_id: t.tipoEntregaId,
+      quantidade: Math.max(1, t.quantidade),
+      status: t.status,
+      prioridade: t.prioridade,
+      responsavel_id: t.responsavelId,
+      inicio: t.inicio,
+      vencimento: t.vencimento,
+      descricao: t.descricao || null,
+      etapas: t.etapas,
+      criado_em: t.criadoEm,
+      concluida_em: t.concluidaEm,
+    });
+    erro(error);
+  }
+
+  async removerTarefa(id: string) {
+    await this.remover("tarefas", [id]);
   }
 
   // ─── Pagamentos ───────────────────────────────────────────────────────────

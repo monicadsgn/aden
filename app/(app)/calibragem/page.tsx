@@ -81,10 +81,10 @@ export default function Calibragem() {
         icone={Gauge}
         selo="Operação"
         titulo="Calibragem das horas"
-        descricao="Quanto cada entrega leva de verdade (média do cronômetro) contra o tempo cadastrado. Quando a média fica diferente, o sistema sugere atualizar o tempo."
+        descricao="Quanto cada entrega leva de verdade (média do tempo medido nas tarefas) contra o tempo cadastrado. Quando a média fica diferente, o sistema sugere atualizar o tempo."
         acoes={
-          <Link href="/cronometro" className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-marca px-4 text-sm font-semibold text-sobre-marca">
-            <Timer size={16} /> Abrir o cronômetro
+          <Link href="/tarefas" className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-marca px-4 text-sm font-semibold text-sobre-marca">
+            <Timer size={16} /> Ir para as tarefas
           </Link>
         }
       />

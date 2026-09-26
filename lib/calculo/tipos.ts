@@ -249,6 +249,8 @@ export type DestinoAlerta = { tipo: "config"; secao: SecaoConfig; campo?: string
 export interface Alerta {
   nivel: NivelAlerta;
   texto: string;
+  /** "o que isso quer dizer?": explicação curta, sem jargão, com exemplo */
+  explica: string;
   acao?: { rotulo: string; destino: DestinoAlerta };
 }
 

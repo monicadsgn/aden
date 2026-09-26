@@ -7,13 +7,14 @@ import "server-only";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { pacoteQueCabe } from "../calculo/apresentacao";
-import { calcularCalibragem, type Medicao } from "../calculo/calibragem";
+import { calcularCalibragem, segundosDaMedicao, type Medicao } from "../calculo/calibragem";
 import { documentoContador } from "../calculo/documentos";
 import { calcularSaudeCliente, calcularVisaoMes, rotuloOrigemHoras } from "../calculo/mes";
 import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
 import { calcularSolucoes } from "../calculo/solucoes";
+import { estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, rotuloStatus, type Tarefa } from "../calculo/tarefas";
 import type { Configuracao } from "../calculo/tipos";
 import { descreverItem, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
@@ -51,7 +52,9 @@ Regras que você deve seguir:
 - Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
-- Cronômetro: registrar_medicao guarda quanto UMA entrega levou (em minutos). ver_calibragem mostra a média medida.
+- Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist)
+  e mudar_status_tarefa. O cronômetro fica DENTRO da tarefa (botão Start no site); você não liga relógio, mas pode
+  registrar um tempo que a pessoa disse com registrar_medicao. ver_calibragem mostra a média medida.
 - Sem regra de rateio (com custo fixo cadastrado) a calculadora não calcula: diga o motivo, não invente o resultado.
 - Antes de alterar configurações, confirme com quem está conversando o que vai mudar.
 - Tudo o que você alterar fica registrado no Histórico com o seu nome.
@@ -649,6 +652,122 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>):
         const alvo = resolver(await repo.listarSimulacoes(), id, "Simulação");
         await repo.removerSimulacao(alvo.id);
         return { removida: alvo.nome };
+      }),
+  );
+
+  // ─── Tarefas ──────────────────────────────────────────────────────────────
+
+  server.registerTool(
+    "listar_tarefas",
+    {
+      title: "Listar tarefas",
+      description: "Tarefas com status, cliente, entrega, responsável, prazo, checklist e tempo já medido. Por padrão só as abertas.",
+      inputSchema: {
+        cliente: z.string().optional().describe("filtrar por cliente (nome ou id)"),
+        incluirConcluidas: z.boolean().optional(),
+      },
+    },
+    async ({ cliente, incluirConcluidas }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const [tarefas, medicoes] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes()]);
+        const cid = cliente ? resolver(config.clientes, cliente, "Cliente").id : null;
+        const nome = <T extends { id: string; nome: string }>(l: T[], id: string | null) => (id ? (l.find((x) => x.id === id)?.nome ?? null) : null);
+        return tarefas
+          .filter((t) => (incluirConcluidas || t.status !== "concluida") && (!cid || t.clienteId === cid))
+          .map((t) => {
+            const m = medicaoDaTarefa(t, medicoes);
+            const est = estimativaHoras(t, config);
+            return {
+              id: t.id,
+              titulo: t.titulo,
+              status: rotuloStatus(t.status),
+              cliente: nome(config.clientes, t.clienteId),
+              entrega: nome(config.tiposEntrega, t.tipoEntregaId),
+              quantidade: t.quantidade,
+              responsavel: nome(config.pessoas, t.responsavelId),
+              prioridade: t.prioridade,
+              inicio: t.inicio,
+              vencimento: t.vencimento,
+              checklist: t.etapas.map((e) => `${e.feita ? "[x]" : "[ ]"} ${e.titulo}`),
+              estimativaMin: est == null ? null : Math.round(est * 60),
+              tempoMedidoMin: m ? Math.round(segundosDaMedicao(m) / 60) : 0,
+              relogio: m?.estado ?? "nunca ligado",
+            };
+          });
+      }),
+  );
+
+  server.registerTool(
+    "salvar_tarefa",
+    {
+      title: "Criar ou editar tarefa",
+      description:
+        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. checklist substitui a lista inteira.",
+      inputSchema: {
+        id: z.string().optional(),
+        titulo: z.string().optional(),
+        cliente: z.string().nullable().optional().describe("nome ou id; null tira"),
+        entrega: z.string().nullable().optional().describe("tipo de entrega (nome ou id)"),
+        quantidade: z.number().int().positive().optional(),
+        responsavel: z.string().nullable().optional().describe("sócio (nome ou id)"),
+        prioridade: z.enum(["urgente", "alta", "normal", "baixa"]).nullable().optional(),
+        inicio: z.string().nullable().optional(),
+        vencimento: z.string().nullable().optional(),
+        descricao: z.string().optional(),
+        checklist: z.array(z.object({ titulo: z.string(), feita: z.boolean().optional() })).optional(),
+      },
+    },
+    async (e) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const tarefas = await repo.listarTarefas();
+        const antes = e.id ? tarefas.find((t) => t.id === e.id) : null;
+        if (e.id && !antes) throw new Error("Tarefa não encontrada.");
+        if (!antes && !e.titulo) throw new Error("Informe o título da tarefa nova.");
+        const data = (v: string | null | undefined) => {
+          if (v == null) return v;
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error(`Data inválida: ${v}. Use AAAA-MM-DD.`);
+          return v;
+        };
+        const base = antes ?? novaTarefa(novoId(), e.titulo!);
+        const t: Tarefa = {
+          ...base,
+          ...(e.titulo != null && { titulo: e.titulo }),
+          ...(e.cliente !== undefined && { clienteId: e.cliente ? resolver(config.clientes, e.cliente, "Cliente").id : null }),
+          ...(e.entrega !== undefined && { tipoEntregaId: e.entrega ? resolver(config.tiposEntrega, e.entrega, "Tipo de entrega").id : null }),
+          ...(e.quantidade != null && { quantidade: e.quantidade }),
+          ...(e.responsavel !== undefined && { responsavelId: e.responsavel ? resolver(config.pessoas, e.responsavel, "Sócio").id : null }),
+          ...(e.prioridade !== undefined && { prioridade: e.prioridade }),
+          ...(e.inicio !== undefined && { inicio: data(e.inicio) ?? null }),
+          ...(e.vencimento !== undefined && { vencimento: data(e.vencimento) ?? null }),
+          ...(e.descricao != null && { descricao: e.descricao }),
+          ...(e.checklist && { etapas: e.checklist.map((c) => ({ id: novoId(), titulo: c.titulo, feita: !!c.feita })) }),
+        };
+        await repo.salvarTarefa(t);
+        return { salva: t.titulo, id: t.id, criada: !antes };
+      }),
+  );
+
+  server.registerTool(
+    "mudar_status_tarefa",
+    {
+      title: "Mudar o status de uma tarefa",
+      description: "a_fazer, em_producao, revisao (em aprovação) ou concluida. Concluir encerra o tempo medido (conta na calibragem).",
+      inputSchema: { id: z.string(), status: z.enum(["a_fazer", "em_producao", "revisao", "concluida"]) },
+    },
+    async ({ id, status }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [tarefas, medicoes] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes()]);
+        const t = tarefas.find((x) => x.id === id);
+        if (!t) throw new Error("Tarefa não encontrada.");
+        const r = mudarStatus(t, status, medicaoDaTarefa(t, medicoes), new Date());
+        await repo.salvarTarefa(r.tarefa);
+        if (r.medicao) await repo.salvarMedicao(r.medicao);
+        return { tarefa: t.titulo, status: rotuloStatus(status) };
       }),
   );
 

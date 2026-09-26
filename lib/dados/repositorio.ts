@@ -8,6 +8,7 @@
 import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
+import type { Tarefa } from "../calculo/tarefas";
 import type { Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Pessoa, ResultadoCenario, Servico, TipoEntrega } from "../calculo/tipos";
 import type { ItemProtegido } from "../regras/aprovacao";
 
@@ -174,6 +175,11 @@ export interface Repositorio {
   listarMedicoes(): Promise<Medicao[]>;
   salvarMedicao(m: Medicao): Promise<void>;
   removerMedicao(id: string): Promise<void>;
+
+  // ─── Tarefas (com o cronômetro dentro) ────────────────────────────────────
+  listarTarefas(): Promise<Tarefa[]>;
+  salvarTarefa(t: Tarefa): Promise<void>;
+  removerTarefa(id: string): Promise<void>;
 
   // ─── Pagamentos ───────────────────────────────────────────────────────────
   listarPagamentos(): Promise<Pagamento[]>;

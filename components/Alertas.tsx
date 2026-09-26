@@ -3,7 +3,7 @@
 // Avisos acionáveis: cada um tem o botão que leva ao campo que resolve.
 // Erro (resultado errado ou bloqueado) fica separado de lembrete (campo opcional vazio).
 
-import { AlertOctagon, AlertTriangle, ArrowRight, BellDot, Info, type LucideIcon } from "lucide-react";
+import { AlertOctagon, AlertTriangle, ArrowRight, BellDot, HelpCircle, Info, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import type { Alerta } from "@/lib/calculo/tipos";
@@ -44,6 +44,25 @@ export function BotaoAcao({ a, pequeno }: { a: Alerta; pequeno?: boolean }) {
   );
 }
 
+/** "O que isso quer dizer?": abre a explicação curta, com exemplo, embaixo do aviso. */
+export function OQueQuerDizer({ explica, className }: { explica: string; className?: string }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        aria-expanded={aberto}
+        className={cx("inline-flex items-center gap-1 text-[11px] font-semibold underline decoration-dotted underline-offset-2 opacity-80 hover:opacity-100", className)}
+        onClick={() => setAberto(!aberto)}
+      >
+        <HelpCircle size={12} aria-hidden />
+        {aberto ? "Fechar explicação" : "O que isso quer dizer?"}
+      </button>
+      {aberto && <p className="w-full rounded-item bg-superficie/70 px-3 py-2 text-[12px] leading-relaxed font-normal text-texto">{explica}</p>}
+    </>
+  );
+}
+
 function Item({ a }: { a: Alerta }) {
   const s = ESTILO[a.nivel];
   const Ic = s.icone;
@@ -52,6 +71,11 @@ function Item({ a }: { a: Alerta }) {
       <Ic size={15} className="mt-px shrink-0" aria-label={s.rotulo} />
       <span className="min-w-0 flex-1 basis-48">{a.texto}</span>
       <BotaoAcao a={a} />
+      {a.explica && (
+        <div className="flex w-full flex-wrap gap-2 pl-6">
+          <OQueQuerDizer explica={a.explica} />
+        </div>
+      )}
     </div>
   );
 }

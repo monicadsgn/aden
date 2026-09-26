@@ -73,7 +73,7 @@ A decidir com a Moni (não inventar):
 ## Segunda leva (definida pela Moni em 25/09/2026)
 
 - **Navegação aprovada** (menu sanfona, uma tela por assunto): Comercial (Calculadora, Negociação ao vivo, CRM) ·
-  Operação (Visão do mês, Cronômetro, Calibragem das horas, Produção, Aprovações do cliente) · Financeiro (Saúde dos
+  Operação (Tarefas, Visão do mês, Calibragem das horas, Aprovações do cliente) · Financeiro (Saúde dos
   clientes, Registrar pagamento, Repasse dos sócios, PDFs e relatórios) · Sócios (Aprovações, Avisos) · Administrativo
   (Clientes e contratos, Decisões) · Sistema (Configurações em abas, Histórico). O menu lembra o grupo aberto.
 - **Sem regra de rateio** (com custo fixo cadastrado) o resultado é **bloqueado**, com botão para escolher a regra.
@@ -86,7 +86,13 @@ A decidir com a Moni (não inventar):
 - **Avisos acionáveis:** cada aviso tem botão para o campo que resolve. Erro (resultado errado/bloqueado) ≠ aviso ≠ lembrete
   (campo opcional vazio, ex.: reinvestimento).
 - **Quem recebe sem trabalhar:** a regra da divisão não muda; a tela mostra "X recebe R$ Y sem horas neste cliente".
-- **Cronômetro:** iniciar, pausar, parar por entrega. Modo calibragem pede N medições por tipo (N configurável; a Moni
+- **Tarefas com o cronômetro dentro (26/09/2026, pedido da Moni):** a aba Cronômetro saiu. O tempo é medido na própria
+  tarefa, como o "Rastrear tempo" do ClickUp: Start liga, Pausar para, concluir a tarefa encerra. Uma medição por tarefa;
+  ela vale por `quantidade` entregas (calibragem = soma dos segundos ÷ soma das entregas). Relógio flutuante no canto de
+  qualquer tela enquanto roda. Lista (agrupada por prazo) e Quadro (arrastar muda o status), janela da tarefa com
+  status, datas, estimativa (tempo por entrega × quantidade), responsável, prioridade, cliente, tipo e checklist.
+  Status: a fazer, em produção, em aprovação, concluída. Padrões de UX tirados do SoftMoni (janela, criação rápida).
+- **Cronômetro (regra da calibragem):** iniciar, pausar, parar por entrega. Modo calibragem pede N medições por tipo (N configurável; a Moni
   pediu 5). Calibrado → a média medida estima as horas reais na Saúde. Sugestão de atualizar o tempo quando a média
   difere (limiar opcional); a atualização passa pela aprovação. Recalibrar descarta as medições anteriores.
 - **Proteção da remuneração:** piso, % dos sócios, divisão de horas por serviço e tempo por entrega só mudam com a
@@ -97,6 +103,8 @@ A decidir com a Moni (não inventar):
 - **Pagamentos:** cada pagamento que cai (mês de referência + data). Ordem de distribuição configurável e vazia até os
   sócios decidirem (vazia = distribuição bloqueada). Atraso = o mês de referência acabou sem o contrato pago; pagamento
   que cai depois do mês fica marcado. A Saúde usa os pagamentos quando o mês fecha (ou já cobriram o contrato).
+- **Foto de perfil:** sócio troca a própria foto clicando no avatar do menu (ou em Configurações → Sócios). Cortada no
+  quadrado e reduzida no navegador; fica no Storage (bucket `avatares`, pasta = org) e o endereço em `pessoas.foto_url`.
 - **Perfis:** "sócio" (admin) hoje; "contador" preparado no banco (papel `contador`, só leitura de pagamentos, clientes,
   custos fixos e configuração da empresa) e em `lib/acesso.ts`. Falta só o convite.
 
@@ -216,7 +224,7 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - ✅ `clientes` (interno?, entra no rateio?), ✅ `contratos` (status, valor mensal, **escopo contratado** em jsonb)
 - ✅ `mes_cliente` (valor recebido no mês), ✅ `horas_realizadas` (horas reais por sócio e mês)
 - ✅ `servicos`, ✅ `servico_divisao`, ✅ `tipos_entrega` (horas por unidade, calibrar desde)
-- ✅ `medicoes` (cronômetro), ✅ `pagamentos` (cada pagamento, mês de referência e data)
+- ✅ `tarefas` (status, prioridade, responsável, datas, checklist em jsonb), ✅ `medicoes` (cronômetro; `tarefa_id`, `unidades`), ✅ `pagamentos` (cada pagamento, mês de referência e data)
 - Fase 2 amplia `contratos`: prazo mínimo, vencimento, limite de rodadas, prazo de aprovação, prazo de entrega, aviso prévio, condição de início da cobrança, modelo de cobrança do tráfego, versão/aditivos
 - `contrato_entregas` (tipo de entrega, quantidade/mês), `metas_resultado` (métrica, fonte, alvo, prazo, atingida em)
 

@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { TrocarFoto } from "@/components/Avatar";
+import { OQueQuerDizer } from "@/components/Alertas";
 import { CabecalhoPagina } from "@/components/Shell";
 import {
   Badge,
@@ -507,6 +508,7 @@ export default function Configuracoes() {
                 {dobro && (
                   <div className="flex flex-wrap items-center gap-2 rounded-bloco bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
                     <span className="flex-1">{dobro.texto}</span>
+                    <OQueQuerDizer explica={dobro.explica} />
                   </div>
                 )}
                 <p className="text-[11px] text-texto-suave">
@@ -569,6 +571,7 @@ export default function Configuracoes() {
                       <button type="button" className="rounded-botao bg-erro px-2.5 py-1 text-[11px] font-bold text-superficie" onClick={() => irPara("custos")}>
                         Ver custos fixos
                       </button>
+                      <OQueQuerDizer explica={dobro.explica} />
                     </div>
                   )}
                 </Bloco>

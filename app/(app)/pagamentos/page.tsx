@@ -2,7 +2,7 @@
 
 import { AlertOctagon, CheckCircle2, Clock, Plus, Trash2, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BotaoAcao } from "@/components/Alertas";
+import { BotaoAcao, OQueQuerDizer } from "@/components/Alertas";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Card, CampoMoeda, CampoTexto, Rotulo, Selecao, TituloCard, Vazio, cx } from "@/components/ui";
 import { configVazia, novoId } from "@/lib/calculo/novo";
@@ -136,6 +136,7 @@ export default function Pagamentos() {
                   <div>
                     <BotaoAcao a={previa.d.bloqueio} />
                   </div>
+                  <OQueQuerDizer explica={previa.d.bloqueio.explica} />
                 </div>
               )}
               {previa?.parte && (
@@ -200,6 +201,7 @@ export default function Pagamentos() {
                   <div className="flex flex-wrap items-center gap-2 rounded-item bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
                     <span className="flex-1">{d.bloqueio.texto}</span>
                     <BotaoAcao a={d.bloqueio} />
+                    <OQueQuerDizer explica={d.bloqueio.explica} />
                   </div>
                 )}
                 {doCliente.map((p) => {

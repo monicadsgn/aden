@@ -7,7 +7,7 @@ import {
   Calculator,
   CalendarRange,
   ChevronDown,
-  ClipboardList,
+  ListChecks,
   FileDown,
   FileSignature,
   Gauge,
@@ -23,7 +23,6 @@ import {
   Settings2,
   ShieldCheck,
   Sun,
-  Timer,
   Wallet,
   X,
   type LucideIcon,
@@ -36,6 +35,7 @@ import { useDados, useVariaveisFaltando } from "@/lib/dados/contexto";
 import type { Repositorio, Usuario } from "@/lib/dados/repositorio";
 import { Avatar, TrocarFoto } from "./Avatar";
 import { Marca } from "./Marca";
+import { RelogioRodando } from "./tarefas/RelogioRodando";
 import { Badge, cx } from "./ui";
 
 interface Item {
@@ -60,10 +60,9 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
   {
     titulo: "Operação",
     itens: [
+      { href: "/tarefas", rotulo: "Tarefas", icone: ListChecks, area: "tarefas" },
       { href: "/mes", rotulo: "Visão do mês", icone: CalendarRange, area: "mes" },
-      { href: "/cronometro", rotulo: "Cronômetro", icone: Timer, area: "cronometro" },
       { href: "/calibragem", rotulo: "Calibragem das horas", icone: Gauge, area: "calibragem" },
-      { href: "#producao", rotulo: "Produção", icone: ClipboardList, emBreve: true },
       { href: "#aprovacao", rotulo: "Aprovações do cliente", icone: BadgeCheck, emBreve: true },
     ],
   },
@@ -342,6 +341,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
         <main className="min-w-0 flex-1">{children}</main>
+        <RelogioRodando />
       </div>
     </div>
   );

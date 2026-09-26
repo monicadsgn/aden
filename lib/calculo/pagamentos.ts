@@ -126,12 +126,14 @@ export function distribuirPagamentos(
     return bloqueado({
       nivel: "erro",
       texto: "A ordem de distribuição dos pagamentos ainda não foi escolhida pelos sócios. Enquanto estiver vazia, o sistema não diz para onde vai cada real.",
+      explica: "Quando o cliente paga só uma parte ou atrasa, é preciso decidir quem recebe primeiro. Ex.: pagar os custos antes e depois os sócios, ou dividir tudo na mesma proporção. Os sócios escolhem em Regras da empresa.",
       acao: { rotulo: "Escolher a ordem", destino: { tipo: "config", secao: "regras", campo: "ordemDistribuicao" } },
     });
   if (contrato == null)
     return bloqueado({
       nivel: "erro",
       texto: `${cliente.nome} não tem valor mensal de contrato: sem ele não dá para saber quanto de cada pagamento é custo.`,
+      explica: "Para saber quanto de cada pagamento é custo e quanto é sobra, o sistema compara com o valor mensal do contrato. Ex.: contrato de R$ 2.000 com um pagamento de R$ 1.000 é metade do mês. Preencha o valor em Clientes.",
       acao: { rotulo: "Preencher o valor", destino: { tipo: "config", secao: "clientes" } },
     });
 
@@ -142,6 +144,7 @@ export function distribuirPagamentos(
     return bloqueado({
       nivel: "erro",
       texto: "Os percentuais dos sócios não somam 100%: não dá para dividir os pagamentos.",
+      explica: "As partes dos sócios precisam fechar 100%. Ex.: 50% + 50%. Até lá, não dá para dizer quanto de cada pagamento vai para cada um.",
       acao: { rotulo: "Corrigir os percentuais", destino: { tipo: "config", secao: "socios", campo: "percentualPadrao" } },
     });
 

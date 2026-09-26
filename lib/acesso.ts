@@ -7,7 +7,7 @@ export type Area =
   | "calculadora"
   | "negociacao"
   | "mes"
-  | "cronometro"
+  | "tarefas"
   | "calibragem"
   | "saude"
   | "pagamentos"

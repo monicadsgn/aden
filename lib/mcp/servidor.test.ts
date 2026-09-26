@@ -80,6 +80,16 @@ class BancoFalso {
     this.avisos.push(...a.map((x) => ({ ...x, id: novoId(), criadoEm: "", lidoEm: null })));
   }
   async marcarAvisoLido() {}
+  tarefas: import("../calculo/tarefas").Tarefa[] = [];
+  async listarTarefas() {
+    return this.tarefas;
+  }
+  async salvarTarefa(t: import("../calculo/tarefas").Tarefa) {
+    this.tarefas = [...this.tarefas.filter((x) => x.id !== t.id), t];
+  }
+  async removerTarefa(id: string) {
+    this.tarefas = this.tarefas.filter((x) => x.id !== id);
+  }
   async listarMedicoes() {
     return this.medicoes;
   }
@@ -266,6 +276,21 @@ describe("conector MCP da Aden", () => {
     const m = await chamar("registrar_medicao", { entrega: "Carrossel", minutos: 55 });
     expect(m.situacao).toBe("calibrado");
     expect(m.sugestao).toMatch(/55 min, não 40 min/);
+  });
+
+  it("tarefas: cria, edita e concluir encerra o tempo medido", async () => {
+    const nova = await chamar("salvar_tarefa", { titulo: "Calendário Outubro", checklist: [{ titulo: "Pauta" }] });
+    expect(nova.criada).toBe(true);
+    await chamar("salvar_tarefa", { id: nova.id, quantidade: 3, vencimento: "2026-10-01" });
+    await expect(chamar("salvar_tarefa", { id: nova.id, vencimento: "01/10" })).rejects.toThrow(/AAAA-MM-DD/);
+    const agora = new Date().toISOString();
+    banco.medicoes.push({ id: "m1", tarefaId: nova.id, clienteId: null, tipoEntregaId: "t", pessoaId: null, estado: "pausado", acumuladoSegundos: 600, retomadoEm: null, fim: null, criadoEm: agora });
+    await chamar("mudar_status_tarefa", { id: nova.id, status: "concluida" });
+    expect(banco.medicoes[0].estado).toBe("concluido");
+    expect(banco.medicoes[0].unidades).toBe(3);
+    const lista = await chamar("listar_tarefas", { incluirConcluidas: true });
+    expect(lista[0]).toMatchObject({ titulo: "Calendário Outubro", quantidade: 3, status: "Concluída", tempoMedidoMin: 10, checklist: ["[ ] Pauta"] });
+    expect(await chamar("listar_tarefas")).toHaveLength(0);
   });
 
   it("nome inexistente gera erro claro, sem gravar nada", async () => {

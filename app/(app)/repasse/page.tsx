@@ -2,7 +2,7 @@
 
 import { AlertOctagon, HandCoins } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { BotaoAcao } from "@/components/Alertas";
+import { BotaoAcao, OQueQuerDizer } from "@/components/Alertas";
 import { SITUACAO } from "@/components/financeiro";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Card, TituloCard, Vazio, cx } from "@/components/ui";
@@ -69,6 +69,7 @@ export default function Repasse() {
           <div className="flex flex-wrap items-center gap-2 rounded-card bg-erro-suave px-4 py-3 text-xs font-medium text-erro">
             <span className="flex-1">{bloqueio.texto}</span>
             <BotaoAcao a={bloqueio} />
+            <OQueQuerDizer explica={bloqueio.explica} />
           </div>
         )}
         {atrasados.length > 0 && (

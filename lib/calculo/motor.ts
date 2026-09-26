@@ -134,6 +134,7 @@ function somarCustos(
         alertas.push({
           nivel: "aviso",
           texto: `${prefixo}Custo "${c.descricao || c.categoria}" é por entrega mas não tem tipo de entrega vinculado: ficou fora do cálculo.`,
+          explica: "Um custo marcado como \"por entrega\" precisa saber de qual entrega ele é, para multiplicar pela quantidade. Ex.: R$ 10 de banco de imagens por post × 12 posts = R$ 120. Sem o vínculo, esse custo ficou de fora e o resultado parece melhor do que é.",
           acao: { rotulo: "Vincular a entrega", destino: { tipo: "cenario", bloco: "custos" } },
         });
         continue;
@@ -172,6 +173,7 @@ function horasDasEntregas(
       alertas.push({
         nivel: "aviso",
         texto: `${prefixo}"${tipo.nome}" não tem tempo por entrega cadastrado: contou 0 h.`,
+        explica: "O sistema não sabe quanto tempo leva para fazer essa entrega. Ex.: se um carrossel leva 40 min e são 8 por mês, são 5 h 20 min de trabalho. Sem esse tempo, conta zero horas e o valor por hora sai inflado. Cadastre o tempo em Tipos de entrega.",
         acao: { rotulo: "Cadastrar o tempo", destino: { tipo: "config", secao: "tipos", campo: "horasPorUnidade" } },
       });
       continue;
@@ -216,6 +218,7 @@ export function verificarImpostoEmDobro(config: Configuracao): Alerta | null {
   return {
     nivel: "erro",
     texto: `Parece que o imposto está contado duas vezes: o campo "imposto fixo por mês" está preenchido e há custo fixo com nome de imposto (${parecidos.map((c) => c.nome).join(", ")}). Tire um dos dois.`,
+    explica: "O imposto entrou duas vezes na conta: uma no campo \"imposto fixo por mês\" e outra como custo fixo. Ex.: DAS de R$ 90 nos dois lugares vira R$ 180 de imposto. Deixe só em um lugar (o certo é o campo de imposto fixo).",
     acao: { rotulo: "Ver custos fixos", destino: { tipo: "config", secao: "custos" } },
   };
 }
@@ -240,18 +243,21 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     alertas.push({
       nivel: "lembrete",
       texto: "Imposto sobre faturamento não preenchido: contado como 0%.",
+      explica: "O imposto em % ainda está vazio, então conta como zero. Ex.: com 6% de imposto, um cliente de R$ 2.000 gera R$ 120 de imposto. Se sua empresa paga imposto em %, preencha em Regras da empresa. No MEI, use o imposto fixo por mês.",
       acao: { rotulo: "Preencher o imposto", destino: regras("impostoPct") },
     });
   if (taxa == null && config.empresa.taxaRecebimentoFixaCentavos == null)
     alertas.push({
       nivel: "lembrete",
       texto: "Taxa de recebimento não preenchida: contada como 0%.",
+      explica: "É a parte que o banco ou a maquininha fica quando o cliente paga. Ex.: 3% de taxa num pagamento de R$ 1.000 são R$ 30 a menos. Vazio conta como zero.",
       acao: { rotulo: "Preencher a taxa", destino: regras("taxaRecebimentoPct") },
     });
   if (reinv == null)
     alertas.push({
       nivel: "lembrete",
       texto: "Reinvestimento não preenchido: nada fica guardado na empresa, a sobra toda vai para os sócios.",
+      explica: "Reinvestimento é a parte da sobra que fica guardada na empresa. Ex.: 10% de uma sobra de R$ 1.000 são R$ 100 guardados e R$ 900 divididos. Vazio conta como zero: tudo vai para os sócios.",
       acao: { rotulo: "Preencher o reinvestimento", destino: regras("reinvestimentoPct") },
     });
 
@@ -267,6 +273,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         alertas.push({
           nivel: "aviso",
           texto: `${nome}: escolha "diluído" ou "fora da mensalidade". Ainda não entrou no cálculo.`,
+          explica: "Um trabalho pontual (que acontece uma vez) pode ser dividido nas mensalidades ou cobrado à parte. Ex.: identidade visual de R$ 1.200 diluída em 6 meses soma R$ 200 por mês. Escolha um dos dois para ele entrar na conta.",
           acao: { rotulo: "Escolher", destino: { tipo: "cenario", bloco: "pontuais" } },
         });
         continue;
@@ -276,6 +283,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         alertas.push({
           nivel: "erro",
           texto: `${nome}: informe em quantos meses o projeto será diluído.`,
+          explica: "Diluir é dividir o valor em parcelas dentro da mensalidade. Ex.: R$ 1.200 em 6 meses = R$ 200 por mês. Sem o número de meses, não dá para dividir.",
           acao: { rotulo: "Informar os meses", destino: { tipo: "cenario", bloco: "pontuais" } },
         });
         continue;
@@ -302,6 +310,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     alertas.push({
       nivel: "erro",
       texto: "Cadastre os sócios nas configurações para ver a divisão.",
+      explica: "O sistema divide a sobra entre os sócios, mas ainda não sabe quem eles são. Cadastre em Configurações → Sócios.",
       acao: { rotulo: "Cadastrar sócios", destino: { tipo: "config", secao: "socios" } },
     });
   } else {
@@ -311,6 +320,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       alertas.push({
         nivel: "erro",
         texto: `Defina o percentual de ${faltando.map((s) => s.pessoa.nome).join(", ")} (padrão nas configurações ou neste cenário).`,
+        explica: "Cada sócio precisa ter a parte dele na sobra. Ex.: 50% e 50%, ou 60% e 40%. Sem isso, não dá para dizer quanto cada um ganha.",
         acao: { rotulo: "Definir o percentual", destino: { tipo: "config", secao: "socios", campo: "percentualPadrao" } },
       });
     } else {
@@ -320,6 +330,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         alertas.push({
           nivel: "erro",
           texto: `Os percentuais dos sócios somam ${formatarPct(soma)}. Precisam somar 100%.`,
+          explica: "As partes dos sócios precisam fechar 100% da sobra. Ex.: 60% + 40% = 100%. Se somar 90%, ficam 10% sem dono; se somar 110%, o sistema estaria dividindo dinheiro que não existe.",
           acao: { rotulo: "Corrigir os percentuais", destino: { tipo: "config", secao: "socios", campo: "percentualPadrao" } },
         });
       }
@@ -343,6 +354,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         alertas.push({
           nivel: "aviso",
           texto: "Há tipos de entrega sem serviço vinculado: essas horas não foram atribuídas a ninguém.",
+          explica: "Cada entrega pertence a um serviço (ex.: \"Post\" é de Social Media), e o serviço diz quem faz o trabalho. Sem o serviço, as horas daquela entrega não vão para ninguém.",
           acao: { rotulo: "Vincular o serviço", destino: { tipo: "config", secao: "tipos" } },
         });
       continue;
@@ -365,6 +377,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         alertas.push({
           nivel: "erro",
           texto: `Defina quem executa "${nome}" (divisão de horas entre as pessoas).`,
+          explica: "O sistema precisa saber quem faz esse serviço, para contar as horas de cada um. Ex.: Social Media com 100% das horas da Moni. Defina em Serviços.",
           acao: { rotulo: "Definir quem executa", destino: { tipo: "config", secao: "servicos" } },
         });
       } else if (Math.abs(soma - 100) > EPS) {
@@ -372,6 +385,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         alertas.push({
           nivel: "erro",
           texto: `A divisão de horas de "${nome}" soma ${formatarPct(soma)}. Precisa somar 100%.`,
+          explica: "As horas de um serviço precisam ser divididas por inteiro entre as pessoas. Ex.: 70% Moni + 30% Áleff = 100%. Somando menos, sobram horas sem dono.",
           acao: { rotulo: "Corrigir a divisão", destino: { tipo: "config", secao: "servicos" } },
         });
       }
@@ -394,6 +408,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
           alertas.push({
             nivel: "aviso",
             texto: "Este cenário tem entrega de tráfego, mas o modelo de cobrança do tráfego não foi escolhido: nenhuma cobrança de tráfego entrou na conta.",
+            explica: "Tráfego pode ser cobrado de jeitos diferentes (valor fixo, % da verba etc.). Enquanto o jeito não é escolhido, nenhuma cobrança de tráfego entra na conta. Escolha no bloco Tráfego.",
             acao: { rotulo: "Escolher o modelo", destino: { tipo: "cenario", bloco: "trafego" } },
           });
         break;
@@ -424,6 +439,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     bloqueio = {
       nivel: "erro",
       texto: `Há ${formatarMoeda(totalFixo)} de custo fixo por mês, mas a regra de rateio não foi escolhida. Sem ela o custo fixo sumiria da conta e o resultado sairia maior do que é, então nada é calculado.`,
+      explica: "Os custos fixos da empresa (ferramentas, imposto) são divididos entre os clientes, e isso se chama rateio. Ex.: R$ 860 por mês divididos igualmente por 4 clientes dá R$ 215 para cada. Sem escolher a regra, esse custo sumiria da conta, então o sistema prefere não mostrar um resultado errado.",
       acao: { rotulo: "Escolher a regra de rateio", destino: regras("regraRateio") },
     };
     alertas.push(bloqueio);
@@ -434,6 +450,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
       alertas.push({
         nivel: "aviso",
         texto: `Clientes sem valor mensal na base de rateio (contados como R$ 0): ${semValor.map((c) => c.nome).join(", ")}.`,
+        explica: "Na regra de rateio proporcional, quem paga mais leva uma parte maior dos custos fixos. Um cliente sem valor mensal conta como R$ 0 e não leva nenhuma parte. Preencha o valor de cada cliente.",
         acao: { rotulo: "Preencher os valores", destino: { tipo: "config", secao: "clientes" } },
       });
   }
@@ -442,7 +459,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     if (dobro) alertas.push(dobro);
   }
   if (mei && sob.impostoPct != null && sob.impostoPct !== 0)
-    alertas.push({ nivel: "info", texto: "No MEI o imposto é o valor fixo por mês: o imposto em % deste cenário foi ignorado." });
+    alertas.push({ nivel: "info", texto: "No MEI o imposto é o valor fixo por mês: o imposto em % deste cenário foi ignorado.", explica: "No MEI você paga um valor fixo (o DAS), e não um % sobre o que fatura. Por isso o imposto em % deste cenário não foi usado." });
 
   const custosProjeto = somaCategorias(custosCat) + custoPontualDiluido;
 
@@ -519,7 +536,7 @@ export function calcularComReceita(
   const reinvestimento = sobra > 0 ? (sobra * prep.reinvPct) / 100 : 0;
   const distribuivel = sobra - reinvestimento;
 
-  if (sobra < -EPS) alertas.push({ nivel: "erro", texto: `A sobra é negativa (${formatarMoeda(sobra)}): o valor não cobre os custos.` });
+  if (sobra < -EPS) alertas.push({ nivel: "erro", texto: `A sobra é negativa (${formatarMoeda(sobra)}): o valor não cobre os custos.`, explica: "Depois de pagar custos, imposto e taxas, falta dinheiro. Ex.: o cliente paga R$ 1.500 e os custos somam R$ 1.700, então faltam R$ 200 todo mês. Suba o valor ou diminua o escopo." });
 
   const pessoas: ResultadoPessoa[] = prep.config.pessoas
     .filter((p) => p.ativo)
@@ -554,17 +571,20 @@ export function calcularComReceita(
       alertas.push({
         nivel: "erro",
         texto: `${p.nome}: ${formatarMoeda(p.valorHoraCentavos)}/h, abaixo do piso de ${formatarMoeda(p.pisoHoraCentavos)}/h.`,
+        explica: "Piso é o mínimo que cada hora de trabalho precisa pagar. Ex.: com piso de R$ 50/h, 20 horas precisam render pelo menos R$ 1.000. Aqui a hora está saindo mais barata que o combinado.",
       });
     if (p.horas > 0 && p.pisoHoraCentavos == null && prep.socios.some((s) => s.pessoa.id === p.id))
       alertas.push({
         nivel: "aviso",
         texto: `${p.nome} não tem piso por hora: não dá para saber se o valor por hora dele(a) está bom.`,
+        explica: "Alguém que trabalha neste cliente ainda não disse quanto a hora dele precisa valer. Sem isso, não dá pra calcular o valor mínimo. Preencha o piso em Sócios.",
         acao: { rotulo: `Preencher o piso de ${p.nome}`, destino: { tipo: "config", secao: "socios", campo: "pisoHoraCentavos" } },
       });
     if (p.consumoCapacidadePct != null && p.consumoCapacidadePct > 100 + EPS)
       alertas.push({
         nivel: "erro",
         texto: `${p.nome}: este projeto sozinho usa ${formatarPct(p.consumoCapacidadePct)} das horas do mês.`,
+        explica: "Capacidade é quantas horas a pessoa tem no mês para produzir. Ex.: com 100 h por mês, um cliente que pede 60 h ocupa 60%. Um cliente só tomando tanto espaço deixa pouca folga para os outros.",
       });
   }
 
@@ -714,6 +734,7 @@ export function calcularHorizonte(
       alertas.push({
         nivel: "aviso",
         texto: "Informe o horizonte da simulação (em meses) para ver o efeito dos meses sem cobrança.",
+        explica: "Horizonte é por quantos meses você quer ver a conta. Ex.: 12 meses com 2 sem cobrança mostra a média real do ano. Sem o horizonte, não dá para medir o efeito desses meses.",
         acao: { rotulo: "Informar o horizonte", destino: { tipo: "cenario", bloco: "semcobranca" } },
       });
     return { horizonte: null, alertas };
@@ -722,6 +743,7 @@ export function calcularHorizonte(
     alertas.push({
       nivel: "erro",
       texto: "Os meses sem cobrança passam do horizonte da simulação.",
+      explica: "Não dá para ter mais meses sem cobrança do que meses na simulação. Ex.: num horizonte de 6 meses cabem no máximo 6 sem cobrança.",
       acao: { rotulo: "Corrigir", destino: { tipo: "cenario", bloco: "semcobranca" } },
     });
     return { horizonte: null, alertas };
@@ -772,6 +794,7 @@ export function calcularHorizonte(
     alertas.push({
       nivel: "aviso",
       texto: "Escolha o que fica suspenso nos meses sem cobrança (nada é pago, ou só a mensalidade). As duas opções aparecem lado a lado.",
+      explica: "Num mês sem cobrança, o cliente pode não pagar nada ou pagar só uma parte. O sistema mostra as duas opções lado a lado até você escolher.",
       acao: { rotulo: "Escolher", destino: { tipo: "cenario", bloco: "semcobranca" } },
     });
 
@@ -941,6 +964,7 @@ function alertasAudiovisualBloco(config: Configuracao, entregas: LinhaEntrega[],
       out.push({
         nivel: "erro",
         texto: `${prefixo}"${tipo.nome}" é entrega de vídeo, mas não há custo de audiovisual preenchido. Audiovisual é sempre terceiro pago pela empresa: informe o custo (fixo ou por entrega).`,
+        explica: "Vídeo é feito por terceiro e pago pela empresa, então sempre tem custo. Ex.: edição de R$ 80 por vídeo × 4 vídeos = R$ 320 por mês. Sem esse custo, o resultado parece melhor do que é.",
         acao: { rotulo: "Informar o custo", destino: { tipo: "cenario", bloco: "custos" } },
       });
   }
@@ -995,6 +1019,7 @@ export function calcularEntrada(
         alertas.push({
           nivel: "aviso",
           texto: `Entrada: as horas de ${p.nome} não foram valorizadas porque ele(a) não tem piso por hora configurado.`,
+          explica: "Sem o piso por hora, o sistema não sabe quanto vale o trabalho dessa pessoa na entrada. Ex.: 10 h de entrada com piso de R$ 60/h valem R$ 600. Preencha o piso em Sócios.",
           acao: { rotulo: `Preencher o piso de ${p.nome}`, destino: { tipo: "config", secao: "socios", campo: "pisoHoraCentavos" } },
         });
       const horasPrimeiroMes = (prep.horasPorPessoa.get(p.id) ?? 0) + horas;
@@ -1004,6 +1029,7 @@ export function calcularEntrada(
         alertas.push({
           nivel: "aviso",
           texto: `No 1º mês (rotina + entrada), ${p.nome} usa ${formatarPct(consumo)} das horas do mês.`,
+          explica: "No primeiro mês a pessoa faz a rotina e ainda o trabalho de entrada, então o mês fica mais cheio. Ex.: 60 h da rotina + 30 h da entrada = 90 h num mês de 100 h.",
         });
       return { id: p.id, nome: p.nome, horas, valorHorasNoPisoCentavos: valor, horasPrimeiroMes, consumoPrimeiroMesPct: consumo };
     });
@@ -1027,6 +1053,7 @@ export function calcularEntrada(
       nivel: "aviso",
       texto:
         "A entrada não se paga com a rotina: neste valor, a rotina paga só o piso (ou menos). Cobre a entrada à parte ou suba a mensalidade.",
+      explica: "O trabalho da entrada tem horas, e a mensalidade neste valor mal paga a rotina. Ex.: se a rotina já fica no piso, as 20 h da entrada saem de graça. Cobre a entrada à parte ou suba a mensalidade.",
     });
 
   return {
@@ -1149,13 +1176,18 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
   if (cenario.modo === "escopo") {
     mes = minimo.resultado;
     if (!mes) alertas.push(...prep.alertas);
-    if (!minimo.possivel && minimo.motivo) alertas.push({ nivel: "erro", texto: minimo.motivo });
+    if (!minimo.possivel && minimo.motivo) alertas.push({
+        nivel: "erro",
+        texto: minimo.motivo,
+        explica: "O sistema procura o menor valor que paga os custos e ainda deixa cada sócio no piso. Desta vez não achou, pelo motivo escrito acima. Resolva esse ponto e o valor mínimo aparece.",
+      });
   } else {
     if (cenario.mensalidadeCentavos == null) {
       mes = null;
       alertas.push(...prep.alertas, {
         nivel: "info",
         texto: "Informe o valor mensal que o cliente vai pagar.",
+        explica: "Neste modo você diz quanto o cliente paga e o sistema mostra se vale a pena. Digite o valor para ver o resultado.",
         acao: { rotulo: "Informar o valor", destino: { tipo: "cenario", bloco: "modo" } },
       });
     } else {
@@ -1178,6 +1210,7 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
         alertas.push({
           nivel: "erro",
           texto: `No horizonte de ${hz.horizonte.meses} meses, ${p.nome} fica com média de ${formatarMoeda(p.valorHoraMedioCentavos)}/h, abaixo do piso.`,
+          explica: "Somando os meses que o cliente paga e os que não paga, a hora dessa pessoa fica abaixo do mínimo combinado. Ex.: R$ 60/h em 10 meses e R$ 0 em 2 dá média de R$ 50/h.",
         });
   }
 
@@ -1190,11 +1223,13 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
     alertas.push({
       nivel: "erro",
       texto: `Com este cliente, o faturamento projetado do ano (${formatarMoeda(teto.anualCentavos)}) passa do teto de ${formatarMoeda(teto.tetoCentavos)}. Estourar o teto muda o regime da empresa.`,
+      explica: "O MEI (e outros regimes) tem um limite de faturamento por ano. Ex.: o teto do MEI é o valor anual definido por lei; passando dele, a empresa muda de regime e passa a pagar outro imposto.",
     });
   else if (teto?.nivel === "perto")
     alertas.push({
       nivel: "aviso",
       texto: `Com este cliente, o faturamento projetado do ano chega a ${formatarPct(teto.pct)} do teto (${formatarMoeda(teto.tetoCentavos)}).`,
+      explica: "Somando o que todos os clientes pagam em 12 meses, a empresa está chegando perto do limite de faturamento do regime. Vale planejar antes de passar.",
     });
 
   return {
