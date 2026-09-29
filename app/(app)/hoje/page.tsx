@@ -5,6 +5,7 @@
 // as pendências um do outro quando quiserem, pelo seletor "De quem".
 
 import {
+  Calculator,
   AlertTriangle,
   ArrowRight,
   Bell,
@@ -49,6 +50,7 @@ import { useDados } from "@/lib/dados/contexto";
 import type { AvisoSocio, Pedido, ResumoSimulacao } from "@/lib/dados/repositorio";
 import { formatarMoeda, formatarPct, primeiraMaiuscula } from "@/lib/formato";
 import { linkConfig } from "@/lib/navegacao";
+import { COM_VOLUME } from "@/lib/recursos";
 import { passosParaComecar, type PassoComecar } from "@/lib/regras/pendencias";
 
 type Chave = "hoje" | "atrasadas" | "semana" | "aprovacao" | "concluidas";
@@ -111,7 +113,7 @@ function ParaComecar({ passos }: { passos: PassoComecar[] }) {
       <ol className="flex flex-col gap-1 px-4 pt-2 pb-4">
         {passos.map((p) => {
           const pronto = p.faltando.length === 0;
-          const href = p.secao === "clientes" ? "/clientes" : linkConfig(p.secao);
+          const href = linkConfig(p.secao);
           return (
             <li key={p.secao}>
               <Link
@@ -401,10 +403,9 @@ export default function VisaoDoDia() {
               )}
             </Bloco>
 
+            {/* Fase 1: com pouco volume, cada bloco só aparece quando tem algo */}
+            {proximos.size > 0 && (
             <Bloco titulo="Próximos dias" icone={CalendarDays} acao={<LinkPequeno href="/calendario">Calendário</LinkPequeno>}>
-              {proximos.size === 0 ? (
-                <p className="text-xs text-texto-suave">Nada com prazo nos próximos 7 dias.</p>
-              ) : (
                 <div className="flex flex-col gap-3">
                   {[...proximos].map(([dia, ts]) => (
                     <div key={dia}>
@@ -417,8 +418,8 @@ export default function VisaoDoDia() {
                     </div>
                   ))}
                 </div>
-              )}
             </Bloco>
+            )}
           </div>
 
           {/* coluna lateral: o que depende de mim e o resumo de tudo */}
@@ -452,11 +453,9 @@ export default function VisaoDoDia() {
                 )}
               </Bloco>
             )}
-            {minhaVisao && socio && (
+            {minhaVisao && socio && (aprovacoes.length > 0 || avisosNovos.length > 0) && (
               <Bloco titulo="Depende de mim" icone={ShieldCheck}>
-                {aprovacoes.length === 0 && avisosNovos.length === 0 ? (
-                  <p className="text-xs text-texto-suave">Nenhum pedido entre sócios nem aviso esperando você.</p>
-                ) : (
+                {(
                   <div className="flex flex-col gap-2">
                     {aprovacoes.length > 0 && (
                       <Link href="/aprovacoes" className="flex items-center gap-2 rounded-bloco bg-aviso-suave px-3 py-2 text-xs font-semibold text-aviso hover:opacity-90">
@@ -477,7 +476,7 @@ export default function VisaoDoDia() {
               </Bloco>
             )}
 
-            {socio && (
+            {socio && (trilha.degraus.length > 0 || COM_VOLUME.secaoMetas) && (
             <Bloco titulo="Metas" icone={Rocket} acao={<LinkPequeno href="/mes">Mês</LinkPequeno>}>
               {!trilha.degraus.length ? (
                 <p className="text-xs text-texto-suave">
@@ -509,6 +508,14 @@ export default function VisaoDoDia() {
 
             {socio && (
             <Bloco titulo="Comercial" icone={Sparkles} acao={<LinkPequeno href="/crm">Leads</LinkPequeno>}>
+              <Link
+                href="/calculadora"
+                className="mb-3 flex items-center gap-2 rounded-bloco bg-marca-suave px-3 py-2 text-xs font-bold text-marca-forte hover:opacity-90"
+              >
+                <Calculator size={15} />
+                <span className="flex-1">Calcular uma proposta</span>
+                <ArrowRight size={13} />
+              </Link>
               {leads.length > 0 && (
                 <p className="mb-2 text-xs">
                   <strong>{funil.abertos}</strong> lead{funil.abertos === 1 ? "" : "s"} em negociação
@@ -558,6 +565,11 @@ export default function VisaoDoDia() {
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-superficie-2">
                   <div className="h-full rounded-full bg-ok" style={{ width: `${Math.min(100, (financeiro.recebido / financeiro.contratado) * 100)}%` }} />
                 </div>
+              )}
+              {financeiro.contratado > financeiro.recebido && (
+                <p className="mt-1.5 text-[12px] text-texto-suave">
+                  Falta entrar <strong className="numero text-texto">{formatarMoeda(financeiro.contratado - financeiro.recebido)}</strong> este mês.
+                </p>
               )}
               {lembretes.length > 0 && (
                 <div className="mt-3 flex flex-col gap-1">

@@ -4,7 +4,7 @@
 
 import { Building2, ClipboardList, Plus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FichaCliente, SITUACAO_PAGAMENTO } from "@/components/clientes/FichaCliente";
+import { FichaCliente, SITUACAO_PAGAMENTO, type Aba } from "@/components/clientes/FichaCliente";
 import { CabecalhoPagina } from "@/components/Shell";
 import { useTarefas } from "@/components/tarefas/useTarefas";
 import { Badge, Vazio, cx } from "@/components/ui";
@@ -25,6 +25,7 @@ export default function Clientes() {
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [aberto, setAberto] = useState<string | null>(null);
+  const [abaInicial, setAbaInicial] = useState<Aba | null>(null);
   const [novo, setNovo] = useState("");
   const [verInativos, setVerInativos] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -40,8 +41,11 @@ export default function Clientes() {
     void recarregar().catch((e) => setErro(e instanceof Error ? e.message : "Erro ao carregar."));
     repo.listarPagamentos().then(setPagamentos).catch(() => {});
     repo.listarLeads().then(setLeads).catch(() => {});
-    const id = new URLSearchParams(window.location.search).get("cliente");
+    const q = new URLSearchParams(window.location.search);
+    const id = q.get("cliente");
     if (id) setAberto(id);
+    const aba = q.get("aba");
+    if (aba === "contrato" || aba === "tarefas" || aba === "financeiro" || aba === "comercial") setAbaInicial(aba);
   }, [repo, recarregar]);
 
   // a tela muda na hora; o banco grava quando a pessoa para de digitar
@@ -170,7 +174,11 @@ export default function Clientes() {
           await recarregar();
           await a.recarregar();
         }}
-        aoFechar={() => setAberto(null)}
+        abaInicial={abaInicial}
+        aoFechar={() => {
+          setAberto(null);
+          setAbaInicial(null);
+        }}
       />
     </div>
   );

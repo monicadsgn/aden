@@ -246,11 +246,11 @@ describe("origem das horas", () => {
     expect(s.prejuizoSilencioso).toBe(false); // previsão não vira prejuízo silencioso
   });
 
-  it("lançado à mão aparece como manual", () => {
+  it("corrigido à mão aparece como manual", () => {
     const c = config();
     const cli = cliente("x", 150000, cenario([["post", 9]]));
     const s = calcularSaudeCliente(c, cli, { valorRecebidoCentavos: null, horas: { m: 5 } });
-    expect(rotuloOrigemHoras(s.socios.find((x) => x.id === "m")!.origemHoras)).toBe("lançado manualmente");
+    expect(rotuloOrigemHoras(s.socios.find((x) => x.id === "m")!.origemHoras)).toBe("corrigido à mão");
   });
 
   it("tipo calibrado aparece como média medida (N medições)", () => {

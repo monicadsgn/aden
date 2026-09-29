@@ -3,7 +3,7 @@
 // Ficha do cliente: tudo de um cliente num lugar só (dados, contrato e escopo, tarefas,
 // pagamentos e a conversa que veio do CRM). Edita no lugar e salva ao sair do campo.
 
-import { Calculator, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, User, Wallet } from "lucide-react";
+import { Calculator, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, SlidersHorizontal, User, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -27,7 +27,7 @@ import { useDados } from "@/lib/dados/contexto";
 import { formatarMoeda } from "@/lib/formato";
 import { enviarCenario } from "@/lib/navegacao";
 
-type Aba = "resumo" | "contrato" | "tarefas" | "financeiro" | "comercial";
+export type Aba = "resumo" | "contrato" | "tarefas" | "financeiro" | "comercial";
 
 export const SITUACAO_PAGAMENTO: Record<SituacaoPagamento, { rotulo: string; tom: "ok" | "aviso" | "erro" | "neutro" }> = {
   pago: { rotulo: "pago", tom: "ok" },
@@ -77,6 +77,7 @@ export function FichaCliente({
   aoSalvar,
   aoRecarregar,
   aoFechar,
+  abaInicial,
 }: {
   cliente: ClienteBase | null;
   config: Configuracao;
@@ -87,10 +88,17 @@ export function FichaCliente({
   aoSalvar: (c: ClienteBase) => Promise<void>;
   aoRecarregar: () => Promise<void>;
   aoFechar: () => void;
+  /** aba que abre primeiro (ex.: voltando da Proposta, abre no Contrato) */
+  abaInicial?: Aba | null;
 }) {
   const { repo } = useDados();
   const router = useRouter();
-  const [aba, setAba] = useState<Aba>("resumo");
+  const [aba, setAba] = useState<Aba>(abaInicial ?? "resumo");
+  const clienteId = cliente?.id ?? null;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- abre na aba pedida pelo endereço
+    if (abaInicial && clienteId) setAba(abaInicial);
+  }, [abaInicial, clienteId]);
   const [interacoes, setInteracoes] = useState<InteracaoLead[]>([]);
   const [novaT, setNovaT] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -191,6 +199,7 @@ export function FichaCliente({
             <div className="flex flex-col justify-end gap-2 pb-1">
               <Interruptor ligado={c.ativo} rotulo="Cliente ativo" aoMudar={(v) => set({ ativo: v })} />
               <Interruptor ligado={c.participaRateio} rotulo="Divide os custos fixos (rateio)" aoMudar={(v) => set({ participaRateio: v })} />
+              <Interruptor ligado={c.interno} rotulo="Interno (rede da própria Aden)" aoMudar={(v) => set({ interno: v })} />
             </div>
             <div className="sm:col-span-2">
               {PAINEL_CLIENTE_ATIVO && <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />}
@@ -248,13 +257,29 @@ export function FichaCliente({
                 <p className="flex-1 text-sm font-bold">Escopo contratado</p>
                 <Botao
                   pequeno
+                  variante="primario"
+                  icone={SlidersHorizontal}
+                  onClick={() => {
+                    // abre com o valor do contrato travado: mexer nas entregas não muda o preço assinado,
+                    // a não ser que a pessoa escolha "o valor segue o pacote" na Proposta
+                    const base = c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Escopo · ${c.nome}`), clienteId: c.id };
+                    const cen = c.valorMensalCentavos != null ? { ...base, modo: "valor" as const, mensalidadeCentavos: c.valorMensalCentavos } : base;
+                    enviarCenario({ origem: "ficha", nome: `Escopo · ${c.nome}`, cenarios: [cen] });
+                    router.push(`/negociacao?volta=${encodeURIComponent(`/clientes?cliente=${c.id}&aba=contrato`)}`);
+                  }}
+                >
+                  Personalizar escopo
+                </Botao>
+                <Botao
+                  pequeno
                   icone={Calculator}
+                  title="Números internos: piso, horas e divisão"
                   onClick={() => {
                     enviarCenario({ origem: "saude", nome: `Escopo · ${c.nome}`, cenarios: [c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Escopo · ${c.nome}`), clienteId: c.id }] });
                     router.push("/calculadora");
                   }}
                 >
-                  {c.escopo ? "Editar na calculadora" : "Montar na calculadora"}
+                  Na calculadora
                 </Botao>
               </div>
               {entregas.length ? (

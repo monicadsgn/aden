@@ -110,9 +110,9 @@ Cada fase começa mostrando o plano à Moni e só mexe em tela ou dado real depo
 migração. Meta: tudo pronto até o fim de outubro.
 
 - **Fase 0 · Diagnóstico:** feita em 29/09 (calculadora saiu do menu na auditoria de 26/09; mapa de telas aprovado).
-- **Fase 1 · Simplificar:** calculadora de volta no menu (Vendas, com destaque); só fica na frente o que se usa com 2 a
-  5 clientes, o resto escondido sem apagar; graves 5, 6 e 7 da auditoria junto; comparação refeita com sistemas de
-  agência.
+- **Fase 1 · Simplificar:** feita em 29/09. Calculadora de volta no menu (Vendas, com destaque); só fica na frente o
+  que se usa com 2 a 5 clientes, o resto escondido sem apagar (`COM_VOLUME` em `lib/recursos.ts`); graves 5, 6 e 7 da
+  auditoria feitos; comparação com sistemas de agência em `docs/AUDITORIA.md`.
 - **Fase 2 · Dados e regras da reunião:** seção 0 acima (sociedade, sócios, clientes, entregas, dinheiro, "mês visto de
   cima" no lugar da aba Sócios dentro de Mês, oferta padrão) e as sugestões aprovadas.
 - **Fase 3 · Migração da área da agência:** tarefas, peças, aprovações e painel da Olinda e da StadiumPlay; porta
@@ -128,7 +128,8 @@ migração. Meta: tudo pronto até o fim de outubro.
 
 ## 1. Auditoria de usabilidade: itens que faltam (entram na Fase 1)
 
-Itens da auditoria de usabilidade aprovados pela Moni (os graves 1–4 e os detalhes 16 e 19 já foram feitos):
+Itens da auditoria de usabilidade aprovados pela Moni (os graves 1–4 e os detalhes 16 e 19 já foram feitos; os
+graves 5, 6 e 7 foram feitos na Fase 1, em 29/09/2026; próximos: médios 8–14 e detalhes 15, 17 e 18):
 
 1. **Grave 5:** dados do cliente num lugar só. Tirar a aba Clientes das Configurações; a ficha do cliente é o único lugar.
    "Personalizar escopo" na ficha abre a Proposta e volta para a ficha.

@@ -17,6 +17,7 @@ import { useDados } from "@/lib/dados/contexto";
 import type { Pedido } from "@/lib/dados/repositorio";
 import { formatarMoeda } from "@/lib/formato";
 import { guardarParaImprimir } from "@/lib/impressao";
+import { guardarEscopo } from "@/lib/dados/acoes";
 import { enviarCenario, receberCenario } from "@/lib/navegacao";
 import { sociosAbaixoDoPiso } from "@/lib/regras/aprovacao";
 
@@ -40,6 +41,9 @@ export default function Negociacao() {
   const [carregado, setCarregado] = useState(false);
   const [escolhendo, setEscolhendo] = useState(false);
   const [personalizando, setPersonalizando] = useState(false);
+  // vindo da ficha do cliente ("Personalizar escopo"): guarda o escopo e volta para a ficha
+  const [volta, setVolta] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -48,9 +52,12 @@ export default function Negociacao() {
         setConfig(c);
         setPedidos(await repo.listarPedidos().catch(() => []));
         const recebido = receberCenario();
+        const v = new URLSearchParams(window.location.search).get("volta");
+        if (v?.startsWith("/")) setVolta(v);
         if (recebido?.cenarios[0]) {
           const cen = recebido.cenarios[0];
           setEstado({ cenario: cen, desligados: {} });
+          if (recebido.origem === "ficha") setPersonalizando(true);
           setNomeCliente(c.clientes.find((x) => x.id === cen.clienteId)?.nome ?? "");
         } else if ((c.pacotes ?? []).some((p) => p.ativo)) {
           // vindo do CRM: já com o nome do lead
@@ -143,8 +150,27 @@ export default function Negociacao() {
     router.push("/imprimir/proposta");
   };
 
+  const guardarComoEscopo = async () => {
+    if (!cen.clienteId) return;
+    setGuardando(true);
+    try {
+      const r = await guardarEscopo(repo, config, cen.clienteId, cen);
+      if (!r.gravado) {
+        setAviso(`Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: o escopo espera aprovação em Sócios → Pedidos e avisos.`);
+        return;
+      }
+      if (volta) router.push(volta);
+      else setAviso("Escopo guardado na ficha do cliente.");
+    } catch (e) {
+      setAviso(e instanceof Error ? e.message : "Não deu para guardar o escopo.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   // Sair volta para onde a pessoa estava (CRM, ficha do cliente…); sem histórico, para a Visão do dia.
   const sair = () => {
+    if (volta) return router.push(volta);
     const veioDoAden = document.referrer.startsWith(window.location.origin) && !document.referrer.includes("/negociacao");
     if (veioDoAden && window.history.length > 1) router.back();
     else router.push("/hoje");
@@ -226,9 +252,15 @@ export default function Negociacao() {
               </Botao>
             )}
             <span className="flex-1" />
-            <Botao icone={Save} onClick={salvarVersao}>
-              Guardar esta versão
-            </Botao>
+            {volta && cen.clienteId ? (
+              <Botao icone={Save} disabled={guardando} onClick={guardarComoEscopo}>
+                Guardar no escopo de {config.clientes.find((c) => c.id === cen.clienteId)?.nome ?? "cliente"}
+              </Botao>
+            ) : (
+              <Botao icone={Save} onClick={salvarVersao}>
+                Guardar esta versão
+              </Botao>
+            )}
             <Botao variante="primario" icone={FileDown} disabled={valor == null} onClick={exportar}>
               {liberado ? "Exportar PDF" : pendente ? "Esperando aprovação" : "Exportar PDF (precisa de aprovação)"}
             </Botao>

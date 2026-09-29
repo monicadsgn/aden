@@ -2,6 +2,8 @@
 
 import {
   CalendarClock,
+  ChevronDown,
+  SlidersHorizontal,
   Clapperboard,
   DoorOpen,
   Gem,
@@ -17,7 +19,8 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { EVENTO_ABRIR_BLOCO } from "@/lib/navegacao";
 import { temEntregaDeTrafego } from "@/lib/calculo/motor";
 import { novaLinhaCusto, novaLinhaEntrega, novoPontual } from "@/lib/calculo/novo";
 import type {
@@ -286,6 +289,25 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
 
   const pctPadrao = (v: Pct) => (v == null ? "vazio" : formatarPct(v));
 
+  // Grave 7 da auditoria: na frente só Como calcular, Rotina, Custos e Entrada. O resto fica em
+  // "Mais opções" e aparece sozinho quando a versão já usa aquilo (ou quando um aviso pede).
+  const [maisAberto, setMaisAberto] = useState(false);
+  useEffect(() => {
+    const abrir = () => setMaisAberto(true);
+    window.addEventListener(EVENTO_ABRIR_BLOCO, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_BLOCO, abrir);
+  }, []);
+  const usa = {
+    quemExecuta: Object.keys(sob.divisaoServico).length > 0,
+    trafego: t.modelo != null || temEntregaDeTrafego(config, cenario),
+    pontuais: cenario.pontuais.length > 0,
+    percentuais:
+      sob.reinvestimentoPct != null || sob.impostoPct != null || sob.taxaRecebimentoPct != null || Object.values(sob.percentualPessoa).some((v) => v != null),
+    semCobranca: (cenario.mesesSemCobranca ?? 0) > 0,
+  };
+  const mostra = (k: keyof typeof usa) => maisAberto || usa[k];
+  const escondidos = (Object.keys(usa) as (keyof typeof usa)[]).filter((k) => !usa[k]).length;
+
   return (
     <div className="flex flex-col gap-4">
       {/* Modo */}
@@ -339,8 +361,61 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         </Secao>
       </Card>
 
+      {/* Custos */}
+      <Card id="cenario-custos">
+        <TituloCard
+          icone={Receipt}
+          titulo="Custos da rotina"
+          detalhes={<DetalhesCustos config={config} m={null} />}
+          descricao="Ferramentas são fixas e mensais. Audiovisual é sempre terceiro pago pela empresa, fixo ou por entrega de vídeo."
+        />
+        <Secao>
+          <EditorCustos linhas={cenario.custos} config={config} aoMudar={(custos) => set({ custos })} />
+          <CustosDeTerceiros cenario={cenario} config={config} aoMudar={(deslocamentos) => set({ deslocamentos })} />
+        </Secao>
+      </Card>
+
+      {/* Entrada */}
+      <Card>
+        <TituloCard
+          icone={DoorOpen}
+          titulo="Entrada do cliente"
+          detalhes={<DetalhesEntrada />}
+          descricao="Acontece uma vez só: onboarding, estrutura visual e proposta de conteúdo, enxoval do perfil, primeiros estáticos e criativos. Não pesa na rotina."
+          acao={<Badge tom="aviso">uma vez</Badge>}
+        />
+        <Secao>
+          <EditorEntregas linhas={entrada.entregas} config={config} unidade="Qtd. total" aoMudar={(entregas) => setEntrada({ entregas })} />
+          <p className="mt-3 mb-2 text-xs font-bold text-texto-suave">Custos da entrada</p>
+          <EditorCustos pontual linhas={entrada.custos} config={config} aoMudar={(custos) => setEntrada({ custos })} />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <CampoMoeda rotulo="Valor cobrado pela entrada (opcional)" valor={entrada.valorCobradoCentavos} aoMudar={(v) => setEntrada({ valorCobradoCentavos: v })} />
+            <CampoNumero rotulo="Quero que se pague em (opcional)" sufixo="meses" valor={entrada.mesesParaPagar} aoMudar={(v) => setEntrada({ mesesParaPagar: v })} />
+          </div>
+        </Secao>
+      </Card>
+
+      {/* Mais opções */}
+      {escondidos > 0 && (
+        <button
+          type="button"
+          aria-expanded={maisAberto}
+          onClick={() => setMaisAberto(!maisAberto)}
+          className="flex items-center gap-2 rounded-card border border-dashed border-linha bg-superficie px-4 py-3 text-left text-sm font-semibold text-texto hover:border-marca/50"
+        >
+          <SlidersHorizontal size={16} className="text-marca-forte" />
+          <span className="flex-1">
+            {maisAberto ? "Menos opções" : "Mais opções"}
+            <span className="block text-[12px] font-normal text-texto-suave">
+              Tráfego, projetos pontuais, quem executa, percentuais deste projeto e meses sem cobrança. Só quando precisar.
+            </span>
+          </span>
+          <ChevronDown size={16} className={cx("transition-transform", maisAberto && "rotate-180")} />
+        </button>
+      )}
+
       {/* Quem executa */}
-      {servicosUsados.length > 0 && socios.length > 0 && (
+      {mostra("quemExecuta") && servicosUsados.length > 0 && socios.length > 0 && (
         <Card>
           <TituloCard icone={Users} titulo="Quem executa" detalhes={<DetalhesQuemExecuta config={config} />} descricao="Divisão das horas de cada serviço entre os sócios. Vazio = usa o padrão." />
           <Secao>
@@ -391,41 +466,8 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         </Card>
       )}
 
-      {/* Custos */}
-      <Card id="cenario-custos">
-        <TituloCard
-          icone={Receipt}
-          titulo="Custos da rotina"
-          detalhes={<DetalhesCustos config={config} m={null} />}
-          descricao="Ferramentas são fixas e mensais. Audiovisual é sempre terceiro pago pela empresa, fixo ou por entrega de vídeo."
-        />
-        <Secao>
-          <EditorCustos linhas={cenario.custos} config={config} aoMudar={(custos) => set({ custos })} />
-          <CustosDeTerceiros cenario={cenario} config={config} aoMudar={(deslocamentos) => set({ deslocamentos })} />
-        </Secao>
-      </Card>
-
-      {/* Entrada */}
-      <Card>
-        <TituloCard
-          icone={DoorOpen}
-          titulo="Entrada do cliente"
-          detalhes={<DetalhesEntrada />}
-          descricao="Acontece uma vez só: onboarding, estrutura visual e proposta de conteúdo, enxoval do perfil, primeiros estáticos e criativos. Não pesa na rotina."
-          acao={<Badge tom="aviso">uma vez</Badge>}
-        />
-        <Secao>
-          <EditorEntregas linhas={entrada.entregas} config={config} unidade="Qtd. total" aoMudar={(entregas) => setEntrada({ entregas })} />
-          <p className="mt-3 mb-2 text-xs font-bold text-texto-suave">Custos da entrada</p>
-          <EditorCustos pontual linhas={entrada.custos} config={config} aoMudar={(custos) => setEntrada({ custos })} />
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <CampoMoeda rotulo="Valor cobrado pela entrada (opcional)" valor={entrada.valorCobradoCentavos} aoMudar={(v) => setEntrada({ valorCobradoCentavos: v })} />
-            <CampoNumero rotulo="Quero que se pague em (opcional)" sufixo="meses" valor={entrada.mesesParaPagar} aoMudar={(v) => setEntrada({ mesesParaPagar: v })} />
-          </div>
-        </Secao>
-      </Card>
-
       {/* Tráfego */}
+      {mostra("trafego") && (
       <Card id="cenario-trafego">
         <TituloCard icone={Megaphone} titulo="Cobrança do tráfego pago" detalhes={<DetalhesTrafego />} descricao="A verba de mídia é do cliente e fica por fora. Aqui é só como a Aden cobra pela gestão." />
         <Secao>
@@ -472,8 +514,10 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
           <p className="mt-2 text-[11px] text-texto-suave">As horas de gestão do tráfego entram como entregas (ex.: um tipo de entrega mensal de gestão).</p>
         </Secao>
       </Card>
+      )}
 
       {/* Pontuais */}
+      {mostra("pontuais") && (
       <Card id="cenario-pontuais">
         <TituloCard icone={Gem} titulo="Projetos pontuais" detalhes={<DetalhesPontuais />} descricao="Branding e outros projetos únicos: diluídos em X meses na mensalidade ou cobrados por fora." />
         <Secao>
@@ -513,9 +557,11 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
           </div>
         </Secao>
       </Card>
+      )}
 
       {/* Percentuais */}
-      <Card>
+      {mostra("percentuais") && (
+      <Card id="cenario-percentuais">
         <TituloCard icone={Percent} titulo="Percentuais deste projeto" detalhes={<DetalhesPercentuais config={config} />} descricao="Vazio = usa o padrão da empresa. Preencher troca só nesta versão." />
         <Secao>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -579,8 +625,10 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
           </div>
         </Secao>
       </Card>
+      )}
 
       {/* Meses sem cobrança */}
+      {mostra("semCobranca") && (
       <Card id="cenario-semcobranca">
         <TituloCard
           icone={CalendarClock}
@@ -608,6 +656,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
           </div>
         </Secao>
       </Card>
+      )}
     </div>
   );
 }

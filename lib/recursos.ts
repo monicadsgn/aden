@@ -7,3 +7,19 @@
  * conteúdo para o Aden: liga junto com a migração (Fase 3 do docs/ROADMAP.md).
  */
 export const PAINEL_CLIENTE_ATIVO = false;
+
+/**
+ * Telas e blocos que só fazem sentido com mais clientes (Fase 1, aprovada pela Moni em 29/09/2026:
+ * na frente só o que se usa com 2 a 5 clientes). Esconder não apaga: o endereço continua abrindo
+ * e o que tem dado aparece sozinho. Para mostrar de novo, é só trocar para true.
+ */
+export const COM_VOLUME = {
+  /** aba Horas (capacidade de cada sócio) na tela Mês; /capacidade continua abrindo */
+  abaHorasDoMes: false,
+  /** Configurações → Metas: aparece sozinha quando já há meta cadastrada */
+  secaoMetas: false,
+  /** Configurações → Limites e avisos: aparece sozinha quando algum limite está preenchido */
+  secaoLimites: false,
+  /** botão da Calibragem em Tipos de entrega: aparece sozinho quando há medição do cronômetro */
+  botaoCalibragem: false,
+};

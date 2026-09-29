@@ -10,7 +10,7 @@
 //
 // Funções puras, reaproveitando o motor da calculadora.
 
-import { configComMediaMedida, type CalibragemTipo } from "./calibragem";
+import { configComMediaMedida, segundosDaMedicao, type CalibragemTipo, type Medicao } from "./calibragem";
 import { calcularComReceita, calcularTeto, prepararMes, type PreparadoMes } from "./motor";
 import { novoCenario } from "./novo";
 import type { Alerta, Cenario, ClienteBase, Configuracao, Id, ProjecaoTeto, ResultadoMes } from "./tipos";
@@ -125,15 +125,21 @@ export interface RegistroMesCliente {
 }
 
 /**
- * De onde vem o número de horas:
- * - manual: lançado à mão no mês
+ * De onde vem o número de horas (nesta ordem de preferência):
+ * - manual: corrigido à mão no mês
+ * - tarefas: tempo do cronômetro nas tarefas do cliente no mês (N medições)
  * - medida: escopo × média medida pelo cronômetro (N medições)
  * - previsto: escopo × padrão cadastrado
  */
-export type OrigemHoras = { tipo: "manual" } | { tipo: "medida"; medicoes: number; parcial: boolean } | { tipo: "previsto" };
+export type OrigemHoras =
+  | { tipo: "manual" }
+  | { tipo: "tarefas"; medicoes: number }
+  | { tipo: "medida"; medicoes: number; parcial: boolean }
+  | { tipo: "previsto" };
 
 export function rotuloOrigemHoras(o: OrigemHoras): string {
-  if (o.tipo === "manual") return "lançado manualmente";
+  if (o.tipo === "manual") return "corrigido à mão";
+  if (o.tipo === "tarefas") return `das tarefas (${o.medicoes} ${o.medicoes === 1 ? "medição" : "medições"})`;
   if (o.tipo === "medida") return `${o.parcial ? "parte " : ""}média medida (${o.medicoes} ${o.medicoes === 1 ? "medição" : "medições"})`;
   return "previsto no escopo";
 }
@@ -149,7 +155,7 @@ export interface SaudeSocio {
   /** horas usadas no realizado (manual, medida ou prevista, conforme a origem) */
   horasReais: number;
   origemHoras: OrigemHoras;
-  /** true quando não há lançamento à mão: o número é previsão */
+  /** true quando não há lançamento à mão nem tempo das tarefas: o número é previsão */
   semRegistro: boolean;
   valorPrevisto: number | null;
   valorReal: number | null;
@@ -197,6 +203,32 @@ export interface OpcoesSaude {
   pagamentosCentavos?: number | null;
   /** mês já terminou? Com o mês aberto, pagamento parcial não conta como valor do mês */
   mesFechado?: boolean;
+  /** horas medidas nas tarefas deste cliente no mês, por sócio (ver horasDasTarefas) */
+  horasTarefas?: Map<Id, HorasDeTarefas>;
+}
+
+export interface HorasDeTarefas {
+  horas: number;
+  medicoes: number;
+}
+
+/**
+ * Horas de cada sócio num cliente e mês, somando o cronômetro das tarefas (grave 6 da auditoria).
+ * A medição conta no mês em que terminou (ou, se ainda está aberta, no mês em que foi retomada/criada).
+ * Medição sem pessoa não conta para ninguém.
+ */
+export function horasDasTarefas(medicoes: Medicao[], clienteId: Id, competencia: string, agora: Date = new Date()): Map<Id, HorasDeTarefas> {
+  const out = new Map<Id, HorasDeTarefas>();
+  for (const m of medicoes) {
+    if (m.clienteId !== clienteId || !m.pessoaId) continue;
+    const quando = m.fim ?? m.retomadoEm ?? m.criadoEm;
+    if (!quando || quando.slice(0, 7) !== competencia) continue;
+    const seg = segundosDaMedicao(m, agora);
+    if (seg <= 0) continue;
+    const atual = out.get(m.pessoaId) ?? { horas: 0, medicoes: 0 };
+    out.set(m.pessoaId, { horas: atual.horas + seg / 3600, medicoes: atual.medicoes + 1 });
+  }
+  return out;
 }
 
 /** Mesmo preparo do mês, mas com outras horas por pessoa. */
@@ -246,7 +278,8 @@ export function calcularSaudeCliente(
   const contrato = cliente.valorMensalCentavos;
   const pagos = opcoes.pagamentosCentavos ?? null;
   const manualValor = registro?.valorRecebidoCentavos ?? null;
-  const horasLancadas = !!registro && Object.values(registro.horas).some((h) => h != null);
+  const horasLancadas =
+    (!!registro && Object.values(registro.horas).some((h) => h != null)) || [...(opcoes.horasTarefas?.values() ?? [])].some((h) => h.medicoes > 0);
 
   // valor do realizado: pagamentos (mês fechado, ou já cobriu o contrato) > lançamento à mão > contrato
   let origemValor: OrigemValor = "contrato";
@@ -267,9 +300,13 @@ export function calcularSaudeCliente(
   const origens = new Map<Id, OrigemHoras>();
   for (const p of socios0) {
     const manual = registro?.horas[p.id];
+    const tarefas = opcoes.horasTarefas?.get(p.id);
     if (manual != null) {
       horasUsadas.set(p.id, manual);
       origens.set(p.id, { tipo: "manual" });
+    } else if (tarefas && tarefas.medicoes > 0) {
+      horasUsadas.set(p.id, tarefas.horas);
+      origens.set(p.id, { tipo: "tarefas", medicoes: tarefas.medicoes });
     } else {
       horasUsadas.set(p.id, est.horas.get(p.id) ?? 0);
       origens.set(p.id, est.origem.get(p.id) ?? { tipo: "previsto" });
@@ -292,7 +329,7 @@ export function calcularSaudeCliente(
       horasPrevistas: prep.horasPorPessoa.get(p.id) ?? 0,
       horasReais,
       origemHoras: origem,
-      semRegistro: origem.tipo !== "manual",
+      semRegistro: origem.tipo !== "manual" && origem.tipo !== "tarefas",
       valorPrevisto: pv?.valorCentavos ?? null,
       valorReal: rl?.valorCentavos ?? null,
       valorHoraPrevisto: pv?.valorHoraCentavos ?? null,

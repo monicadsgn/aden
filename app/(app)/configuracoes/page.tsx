@@ -14,7 +14,6 @@ import {
   Layers,
   Lock,
   Plus,
-  Receipt,
   RotateCcw,
   Save,
   Scale,
@@ -26,6 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { TrocarFoto } from "@/components/Avatar";
 import { OQueQuerDizer } from "@/components/Alertas";
@@ -41,7 +41,6 @@ import {
   CampoNumero,
   CampoPct,
   CampoTexto,
-  Interruptor,
   Segmentado,
   Selecao,
   TituloCard,
@@ -58,6 +57,7 @@ import { diferenca, temAlteracoes, type AlteracoesConfig, type Membro, type Pedi
 import { formatarMoeda, formatarPct } from "@/lib/formato";
 import { REGRAS_PROTECAO, type ItemProtegido } from "@/lib/regras/aprovacao";
 import { camposFaltando } from "@/lib/regras/pendencias";
+import { COM_VOLUME } from "@/lib/recursos";
 
 // Nomes citados pela Moni no briefing. Só nomes: horas e divisões ficam vazias.
 const SERVICOS_CITADOS = ["Tráfego pago", "Criativos", "Social media", "Branding"];
@@ -74,7 +74,6 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "equipe", rotulo: "Equipe e acessos", icone: KeyRound, frase: "Quem entra no Aden e o que cada um vê: sócios, equipe, freelancers e contador." },
   { id: "regras", rotulo: "Regras da empresa", icone: Scale, frase: "Regime e imposto, como dividir o custo fixo, reinvestimento, taxas e como distribuir cada pagamento." },
   { id: "limites", rotulo: "Limites e avisos", icone: Gauge, frase: "Quando o sistema acende um alerta. Vazio = sem aviso." },
-  { id: "clientes", rotulo: "Clientes", icone: Receipt, frase: "Clientes ativos e o valor mensal de cada um. É a base do rateio e da visão do mês." },
 ];
 
 function atualizar<T extends { id: string }>(lista: T[], id: string, patch: Partial<T>): T[] {
@@ -119,14 +118,24 @@ export default function Configuracoes() {
   const [carregado, setCarregado] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState<{ tom: "ok" | "erro" | "aviso"; texto: string } | null>(null);
+  const router = useRouter();
   const secaoUrl = useParametro("secao") as SecaoConfig | null;
   const campoUrl = useParametro("campo");
   const [secao, setSecao] = useState<SecaoConfig>("socios");
 
   useEffect(() => {
+    // os dados do cliente moram só na ficha (grave 5 da auditoria): o endereço antigo leva para lá
+    if (secaoUrl === "clientes") {
+      router.replace("/clientes");
+      return;
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- a seção vem da URL (botões dos avisos)
     if (secaoUrl && SECOES.some((s) => s.id === secaoUrl)) setSecao(secaoUrl);
-  }, [secaoUrl]);
+  }, [secaoUrl, router]);
+  const [temMedicao, setTemMedicao] = useState(false);
+  useEffect(() => {
+    repo.listarMedicoes().then((m) => setTemMedicao(m.length > 0)).catch(() => {});
+  }, [repo]);
 
   const carregar = useCallback(async () => {
     try {
@@ -232,6 +241,17 @@ export default function Configuracoes() {
 
   if (!carregado) return null;
   const atual = SECOES.find((s) => s.id === secao)!;
+  // Fase 1: com poucos clientes, Metas e Limites ficam fora das abas até terem uso (ou se a URL pedir).
+  const e0 = rascunho.empresa;
+  const usa: Partial<Record<SecaoConfig, boolean>> = {
+    metas: COM_VOLUME.secaoMetas || (rascunho.metas ?? []).length > 0,
+    limites:
+      COM_VOLUME.secaoLimites ||
+      [e0.tetoFaturamentoAnualCentavos, e0.avisoTetoPct, e0.ociosidadePct, e0.arredondamentoPropostaCentavos, e0.medicoesCalibragem, e0.diferencaSugerirPct, e0.diasLeadParado].some(
+        (v) => v != null,
+      ),
+  };
+  const secoesVisiveis = SECOES.filter((s) => usa[s.id] !== false || s.id === secao);
 
   return (
     <div className="pb-28">
@@ -265,7 +285,7 @@ export default function Configuracoes() {
 
         {/* abas */}
         <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Seções das configurações">
-          {SECOES.map((s) => {
+          {secoesVisiveis.map((s) => {
             const Ic = s.icone;
             const n = faltando[s.id].length;
             const sel = s.id === secao;
@@ -466,12 +486,14 @@ export default function Configuracoes() {
                   Digite o tempo em <strong>minutos</strong> (20 min, 40 min…). <Lock size={10} className="inline" /> É protegido: muda quanto cada hora vale. Roteiro e direção de
                   gravação são feitos pelos sócios, com tempo. Entrega feita por um terceiro (ex.: gravação) não tem tempo dos sócios: escolha em &quot;Quem faz&quot;.
                 </p>
-                <Link
-                  href="/calibragem"
-                  className="inline-flex items-center gap-1.5 self-start rounded-botao border border-linha bg-superficie px-3 py-2 text-xs font-semibold hover:border-marca"
-                >
-                  <Timer size={14} /> Calibragem: o tempo medido nas tarefas
-                </Link>
+                {(COM_VOLUME.botaoCalibragem || temMedicao) && (
+                  <Link
+                    href="/calibragem"
+                    className="inline-flex items-center gap-1.5 self-start rounded-botao border border-linha bg-superficie px-3 py-2 text-xs font-semibold hover:border-marca"
+                  >
+                    <Timer size={14} /> Calibragem: o tempo medido nas tarefas
+                  </Link>
+                )}
                 {rascunho.tiposEntrega.length === 0 && (
                   <Vazio icone={Clock3} titulo="Nenhum tipo de entrega">
                     Ex.: post simples, carrossel, PDF, peça de WhatsApp, criativo de tráfego com variações, planejamento mensal, relatório.
@@ -702,55 +724,6 @@ export default function Configuracoes() {
               </div>
             )}
 
-            {secao === "clientes" && (
-              <div className="flex flex-col gap-2">
-                <p className="text-[11px] text-texto-suave">
-                  Aqui fica só o básico para as contas. Contato, contrato, tarefas e pagamentos de cada cliente ficam na{" "}
-                  <Link href="/clientes" className="font-semibold text-marca-forte underline">
-                    ficha do cliente
-                  </Link>
-                  .
-                </p>
-                {rascunho.clientes.length === 0 && (
-                  <Vazio icone={Receipt} titulo="Nenhum cliente cadastrado">
-                    Cadastre os clientes atuais. O escopo de cada um é guardado pela calculadora.
-                  </Vazio>
-                )}
-                {rascunho.clientes.map((c) => (
-                  <div key={c.id} className="rounded-bloco bg-superficie-2/60 p-3">
-                    <div className="grid grid-cols-[1fr_9rem_auto] items-end gap-2">
-                      <CampoTexto rotulo="Cliente" valor={c.nome} aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { nome: v }) })} />
-                      <CampoMoeda rotulo="Valor mensal" valor={c.valorMensalCentavos} aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { valorMensalCentavos: v }) })} />
-                      <Botao variante="perigo" icone={Trash2} aria-label="Remover cliente" onClick={() => set({ clientes: rascunho.clientes.filter((x) => x.id !== c.id) })} />
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-4">
-                      <Interruptor ligado={c.ativo} rotulo="Ativo" aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { ativo: v }) })} />
-                      <Interruptor ligado={c.participaRateio} rotulo="Entra no rateio" aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { participaRateio: v }) })} />
-                      <Interruptor ligado={c.interno} rotulo="Interno (rede da própria Aden)" aoMudar={(v) => set({ clientes: atualizar(rascunho.clientes, c.id, { interno: v }) })} />
-                      {c.escopo ? (
-                        <Badge tom="ok" icone={Check}>
-                          escopo contratado definido
-                        </Badge>
-                      ) : (
-                        <Badge tom="aviso" title="Abra a calculadora, escolha este cliente em “Como calcular” e use 'Guardar como escopo contratado'.">
-                          sem escopo: horas fora da tela Mês
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <p className="text-[11px] text-texto-suave">O valor mensal é a mensalidade do contrato, sem a cobrança de tráfego (que vem do escopo).</p>
-                <div>
-                  <Botao
-                    icone={Plus}
-                    pequeno
-                    onClick={() => set({ clientes: [...rascunho.clientes, { id: novoId(), nome: "", interno: false, participaRateio: true, valorMensalCentavos: null, ativo: true }] })}
-                  >
-                    Adicionar cliente
-                  </Botao>
-                </div>
-              </div>
-            )}
           </div>
         </Card>
 

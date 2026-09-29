@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Calculator,
+  ChevronDown,
   AlertOctagon,
   ArrowDown,
   CalendarClock,
@@ -538,6 +540,9 @@ export function PainelResultado({
   pdf?: OpcoesPdf;
 }) {
   const m = r.mes;
+  // Na frente: o valor, os avisos, a proposta e quanto fica para cada sócio. O passo a passo da
+  // conta e os indicadores por hora ficam em "Ver a conta inteira" (Fase 1, 29/09/2026).
+  const [contaInteira, setContaInteira] = useState(false);
   const limitante = config.pessoas.find((p) => p.id === r.minimo.limitantePessoaId);
   const socios = m?.pessoas.filter((p) => config.pessoas.find((x) => x.id === p.id)?.socio) ?? [];
 
@@ -638,15 +643,6 @@ export function PainelResultado({
 
           {r.entrada && <BlocoEntrada e={r.entrada} mesesDesejados={cenario.entrada?.mesesParaPagar ?? null} />}
 
-          <Card>
-            <TituloCard icone={Gauge} titulo="Indicadores por hora" detalhes={<DetalhesIndicadores />} descricao={`${formatarHoras(m.horasTotais)} de produção por mês neste projeto.`} />
-            <div className="grid grid-cols-2 gap-2 px-5 pb-5">
-              <Indicador icone={Clock3} rotulo="Horas no mês" valor={formatarHoras(m.horasTotais)} dica="Soma das entregas × horas por entrega." />
-              <Indicador icone={Coins} rotulo="Valor cobrado por hora" valor={formatarMoeda(m.valorCobradoHoraCentavos)} dica="Receita bruta ÷ horas." />
-              <Indicador icone={ArrowDown} rotulo="Custo por hora" valor={formatarMoeda(m.custoHoraCentavos)} dica="(Custos do projeto + rateio) ÷ horas." />
-              <Indicador icone={Sparkles} rotulo="Sobra por hora" valor={formatarMoeda(m.sobraHoraCentavos)} dica="Sobra ÷ horas. Informativo." />
-            </div>
-          </Card>
 
           {r.encaixe && (
             <Card>
@@ -753,12 +749,40 @@ export function PainelResultado({
             </Card>
           )}
 
+          <button
+            type="button"
+            aria-expanded={contaInteira}
+            onClick={() => setContaInteira(!contaInteira)}
+            className="flex items-center gap-2 rounded-card border border-dashed border-linha bg-superficie px-4 py-3 text-left text-sm font-semibold text-texto hover:border-marca/50"
+          >
+            <Calculator size={16} className="text-marca-forte" />
+            <span className="flex-1">
+              {contaInteira ? "Esconder a conta" : "Ver a conta inteira"}
+              <span className="block text-[12px] font-normal text-texto-suave">Do faturamento até a parte de cada sócio, passo a passo, e quanto vale cada hora.</span>
+            </span>
+            <ChevronDown size={16} className={cx("transition-transform", contaInteira && "rotate-180")} />
+          </button>
+
+          {contaInteira && (
+          <Card>
+            <TituloCard icone={Gauge} titulo="Indicadores por hora" detalhes={<DetalhesIndicadores />} descricao={`${formatarHoras(m.horasTotais)} de produção por mês neste projeto.`} />
+            <div className="grid grid-cols-2 gap-2 px-5 pb-5">
+              <Indicador icone={Clock3} rotulo="Horas no mês" valor={formatarHoras(m.horasTotais)} dica="Soma das entregas × horas por entrega." />
+              <Indicador icone={Coins} rotulo="Valor cobrado por hora" valor={formatarMoeda(m.valorCobradoHoraCentavos)} dica="Receita bruta ÷ horas." />
+              <Indicador icone={ArrowDown} rotulo="Custo por hora" valor={formatarMoeda(m.custoHoraCentavos)} dica="(Custos do projeto + rateio) ÷ horas." />
+              <Indicador icone={Sparkles} rotulo="Sobra por hora" valor={formatarMoeda(m.sobraHoraCentavos)} dica="Sobra ÷ horas. Informativo." />
+            </div>
+          </Card>
+          )}
+
+          {contaInteira && (
           <Card>
             <TituloCard icone={Coins} titulo="Do faturamento à divisão" detalhes={<DetalhesCascata />} descricao="Passo a passo do cálculo do mês." />
             <div className="px-5 pb-5">
               <Cascata m={m} taxaFixa={config.empresa.taxaRecebimentoFixaCentavos ?? null} />
             </div>
           </Card>
+          )}
         </>
       )}
 

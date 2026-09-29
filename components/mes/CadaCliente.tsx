@@ -18,10 +18,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BotaoAcao, OQueQuerDizer } from "@/components/Alertas";
+import { Modal } from "@/components/Modal";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Card, CampoMoeda, CampoNumero, EtiquetaOrigem, Vazio, cx } from "@/components/ui";
-import { calcularCalibragem, type CalibragemTipo } from "@/lib/calculo/calibragem";
-import { calcularSaudeCliente, rotuloOrigemHoras, type RegistroMesCliente, type SaudeCliente } from "@/lib/calculo/mes";
+import { calcularCalibragem, type CalibragemTipo, type Medicao } from "@/lib/calculo/calibragem";
+import { calcularSaudeCliente, horasDasTarefas, rotuloOrigemHoras, type RegistroMesCliente, type SaudeCliente } from "@/lib/calculo/mes";
 import { configVazia } from "@/lib/calculo/novo";
 import { somaPagamentos, type Pagamento } from "@/lib/calculo/pagamentos";
 import { calcularSolucoes, type SolucoesSaude } from "@/lib/calculo/solucoes";
@@ -39,6 +40,19 @@ const ORIGEM_VALOR = {
   manual: "lançado à mão",
   contrato: "valor do contrato",
 } as const;
+
+/** O sinal de cada cliente no mês (a mesma etiqueta na linha e no detalhe). */
+function sinalDoCliente(s: SaudeCliente) {
+  return s.bloqueio
+    ? { tom: "erro" as const, icone: AlertOctagon, texto: "cálculo bloqueado" }
+    : s.prejuizoSilencioso
+      ? { tom: "erro" as const, icone: TrendingDown, texto: "prejuízo silencioso" }
+      : s.contratadoAbaixoDoPiso
+        ? { tom: "aviso" as const, icone: TrendingDown, texto: "contratado abaixo do piso" }
+        : !s.horasLancadas
+          ? { tom: "neutro" as const, icone: Info, texto: "sem horas registradas: usando a previsão" }
+          : { tom: "ok" as const, icone: CheckCircle2, texto: "saudável" };
+}
 
 function Abrir({ c, nome, aoAbrir }: { c: Cenario; nome: string; aoAbrir: (c: Cenario, nome: string) => void }) {
   return (
@@ -186,21 +200,11 @@ function CartaoCliente({
   const sujo = JSON.stringify(reg) !== JSON.stringify(salvo ?? vazio());
   const nomePessoa = (id: string) => config.pessoas.find((p) => p.id === id)?.nome ?? "sócio";
 
-  const status = s.bloqueio
-    ? { tom: "erro" as const, icone: AlertOctagon, texto: "cálculo bloqueado" }
-    : s.prejuizoSilencioso
-      ? { tom: "erro" as const, icone: TrendingDown, texto: "prejuízo silencioso" }
-      : s.contratadoAbaixoDoPiso
-        ? { tom: "aviso" as const, icone: TrendingDown, texto: "contratado abaixo do piso" }
-        : !s.horasLancadas
-          ? { tom: "neutro" as const, icone: Info, texto: "sem registro de horas: usando a previsão" }
-          : { tom: "ok" as const, icone: CheckCircle2, texto: "saudável" };
+  const status = sinalDoCliente(s);
 
   return (
-    <Card className={cx(s.prejuizoSilencioso && "border-erro/50")}>
-      <div className="flex flex-col gap-4 p-5">
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="flex-1 text-base font-bold">{cliente.nome}</h2>
           {!s.temEscopo && <Badge tom="aviso">sem escopo contratado</Badge>}
           <Badge tom={status.tom} icone={status.icone}>
             {status.texto}
@@ -257,9 +261,13 @@ function CartaoCliente({
               return (
                 <CampoNumero
                   key={p.id}
-                  rotulo={`Horas reais · ${p.nome}`}
+                  rotulo={`Corrigir horas · ${p.nome}`}
                   sufixo="h"
-                  placeholder={x ? `sem registro: ${formatarNumero(Math.round(x.horasReais * 10) / 10)} previstas` : "horas"}
+                  placeholder={
+                    x
+                      ? `${x.origemHoras.tipo === "tarefas" ? "das tarefas" : "sem registro"}: ${formatarNumero(Math.round(x.horasReais * 10) / 10)}${x.origemHoras.tipo === "tarefas" ? "" : " previstas"}`
+                      : "horas"
+                  }
                   valor={reg.horas[p.id] ?? null}
                   aoMudar={(v) => setReg({ ...reg, horas: { ...reg.horas, [p.id]: v } })}
                 />
@@ -270,7 +278,8 @@ function CartaoCliente({
           )}
         </div>
         <p className="-mt-2 text-[11px] text-texto-suave">
-          Horas vazias = sem registro: o sistema usa a previsão (ou a média medida pelo cronômetro) e marca que é previsão. Pagamentos agora vão em{" "}
+          As horas vêm do cronômetro das tarefas deste cliente no mês. Só preencha aqui para corrigir (ex.: trabalho feito sem ligar o relógio). Sem tarefa medida, o sistema usa a
+          previsão e marca que é previsão. Pagamentos vão em{" "}
           <Link href="/pagamentos" className="underline">
             Registrar pagamento
           </Link>
@@ -347,12 +356,11 @@ function CartaoCliente({
                 }
               }}
             >
-              {salvando ? "Salvando…" : "Salvar horas do mês"}
+              {salvando ? "Salvando…" : "Salvar a correção"}
             </Botao>
           </div>
         )}
       </div>
-    </Card>
   );
 }
 
@@ -364,6 +372,8 @@ export default function Saude() {
   const [registros, setRegistros] = useState<Record<string, RegistroMesCliente>>({});
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [calibragem, setCalibragem] = useState<CalibragemTipo[]>([]);
+  const [medicoes, setMedicoes] = useState<Medicao[]>([]);
+  const [aberto, setAberto] = useState<string | null>(null);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [carregado, setCarregado] = useState(false);
   const [mensagem, setMensagem] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
@@ -377,7 +387,9 @@ export default function Saude() {
         setConfig(cfg);
         await carregarMes(competencia);
         setPagamentos(await repo.listarPagamentos().catch(() => []));
-        setCalibragem(calcularCalibragem(cfg, await repo.listarMedicoes().catch(() => [])));
+        const meds = await repo.listarMedicoes().catch(() => []);
+        setMedicoes(meds);
+        setCalibragem(calcularCalibragem(cfg, meds));
         setPedidos(await repo.listarPedidos().catch(() => []));
       } catch (e) {
         setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao carregar." });
@@ -396,10 +408,11 @@ export default function Saude() {
           calibragem,
           pagamentosCentavos: somaPagamentos(pagamentos, c.id, competencia),
           mesFechado,
+          horasTarefas: horasDasTarefas(medicoes, c.id, competencia),
         });
         return { c, s, sol: calcularSolucoes(config, c, s, calibragem) };
       }),
-    [ativos, config, registros, calibragem, pagamentos, competencia, mesFechado],
+    [ativos, config, registros, calibragem, pagamentos, competencia, mesFechado, medicoes],
   );
   const comProblema = saudes.filter((x) => x.s.prejuizoSilencioso);
 
@@ -467,12 +480,68 @@ export default function Saude() {
 
         {ativos.length === 0 && (
           <Vazio icone={HeartPulse} titulo="Nenhum cliente ativo">
-            Cadastre os clientes em Configurações e guarde o escopo contratado de cada um pela calculadora.
+            Cadastre os clientes em Clientes e contratos e guarde o escopo contratado de cada um pela ficha.
           </Vazio>
         )}
 
-        {saudes.map(({ c, s, sol }) => (
-          <CartaoCliente
+        {saudes.length > 0 && (
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[620px] border-separate border-spacing-0 text-[13px]">
+                <thead>
+                  <tr className="text-left text-[11px] font-bold tracking-wide text-texto-suave uppercase">
+                    <th className="px-4 py-2.5">Cliente</th>
+                    <th className="px-3 py-2.5 text-right">Pagou no mês</th>
+                    <th className="px-3 py-2.5 text-right">Horas</th>
+                    <th className="px-3 py-2.5 text-right">Paga por hora</th>
+                    <th className="px-4 py-2.5">Sinal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {saudes.map(({ c, s }) => {
+                    const sinal = sinalDoCliente(s);
+                    const pago = s.pagamentosCentavos ?? 0;
+                    const contrato = s.valorContratoCentavos;
+                    const origens = new Set(s.socios.filter((x) => x.horasReais > 0).map((x) => x.origemHoras.tipo));
+                    const deOnde = origens.has("manual") ? "corrigidas" : origens.has("tarefas") ? "das tarefas" : "previstas";
+                    return (
+                      <tr key={c.id} onClick={() => setAberto(c.id)} className="cursor-pointer hover:bg-superficie-2/60">
+                        <td className="border-t border-linha px-4 py-3 font-semibold">
+                          <button type="button" className="text-left hover:underline" onClick={() => setAberto(c.id)}>
+                            {c.nome}
+                          </button>
+                        </td>
+                        <td className="numero border-t border-linha px-3 py-3 text-right">
+                          {formatarMoeda(pago)}
+                          {contrato != null && <span className="block text-[11px] text-texto-suave">de {formatarMoeda(contrato)}</span>}
+                        </td>
+                        <td className="numero border-t border-linha px-3 py-3 text-right">
+                          {formatarHoras(s.horasReais)}
+                          <span className="block text-[11px] text-texto-suave">{deOnde}</span>
+                        </td>
+                        <td className="numero border-t border-linha px-3 py-3 text-right font-bold">{formatarMoeda(s.valorCobradoHoraReal)}</td>
+                        <td className="border-t border-linha px-4 py-3">
+                          <Badge tom={sinal.tom} icone={sinal.icone}>
+                            {sinal.texto}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="border-t border-linha px-4 py-2.5 text-[12px] text-texto-suave">
+              Clique num cliente para ver o detalhe: previsto × real, quanto cada sócio recebe por hora e, se algo ficar abaixo do piso, os caminhos para resolver.
+            </p>
+          </Card>
+        )}
+
+        {saudes
+          .filter(({ c }) => c.id === aberto)
+          .map(({ c, s, sol }) => (
+            <Modal key={c.id} aberto aoFechar={() => setAberto(null)} largura="lg" titulo={c.nome} subtitulo={`Mês ${competencia.slice(5)}/${competencia.slice(0, 4)}`}>
+              <CartaoCliente
             key={`${c.id}-${competencia}`}
             config={config}
             cliente={c}
@@ -492,7 +561,8 @@ export default function Saude() {
               }
             }}
           />
-        ))}
+            </Modal>
+          ))}
       </div>
     </div>
   );

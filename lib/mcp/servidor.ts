@@ -9,7 +9,7 @@ import { z } from "zod";
 import { pacoteQueCabe } from "../calculo/apresentacao";
 import { calcularCalibragem, segundosDaMedicao, type Medicao } from "../calculo/calibragem";
 import { documentoContador } from "../calculo/documentos";
-import { calcularSaudeCliente, calcularVisaoMes, rotuloOrigemHoras } from "../calculo/mes";
+import { calcularSaudeCliente, calcularVisaoMes, horasDasTarefas, rotuloOrigemHoras } from "../calculo/mes";
 import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
@@ -505,7 +505,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Saúde dos clientes no mês",
       description:
-        "Para cada cliente ativo: previsto (escopo + contrato) × realizado (horas lançadas, ou média medida, ou previsão; valor dos pagamentos), valor por hora de cada sócio contra o piso, de onde vem cada número de horas e, quando há problema, os caminhos calculados: subir o valor, cortar escopo, misto, ou aceitar a exceção (quanto cada sócio perde por mês).",
+        "Para cada cliente ativo: previsto (escopo + contrato) × realizado (horas corrigidas à mão, ou o cronômetro das tarefas do cliente no mês, ou média medida, ou previsão; valor dos pagamentos), valor por hora de cada sócio contra o piso, de onde vem cada número de horas e, quando há problema, os caminhos calculados: subir o valor, cortar escopo, misto, ou aceitar a exceção (quanto cada sócio perde por mês).",
       inputSchema: { competencia: zCompetencia },
     },
     async ({ competencia }) =>
@@ -523,6 +523,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
                 calibragem,
                 pagamentosCentavos: somaPagamentos(pagamentos, c.id, mes),
                 mesFechado: mes < competenciaAtual(),
+                horasTarefas: horasDasTarefas(medicoes, c.id, mes),
               });
               const sol = calcularSolucoes(config, c, s, calibragem);
               return {

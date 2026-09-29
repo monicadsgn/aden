@@ -34,8 +34,9 @@ Se a faixa amarela de "modo demonstração" aparecer, ela diz qual variável o s
 ## 3. Primeiro uso
 
 1. Entre com o e-mail e a senha de sócio.
-2. Em **Configurações**, cadastre os sócios (% padrão, piso por hora, horas/mês), os percentuais da empresa, os serviços e quem executa, os tipos de entrega com horas, os custos fixos, a regra de rateio e os clientes ativos.
-3. Abra a **Calculadora**.
+2. Em **Configurações**, cadastre os sócios (% padrão, piso por hora, horas/mês), os percentuais da empresa, os serviços e quem executa, os tipos de entrega com horas, os custos fixos e a regra de rateio.
+3. Em **Clientes e contratos**, cadastre os clientes ativos (valor mensal e escopo na ficha de cada um).
+4. Abra a **Calculadora de projeto** (grupo Vendas do menu).
 
 ## Segurança e histórico
 

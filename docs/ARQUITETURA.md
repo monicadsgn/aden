@@ -14,18 +14,31 @@ comercial e financeiro. Sócios podem ver as pendências um do outro quando quis
 na tela. A calculadora é uma ferramenta do comercial, não a porta de entrada. Referência de organização: o SoftMoni
 (visão do dia com cartões clicáveis, calendário, janelas de tarefa).
 
-Menu (reorganizado na auditoria de usabilidade, aprovada pela Moni em 26/09/2026): **Dia a dia** (Visão do dia,
-Tarefas, Calendário; sempre aberto) · **Clientes** (Clientes e contratos, Leads) · **Vendas** (Proposta) ·
-**Dinheiro e mês** (Mês, Pagamentos, Relatórios) · **Sócios** (Pedidos e avisos) · Configurações no fim. Glossário e
-tour no rodapé (livrinho e "?").
+Menu (reorganizado na auditoria de usabilidade de 26/09/2026 e simplificado na Fase 1, 29/09/2026): **Dia a dia**
+(Visão do dia, Tarefas, Calendário; sempre aberto) · **Clientes** (Clientes e contratos, Leads) · **Vendas** (sempre
+aberto: **Calculadora de projeto** em destaque e Proposta) · **Dinheiro e mês** (Mês, Pagamentos; Relatórios é botão
+dentro do Mês) · **Sócios** (Pedidos e avisos) · Configurações no fim. Glossário e tour no rodapé (livrinho e "?").
+
+**Fase 1 · simplificar (29/09/2026):** na frente só o que se usa com 2 a 5 clientes; o resto fica escondido sem apagar
+(o endereço continua abrindo) e aparece sozinho quando passa a ter dado. As chaves ficam em `COM_VOLUME`
+(`lib/recursos.ts`): aba Horas do Mês, Configurações → Metas e → Limites e avisos, botão da Calibragem. Na Visão do dia,
+Próximos dias, Depende de mim e Metas só aparecem quando têm algo; o bloco Comercial tem o atalho para a calculadora
+e o Financeiro diz quanto falta entrar no mês.
 
 - **Mês** (`/mes`) junta, em abas, o que antes eram quatro telas: Resumo e metas (antiga Visão do mês), Horas
   (Capacidade), Cada cliente (Saúde dos clientes) e Sócios (Repasse). As rotas antigas redirecionam para a aba.
   As abas são componentes em `components/mes/`, abertos por `components/PaginaComAbas.tsx` (aba no endereço
   `?aba=`; o "?" do topo usa a chave `rota#aba` de `lib/ajuda.ts`).
 - **Pedidos e avisos** (`/aprovacoes`): abas "Pedidos entre sócios" e "Avisos" (`/avisos` redireciona).
-- **Proposta** é a antiga Negociação ao vivo. A calculadora saiu do menu: é a proposta vista por dentro, aberta pelo
-  botão "Só para os sócios" (pede confirmação) ou pelos links do CRM, da ficha e dos relatórios.
+- **Proposta** é a antiga Negociação ao vivo. A **calculadora** é a proposta vista por dentro (só sócios): voltou ao
+  menu na Fase 1 e também abre pelo botão "Só para os sócios" da Proposta (pede confirmação). Na frente ficam Como
+  calcular, Rotina, Custos e Entrada; Quem executa, Tráfego, Projetos pontuais, Percentuais e Meses sem cobrança ficam
+  em "Mais opções" e abrem sozinhos quando a versão usa aquilo (ou quando um aviso aponta para eles: `irParaBloco`
+  dispara `EVENTO_ABRIR_BLOCO`). No resultado, o valor, os avisos, a proposta e cada sócio ficam na frente; indicadores
+  por hora e o passo a passo ficam em "Ver a conta inteira".
+- **Cliente num lugar só (grave 5):** a aba Clientes saiu das Configurações (`?secao=clientes` e os avisos levam para
+  `/clientes`). Na ficha, "Personalizar escopo" abre a Proposta com o escopo do cliente; "Guardar no escopo de X" grava
+  pelas regras de sempre (`guardarEscopo`, abaixo do piso = pedido de exceção) e volta para a ficha, aba Contrato.
 - Calibragem (botão em Configurações → Tipos de entrega) e Histórico (botão no topo das Configurações) saíram do menu.
 - Nomes: a tarefa em status `revisao` aparece como **Com o cliente** (esperando a aprovação dele); "aprovação"
   sozinha fica só para os pedidos entre sócios.
@@ -263,7 +276,10 @@ mensal). Soma por sócio × capacidade → horas livres, "afogado" (acima da cap
 configurado). Clientes sem escopo aparecem em aviso e não entram na soma.
 
 **Saúde do cliente:** previsto = escopo contratado com o valor do contrato. Realizado = mesmos custos e rateio, mas com as
-horas reais lançadas no mês e o valor recebido (vazio = valor do contrato). Mostra valor por hora real de cada sócio, marca
+horas reais do mês e o valor recebido (vazio = valor do contrato). Horas de cada sócio, nesta ordem (grave 6, 29/09/2026):
+corrigidas à mão no mês → **cronômetro das tarefas do cliente no mês** (`horasDasTarefas`: soma das medições com o
+cliente e o sócio, contadas no mês em que terminaram) → escopo × média medida (calibragem) → escopo × tempo cadastrado.
+Na tela (Mês → Cada cliente) é uma linha por cliente (pagou, horas, paga por hora, sinal); o detalhe abre numa janela. Mostra valor por hora real de cada sócio, marca
 "prejuízo silencioso" quando fica abaixo do piso e "contratado abaixo do piso" quando o próprio previsto já fica.
 
 **Entrada do cliente (uma vez só):**

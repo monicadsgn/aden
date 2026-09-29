@@ -27,7 +27,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/clientes": {
     titulo: "Clientes e contratos",
     texto:
-      "A ficha de cada cliente: contato, contrato, escopo, tarefas, pagamentos e a conversa de antes de fechar. Preencha o dia do pagamento e as datas do contrato: o que vence aparece na sua Visão do dia.",
+      "A ficha de cada cliente é o único lugar dos dados dele: contato, contrato, escopo, tarefas, pagamentos e a conversa de antes de fechar. Preencha o dia do pagamento e as datas do contrato: o que vence aparece na sua Visão do dia. Para mudar o que ele recebe, use \"Personalizar escopo\" na aba Contrato.",
     termos: ["escopo", "rateio"],
   },
   "/calendario": {
@@ -37,7 +37,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/calculadora": {
     titulo: "Calculadora de projeto",
     texto:
-      "É a proposta vista por dentro, só para os sócios: mostra se o preço paga os custos e a hora de cada um. Monte as entregas do mês e veja se a hora de cada sócio fica acima do piso. Clique no título de qualquer bloco para ver o que ele significa.",
+      "É a proposta vista por dentro, só para os sócios: mostra se o preço paga os custos e a hora de cada um. Monte as entregas do mês e veja o valor e quanto fica para cada sócio; tráfego, projetos pontuais e percentuais ficam em \"Mais opções\", e o passo a passo da conta em \"Ver a conta inteira\". Clique no título de qualquer bloco para ver o que ele significa.",
     termos: ["escopo", "piso", "rateio", "sobra", "valor-por-hora"],
   },
   "/negociacao": {
@@ -55,7 +55,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/mes#resumo": {
     titulo: "Mês · Resumo e metas",
     texto:
-      "Mostra onde a Aden está na trilha de crescimento e quanto espaço ainda tem para vender. O primeiro número diz quantos clientes do pacote padrão ainda cabem com as horas livres de hoje. As outras abas trazem o detalhe: horas, cada cliente e o que cada sócio recebeu.",
+      "Mostra onde a Aden está na trilha de crescimento e quanto espaço ainda tem para vender. O primeiro número diz quantos clientes do pacote padrão ainda cabem com as horas livres de hoje. As outras abas trazem cada cliente e o que cada sócio recebeu; o botão Relatórios gera os PDFs.",
     termos: ["capacidade", "teto-mei"],
   },
   "/mes#horas": {
@@ -66,7 +66,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/mes#clientes": {
     titulo: "Mês · Cada cliente",
     texto:
-      "Mostra, cliente por cliente, se o que foi combinado está pagando bem as horas de verdade. Quando um cliente fica abaixo do piso, aparecem os caminhos: subir o valor, cortar entregas ou os dois. Use no fim de cada mês.",
+      "Uma linha por cliente: quanto pagou no mês, quantas horas custou (vindas do relógio das tarefas) e quanto isso dá por hora. Clique no cliente para ver o detalhe e, se ficar abaixo do piso, os caminhos: subir o valor, cortar entregas ou os dois. Use no fim de cada mês.",
     termos: ["piso", "valor-por-hora", "escopo"],
   },
   "/mes#socios": {
@@ -238,12 +238,12 @@ export const TOUR: PassoTour[] = [
   {
     titulo: "Clientes e vendas",
     texto:
-      "Em Leads fica quem se interessou; ao fechar, vira cliente com ficha e contrato. Em Proposta você mostra os pacotes ao cliente e personaliza na hora, e por trás o sistema confere se o preço paga os custos e as horas de todo mundo.",
+      "Em Leads fica quem se interessou; ao fechar, vira cliente com ficha e contrato. Em Vendas, a Calculadora mostra (só para os sócios) se o preço paga os custos e as horas de todo mundo, e a Proposta é a tela para mostrar os pacotes ao cliente e personalizar na hora.",
   },
   {
     titulo: "Dinheiro e mês",
     texto:
-      "Cada pagamento que entra é registrado e dividido do jeito que vocês combinaram. A tela Mês junta as metas, as horas, cada cliente e o que cada sócio recebeu, em abas.",
+      "Cada pagamento que entra é registrado e dividido do jeito que vocês combinaram. A tela Mês junta as metas, cada cliente e o que cada sócio recebeu, em abas, e tem o botão dos Relatórios.",
   },
   {
     titulo: "Por onde começar",

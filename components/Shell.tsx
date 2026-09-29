@@ -2,13 +2,13 @@
 
 import {
   CalendarDays,
+  Calculator,
   BookOpen,
   HelpCircle,
   Briefcase,
   CalendarRange,
   ChevronDown,
   ListChecks,
-  FileDown,
   FileSignature,
   LogOut,
   Menu,
@@ -42,10 +42,14 @@ interface Item {
   /** outras rotas que acendem este item (telas abertas a partir dele) */
   tambem?: string[];
   contador?: boolean;
+  /** ferramenta principal do grupo: aparece em destaque mesmo sem estar aberta */
+  destaque?: boolean;
 }
 
 // Áreas do sistema (reorganizadas na auditoria de 26/09/2026: 5 grupos, uma tela por assunto).
 // O dia a dia vem primeiro e fica sempre aberto: é por onde cada um começa o dia.
+// Fase 1 (29/09/2026): a calculadora voltou ao menu, em destaque no grupo Vendas (sempre aberto);
+// Relatórios virou botão dentro da tela Mês.
 // Configurações fica sozinha no fim; o glossário e o tour ficam no rodapé.
 const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
   {
@@ -66,14 +70,17 @@ const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
   },
   {
     titulo: "Vendas",
-    itens: [{ href: "/negociacao", rotulo: "Proposta", icone: Presentation, area: "negociacao", tambem: ["/calculadora"] }],
+    fixo: true,
+    itens: [
+      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora", destaque: true },
+      { href: "/negociacao", rotulo: "Proposta", icone: Presentation, area: "negociacao" },
+    ],
   },
   {
     titulo: "Dinheiro e mês",
     itens: [
-      { href: "/mes", rotulo: "Mês", icone: CalendarRange, area: "mes", tambem: ["/capacidade", "/saude", "/repasse"] },
+      { href: "/mes", rotulo: "Mês", icone: CalendarRange, area: "mes", tambem: ["/capacidade", "/saude", "/repasse", "/pdfs"] },
       { href: "/pagamentos", rotulo: "Pagamentos", icone: Wallet, area: "pagamentos" },
-      { href: "/pdfs", rotulo: "Relatórios", icone: FileDown, area: "pdfs" },
     ],
   },
   {
@@ -140,6 +147,9 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
         const temAtivo = g.titulo === doCaminho;
         return (
           <div key={g.titulo} className={cx(g.titulo === "Ajustes" && "mt-2 border-t border-linha pt-3")}>
+            {g.fixo && g.titulo === "Vendas" && (
+              <p className={cx("px-3 py-2 text-[12px] font-bold tracking-[0.08em] uppercase", temAtivo ? "text-marca-forte" : "text-texto-suave")}>{g.titulo}</p>
+            )}
             {!g.fixo && (
             <button
               type="button"
@@ -168,7 +178,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
                         onClick={aoNavegar}
                         className={cx(
                           "flex items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-semibold transition-colors",
-                          ativo ? "bg-marca text-sobre-marca shadow-card" : "text-texto hover:bg-marca-suave/60",
+                          ativo ? "bg-marca text-sobre-marca shadow-card" : i.destaque ? "bg-marca-suave text-marca-forte hover:bg-marca-suave/70" : "text-texto hover:bg-marca-suave/60",
                         )}
                       >
                         <Ic size={17} strokeWidth={2} />

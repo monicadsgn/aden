@@ -6,7 +6,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, type ComponentType } from "react";
+import { Suspense, type ComponentType, type ReactNode } from "react";
 import { podeVer, type Area } from "@/lib/acesso";
 import { useDados } from "@/lib/dados/contexto";
 import { CabecalhoPagina, Embutida } from "./Shell";
@@ -20,6 +20,8 @@ export interface Aba {
   /** frase curta embaixo do título quando esta aba está aberta */
   descricao: string;
   conteudo: ComponentType;
+  /** fora da barra de abas (tela escondida até ter volume); ainda abre pelo endereço ?aba= */
+  escondida?: boolean;
 }
 
 interface Props {
@@ -29,9 +31,11 @@ interface Props {
   abas: Aba[];
   /** largura máxima do conteúdo das abas (classe Tailwind), para a barra de abas alinhar com ele */
   largura: string;
+  /** botões ao lado das abas (ex.: Relatórios na tela Mês) */
+  acoes?: ReactNode;
 }
 
-function Conteudo({ icone, titulo, selo, abas, largura }: Props) {
+function Conteudo({ icone, titulo, selo, abas, largura, acoes }: Props) {
   const { usuario } = useDados();
   const router = useRouter();
   const caminho = usePathname();
@@ -45,8 +49,9 @@ function Conteudo({ icone, titulo, selo, abas, largura }: Props) {
     <div className="pb-16">
       <CabecalhoPagina icone={icone} selo={selo} titulo={titulo} descricao={atual.descricao} ajuda={`${caminho}#${atual.id}`} />
       <div className={cx("mx-auto px-4 pt-5 sm:px-6 lg:px-8", largura)}>
-        <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label={`Abas de ${titulo}`}>
-          {visiveis.map((a) => {
+        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-full flex-1 gap-1.5 overflow-x-auto pb-1 sm:min-w-0" role="tablist" aria-label={`Abas de ${titulo}`}>
+          {visiveis.filter((a) => !a.escondida || a.id === atual.id).map((a) => {
             const Ic = a.icone;
             const sel = a.id === atual.id;
             return (
@@ -66,6 +71,8 @@ function Conteudo({ icone, titulo, selo, abas, largura }: Props) {
               </button>
             );
           })}
+        </div>
+        {acoes}
         </div>
       </div>
       <Embutida.Provider value={largura}>
