@@ -2,7 +2,7 @@
 
 - O Aden é a **central da agência** (tarefas, calendário, comercial, financeiro, metas), cada pessoa com seu acesso. Abre na **Visão do dia** (`/hoje`); a calculadora é ferramenta do comercial, não a entrada.
 - Sistema **próprio da Aden**. Não compartilha banco, deploy nem código em runtime com o SoftMoni ou com a Mônica Design. O SoftMoni é só referência de padrões.
-- **Ninguém da Aden (Áleff, equipe, freelancer, contador, clientes) tem acesso ao SoftMoni.** Nunca colocar no Aden link, endereço, chave, login, integração ou conector do SoftMoni, nem citar o SoftMoni em tela, texto de ajuda, PDF ou conector MCP. Reaproveitar lógica do SoftMoni = reescrever aqui dentro, sem ligação nenhuma com ele. Antes de convidar alguém da Aden para Vercel/GitHub/Supabase, avisar a Moni: o SoftMoni está na mesma conta Vercel dela.
+- **Ninguém da Aden (Áleff, equipe, freelancer, contador, clientes) tem acesso ao SoftMoni.** Nunca colocar no Aden link, endereço, chave, login, integração ou conector do SoftMoni, nem citar o SoftMoni em tela, texto de ajuda, PDF ou conector MCP. Reaproveitar lógica do SoftMoni = reescrever aqui dentro, sem ligação nenhuma com ele. **Exceção aprovada (29/09/2026):** o Aden pode oferecer uma porta genérica (API/conector) com código pessoal da Moni; quem se conecta é o outro sistema, e o Aden nunca sabe que ele existe (nada de nome, endereço ou lógica dele aqui). Migração de dados = importação única, sem ligação que fique. Antes de convidar alguém da Aden para Vercel/GitHub/Supabase, avisar a Moni: o SoftMoni está na mesma conta Vercel dela.
 - **Nenhum número de negócio no código**: percentual, preço, prazo, piso, horas por entrega, modelo de cobrança. Tudo vem da configuração ou do que a pessoa digita. Campos começam vazios (`null`). Nomes citados pela Moni podem ser oferecidos como sugestão (ex.: lista de serviços), nunca números.
 - Não inventar regra de negócio: na dúvida, perguntar.
 - Dinheiro em centavos (inteiro). Percentuais de 0 a 100.
@@ -26,7 +26,11 @@
 - Tela Mês, aba Resumo e metas: fala em crescimento ("hora do próximo passo"), nunca "não cabe"/"bloqueado" (há teste).
 - **Plano guardado em `docs/ROADMAP.md`** (próximos passos da auditoria, organização de tarefas com o conflito do cronômetro, perguntas para os sócios). Nada de lá se constrói sem a Moni pedir; ler antes de mexer em tarefas, etapas do cliente ou cronômetro.
 - Menu em 5 grupos (docs/ARQUITETURA.md). Assunto novo entra numa tela que já existe (aba) antes de virar item de menu.
-- Painel do cliente (`/c/[token]`): **desligado** em `lib/recursos.ts` (aprovação fica no SoftMoni até a decisão dos sócios); não apagar nada dele. Quando ligado, o cliente só lê/responde pelas funções `painel_cliente`/`responder_peca` (nunca tabela direta). Nada interno sai delas; campos de resposta do cliente só o banco escreve.
+- Painel do cliente (`/c/[token]`): **desligado** em `lib/recursos.ts` até a migração da Fase 3 (os sócios decidiram em 29/09/2026 trazer a aprovação para o Aden); não apagar nada dele. Quando ligado, o cliente só lê/responde pelas funções `painel_cliente`/`responder_peca` (nunca tabela direta). Nada interno sai delas; campos de resposta do cliente só o banco escreve.
+- Divisão entre sócios (29/09/2026, detalhe em `docs/ROADMAP.md` seção 0): abaixo do teto da virada, a parte da Mônica é um % do que **entrou** (pago de verdade, parcial gera parcial) depois do imposto em %; custos, taxa de recebimento e tráfego próprio saem do resto. A partir do teto (o que entrou no mês), divisão igual da sobra. Aviso de "bônus" ligado ao valor da parte dela. Teto, % e valor do aviso são campos protegidos na configuração.
+- Imposto: DAS do MEI (fixo, como custo) **ou** % sobre o faturamento, nunca os dois juntos.
+- Limite de reuniões por mês é condição do contrato, não quantidade do pacote. Audiovisual é extra (só se o cliente pedir), fora do pacote padrão.
+- WhatsApp continua com o nome Alfall (número do Áleff) até existir um número só da empresa: não trocar essas referências para Aden.
 - Acessos: sócio (admin) vê tudo; equipe/freelancer só tarefas (RLS da migration 0018, nomes via `equipe_nomes`). Tabela nova com dado sensível: leitura só `eh_membro` (sócio), nunca liberar para a equipe sem pensar.
 
 <!-- BEGIN:nextjs-agent-rules -->

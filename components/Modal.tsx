@@ -1,6 +1,6 @@
 "use client";
 
-// Janela por cima da tela (padrão do SoftMoni):
+// Janela por cima da tela:
 // - Esc fecha; clicar fora fecha só se o clique COMEÇOU fora (arrastar uma seleção não fecha)
 // - no celular sobe de baixo (folha); na tela grande fica no centro
 // - `expandivel`: botão para ocupar a tela inteira

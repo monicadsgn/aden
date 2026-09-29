@@ -1,6 +1,6 @@
 // CRM: leads no funil.
 //
-// Etapas (as do SoftMoni, referência da Moni): lead recebido → contato feito → proposta
+// Etapas (definidas pela Moni): lead recebido → contato feito → proposta
 // enviada → ganho ou perdido. "Parado" só acende se os sócios configurarem quantos dias
 // (Configurações → Limites e avisos); vazio = nunca acende.
 

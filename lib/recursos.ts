@@ -3,7 +3,7 @@
 
 /**
  * Painel do cliente (/c/[token]) e o "Para o cliente" dentro da tarefa.
- * Desligado em 26/09/2026 pela Moni: por enquanto a aprovação de conteúdo fica no SoftMoni.
- * Decisão de migrar (trazendo as etapas e os avisos do SoftMoni) depois da reunião com o Áleff.
+ * Desligado em 26/09/2026 pela Moni. Em 29/09/2026 os sócios decidiram trazer a aprovação de
+ * conteúdo para o Aden: liga junto com a migração (Fase 3 do docs/ROADMAP.md).
  */
 export const PAINEL_CLIENTE_ATIVO = false;

@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- Aden — Fase 1: núcleo (organização, membros, auditoria) + calculadora
 --
--- Projeto Supabase EXCLUSIVO da Aden. Nada aqui é compartilhado com o SoftMoni
+-- Projeto Supabase EXCLUSIVO da Aden. Nada aqui é compartilhado com outro sistema
 -- nem com a Mônica Design.
 --
 -- Convenções:

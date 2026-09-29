@@ -1,5 +1,5 @@
 -- CRM: leads no funil e o histórico de conversa com cada um (26/09/2026).
--- Etapas iguais às do SoftMoni (referência da Moni): lead recebido → contato feito →
+-- Etapas (definidas pela Moni): lead recebido → contato feito →
 -- proposta enviada → ganho ou perdido. Nenhum número de negócio: valor estimado vem do
 -- pacote/proposta ou do que a pessoa digita; "lead parado" só acende se configurado.
 

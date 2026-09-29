@@ -150,7 +150,7 @@ export function mudarStatus(t: Tarefa, status: StatusTarefa, m: Medicao | null, 
 
 export const tempoGasto = (m: Medicao | null, agora: Date) => (m ? segundosDaMedicao(m, agora) : 0);
 
-// ─── Agrupamento da lista (como no SoftMoni: por prazo) ──────────────────────
+// ─── Agrupamento da lista (por prazo) ──────────────────────────────────
 
 export type GrupoPrazo = "atrasadas" | "hoje" | "semana" | "depois" | "sem_prazo" | "concluidas";
 export const ROTULO_GRUPO: Record<GrupoPrazo, string> = {

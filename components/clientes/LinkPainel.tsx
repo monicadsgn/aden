@@ -1,6 +1,6 @@
 "use client";
 
-// Link do painel do cliente (padrão do SoftMoni): copiar, ver como o cliente vê e, se o
+// Link do painel do cliente: copiar, ver como o cliente vê e, se o
 // link vazar, gerar outro (o antigo para de funcionar na hora).
 
 import { Check, Copy, ExternalLink, Link2, RefreshCw } from "lucide-react";
