@@ -5,7 +5,7 @@ Tudo em contas/projetos **exclusivos da Aden**. Não reutilize o projeto Supabas
 ## 1. Supabase
 
 1. Crie um projeto novo em supabase.com (ex.: `aden-gestao`), região São Paulo.
-2. **Authentication → Providers → Email**: deixe ativo. Em **Authentication → Settings**, desligue *Allow new users to sign up* (só os sócios criam acessos).
+2. **Authentication → Providers → Email**: deixe ativo. Em **Authentication → Settings**, deixe **ligado** *Allow new users to sign up*: o "Primeiro acesso? Criar senha" da tela de entrada precisa disso. Quem se cadastrar sem convite (Configurações → Equipe e acessos) não vê nada: o banco só dá acesso a quem foi convidado. Ligue também *Leaked password protection*.
 3. **SQL Editor**: cole e rode, em ordem, cada arquivo de `supabase/migrations/`, em ordem (`0001_…` até `0018_…`), cada um numa query limpa.
 4. **Authentication → Users → Add user**: crie o usuário de cada sócio (e-mail + senha).
 5. **SQL Editor**: crie a organização e vincule os sócios como administradores:

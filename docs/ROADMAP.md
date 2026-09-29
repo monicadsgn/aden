@@ -2,6 +2,28 @@
 
 Plano guardado. **Nada daqui é para construir sem a Moni pedir.** Atualizado em 26/09/2026.
 
+## Para retomar num chat novo
+
+- Branch de trabalho: `claude/aden-project-calculator-v7bddm` (sem PR). Produção: aden-sable.vercel.app. Supabase `ofzhdddasiuxmbvyrloc`.
+- Ler primeiro: `CLAUDE.md` (regras), este arquivo (o que vem a seguir) e `docs/ARQUITETURA.md` (como está feito).
+- Estado em 26/09/2026: auditoria de usabilidade feita; graves 1–4, menu novo (5 grupos, tela Mês com abas),
+  card "Para começar" e palavras simples já no ar. Painel do cliente desligado. Campo "Quem faz" nos tipos de entrega.
+  Sem clientes reais cadastrados ainda.
+
+## Pendências da Moni (fora do código)
+
+- Supabase → Authentication: deixar ligado o cadastro de novos usuários (senão o "Primeiro acesso" dá erro), conferir a
+  confirmação por e-mail e ligar a proteção contra senhas vazadas.
+- Preencher na configuração (o card "Para começar" da Visão do dia mostra o que falta):
+  - valores do terceiro Audiovisual;
+  - tempo do Reels e dos tipos de entrada;
+  - quantidades da entrada do pacote padrão;
+  - piso e horas do Áleff; tempo dos tipos de Atendimento e comercial;
+  - regras da empresa (ordem de distribuição, reinvestimento, rateio);
+  - metas e dias de lead parado, quando quiserem.
+- Nunca convidar ninguém da Aden para a conta Vercel dela (o SoftMoni está lá); se precisar, mover o Aden para uma
+  conta só da Aden.
+
 ## 1. Próximo: depois da reunião de terça (29/09/2026), nesta ordem
 
 Itens da auditoria de usabilidade aprovados pela Moni (os graves 1–4 e os detalhes 16 e 19 já foram feitos):
