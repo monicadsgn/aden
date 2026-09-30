@@ -18,6 +18,7 @@ import type {
   AvisoSocio,
   DadosExcecao,
   Membro,
+  NotaContexto,
   NovoAviso,
   Pedido,
   RegistroAuditoria,
@@ -27,6 +28,7 @@ import type {
   ResumoSimulacao,
   Simulacao,
   StatusPedido,
+  TipoContexto,
   Usuario,
 } from "./repositorio";
 
@@ -44,6 +46,7 @@ interface Banco {
   tarefas?: Tarefa[];
   leads?: Lead[];
   interacoes?: InteracaoLead[];
+  contexto?: NotaContexto[];
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -439,6 +442,54 @@ export class RepositorioLocal implements Repositorio {
   }
 
   async cancelarPorta() {}
+
+  // ─── Seu Claude: só com o banco conectado ──────────────────────────────────
+
+  async listarCodigosClaude() {
+    return [];
+  }
+
+  async gerarCodigoClaude(): Promise<string> {
+    throw new Error("O código do Claude só funciona com o banco conectado.");
+  }
+
+  async usoDoConector() {
+    return [];
+  }
+
+  // ─── Contexto do cliente (no navegador, modo demonstração) ─────────────────
+
+  async listarContexto(clienteId: string, incluirResolvidas = false) {
+    return (ler().contexto ?? [])
+      .filter((n) => n.clienteId === clienteId && (incluirResolvidas || !n.resolvidoEm))
+      .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
+  }
+
+  async anotarContexto(n: { clienteId: string; tipo: TipoContexto; texto: string }) {
+    const b = ler();
+    const nota: NotaContexto = {
+      id: novoId(),
+      clienteId: n.clienteId,
+      tipo: n.tipo,
+      texto: n.texto.trim(),
+      autorNome: USUARIO.nome,
+      peloClaude: false,
+      criadoEm: new Date().toISOString(),
+      resolvidoEm: null,
+      resolvidoPorNome: null,
+    };
+    b.contexto = [...(b.contexto ?? []), nota];
+    gravar(b);
+    return nota;
+  }
+
+  async resolverContexto(id: string, resolvida: boolean) {
+    const b = ler();
+    b.contexto = (b.contexto ?? []).map((n) =>
+      n.id === id ? { ...n, resolvidoEm: resolvida ? new Date().toISOString() : null, resolvidoPorNome: resolvida ? USUARIO.nome : null } : n,
+    );
+    gravar(b);
+  }
 
   async listarAgendas() {
     return [];

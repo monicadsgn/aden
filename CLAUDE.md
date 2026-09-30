@@ -15,7 +15,7 @@
 - Toda tabela nova: `org_id`, RLS (leitura membro, escrita admin, a menos que a fase peça outra coisa), triggers `carimbar()` e `auditar()`.
 - Motor de cálculo em `lib/calculo/` é puro e testado (`npm test`). Mudou fórmula → atualiza teste e `docs/ARQUITETURA.md`.
 - Next.js 16: ler `node_modules/next/dist/docs/` antes de usar APIs novas (`middleware` virou `proxy`, APIs de request são assíncronas).
-- Conector MCP (`lib/mcp/`): toda área nova ganha ferramentas no conector, para o Claude do claude.ai operar o sistema como um sócio.
+- Conector MCP (`lib/mcp/`): toda área nova ganha ferramentas no conector, para o Claude do claude.ai operar o sistema como um sócio. Cada sócio usa o próprio código (Fase 4, `x-aden-conector`): o banco assina em nome dele "pelo Claude"; o conector nunca aprova pedido. Contexto do cliente (`contexto_cliente`) não se apaga, só se resolve.
 - Campos protegidos (piso, % dos sócios, divisão de horas, tempo por entrega) só mudam por `propor_alteracao` (aprovação do sócio afetado); o banco bloqueia update direto. Regra em `lib/regras/aprovacao.ts`, espelhada nas migrations 0004–0009. Escopo/proposta abaixo do piso = pedido de exceção.
 - Tempo por entrega na tela é em minutos (`CampoMinutos`); por dentro, horas.
 - Todo aviso tem `acao` (botão para o campo que resolve). Campo opcional vazio é `lembrete`, não erro.

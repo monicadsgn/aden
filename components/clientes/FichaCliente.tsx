@@ -3,12 +3,13 @@
 // Ficha do cliente: tudo de um cliente num lugar só (dados, contrato e escopo, tarefas,
 // pagamentos e a conversa que veio do CRM). Edita no lugar e salva ao sair do campo.
 
-import { Calculator, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, SlidersHorizontal, User, Wallet } from "lucide-react";
+import { BookMarked, Calculator, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, SlidersHorizontal, User, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Modal } from "../Modal";
 import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
+import { ContextoCliente } from "./ContextoCliente";
 import { LinkPainel } from "./LinkPainel";
 import { DetalheTarefa } from "../tarefas/DetalheTarefa";
 import { LinhaTarefa } from "../tarefas/LinhaTarefa";
@@ -27,7 +28,7 @@ import { useDados } from "@/lib/dados/contexto";
 import { formatarMoeda } from "@/lib/formato";
 import { enviarCenario } from "@/lib/navegacao";
 
-export type Aba = "resumo" | "contrato" | "tarefas" | "financeiro" | "comercial";
+export type Aba = "resumo" | "contrato" | "tarefas" | "contexto" | "financeiro" | "comercial";
 
 export const SITUACAO_PAGAMENTO: Record<SituacaoPagamento, { rotulo: string; tom: "ok" | "aviso" | "erro" | "neutro" }> = {
   pago: { rotulo: "pago", tom: "ok" },
@@ -167,6 +168,7 @@ export function FichaCliente({
               { valor: "resumo", rotulo: "Dados", icone: User },
               { valor: "contrato", rotulo: "Contrato", icone: FileSignature },
               { valor: "tarefas", rotulo: `Tarefas${abertas.length ? ` (${abertas.length})` : ""}`, icone: ClipboardList },
+              { valor: "contexto", rotulo: "Contexto", icone: BookMarked },
               { valor: "financeiro", rotulo: "Pagamentos", icone: Wallet },
               { valor: "comercial", rotulo: "Comercial", icone: Handshake },
             ]}
@@ -374,6 +376,8 @@ export function FichaCliente({
             )}
           </div>
         )}
+
+        {aba === "contexto" && <ContextoCliente clienteId={c.id} />}
 
         {aba === "financeiro" && (
           <div className="flex flex-col gap-3">

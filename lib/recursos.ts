@@ -24,3 +24,10 @@ export const COM_VOLUME = {
   /** botão da Calibragem em Tipos de entrega: aparece sozinho quando há medição do cronômetro */
   botaoCalibragem: false,
 };
+
+/**
+ * Endereço antigo do conector (senha única ADEN_MCP_TOKEN, tudo em nome de "Claude (conector)").
+ * Fase 4 (30/09/2026): cada sócio passa a usar o próprio código (Configurações → Equipe → Seu Claude).
+ * A Moni decidiu desligar quando os dois estiverem no código novo, com aviso a ela antes.
+ */
+export const CONECTOR_ENDERECO_ANTIGO = true;

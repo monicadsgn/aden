@@ -20,6 +20,9 @@ const TABELAS: Record<string, string> = {
   simulacoes: "Simulação",
   simulacao_cenarios: "Versão",
   membros: "Acesso",
+  contexto_cliente: "Contexto do cliente",
+  portas: "Código de acesso",
+  tarefas: "Tarefa",
 };
 
 const CAMPOS: Record<string, string> = {
@@ -126,7 +129,8 @@ export default function Historico() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px]">
-                        <strong>{r.autor}</strong> {r.acao} <Badge tom="marca">{TABELAS[r.tabela] ?? r.tabela}</Badge> {nome && <strong>{nome}</strong>}
+                        <strong>{r.autor}</strong>
+                        {r.peloClaude && " (pelo Claude)"} {r.acao} <Badge tom="marca">{TABELAS[r.tabela] ?? r.tabela}</Badge> {nome && <strong>{nome}</strong>}
                       </p>
                       <p className="text-[12px] text-texto-suave">
                         {new Date(r.em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}

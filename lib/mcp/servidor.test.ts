@@ -8,7 +8,7 @@ import { configVazia, novoId } from "../calculo/novo";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Configuracao } from "../calculo/tipos";
 import { afetados, aplicarItens, separarProtegidas } from "../regras/aprovacao";
-import type { AlteracoesConfig, AvisoSocio, DadosExcecao, NovoAviso, Pedido, RegistroAuditoria, ResultadoSalvarConfig, Simulacao } from "../dados/repositorio";
+import type { AlteracoesConfig, AvisoSocio, DadosExcecao, NotaContexto, NovoAviso, Pedido, RegistroAuditoria, ResultadoSalvarConfig, Simulacao } from "../dados/repositorio";
 import type { RepositorioSupabase } from "../dados/supabase";
 import { PAINEL_CLIENTE_ATIVO } from "../recursos";
 import { criarServidorMcp } from "./servidor";
@@ -97,6 +97,22 @@ class BancoFalso {
   }
   async listarInteracoes(leadId: string) {
     return this.interacoes.filter((i) => i.leadId === leadId);
+  }
+  // com código pessoal, o banco assina em nome do sócio
+  async usuarioAtual() {
+    return { id: "u", nome: "Mônica (pelo Claude)", email: "", papel: "admin", pessoaId: "p1" };
+  }
+  contexto: NotaContexto[] = [];
+  async listarContexto(clienteId: string, incluirResolvidas = false) {
+    return this.contexto.filter((n) => n.clienteId === clienteId && (incluirResolvidas || !n.resolvidoEm)).reverse();
+  }
+  async anotarContexto(n: { clienteId: string; tipo: NotaContexto["tipo"]; texto: string }) {
+    const nota: NotaContexto = { id: novoId(), ...n, autorNome: "Mônica (pelo Claude)", peloClaude: true, criadoEm: new Date().toISOString(), resolvidoEm: null, resolvidoPorNome: null };
+    this.contexto.push(nota);
+    return nota;
+  }
+  async resolverContexto(id: string, resolvida: boolean) {
+    this.contexto = this.contexto.map((n) => (n.id === id ? { ...n, resolvidoEm: resolvida ? "2026-09-30" : null, resolvidoPorNome: resolvida ? "Mônica (pelo Claude)" : null } : n));
   }
   async gerarLinkPainel(clienteId: string) {
     const c = this.config.clientes.find((x) => x.id === clienteId)!;
@@ -408,6 +424,23 @@ describe("conector: clientes", () => {
     const f = await chamar("ver_cliente", { cliente: "Olinda" });
     expect(f.contato.telefone).toBe("81 9999");
     expect(f.contrato).toMatchObject({ valorMensal: 1500, diaPagamento: 10, fidelidadeAte: "2026-07-15" });
+  });
+});
+
+describe("conector: contexto do cliente", () => {
+  it("anota com quem anotou, lista só as ativas e resolve sem apagar", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    const a = await chamar("anotar_contexto_cliente", { cliente: "Olinda", tipo: "preferencia", texto: "Aprova pelo WhatsApp de manhã" });
+    expect(a.anotado).toMatchObject({ tipo: "preferência", quem: "Mônica (pelo Claude)" });
+    await chamar("anotar_contexto_cliente", { cliente: "Olinda", tipo: "pendencia", texto: "Mandar fotos da loja" });
+    expect((await chamar("ver_cliente", { cliente: "Olinda" })).contextoTotal).toBe(2);
+    await chamar("resolver_nota_contexto", { id: a.anotado.id });
+    const ativas = await chamar("ver_contexto_cliente", { cliente: "Olinda" });
+    expect(ativas.notas.map((n: { texto: string }) => n.texto)).toEqual(["Mandar fotos da loja"]);
+    const todas = await chamar("ver_contexto_cliente", { cliente: "Olinda", resolvidas: true });
+    expect(todas.notas).toHaveLength(2);
+    expect(todas.notas.find((n: { id: string }) => n.id === a.anotado.id).resolvida.por).toBe("Mônica (pelo Claude)");
+    await expect(chamar("anotar_contexto_cliente", { cliente: "Olinda", tipo: "outro", texto: "x" })).rejects.toThrow();
   });
 });
 

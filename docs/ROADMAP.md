@@ -141,7 +141,12 @@ migração. Meta: tudo pronto até o fim de outubro.
   migration 0022. Em 30/09/2026 as 5 peças da Olinda que esperavam aprovação vieram já aprovadas (só textos) e a
   Olinda ganhou o link do painel. Falta só a Moni arquivar a área antiga.
 - **Fase 4 · Os dois sócios pelo Claude:** memória de contexto do cliente no conector (quem anotou); toda ferramenta
-  registra qual sócio agiu; passo a passo de configuração com o Áleff.
+  registra qual sócio agiu; passo a passo de configuração com o Áleff. Aprovada em 30/09/2026 e feita na versão de
+  teste (migration 0025): código pessoal do conector (Seu Claude, com passo a passo), mudança protegida que só afeta
+  o dono do código vale na hora e a que afeta o outro vira pedido; contexto do cliente com decisão, preferência,
+  pendência e nota (resolvida sai da lista, não se apaga). Endereço antigo do conector: desligar quando os dois
+  usarem o código novo, avisando a Moni antes. O Áleff precisa de login no Aden antes de gerar o código dele.
+  Último passo: importar uma vez as notas ativas do contexto "Aden" do sistema antigo que a Moni escolher.
 - **Fase 5 · Identidade e documentos:** tokens da marca a partir do SVG; proposta em PDF, contrato por e-mail
   (Autentique), link de pagamento (InfinitePay), onboarding por serviço, rotina de fechamento, pasta no Drive (pronta
   para ligar com o e-mail novo) — e-mail da Aden (30/09/2026): grupoaden1@gmail.com, usado para a pasta do cliente

@@ -118,6 +118,31 @@ export interface PortaDeAcesso {
   canceladoEm: string | null;
 }
 
+/** Tipos de anotação do contexto do cliente (Fase 4). */
+export type TipoContexto = "decisao" | "preferencia" | "pendencia" | "nota";
+
+/** Memória de contexto do cliente: só os sócios leem. Não se apaga; resolvida sai da lista principal. */
+export interface NotaContexto {
+  id: string;
+  clienteId: string;
+  tipo: TipoContexto;
+  texto: string;
+  /** quem anotou ("Mônica", ou "Mônica (pelo Claude)"); o banco preenche */
+  autorNome: string | null;
+  peloClaude: boolean;
+  criadoEm: string;
+  resolvidoEm: string | null;
+  resolvidoPorNome: string | null;
+}
+
+/** Quem dos sócios já usa o código do Claude. */
+export interface UsoDoConector {
+  pessoaId: string;
+  nome: string;
+  temCodigo: boolean;
+  ultimoUso: string | null;
+}
+
 /** O que o cliente vê no painel: só as peças, nunca horas, valores ou sócios. */
 export interface PainelCliente {
   cliente: string;
@@ -176,6 +201,8 @@ export interface RegistroAuditoria {
   antes: Record<string, unknown> | null;
   depois: Record<string, unknown> | null;
   autor: string;
+  /** feito pelo Claude com o código pessoal do sócio */
+  peloClaude?: boolean;
   em: string;
 }
 
@@ -255,6 +282,20 @@ export interface Repositorio {
   /** gera um código novo e devolve ele inteiro, uma única vez */
   gerarPorta(): Promise<string>;
   cancelarPorta(id: string): Promise<void>;
+
+  // ─── Seu Claude: código pessoal do conector (Fase 4) ─────────────────────────
+  /** meus códigos do Claude (só o começo) */
+  listarCodigosClaude(): Promise<PortaDeAcesso[]>;
+  /** gera um código novo do Claude e devolve ele inteiro, uma única vez (cancela com cancelarPorta) */
+  gerarCodigoClaude(): Promise<string>;
+  /** quem dos sócios já tem e usa o código do Claude */
+  usoDoConector(): Promise<UsoDoConector[]>;
+
+  // ─── Contexto do cliente (Fase 4) ────────────────────────────────────────────
+  listarContexto(clienteId: string, incluirResolvidas?: boolean): Promise<NotaContexto[]>;
+  anotarContexto(n: { clienteId: string; tipo: TipoContexto; texto: string }): Promise<NotaContexto>;
+  /** marca como resolvida (ou volta a ativa); nunca apaga */
+  resolverContexto(id: string, resolvida: boolean): Promise<void>;
 
   // ─── Google Agenda (só leitura, cada um a sua) ─────────────────────────────
   listarAgendas(): Promise<{ id: string; nome: string; endereco: string }[]>;
