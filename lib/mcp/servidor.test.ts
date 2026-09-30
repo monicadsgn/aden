@@ -585,7 +585,7 @@ describe("conector: fechamento do cliente", () => {
     await expect(chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "contrato", link: "autentique.com/x" })).rejects.toThrow(/https/);
     await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "contrato", link: "https://assina.exemplo/doc" });
     const k = await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "kickoff", data: "2026-10-05" });
-    expect(k).toMatchObject({ tarefaCriada: "Kickoff · Loja Nova", feitos: "3 de 7", proximo: "Link de pagamento enviado" });
+    expect(k).toMatchObject({ tarefaCriada: "Kickoff · Loja Nova", feitos: "3 de 7", proximo: "Cobrança criada" });
     expect(banco.tarefas.find((t) => t.titulo === "Kickoff · Loja Nova")?.vencimento).toBe("2026-10-05");
     // marcar o kickoff de novo não duplica a tarefa
     await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "kickoff", data: "2026-10-06" });

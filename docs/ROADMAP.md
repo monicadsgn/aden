@@ -177,7 +177,10 @@ migração. Meta: tudo pronto até o fim de outubro.
   Cobrança recorrente (30/09/2026, pesquisa): a API de checkout da InfinitePay não tem recorrência (cada link é uma
   cobrança avulsa; webhook sem assinatura, por isso reconferir pelo payment_check). A recorrência existe só no app
   (Gestão de Cobranças / Planos de Assinatura), sem API para o Aden ler. Caminhos levados à Moni: link por mês gerado
-  pelo Aden, ou plano no app com o Aden só conferindo. Nada construído até a escolha.
+  pelo Aden, ou plano no app com o Aden só conferindo. **Decisão da Moni (30/09/2026): plano no app (B), por enquanto.**
+  O passo do fechamento virou "Cobrança criada" e cada pagamento continua lançado em Pagamentos quando cai.
+  Quem assina o contrato pela Aden: o Áleff (decidido em 30/09/2026). O texto do contrato a Moni leva pronto.
+  Onboarding: rascunho a partir do da MD enviado para a Moni corrigir (30/09/2026); a estrutura só se constrói depois.
 - **Fase 6 · Skills da Aden:** proposta, contrato, onboarding, fechamento e apresentação em arquivos .skill.
 
 ## 1. Auditoria de usabilidade: itens que faltam (entram na Fase 1)

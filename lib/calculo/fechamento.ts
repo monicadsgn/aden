@@ -1,6 +1,6 @@
 // Fechamento do cliente (Fase 5, passo 1, aprovado em 30/09/2026).
 // Quando o lead vira cliente, abre um checklist na ordem combinada com a Moni (o onboarding vai primeiro, como na MD):
-// onboarding → contrato → link de pagamento → pasta no Drive → briefing → kickoff → link do painel.
+// onboarding → contrato → cobrança → pasta no Drive → briefing → kickoff → link do painel.
 // O link do painel se confere sozinho (link criado na ficha); os outros são marcados por quem fez.
 
 import type { Id } from "./tipos";
@@ -10,7 +10,13 @@ export type PassoFechamento = "onboarding" | "contrato" | "pagamento" | "pasta_d
 export const PASSOS_FECHAMENTO: { passo: PassoFechamento; rotulo: string; ajuda: string; pedeLink?: boolean; pedeData?: boolean }[] = [
   { passo: "onboarding", rotulo: "Onboarding enviado", ajuda: "O cliente recebeu o onboarding do serviço (o que vem a seguir e o que precisamos dele)." },
   { passo: "contrato", rotulo: "Contrato assinado", ajuda: "Contrato enviado e assinado pelo cliente.", pedeLink: true },
-  { passo: "pagamento", rotulo: "Link de pagamento enviado", ajuda: "O cliente recebeu o link para pagar.", pedeLink: true },
+  {
+    passo: "pagamento",
+    rotulo: "Cobrança criada",
+    // decisão de 30/09/2026: cobrança recorrente pelo plano no app da InfinitePay; o Aden só confere (pagamento lançado em Pagamentos)
+    ajuda: "Cliente cadastrado no plano de cobrança do app da InfinitePay. Cada pagamento é lançado em Pagamentos quando cair.",
+    pedeLink: true,
+  },
   { passo: "pasta_drive", rotulo: "Pasta no Drive criada", ajuda: "Pasta do cliente em 02 CLIENTES ATIVOS, com o link guardado aqui.", pedeLink: true },
   { passo: "briefing", rotulo: "Briefing preenchido", ajuda: "O briefing na ficha do cliente está completo (o Áleff na reunião dele, a Moni na dela)." },
   { passo: "kickoff", rotulo: "Kickoff marcado", ajuda: "Reunião de início com o cliente, com data. Vira tarefa.", pedeData: true },

@@ -1127,7 +1127,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Checklist de fechamento do cliente",
       description:
-        "Os 7 passos do fechamento, na ordem combinada: onboarding → contrato assinado → link de pagamento → pasta no Drive → briefing → kickoff → link do painel. Mostra o que foi feito, por quem e quando, e o próximo passo. Sem cliente: todos os fechamentos em andamento.",
+        "Os 7 passos do fechamento, na ordem combinada: onboarding → contrato assinado → cobrança criada (plano no app da InfinitePay) → pasta no Drive → briefing → kickoff → link do painel. Mostra o que foi feito, por quem e quando, e o próximo passo. Sem cliente: todos os fechamentos em andamento.",
       inputSchema: { cliente: z.string().optional().describe("nome ou id; vazio = todos os fechamentos abertos") },
     },
     async ({ cliente }) =>
@@ -1169,7 +1169,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Marcar passo do fechamento",
       description:
-        "Marca (ou desmarca com feito=false) um passo do fechamento do cliente. Quem fez é gravado pelo banco. link (https://) guarda o contrato, o link de pagamento ou a pasta no Drive; data (AAAA-MM-DD) é a do kickoff e cria a tarefa da reunião. O link do painel não se marca aqui: ele se confere pelo link criado (link_painel_cliente). Se o cliente ainda não tinha checklist, abre.",
+        "Marca (ou desmarca com feito=false) um passo do fechamento do cliente. Quem fez é gravado pelo banco. link (https://) guarda o contrato, o link da cobrança ou a pasta no Drive; data (AAAA-MM-DD) é a do kickoff e cria a tarefa da reunião. O link do painel não se marca aqui: ele se confere pelo link criado (link_painel_cliente). Se o cliente ainda não tinha checklist, abre.",
       inputSchema: {
         cliente: z.string().describe("nome ou id"),
         passo: z.enum(["onboarding", "contrato", "pagamento", "pasta_drive", "briefing", "kickoff"]),
