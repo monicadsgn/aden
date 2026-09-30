@@ -181,6 +181,11 @@ migração. Meta: tudo pronto até o fim de outubro.
   O passo do fechamento virou "Cobrança criada" e cada pagamento continua lançado em Pagamentos quando cai.
   InfiniteTag da conta conjunta: grupoaden (30/09/2026). Só é usada se a cobrança mudar para o caminho A (link por mês
   gerado pelo Aden); no B não entra no sistema.
+  Plano recorrente só para clientes novos; quem cria o plano no app ainda será decidido. Taxa da InfinitePay fica 0%
+  por enquanto (decisão da Moni, 30/09/2026).
+  Briefing gravado (30/09/2026): seções Sobre o negócio, Marca e posicionamento, Redes e conteúdo (Social media) e
+  Materiais e referências; a seção de Tráfego e vendas espera as perguntas do Áleff.
+  Endereço antigo do conector (senha única) desligado em 30/09/2026: os dois sócios usam o código pessoal.
   Quem assina o contrato pela Aden: o Áleff (decidido em 30/09/2026). O texto do contrato a Moni leva pronto.
   Onboarding (passo 5) pronto na versão de teste (30/09/2026, migration 0032): texto aprovado pela Moni guardado em
   Configurações → Onboarding; o PDF de cada cliente junta com o pacote, os serviços contratados, a garantia e o

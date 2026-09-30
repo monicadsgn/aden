@@ -29,5 +29,6 @@ export const COM_VOLUME = {
  * Endereço antigo do conector (senha única ADEN_MCP_TOKEN, tudo em nome de "Claude (conector)").
  * Fase 4 (30/09/2026): cada sócio passa a usar o próprio código (Configurações → Equipe → Seu Claude).
  * A Moni decidiu desligar quando os dois estiverem no código novo, com aviso a ela antes.
+ * Desligado em 30/09/2026 com o ok da Moni (os dois sócios já usam o código pessoal).
  */
-export const CONECTOR_ENDERECO_ANTIGO = true;
+export const CONECTOR_ENDERECO_ANTIGO = false;
