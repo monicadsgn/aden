@@ -196,6 +196,8 @@ migração. Meta: tudo pronto até o fim de outubro.
   (cores, Poppins, logo, ícone da aba, painel do cliente).
   Próximo pedido da Moni (guardado): efeito vidro (glass) nas coisas.
 - **Fase 6 · Skills da Aden:** proposta, contrato, onboarding, fechamento e apresentação em arquivos .skill.
+  Começada em 30/09/2026: `skills/` com aden-proposta, aden-fechamento, aden-contrato e aden-onboarding (usam só o
+  conector do Aden; teste confere as ferramentas citadas). Apresentação espera o material do Áleff.
 
 ## 1. Auditoria de usabilidade: itens que faltam (entram na Fase 1)
 
