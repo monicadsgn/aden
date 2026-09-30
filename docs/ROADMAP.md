@@ -156,7 +156,8 @@ migração. Meta: tudo pronto até o fim de outubro.
   caracteres vieram como estavam, terminando em "…".
 - **Planejamento, datas e atalhos (30/09/2026, versão de teste):** importar planejamento mensal (rede e lote
   internos, peças já visíveis ao cliente em "Vem por aí"), datas comemorativas por cliente com antecedência própria
-  (Configurações → Datas comemorativas; a importação das datas do sistema antigo espera a Moni conferir a lista) e
+  (Configurações → Datas comemorativas; 18 datas de out/2026 a nov/2027 importadas uma vez do sistema antigo depois
+  da conferência da Moni, com os dois Natais juntos numa data só) e
   atalhos do painel (planejamento do mês, fotos, identidade, "O que está incluso"), migration 0027. Contexto: 15 notas
   da Olinda e 4 da StadiumPlay importadas, com a data original e a Moni como autora.
 - **Fase 5 · Identidade e documentos:** tokens da marca a partir do SVG; proposta em PDF, contrato por e-mail
