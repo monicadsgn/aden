@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { dataHoraBrasilia } from "../mcp/servidor";
 import type { Medicao } from "./calibragem";
 import { avisosDePublicacao } from "./dia";
-import { aplicarResposta, montarPainel, montarQuadro, resumoDoMes } from "./painel";
+import { aplicarResposta, montarPainel, montarQuadro, nomeDoTipoParaCliente, resumoDoMes, tituloParaCliente } from "./painel";
 import { novaTarefa, publicar, situacaoPeca } from "./tarefas";
 import type { ClienteBase } from "./tipos";
 
@@ -117,5 +117,23 @@ describe("quadro do painel do cliente", () => {
         { tipo: "Post simples", quantidade: 1 },
       ],
     });
+  });
+});
+
+describe("painel: como o cliente vê o título e o formato", () => {
+  it("tira a etiqueta interna e o 'Tráfego:' do título, sem mexer no resto", () => {
+    expect(tituloParaCliente("[STADIUMPLAY] - Vila Nova x Londrina")).toBe("Vila Nova x Londrina");
+    expect(tituloParaCliente("[STADIUMPLAY] - V10 - Chegou pra ficar")).toBe("V10 - Chegou pra ficar");
+    expect(tituloParaCliente('Tráfego: carrossel "O problema e a solução" (5 cards)')).toBe('Carrossel "O problema e a solução" (5 cards)');
+    expect(tituloParaCliente("Dicionário da Costura: Entretela")).toBe("Dicionário da Costura: Entretela");
+    expect(tituloParaCliente("Manutenção: 3 cuidados")).toBe("Manutenção: 3 cuidados");
+    expect(tituloParaCliente("[X]")).toBe("[X]");
+  });
+
+  it("o formato usa o 'como o cliente vê' do tipo quando preenchido", () => {
+    expect(nomeDoTipoParaCliente({ nome: "Criativo de tráfego estático", nomeCliente: "Post" })).toBe("Post");
+    expect(nomeDoTipoParaCliente({ nome: "Reels", nomeCliente: null })).toBe("Reels");
+    expect(nomeDoTipoParaCliente({ nome: "Reels", nomeCliente: "  " })).toBe("Reels");
+    expect(nomeDoTipoParaCliente(undefined)).toBeNull();
   });
 });

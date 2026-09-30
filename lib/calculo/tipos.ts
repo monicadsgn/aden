@@ -56,6 +56,8 @@ export interface TipoEntrega {
    * saída: custo = quantidade × (valor por saída + deslocamento). Custo só do cliente, nunca rateado.
    */
   terceiroId?: Id | null;
+  /** como aparece no painel do cliente (ex.: "Post" para um criativo de tráfego estático); vazio = o nome */
+  nomeCliente?: string | null;
 }
 
 /** Serviço terceirizado cobrado por saída (ex.: audiovisual: vai ao cliente, grava, edita e entrega). */
