@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Medicao } from "@/lib/calculo/calibragem";
 import { configVazia, novoId } from "@/lib/calculo/novo";
-import { darStart, medicaoDaTarefa, mudarStatus, pausar, type StatusTarefa, type Tarefa } from "@/lib/calculo/tarefas";
+import { darStart, medicaoDaTarefa, mudarStatus, pausar, publicar, type StatusTarefa, type Tarefa } from "@/lib/calculo/tarefas";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
 
@@ -110,6 +110,12 @@ export function useTarefas() {
       await gravarPar(r.tarefa, r.medicao, true);
     });
 
+  const marcarPublicada = (t: Tarefa, publicada: boolean) =>
+    tentar(async () => {
+      const r = publicar(t, medicaoDaTarefa(t, medicoes), new Date(), publicada);
+      await gravarPar(r.tarefa, r.medicao, true);
+    });
+
   const remover = (t: Tarefa) =>
     tentar(async () => {
       setTarefas((l) => l.filter((x) => x.id !== t.id));
@@ -148,7 +154,7 @@ export function useTarefas() {
       await repo.salvarTarefa(nova);
     });
 
-  return { config, tarefas, medicoes, carregado, erro, setErro, salvar, start, pausarTarefa, status, remover, zerarTempo, enviarParaCliente, anexarArquivos, recarregar, usuario };
+  return { config, tarefas, medicoes, carregado, erro, setErro, salvar, start, pausarTarefa, status, marcarPublicada, remover, zerarTempo, enviarParaCliente, anexarArquivos, recarregar, usuario };
 }
 
 export type AcoesTarefas = ReturnType<typeof useTarefas>;

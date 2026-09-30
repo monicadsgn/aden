@@ -18,6 +18,8 @@ export interface PecaPainel {
   feedbackEm: string | null;
   aprovadaEm: string | null;
   respostas: NonNullable<Tarefa["respostasCliente"]>;
+  publicarEm: string | null;
+  publicadaEm: string | null;
 }
 
 const JANELA_DIAS_ENTREGUES = 60; // peças entregues somem do painel depois de um tempo (só organização da tela)
@@ -41,6 +43,8 @@ export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = ne
       feedbackEm: t.feedbackEm ?? null,
       aprovadaEm: t.clienteAprovouEm ?? null,
       respostas: t.respostasCliente ?? [],
+      publicarEm: t.publicarEm ?? null,
+      publicadaEm: t.publicadaEm ?? null,
     }));
   return {
     cliente: cliente.nome,

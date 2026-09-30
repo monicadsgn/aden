@@ -66,3 +66,34 @@ export function diasDaGrade(ano: number, mes0: number): string[] {
   for (const d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) out.push(hojeISO(d));
   return out;
 }
+
+// ─── Avisos de publicação (Fase 3) ────────────────────────────────────────
+
+export interface AvisosPublicacao {
+  /** peças com data para ir ao ar hoje (ou que passaram do dia e ainda não foram publicadas) */
+  irAoAr: { t: Tarefa; atrasada: boolean }[];
+  /** esperando o cliente além do prazo de aprovação do contrato */
+  aprovacaoVencida: { t: Tarefa; ate: string }[];
+}
+
+/**
+ * prazoAprovacao: dias para o cliente aprovar, do contrato de cada cliente (vazio = sem prazo, sem aviso).
+ * pessoaId: de quem é a visão; null = todo mundo.
+ */
+export function avisosDePublicacao(tarefas: Tarefa[], prazoAprovacao: (clienteId: Id | null) => number | null, pessoaId: Id | null, hoje: string): AvisosPublicacao {
+  const minhas = pessoaId ? tarefas.filter((t) => t.responsavelId === pessoaId) : tarefas;
+  const irAoAr = minhas
+    .filter((t) => t.publicarEm && !t.publicadaEm && t.status !== "concluida")
+    .map((t) => ({ t, dia: hojeISO(new Date(t.publicarEm!)) }))
+    .filter((x) => x.dia <= hoje)
+    .sort((a, b) => a.t.publicarEm!.localeCompare(b.t.publicarEm!))
+    .map((x) => ({ t: x.t, atrasada: x.dia < hoje }));
+  const aprovacaoVencida = minhas
+    .filter((t) => t.status === "revisao" && t.enviadaClienteEm && !t.clienteAprovouEm)
+    .map((t) => {
+      const dias = prazoAprovacao(t.clienteId);
+      return { t, ate: dias == null ? null : somarDias(hojeISO(new Date(t.enviadaClienteEm!)), dias) };
+    })
+    .filter((x): x is { t: Tarefa; ate: string } => x.ate != null && x.ate < hoje);
+  return { irAoAr, aprovacaoVencida };
+}

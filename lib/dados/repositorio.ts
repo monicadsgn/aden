@@ -127,6 +127,9 @@ export interface PainelCliente {
     feedbackEm: string | null;
     aprovadaEm: string | null;
     respostas: RespostaCliente[];
+    /** quando vai ao ar e quando foi (Fase 3) */
+    publicarEm?: string | null;
+    publicadaEm?: string | null;
   }[];
 }
 

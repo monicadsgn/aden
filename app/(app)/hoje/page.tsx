@@ -15,6 +15,7 @@ import {
   Clock,
   Flag,
   Hourglass,
+  Megaphone,
   MessagesSquare,
   Package,
   Plus,
@@ -39,7 +40,7 @@ import { BotaoAjudaTela } from "@/components/Ajuda";
 import { Card, cx } from "@/components/ui";
 import { clienteNoMes, lembretesDeContrato } from "@/lib/calculo/clientes";
 import { contatosParaHoje, resumoFunil, type Lead } from "@/lib/calculo/crm";
-import { hojeISO, montarVisaoDoDia, somarDias } from "@/lib/calculo/dia";
+import { avisosDePublicacao, hojeISO, montarVisaoDoDia, somarDias } from "@/lib/calculo/dia";
 import { calcularVisaoMes } from "@/lib/calculo/mes";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "@/lib/calculo/metas";
 import { novoId } from "@/lib/calculo/novo";
@@ -235,6 +236,7 @@ export default function VisaoDoDia() {
     const s = situacaoPeca(t);
     return s === "ajuste" || s === "aprovada";
   });
+  const publicacao = avisosDePublicacao(a.tarefas, (id) => cfg.clientes.find((c) => c.id === id)?.contrato?.prazoAprovacaoDias ?? null, pessoa, hoje);
   const lembretes = lembretesDeContrato(cfg.clientes, (id) => financeiro.recebidoPor.get(id) ?? 0, hoje);
   const funil = resumoFunil(leads, hoje);
   const respondidas = new Set(respostasCliente.map((t) => t.id));
@@ -345,6 +347,38 @@ export default function VisaoDoDia() {
                   aria-label="Nova tarefa para hoje"
                 />
               </div>}
+              {(publicacao.irAoAr.length > 0 || publicacao.aprovacaoVencida.length > 0) && (
+                <div className="mb-2 flex flex-col">
+                  <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">Publicação</p>
+                  {publicacao.irAoAr.map(({ t, atrasada }) => (
+                    <button key={t.id} type="button" onClick={() => setTarefaAberta(t.id)} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-item px-2 py-2 text-left hover:bg-superficie-2/70">
+                      <Megaphone size={16} className={cx("shrink-0", atrasada ? "text-erro" : "text-marca-forte")} />
+                      <span className="min-w-0 flex-1 basis-40 truncate text-[13px] font-medium">
+                        {t.titulo}
+                        <span className="font-normal text-texto-suave">
+                          {" "}
+                          · {cfg.clientes.find((c) => c.id === t.clienteId)?.nome}
+                          {atrasada
+                            ? ` · era para ${new Date(t.publicarEm!).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}, ainda não marcada como publicada`
+                            : ` · vai ao ar hoje às ${new Date(t.publicarEm!).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                  {publicacao.aprovacaoVencida.map(({ t, ate }) => (
+                    <button key={t.id} type="button" onClick={() => setTarefaAberta(t.id)} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-item px-2 py-2 text-left hover:bg-superficie-2/70">
+                      <Hourglass size={16} className="shrink-0 text-aviso" />
+                      <span className="min-w-0 flex-1 basis-40 truncate text-[13px] font-medium">
+                        {t.titulo}
+                        <span className="font-normal text-texto-suave">
+                          {" "}
+                          · {cfg.clientes.find((c) => c.id === t.clienteId)?.nome} ainda não aprovou (prazo era {new Date(`${ate}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}). Vale lembrar.
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {respostasCliente.length > 0 && (
                 <div className="mb-2 flex flex-col">
                   <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">O cliente respondeu</p>

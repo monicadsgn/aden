@@ -40,7 +40,6 @@ import {
   type Tarefa,
 } from "@/lib/calculo/tarefas";
 import { formatarDuracao } from "@/lib/formato";
-import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
 import { ParaCliente } from "./ParaCliente";
 import type { AcoesTarefas } from "./useTarefas";
 
@@ -327,7 +326,7 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
         </p>
       )}
 
-      {PAINEL_CLIENTE_ATIVO && t.clienteId && <ParaCliente t={t} a={a} />}
+      {t.clienteId && <ParaCliente t={t} a={a} />}
 
       <div className="mt-4">
         <p className="mb-1 text-xs font-semibold text-texto-suave">Descrição</p>

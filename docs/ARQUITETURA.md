@@ -281,6 +281,21 @@ cliente, mas:
 
 Testes em `lib/calculo/interno.test.ts`.
 
+## Publicação das peças (Fase 3, passo 1, 30/09/2026)
+
+Peça de conteúdo é tarefa (o pipeline separado foi descartado). Migration 0020 soma duas datas: `publicar_em` (quando
+vai ao ar) e `publicada_em` (quando foi). O status da tarefa não muda (a reorganização da seção 2 do ROADMAP segue
+guardada); a etapa é calculada em `situacaoPeca`: planejado (a fazer, com data) → produção → esperando aprovação /
+ajuste → aprovada → agendada (aprovada, com data) → publicada. `publicar()` conclui a tarefa e para o relógio.
+- Tela: bloco da peça no detalhe da tarefa (legenda, artes, "Vai ao ar em", "Marcar como publicada"); fica recolhido em
+  tarefa que não é peça. O que é do painel (mostrar ao cliente, enviar para aprovar) só aparece com o painel ligado.
+- Visão do dia: bloco "Publicação" (vai ao ar hoje; passou do dia sem marcar; cliente não aprovou no prazo do
+  contrato) em `avisosDePublicacao`.
+- Painel do cliente: `painel_cliente` devolve `publicarEm`/`publicadaEm`; grupos "No calendário", "Aprovadas"
+  (agendadas com data) e "Publicadas e entregues".
+- Conector: `salvar_tarefa` com `legenda` e `publicarEm` (AAAA-MM-DD HH:MM, Brasília), `marcar_publicada`, etapa da
+  peça em `listar_tarefas` e `ver_visao_do_dia.publicacao`. Testes em `lib/calculo/publicacao.test.ts`.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```

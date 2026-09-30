@@ -18,10 +18,10 @@ import { calcularSolucoes } from "../calculo/solucoes";
 import { clienteNoMes, contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio } from "../calculo/clientes";
 import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, rotuloEtapa, situacaoFollowUp, type Lead } from "../calculo/crm";
 import { PAPEIS } from "../acesso";
-import { hojeISO, montarVisaoDoDia } from "../calculo/dia";
+import { avisosDePublicacao, hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
 import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } from "../calculo/pacotes";
-import { estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, rotuloStatus, situacaoPeca, type Tarefa } from "../calculo/tarefas";
+import { ROTULO_PECA, estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, publicar, rotuloStatus, situacaoPeca, type Tarefa } from "../calculo/tarefas";
 import type { Configuracao, Meta, Pacote } from "../calculo/tipos";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
@@ -78,6 +78,8 @@ Regras que você deve seguir:
 - Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist)
   e mudar_status_tarefa. O cronômetro fica DENTRO da tarefa (botão Começar no site); você não liga relógio, mas pode
   registrar um tempo que a pessoa disse com registrar_medicao. ver_calibragem mostra a média medida.
+- Peças de conteúdo são tarefas: legenda e publicarEm (salvar_tarefa) dão a etapa planejado → produção → esperando
+  aprovação → aprovada → agendada → publicada (marcar_publicada, que conclui a tarefa).
 - Pacotes: ver_pacotes mostra os preços CALCULADOS (nunca digitados). salvar_pacote só guarda o que é entregue.
 - Terceiros (salvar_terceiro): custo por saída + deslocamento, só do cliente que recebe; o cliente nunca vê o valor.
 - Metas (ver_metas, salvar_meta): trilha de crescimento em degraus. Só cadastre metas que os sócios definiram.
@@ -135,6 +137,14 @@ function aplicar<T extends object>(alvo: T, patch: Partial<Record<keyof T, unkno
   const out = { ...alvo };
   for (const [k, v] of Object.entries(patch)) if (v !== undefined) (out as Record<string, unknown>)[k] = v;
   return out;
+}
+
+/** "AAAA-MM-DD HH:MM" no horário de Brasília → ISO. null tira a data. */
+export function dataHoraBrasilia(v: string | null): string | null {
+  if (v == null) return null;
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})$/.exec(v.trim());
+  if (!m) throw new Error(`Data e hora inválidas: ${v}. Use AAAA-MM-DD HH:MM.`);
+  return new Date(`${m[1]}T${m[2]}:00-03:00`).toISOString();
 }
 
 export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, origem = ""): McpServer {
@@ -1331,7 +1341,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Visão do dia",
       description:
-        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, com o cliente e concluídas hoje; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
+        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, com o cliente e concluídas hoje; o que vai ao ar hoje e peças que o cliente não aprovou no prazo; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
       inputSchema: { socio: z.string().optional().describe("sócio (nome ou id); vazio = todo mundo") },
     },
     async ({ socio }) =>
@@ -1351,6 +1361,14 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           emProducaoSemPrazo: resumo(v.emAndamento),
           semResponsavel: resumo(v.semResponsavel),
           concluidasHoje: v.concluidasHoje.length,
+          publicacao: (() => {
+            const p = avisosDePublicacao(tarefas, (id) => config.clientes.find((c) => c.id === id)?.contrato?.prazoAprovacaoDias ?? null, pessoaId, hojeISO());
+            return {
+              vaiAoArHoje: p.irAoAr.filter((x) => !x.atrasada).map((x) => ({ ...resumo([x.t])[0], vaiAoArEm: x.t.publicarEm })),
+              passouDoDiaSemPublicar: p.irAoAr.filter((x) => x.atrasada).map((x) => ({ ...resumo([x.t])[0], eraPara: x.t.publicarEm })),
+              clienteNaoAprovouNoPrazo: p.aprovacaoVencida.map((x) => ({ ...resumo([x.t])[0], prazoEra: x.ate })),
+            };
+          })(),
           aprovacoesEsperando: pessoaId
             ? pedidos.filter((p) => p.status === "pendente" && p.afetados.includes(pessoaId) && !p.aprovacoes.some((a) => a.pessoaId === pessoaId)).map((p) => p.descricao)
             : pedidos.filter((p) => p.status === "pendente").map((p) => p.descricao),
@@ -1395,6 +1413,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               estimativaMin: est == null ? null : Math.round(est * 60),
               tempoMedidoMin: m ? Math.round(segundosDaMedicao(m) / 60) : 0,
               relogio: m?.estado ?? "nunca ligado",
+              ...((t.visivelCliente || t.publicarEm || t.publicadaEm) && {
+                etapaDaPeca: ROTULO_PECA[situacaoPeca(t)],
+                vaiAoArEm: t.publicarEm ?? null,
+                publicadaEm: t.publicadaEm ?? null,
+              }),
               ...(t.visivelCliente && {
                 noPainelDoCliente: situacaoPeca(t),
                 pedidoDoCliente: situacaoPeca(t) === "ajuste" ? t.feedbackCliente : null,
@@ -1410,7 +1433,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou editar tarefa",
       description:
-        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. checklist substitui a lista inteira.",
+        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. checklist substitui a lista inteira. Peça de conteúdo: legenda e publicarEm (quando vai ao ar); com data, a peça fica 'planejado' antes de aprovar e 'agendada' depois.",
       inputSchema: {
         id: z.string().optional(),
         titulo: z.string().optional(),
@@ -1423,6 +1446,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         vencimento: z.string().nullable().optional(),
         descricao: z.string().optional(),
         checklist: z.array(z.object({ titulo: z.string(), feita: z.boolean().optional() })).optional(),
+        legenda: z.string().optional().describe("texto que vai junto com a peça (legenda do post)"),
+        publicarEm: z.string().nullable().optional().describe("quando a peça vai ao ar: AAAA-MM-DD HH:MM (horário de Brasília); null tira"),
       },
     },
     async (e) =>
@@ -1451,9 +1476,31 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.vencimento !== undefined && { vencimento: data(e.vencimento) ?? null }),
           ...(e.descricao != null && { descricao: e.descricao }),
           ...(e.checklist && { etapas: e.checklist.map((c) => ({ id: novoId(), titulo: c.titulo, feita: !!c.feita })) }),
+          ...(e.legenda != null && { legenda: e.legenda }),
+          ...(e.publicarEm !== undefined && { publicarEm: dataHoraBrasilia(e.publicarEm) }),
         };
         await repo.salvarTarefa(t);
         return { salva: t.titulo, id: t.id, criada: !antes };
+      }),
+  );
+
+  server.registerTool(
+    "marcar_publicada",
+    {
+      title: "Marcar peça como publicada",
+      description: "A peça foi ao ar: fica 'publicada' e a tarefa é concluída (o relógio para). publicada=false desfaz.",
+      inputSchema: { id: z.string(), publicada: z.boolean().optional().describe("padrão true") },
+    },
+    async ({ id, publicada }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [tarefas, medicoes] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes()]);
+        const t = tarefas.find((x) => x.id === id);
+        if (!t) throw new Error("Tarefa não encontrada.");
+        const r = publicar(t, medicaoDaTarefa(t, medicoes), new Date(), publicada ?? true);
+        await repo.salvarTarefa(r.tarefa);
+        if (r.medicao) await repo.salvarMedicao(r.medicao);
+        return { tarefa: t.titulo, etapa: ROTULO_PECA[situacaoPeca(r.tarefa)] };
       }),
   );
 

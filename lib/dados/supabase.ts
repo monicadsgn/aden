@@ -872,6 +872,8 @@ export class RepositorioSupabase implements Repositorio {
       feedbackEm: (t.feedback_em as string) ?? null,
       clienteAprovouEm: (t.cliente_aprovou_em as string) ?? null,
       respostasCliente: Array.isArray(t.respostas_cliente) ? (t.respostas_cliente as RespostaCliente[]) : [],
+      publicarEm: (t.publicar_em as string) ?? null,
+      publicadaEm: (t.publicada_em as string) ?? null,
     }));
   }
 
@@ -897,6 +899,8 @@ export class RepositorioSupabase implements Repositorio {
       visivel_cliente: t.visivelCliente ?? false,
       legenda: t.legenda || null,
       arquivos: t.arquivos ?? [],
+      publicar_em: t.publicarEm ?? null,
+      publicada_em: t.publicadaEm ?? null,
     });
     erro(error);
   }

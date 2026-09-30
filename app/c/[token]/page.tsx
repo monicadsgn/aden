@@ -20,7 +20,9 @@ const GRUPOS: { sit: SituacaoPeca[]; titulo: string; frase: string }[] = [
   { sit: ["aguardando"], titulo: "Esperando sua aprovação", frase: "Dê uma olhada e aprove, ou peça o ajuste que precisar." },
   { sit: ["ajuste"], titulo: "Ajustando o que você pediu", frase: "Já estamos mexendo. Volta para você aprovar assim que ficar pronta." },
   { sit: ["producao"], titulo: "Em produção", frase: "O que está sendo feito agora." },
-  { sit: ["aprovada", "entregue"], titulo: "Aprovadas", frase: "Tudo certo com estas." },
+  { sit: ["planejado"], titulo: "No calendário", frase: "O que já está planejado, com o dia de ir ao ar." },
+  { sit: ["aprovada", "agendada"], titulo: "Aprovadas", frase: "Tudo certo com estas. As que têm data já estão agendadas." },
+  { sit: ["publicada", "entregue"], titulo: "Publicadas e entregues", frase: "O que já foi ao ar ou já foi entregue." },
 ];
 
 const TUTORIAL = [
@@ -101,7 +103,15 @@ export default function PainelDoCliente() {
       </main>
     );
 
-  const pecas = painel.pecas.map((p) => ({ ...p, sit: situacaoPeca({ status: p.status, clienteAprovouEm: p.aprovadaEm, feedbackEm: p.feedbackEm, enviadaClienteEm: p.enviadaEm }) }));
+  const pecas = painel.pecas.map((p) => ({ ...p, sit: situacaoPeca({
+      status: p.status,
+      clienteAprovouEm: p.aprovadaEm,
+      feedbackEm: p.feedbackEm,
+      enviadaClienteEm: p.enviadaEm,
+      publicarEm: p.publicarEm ?? null,
+      publicadaEm: p.publicadaEm ?? null,
+    }),
+  }));
   const peca = pecas.find((p) => p.id === aberta) ?? null;
 
   const responder = async (decisao: "aprovar" | "ajustar") => {
@@ -163,7 +173,17 @@ export default function PainelDoCliente() {
                       <Miniatura p={p} />
                       <span className="px-1 text-[13px] font-semibold leading-snug">{p.titulo}</span>
                       <span className="px-1 pb-1 text-[11px] text-texto-suave">
-                        {ate ? `aprovar até ${dataBr(ate)}` : p.sit === "aprovada" && p.aprovadaEm ? `aprovada em ${dataBr(p.aprovadaEm)}` : p.vencimento ? `para ${dataBr(p.vencimento)}` : "ver detalhes →"}
+                        {ate
+                          ? `aprovar até ${dataBr(ate)}`
+                          : p.sit === "publicada" && p.publicadaEm
+                            ? `foi ao ar em ${dataBr(p.publicadaEm)}`
+                            : (p.sit === "agendada" || p.sit === "planejado") && p.publicarEm
+                              ? `vai ao ar em ${dataBr(p.publicarEm)}`
+                              : p.sit === "aprovada" && p.aprovadaEm
+                                ? `aprovada em ${dataBr(p.aprovadaEm)}`
+                                : p.vencimento
+                                  ? `para ${dataBr(p.vencimento)}`
+                                  : "ver detalhes →"}
                       </span>
                     </button>
                   );

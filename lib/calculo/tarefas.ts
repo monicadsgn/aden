@@ -47,6 +47,11 @@ export interface Tarefa {
   feedbackEm?: string | null;
   clienteAprovouEm?: string | null;
   respostasCliente?: RespostaCliente[];
+  // ─── publicação (Fase 3) ───
+  /** quando a peça vai ao ar (data e hora do calendário) */
+  publicarEm?: string | null;
+  /** quando foi ao ar de fato */
+  publicadaEm?: string | null;
 }
 
 export interface ArquivoPeca {
@@ -61,16 +66,45 @@ export interface RespostaCliente {
   em: string;
 }
 
-/** Situação da peça para o cliente. */
-export type SituacaoPeca = "producao" | "aguardando" | "aprovada" | "ajuste" | "entregue";
+/**
+ * Etapa da peça (a mesma para a equipe e para o cliente), calculada sem mudar o status da tarefa:
+ * planejado → produção → esperando aprovação (ou ajuste) → aprovada → agendada → publicada.
+ * "entregue" = tarefa concluída sem data de publicação (ex.: um PDF).
+ */
+export type SituacaoPeca = "planejado" | "producao" | "aguardando" | "ajuste" | "aprovada" | "agendada" | "publicada" | "entregue";
 
-export function situacaoPeca(t: Pick<Tarefa, "status" | "clienteAprovouEm" | "feedbackEm" | "enviadaClienteEm">): SituacaoPeca {
-  if (t.clienteAprovouEm) return "aprovada";
+export function situacaoPeca(
+  t: Pick<Tarefa, "status" | "clienteAprovouEm" | "feedbackEm" | "enviadaClienteEm"> & Partial<Pick<Tarefa, "publicarEm" | "publicadaEm">>,
+): SituacaoPeca {
+  if (t.publicadaEm) return "publicada";
+  if (t.clienteAprovouEm) return t.publicarEm ? "agendada" : "aprovada";
   if (t.status === "revisao") return "aguardando";
   if (t.status === "concluida") return "entregue";
   // voltou para produção depois de um pedido de ajuste do cliente
   if (t.feedbackEm && (!t.enviadaClienteEm || t.feedbackEm > t.enviadaClienteEm)) return "ajuste";
+  if (t.status === "a_fazer" && t.publicarEm) return "planejado";
   return "producao";
+}
+
+/** Como cada etapa aparece na tela (equipe e cliente). */
+export const ROTULO_PECA: Record<SituacaoPeca, string> = {
+  planejado: "planejado",
+  producao: "em produção",
+  aguardando: "esperando aprovação",
+  ajuste: "ajuste pedido",
+  aprovada: "aprovada",
+  agendada: "agendada",
+  publicada: "publicada",
+  entregue: "entregue",
+};
+
+/**
+ * Foi ao ar: a peça fica publicada e a tarefa, concluída (o relógio para, como em qualquer conclusão).
+ * Desfazer volta a tarefa para "em produção", sem data de publicação.
+ */
+export function publicar(t: Tarefa, m: Medicao | null, agora: Date, publicada = true): { tarefa: Tarefa; medicao: Medicao | null } {
+  if (publicada) return mudarStatus({ ...t, publicadaEm: agora.toISOString() }, "concluida", m, agora);
+  return mudarStatus({ ...t, publicadaEm: null }, "em_producao", m, agora);
 }
 
 export const STATUS: { valor: StatusTarefa; rotulo: string }[] = [
