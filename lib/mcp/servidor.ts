@@ -817,7 +817,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   );
 
   // ─── Painel do cliente ────────────────────────────────────────────────────
-  // Desligado por enquanto: ver lib/recursos.ts.
+  // Liga e desliga em lib/recursos.ts; cliente por cliente, só quem tem link do painel.
   if (PAINEL_CLIENTE_ATIVO) {
 
     server.registerTool(
@@ -832,6 +832,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         executar(async () => {
           const repo = await obterRepo();
           const c = resolver((await repo.carregarConfig()).clientes, cliente, "Cliente");
+          if (c.interno) throw new Error(`${c.nome} é a própria Aden: não tem painel de cliente.`);
           const token = c.painelToken && !novo ? c.painelToken : await repo.gerarLinkPainel(c.id);
           return { cliente: c.nome, link: `${origem}/c/${token}` };
         }),
@@ -851,6 +852,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           const t = (await repo.listarTarefas()).find((x) => x.id === id);
           if (!t) throw new Error("Tarefa não encontrada.");
           if (!t.clienteId) throw new Error("A tarefa não tem cliente: ligue a um cliente antes.");
+          const cli = (await repo.carregarConfig()).clientes.find((c) => c.id === t.clienteId);
+          if (cli?.interno) throw new Error(`${cli.nome} é a própria Aden: não tem painel de cliente.`);
+          if (!cli?.painelToken) throw new Error(`${cli?.nome ?? "Este cliente"} ainda não tem painel: crie o link na ficha dele (ou com link_painel_cliente) antes de enviar.`);
           await repo.salvarTarefa({ ...t, visivelCliente: true, ...(legenda != null && { legenda }) });
           await repo.enviarParaCliente(t.id);
           return { enviada: t.titulo };

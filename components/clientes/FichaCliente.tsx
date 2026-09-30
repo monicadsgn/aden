@@ -213,7 +213,7 @@ export function FichaCliente({
               )}
             </div>
             <div className="sm:col-span-2">
-              {PAINEL_CLIENTE_ATIVO && <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />}
+              {PAINEL_CLIENTE_ATIVO && !c.interno && <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />}
             </div>
             <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave sm:col-span-2">
               Observações

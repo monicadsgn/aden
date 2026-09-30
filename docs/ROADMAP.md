@@ -129,7 +129,8 @@ migração. Meta: tudo pronto até o fim de outubro.
   Passo 1 (etapas de publicação, migration 0020) e passo 2 (porta genérica, migration 0021) feitos em 30/09/2026.
   Importação: só os textos (as artes das peças que ainda vão ao ar a Moni põe à mão); tipos: criativos institucionais
   da Aden → "Criativo de tráfego carrossel" (2) e "estático" (2); 12 posts → "Post simples" (8) e "Carrossel" (4
-  "Inside Aden"). Próximos: 3 painel (só StadiumPlay), 4 importação, 5 conferência.
+  "Inside Aden"). Passo 3 (painel ligado, só para cliente com link; StadiumPlay primeiro) feito em 30/09/2026.
+  Próximos: 4 importação, 5 conferência.
 - **Fase 4 · Os dois sócios pelo Claude:** memória de contexto do cliente no conector (quem anotou); toda ferramenta
   registra qual sócio agiu; passo a passo de configuração com o Áleff.
 - **Fase 5 · Identidade e documentos:** tokens da marca a partir do SVG; proposta em PDF, contrato por e-mail
@@ -254,6 +255,6 @@ Descartados pela Moni:
 
 ## 4. Painel do cliente: decidido em 29/09/2026, liga na Fase 3
 
-Desligado em `lib/recursos.ts` até a migração. Os sócios decidiram trazer a aprovação de conteúdo (Olinda,
+Ligado em 30/09/2026 (Fase 3, passo 3), cliente por cliente pelo link da ficha. Os sócios decidiram trazer a aprovação de conteúdo (Olinda,
 StadiumPlay) para o Aden: na Fase 3, trazer as etapas (planejado, agendada, publicada) e os avisos, reescritos aqui
 dentro, e ligar a chave.

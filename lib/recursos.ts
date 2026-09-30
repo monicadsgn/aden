@@ -4,9 +4,10 @@
 /**
  * Painel do cliente (/c/[token]) e o "Para o cliente" dentro da tarefa.
  * Desligado em 26/09/2026 pela Moni. Em 29/09/2026 os sócios decidiram trazer a aprovação de
- * conteúdo para o Aden: liga junto com a migração (Fase 3 do docs/ROADMAP.md).
+ * conteúdo para o Aden; ligado na Fase 3 (passo 3, 30/09/2026). Cliente por cliente: só quem tem
+ * link do painel (criado na ficha) vê peças; começou pela StadiumPlay.
  */
-export const PAINEL_CLIENTE_ATIVO = false;
+export const PAINEL_CLIENTE_ATIVO = true;
 
 /**
  * Telas e blocos que só fazem sentido com mais clientes (Fase 1, aprovada pela Moni em 29/09/2026:

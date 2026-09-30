@@ -27,8 +27,8 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
   const cliente = a.config.clientes.find((c) => c.id === t.clienteId);
   if (!cliente) return null;
   const sit = situacaoPeca(t);
-  // sem painel (a própria Aden, ou painel ainda desligado): só legenda, artes e publicação
-  const interno = cliente.interno || !PAINEL_CLIENTE_ATIVO;
+  // sem painel (a própria Aden, painel desligado ou cliente ainda sem link): só legenda, artes e publicação
+  const interno = cliente.interno || !PAINEL_CLIENTE_ATIVO || !cliente.painelToken;
   const limite = cliente.contrato?.limiteRodadas ?? null;
   const rodadas = t.rodadas ?? 0;
   const prazo = sit === "aguardando" ? aprovarAte(t.enviadaClienteEm ?? null, cliente.contrato?.prazoAprovacaoDias ?? null) : null;
