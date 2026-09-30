@@ -2,7 +2,7 @@
 // Números aqui são só fixtures de teste.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Medicao } from "../calculo/calibragem";
 import { configVazia, novoId } from "../calculo/novo";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -130,6 +130,66 @@ class BancoFalso {
   }
   async removerDataDoCliente(id: string) {
     this.ligacoes = this.ligacoes.filter((x) => x.id !== id);
+  }
+  fechamento: import("../calculo/fechamento").RegistroFechamento[] = [];
+  async listarFechamento(clienteId: string) {
+    return this.fechamento.filter((r) => r.clienteId === clienteId);
+  }
+  async salvarPassoFechamento(p: { clienteId: string; passo: import("../calculo/fechamento").RegistroFechamento["passo"]; feito: boolean; link?: string | null; data?: string | null }) {
+    const antes = this.fechamento.find((r) => r.clienteId === p.clienteId && r.passo === p.passo);
+    const r = {
+      id: antes?.id ?? novoId(),
+      clienteId: p.clienteId,
+      passo: p.passo,
+      feitoEm: p.feito ? (antes?.feitoEm ?? "2026-10-01T12:00:00Z") : null,
+      feitoPorNome: p.feito ? "Mônica (pelo Claude)" : null,
+      link: p.link !== undefined ? p.link : (antes?.link ?? null),
+      data: p.data !== undefined ? p.data : (antes?.data ?? null),
+      observacao: null,
+    };
+    this.fechamento = [...this.fechamento.filter((x) => x !== antes), r];
+  }
+  modeloContrato: import("../calculo/contrato").ModeloContrato = { contratadaNome: null, contratadaDocumento: null, contratadaEndereco: null, obrigacoes: null, disposicoes: null, signatariosAden: [] };
+  contratos: import("../calculo/contrato").ContratoEnviado[] = [];
+  modeloOnboarding: import("../calculo/onboarding").ModeloOnboarding = { secoes: [], textoServico: {}, textoGarantia: null, whatsapp: null, instagram: null, email: null, atendimento: null };
+  async obterModeloOnboarding() {
+    return structuredClone(this.modeloOnboarding);
+  }
+  async salvarModeloOnboarding(m: import("../calculo/onboarding").ModeloOnboarding) {
+    this.modeloOnboarding = structuredClone(m);
+  }
+  async obterModeloContrato() {
+    return structuredClone(this.modeloContrato);
+  }
+  async salvarModeloContrato(m: import("../calculo/contrato").ModeloContrato) {
+    this.modeloContrato = structuredClone(m);
+  }
+  async listarContratosAssinatura(clienteId: string) {
+    return this.contratos.filter((c) => c.clienteId === clienteId);
+  }
+  async registrarContratoAssinatura(c: { clienteId: string; autentiqueId: string; nome: string; signatarios: { nome: string; email: string }[] }) {
+    this.contratos.unshift({ ...c, id: novoId(), situacao: "enviado", enviadoEm: "2026-10-01T12:00:00Z", enviadoPorNome: "Mônica (pelo Claude)", assinadoEm: null, conferidoEm: null, faltam: [] });
+  }
+  async atualizarContratoAssinatura(id: string, s: { situacao: import("../calculo/contrato").ContratoEnviado["situacao"]; assinadoEm: string | null; faltam: string[] }) {
+    this.contratos = this.contratos.map((c) => (c.id === id ? { ...c, ...s } : c));
+  }
+  perguntasBriefing: import("../calculo/briefing").PerguntaBriefing[] = [];
+  respostasBriefing: import("../calculo/briefing").RespostaBriefing[] = [];
+  async listarPerguntasBriefing() {
+    return structuredClone(this.perguntasBriefing);
+  }
+  async salvarPerguntaBriefing(p: import("../calculo/briefing").PerguntaBriefing) {
+    this.perguntasBriefing = [...this.perguntasBriefing.filter((x) => x.id !== p.id), p];
+  }
+  async listarRespostasBriefing(clienteId: string) {
+    return this.respostasBriefing.filter((r) => r.clienteId === clienteId);
+  }
+  async responderBriefing(clienteId: string, perguntaId: string, resposta: string | null) {
+    const p = this.perguntasBriefing.find((x) => x.id === perguntaId)!;
+    this.respostasBriefing = [
+      ...this.respostasBriefing.filter((r) => !(r.clienteId === clienteId && r.perguntaId === perguntaId)),
+      { id: novoId(), clienteId, perguntaId, perguntaTexto: p.pergunta, resposta: resposta?.trim() || null, respondidoPorNome: "Mônica (pelo Claude)", respondidoEm: "2026-10-01" },
+    ];
   }
   async resolverContexto(id: string, resolvida: boolean) {
     this.contexto = this.contexto.map((n) => (n.id === id ? { ...n, resolvidoEm: resolvida ? "2026-09-30" : null, resolvidoPorNome: resolvida ? "Mônica (pelo Claude)" : null } : n));
@@ -517,6 +577,133 @@ describe("conector: planejamento mensal, datas e atalhos", () => {
     await chamar("atualizar_atalhos_painel", { cliente: "Olinda", inclusoTexto: "15 posts\nReunião mensal" });
     const f = await chamar("ver_cliente", { cliente: "Olinda" });
     expect(f.atalhosDoPainel).toMatchObject({ planejamentoUrl: "https://a.com/plano.pdf", planejamentoRotulo: "Planejamento de outubro", inclusoTexto: "15 posts\nReunião mensal", fotosUrl: null });
+  });
+});
+
+describe("conector: fechamento do cliente", () => {
+  it("abre o checklist, marca na ordem, kickoff com data vira tarefa e o CRM tem as etapas novas", async () => {
+    await chamar("salvar_lead", { nome: "Loja Nova", valorEstimadoReais: 2000 });
+    await chamar("mover_lead", { id: "Loja Nova", etapa: "pesquisa" });
+    await chamar("mover_lead", { id: "Loja Nova", etapa: "reuniao" });
+    await chamar("ganhar_lead", { id: "Loja Nova" });
+    const v0 = await chamar("ver_fechamento", { cliente: "Loja Nova" });
+    expect(v0.fechamentos[0]).toMatchObject({ feitos: "0 de 7", proximo: "Onboarding enviado" });
+    await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "onboarding" });
+    await expect(chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "contrato", link: "autentique.com/x" })).rejects.toThrow(/https/);
+    await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "contrato", link: "https://assina.exemplo/doc" });
+    const k = await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "kickoff", data: "2026-10-05" });
+    expect(k).toMatchObject({ tarefaCriada: "Kickoff · Loja Nova", feitos: "3 de 7", proximo: "Cobrança criada" });
+    expect(banco.tarefas.find((t) => t.titulo === "Kickoff · Loja Nova")?.vencimento).toBe("2026-10-05");
+    // marcar o kickoff de novo não duplica a tarefa
+    await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "kickoff", data: "2026-10-06" });
+    expect(banco.tarefas.filter((t) => t.titulo === "Kickoff · Loja Nova")).toHaveLength(1);
+    const todos = await chamar("ver_fechamento", {});
+    expect(todos.mensalidadeNoOnboarding).toBe("a definir");
+    expect(todos.fechamentos).toHaveLength(1);
+  });
+});
+
+describe("conector: contrato pela Autentique", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("mostra o que falta, não envia incompleto e, completo, envia e marca o fechamento quando todos assinam", async () => {
+    await chamar("salvar_cliente", { nome: "Loja X", valorMensalReais: 2000 });
+    const v0 = await chamar("ver_contrato", { cliente: "Loja X" });
+    expect(v0.pronto).toBe(false);
+    expect(v0.faltando).toContain("Obrigações das partes (Configurações → Contrato)");
+    await expect(chamar("enviar_contrato", { cliente: "Loja X" })).rejects.toThrow(/Falta preencher/);
+
+    banco.config.tiposEntrega = [{ id: "t", nome: "Post", servicoId: null, horasPorUnidade: 1, ativo: true }];
+    const c = banco.config.clientes[0];
+    c.escopo = { ...(c.escopo ?? (await import("../calculo/novo")).novoCenario("x")), entregas: [{ id: "e", tipoEntregaId: "t", quantidade: 4, horasPorUnidade: null }] };
+    await chamar("salvar_ficha_cliente", { cliente: "Loja X", email: "ana@loja.com", contato: "Ana", documento: "000.000.000-00", endereco: "Rua A", inicioContrato: "2026-10-01", diaPagamento: 10 });
+    await chamar("salvar_modelo_contrato", {
+      contratadaNome: "Aden",
+      contratadaDocumento: "11.111.111/0001-11",
+      cidade: "Recife - Pernambuco",
+      obrigacoes: "Texto dos sócios.",
+      disposicoes: "Foro.",
+      signatariosAden: [{ nome: "Mônica", email: "m@aden.com" }],
+    });
+    const v1 = await chamar("ver_contrato", { cliente: "Loja X" });
+    expect(v1).toMatchObject({ pronto: true, faltando: [], autentique: "não ligada (falta a chave na Vercel)" });
+    await expect(chamar("enviar_contrato", { cliente: "Loja X" })).rejects.toThrow(/AUTENTIQUE_TOKEN/);
+
+    vi.stubEnv("AUTENTIQUE_TOKEN", "chave-teste");
+    let assinou = false;
+    const pedidos: RequestInit[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        pedidos.push(init);
+        if (init.body instanceof FormData) return new Response(JSON.stringify({ data: { createDocument: { id: "doc-1" } } }));
+        const sig = (email: string) => ({ name: email, email, action: { name: "SIGN" }, signed: assinou ? { created_at: "2026-10-02 10:00:00" } : null, rejected: null });
+        return new Response(JSON.stringify({ data: { document: { signatures: [sig("ana@loja.com"), sig("m@aden.com")] } } }));
+      }),
+    );
+    const env = await chamar("enviar_contrato", { cliente: "Loja X" });
+    expect(env.para).toEqual(["Ana <ana@loja.com>", "Mônica <m@aden.com>"]);
+    expect((pedidos[0].headers as Record<string, string>).Authorization).toBe("Bearer chave-teste");
+    await expect(chamar("enviar_contrato", { cliente: "Loja X" })).rejects.toThrow(/esperando assinatura/);
+
+    expect((await chamar("conferir_contrato", { cliente: "Loja X" }))[0]).toMatchObject({ situacao: "enviado", faltam: ["ana@loja.com", "m@aden.com"] });
+    expect(banco.fechamento.find((r) => r.passo === "contrato")).toBeUndefined();
+    assinou = true;
+    expect((await chamar("conferir_contrato", { cliente: "Loja X" }))[0]).toMatchObject({ situacao: "assinado" });
+    expect(banco.fechamento.find((r) => r.passo === "contrato")?.feitoEm).toBeTruthy();
+  });
+});
+
+describe("conector: cliente novo do zero", () => {
+  it("cria, preenche ficha e contrato, põe o pacote e pede os dados ao cliente", async () => {
+    banco.config.tiposEntrega = [{ id: "t", nome: "Post", servicoId: null, horasPorUnidade: 1, ativo: true }];
+    banco.config.pacotes = [{ id: "pk", nome: "Social padrão", descricao: "", itensCliente: [], rotina: [{ tipoEntregaId: "t", quantidade: 8 }], entrada: [], padrao: true, ativo: true }];
+    await chamar("salvar_cliente", { nome: "Loja Z", valorMensalReais: 1800 });
+    const msg = await chamar("mensagem_pedir_dados_cliente", { cliente: "Loja Z" });
+    expect(msg.mensagem).toContain("CPF ou CNPJ");
+    expect(msg.mensagem).toContain("Endereço completo");
+    await chamar("salvar_ficha_cliente", { cliente: "Loja Z", contato: "Bia Lima", email: "bia@z.com", razaoSocial: "Z Comércio Ltda", documento: "12345678000190", endereco: "Rua Z, 1", inicioContrato: "2026-10-01", diaPagamento: 5 });
+    const c = banco.config.clientes.find((x) => x.nome === "Loja Z")!;
+    expect(c.documento).toBe("12.345.678/0001-90");
+    const e = await chamar("definir_escopo_cliente", { cliente: "Loja Z", pacote: "social padrão" });
+    expect(e).toMatchObject({ pacote: "Social padrão" });
+    const v = await chamar("ver_contrato", { cliente: "Loja Z" });
+    expect(v.faltando.filter((f: string) => f.includes("ficha"))).toEqual([]);
+    expect(v.contrato.titulo).toBe("Contrato de prestação de serviços · Aden · Loja Z");
+  });
+});
+
+describe("conector: onboarding", () => {
+  it("guarda contato e texto do serviço e mostra o que falta", async () => {
+    await chamar("salvar_cliente", { nome: "Loja Y", valorMensalReais: 1000 });
+    banco.config.servicos = [{ id: "sm", nome: "Social media", divisaoPadrao: {}, ativo: true }];
+    banco.modeloOnboarding.secoes = [{ chave: "contato", titulo: "Fala com a gente", texto: "" }];
+    const v0 = await chamar("ver_onboarding", { cliente: "Loja Y" });
+    expect(v0.faltando).toContain("WhatsApp (Configurações → Onboarding)");
+    await chamar("salvar_modelo_onboarding", { whatsapp: "(81) 0000-0000", instagram: "@aden", email: "a@a.com", atendimento: "seg a sex", servicos: [{ servico: "social media", texto: "planejamos o mês." }] });
+    expect(banco.modeloOnboarding.textoServico).toEqual({ sm: "planejamos o mês." });
+    const v1 = await chamar("ver_onboarding", { cliente: "Loja Y" });
+    expect(v1.pronto).toBe(true);
+    expect(v1.secoes[0].blocos[0].texto).toBe("WhatsApp (81) 0000-0000 · Instagram @aden · a@a.com · seg a sex");
+  });
+});
+
+describe("conector: briefing do cliente", () => {
+  it("perguntas dos sócios, respostas com quem respondeu, contagem do que falta", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await expect(chamar("salvar_pergunta_briefing", { pergunta: "Sem seção" })).rejects.toThrow(/seção/);
+    const p1 = await chamar("salvar_pergunta_briefing", { secao: "Sobre o negócio", pergunta: "O que vocês vendem e pra quem?" });
+    await chamar("salvar_pergunta_briefing", { secao: "Sobre o negócio", pergunta: "Quem aprova as peças?" });
+    const r = await chamar("responder_briefing", { cliente: "Olinda", respostas: [{ pergunta: p1.id, resposta: "Máquinas de costura" }] });
+    expect(r.respondidas).toBe("1 de 2");
+    await chamar("responder_briefing", { cliente: "Olinda", respostas: [{ pergunta: "quem aprova as peças?", resposta: "A Regi" }] });
+    const v = await chamar("ver_briefing", { cliente: "Olinda" });
+    expect(v.respondidas).toBe("2 de 2");
+    expect(v.secoes[0].perguntas[1]).toMatchObject({ resposta: "A Regi", quem: "Mônica (pelo Claude)" });
+    await expect(chamar("responder_briefing", { cliente: "Olinda", respostas: [{ pergunta: "Não existe", resposta: "x" }] })).rejects.toThrow(/não encontrada/);
   });
 });
 

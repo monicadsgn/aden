@@ -3,19 +3,22 @@
 // Ficha do cliente: tudo de um cliente num lugar só (dados, contrato e escopo, tarefas,
 // pagamentos e a conversa que veio do CRM). Edita no lugar e salva ao sair do campo.
 
-import { BookMarked, Calculator, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, SlidersHorizontal, User, Wallet } from "lucide-react";
+import { BookMarked, Calculator, FileQuestion, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, SlidersHorizontal, User, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Modal } from "../Modal";
 import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
+import { BriefingCliente } from "./BriefingCliente";
 import { ContextoCliente } from "./ContextoCliente";
+import { ContratoCliente } from "./ContratoCliente";
+import { FechamentoCliente } from "./FechamentoCliente";
 import { LinkPainel } from "./LinkPainel";
 import { DetalheTarefa } from "../tarefas/DetalheTarefa";
 import { LinhaTarefa } from "../tarefas/LinhaTarefa";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
 import { Badge, Botao, CampoMoeda, CampoNumero, Interruptor, Segmentado, Selecao } from "../ui";
-import { contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio, vencimentoDoContrato } from "@/lib/calculo/clientes";
+import { contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio, proximoVencimento } from "@/lib/calculo/clientes";
 import { rotuloEtapa, TIPOS_INTERACAO, type InteracaoLead, type Lead } from "@/lib/calculo/crm";
 import { hojeISO } from "@/lib/calculo/dia";
 import { novoCenario, novoId } from "@/lib/calculo/novo";
@@ -25,10 +28,10 @@ import { novaTarefa } from "@/lib/calculo/tarefas";
 import type { AtalhosPainel, ClienteBase, Configuracao, DadosContrato } from "@/lib/calculo/tipos";
 import { guardarEscopo } from "@/lib/dados/acoes";
 import { useDados } from "@/lib/dados/contexto";
-import { formatarMoeda } from "@/lib/formato";
+import { formatarDocumento, formatarMoeda } from "@/lib/formato";
 import { enviarCenario } from "@/lib/navegacao";
 
-export type Aba = "resumo" | "contrato" | "tarefas" | "contexto" | "financeiro" | "comercial";
+export type Aba = "resumo" | "contrato" | "tarefas" | "contexto" | "briefing" | "financeiro" | "comercial";
 
 export const SITUACAO_PAGAMENTO: Record<SituacaoPagamento, { rotulo: string; tom: "ok" | "aviso" | "erro" | "neutro" }> = {
   pago: { rotulo: "pago", tom: "ok" },
@@ -171,6 +174,7 @@ export function FichaCliente({
               { valor: "contrato", rotulo: "Contrato", icone: FileSignature },
               { valor: "tarefas", rotulo: `Tarefas${abertas.length ? ` (${abertas.length})` : ""}`, icone: ClipboardList },
               { valor: "contexto", rotulo: "Contexto", icone: BookMarked },
+              { valor: "briefing", rotulo: "Briefing", icone: FileQuestion },
               { valor: "financeiro", rotulo: "Pagamentos", icone: Wallet },
               { valor: "comercial", rotulo: "Comercial", icone: Handshake },
             ]}
@@ -197,6 +201,15 @@ export function FichaCliente({
             </Rot>
             <Rot rotulo="E-mail">
               <Texto valor={c.email ?? ""} aoSalvar={(v) => set({ email: v })} />
+            </Rot>
+            <Rot rotulo="Nome no contrato" dica="Razão social ou nome completo. Vazio = o nome do cliente.">
+              <Texto valor={c.razaoSocial ?? ""} aoSalvar={(v) => set({ razaoSocial: v })} />
+            </Rot>
+            <Rot rotulo="CPF ou CNPJ" dica="Vai no contrato.">
+              <Texto valor={c.documento ?? ""} aoSalvar={(v) => set({ documento: formatarDocumento(v) })} />
+            </Rot>
+            <Rot rotulo="Endereço" dica="Vai no contrato.">
+              <Texto valor={c.endereco ?? ""} aoSalvar={(v) => set({ endereco: v })} />
             </Rot>
             <Rot rotulo="Cliente desde">
               <input type="date" className={campo} value={c.clienteDesde ?? ""} onChange={(e) => set({ clienteDesde: e.target.value || null })} />
@@ -322,7 +335,7 @@ export function FichaCliente({
               </div>
             ) : null}
             <div className="flex flex-wrap gap-2 text-xs">
-              {vencimentoDoContrato(k, hoje.slice(0, 7)) && <Badge>vence este mês: {dataBr(vencimentoDoContrato(k, hoje.slice(0, 7))!)}</Badge>}
+              {proximoVencimento(k, hoje) && <Badge>próximo vencimento: {dataBr(proximoVencimento(k, hoje)!)}</Badge>}
               {fidelidade && <Badge tom={fidelidade > hoje ? "info" : "neutro"}>fidelidade até {dataBr(fidelidade)}</Badge>}
               {aviso && <Badge tom={aviso >= hoje ? "aviso" : "neutro"}>avisar se não renovar até {dataBr(aviso)}</Badge>}
             </div>
@@ -421,6 +434,8 @@ export function FichaCliente({
 
         {aba === "contexto" && <ContextoCliente clienteId={c.id} />}
 
+        {aba === "briefing" && <BriefingCliente clienteId={c.id} config={config} />}
+
         {aba === "financeiro" && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
@@ -468,6 +483,15 @@ export function FichaCliente({
 
         {aba === "comercial" && (
           <div className="flex flex-col gap-3">
+            {!c.interno && (
+              <FechamentoCliente
+                cliente={c}
+                a={a}
+                mensalidadeNoOnboarding={config.empresa.mensalidadeNoOnboarding}
+                aoAbrir={() => set({ fechamentoIniciadoEm: new Date().toISOString() })}
+              />
+            )}
+            {!c.interno && <ContratoCliente config={config} clienteId={c.id} />}
             {!lead ? (
               <p className="text-xs text-texto-suave">Este cliente não veio pelos leads do Aden.</p>
             ) : (

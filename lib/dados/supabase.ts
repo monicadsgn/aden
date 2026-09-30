@@ -11,6 +11,10 @@ import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, ClienteBase, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
 import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
+import type { RegistroFechamento } from "../calculo/fechamento";
+import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
+import { MODELO_VAZIO, type ContratoEnviado, type ModeloContrato, type SituacaoContrato } from "../calculo/contrato";
+import { MODELO_ONBOARDING_VAZIO, type ModeloOnboarding } from "../calculo/onboarding";
 import { separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
 import { avisosDaMudanca } from "./acoes";
 import type {
@@ -95,18 +99,25 @@ export class RepositorioSupabase implements Repositorio {
   private usuario: Usuario | null = null;
 
   private codigoClaude: string | null;
+  /** `tokenAcesso`: sessão de quem está no site, repassada a uma rota do servidor (ex.: /api/contrato) */
+  private tokenAcesso: string | null;
 
   /**
    * `servidor`: sem guardar sessão no navegador (uso pelo conector MCP).
    * `codigoClaude`: código pessoal do sócio no conector; vai em toda chamada e o banco assina em nome dele (migration 0025).
    */
-  constructor(url: string, chave: string, opcoes: { servidor?: boolean; codigoClaude?: string } = {}) {
+  constructor(url: string, chave: string, opcoes: { servidor?: boolean; codigoClaude?: string; tokenAcesso?: string } = {}) {
     this.codigoClaude = opcoes.codigoClaude ?? null;
+    this.tokenAcesso = opcoes.tokenAcesso ?? null;
+    const cabecalhos: Record<string, string> = {
+      ...(this.codigoClaude && { "x-aden-conector": this.codigoClaude }),
+      ...(this.tokenAcesso && { Authorization: `Bearer ${this.tokenAcesso}` }),
+    };
     this.sb = createClient(url, chave, {
       auth: opcoes.servidor
         ? { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         : { persistSession: true, autoRefreshToken: true },
-      ...(this.codigoClaude ? { global: { headers: { "x-aden-conector": this.codigoClaude } } } : {}),
+      ...(Object.keys(cabecalhos).length ? { global: { headers: cabecalhos } } : {}),
     });
   }
 
@@ -127,8 +138,7 @@ export class RepositorioSupabase implements Repositorio {
 
   async usuarioAtual(): Promise<Usuario | null> {
     if (this.usuario) return this.usuario;
-    const { data } = await this.sb.auth.getSession();
-    const user = data.session?.user;
+    const user = this.tokenAcesso ? (await this.sb.auth.getUser(this.tokenAcesso)).data.user : (await this.sb.auth.getSession()).data.session?.user;
     if (!user) return null;
     const buscar = () => this.sb.from("membros").select("id, org_id, nome, email, papel").eq("user_id", user.id).eq("ativo", true).limit(1).maybeSingle();
     let { data: m, error } = await buscar();
@@ -164,7 +174,13 @@ export class RepositorioSupabase implements Repositorio {
 
   /** Primeiro acesso: cria a senha de quem foi convidado. "confirmar" = falta clicar no e-mail. */
   async criarConta(email: string, senha: string): Promise<"ok" | "confirmar"> {
-    const { data, error } = await this.sb.auth.signUp({ email: email.trim().toLowerCase(), password: senha });
+    // o link de confirmação volta para o endereço onde a conta foi criada (nunca o "Site URL" padrão do Supabase)
+    const volta = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+    const { data, error } = await this.sb.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password: senha,
+      ...(volta && { options: { emailRedirectTo: volta } }),
+    });
     if (error) throw new Error(error.message.includes("already registered") ? "Esse e-mail já tem conta. Use Entrar." : error.message);
     this.usuario = null;
     this.orgId = null;
@@ -212,6 +228,7 @@ export class RepositorioSupabase implements Repositorio {
       empresa: {
         regime: (e?.regime as Configuracao["empresa"]["regime"]) ?? null,
         ordemDistribuicao: (e?.ordem_distribuicao as Configuracao["empresa"]["ordemDistribuicao"]) ?? null,
+        mensalidadeNoOnboarding: (e?.mensalidade_no_onboarding as boolean | null) ?? null,
         medicoesCalibragem: num(e?.medicoes_calibragem),
         diferencaSugerirPct: num(e?.diferenca_sugerir_pct),
         diasLeadParado: num(e?.dias_lead_parado),
@@ -292,8 +309,12 @@ export class RepositorioSupabase implements Repositorio {
           instagram: (c.instagram as string) ?? "",
           segmento: (c.segmento as string) ?? "",
           observacoes: (c.observacoes as string) ?? "",
+          razaoSocial: (c.razao_social as string) ?? "",
+          documento: (c.documento as string) ?? "",
+          endereco: (c.endereco as string) ?? "",
           clienteDesde: (c.cliente_desde as string) ?? null,
           painelToken: (c.painel_token as string) ?? null,
+          fechamentoIniciadoEm: (c.fechamento_iniciado_em as string) ?? null,
           atalhos: {
             planejamentoUrl: (c.painel_planejamento_url as string) ?? null,
             planejamentoRotulo: (c.painel_planejamento_rotulo as string) ?? null,
@@ -392,6 +413,7 @@ export class RepositorioSupabase implements Repositorio {
         org_id,
         regime: a.empresa.regime ?? null,
         ordem_distribuicao: a.empresa.ordemDistribuicao ?? null,
+        mensalidade_no_onboarding: a.empresa.mensalidadeNoOnboarding ?? null,
         medicoes_calibragem: a.empresa.medicoesCalibragem ?? null,
         diferenca_sugerir_pct: a.empresa.diferencaSugerirPct ?? null,
         dias_lead_parado: a.empresa.diasLeadParado ?? null,
@@ -516,12 +538,16 @@ export class RepositorioSupabase implements Repositorio {
         instagram: c.instagram || null,
         segmento: c.segmento || null,
         observacoes: c.observacoes || null,
+        razao_social: c.razaoSocial?.trim() || null,
+        documento: c.documento?.trim() || null,
+        endereco: c.endereco?.trim() || null,
         cliente_desde: c.clienteDesde ?? null,
         painel_planejamento_url: c.atalhos?.planejamentoUrl?.trim() || null,
         painel_planejamento_rotulo: c.atalhos?.planejamentoRotulo?.trim() || null,
         painel_fotos_url: c.atalhos?.fotosUrl?.trim() || null,
         painel_identidade_url: c.atalhos?.identidadeUrl?.trim() || null,
         painel_incluso: c.atalhos?.inclusoTexto?.trim() || null,
+        fechamento_iniciado_em: c.fechamentoIniciadoEm ?? null,
       })),
     );
     // valor mensal e condições moram no contrato ativo do cliente
@@ -978,6 +1004,225 @@ export class RepositorioSupabase implements Repositorio {
 
   async removerTarefa(id: string) {
     await this.remover("tarefas", [id]);
+  }
+
+  // ─── Fechamento do cliente ────────────────────────────────────────────────
+
+  async listarFechamento(clienteId: string): Promise<RegistroFechamento[]> {
+    const { data, error } = await this.sb.from("fechamento_passos").select("*").eq("cliente_id", clienteId);
+    erro(error);
+    return ((data ?? []) as Linha[]).map((r) => ({
+      id: r.id as string,
+      clienteId: r.cliente_id as string,
+      passo: r.passo as RegistroFechamento["passo"],
+      feitoEm: (r.feito_em as string) ?? null,
+      feitoPorNome: (r.feito_por_nome as string) ?? null,
+      link: (r.link as string) ?? null,
+      data: (r.data as string) ?? null,
+      observacao: (r.observacao as string) ?? null,
+    }));
+  }
+
+  async salvarPassoFechamento(p: {
+    clienteId: string;
+    passo: RegistroFechamento["passo"];
+    feito: boolean;
+    link?: string | null;
+    data?: string | null;
+    observacao?: string | null;
+  }) {
+    const linha: Linha = {
+      org_id: await this.org(),
+      cliente_id: p.clienteId,
+      passo: p.passo,
+      // o banco guarda o momento e quem fez (trigger fechamento_autor)
+      feito_em: p.feito ? new Date().toISOString() : null,
+    };
+    if (p.link !== undefined) linha.link = p.link?.trim() || null;
+    if (p.data !== undefined) linha.data = p.data || null;
+    if (p.observacao !== undefined) linha.observacao = p.observacao?.trim() || null;
+    const { error } = await this.sb.from("fechamento_passos").upsert(linha, { onConflict: "cliente_id,passo" });
+    erro(error);
+  }
+
+  // ─── Contrato (Autentique) ────────────────────────────────────────────────
+
+  async obterModeloContrato(): Promise<ModeloContrato> {
+    const { data, error } = await this.sb.from("contrato_modelo").select("*").eq("org_id", await this.org()).maybeSingle();
+    erro(error);
+    if (!data) return { ...MODELO_VAZIO, signatariosAden: [] };
+    return {
+      contratadaNome: (data.contratada_nome as string) ?? null,
+      contratadaDocumento: (data.contratada_documento as string) ?? null,
+      contratadaEndereco: (data.contratada_endereco as string) ?? null,
+      cidade: (data.cidade as string) ?? null,
+      obrigacoes: (data.obrigacoes as string) ?? null,
+      disposicoes: (data.disposicoes as string) ?? null,
+      signatariosAden: (data.signatarios_aden as ModeloContrato["signatariosAden"]) ?? [],
+    };
+  }
+
+  async salvarModeloContrato(m: ModeloContrato) {
+    const t = (x: string | null) => x?.trim() || null;
+    const { error } = await this.sb.from("contrato_modelo").upsert(
+      {
+        org_id: await this.org(),
+        contratada_nome: t(m.contratadaNome),
+        contratada_documento: t(m.contratadaDocumento),
+        contratada_endereco: t(m.contratadaEndereco),
+        cidade: t(m.cidade ?? null),
+        obrigacoes: t(m.obrigacoes),
+        disposicoes: t(m.disposicoes),
+        signatarios_aden: m.signatariosAden.map((s) => ({ nome: s.nome.trim(), email: s.email.trim().toLowerCase() })).filter((s) => s.nome || s.email),
+      },
+      { onConflict: "org_id" },
+    );
+    erro(error);
+  }
+
+  async listarContratosAssinatura(clienteId: string): Promise<ContratoEnviado[]> {
+    const { data, error } = await this.sb.from("contratos_assinatura").select("*").eq("cliente_id", clienteId).order("enviado_em", { ascending: false });
+    erro(error);
+    return ((data ?? []) as Linha[]).map((r) => ({
+      id: r.id as string,
+      clienteId: r.cliente_id as string,
+      autentiqueId: r.autentique_id as string,
+      nome: r.nome as string,
+      situacao: r.situacao as ContratoEnviado["situacao"],
+      enviadoEm: r.enviado_em as string,
+      enviadoPorNome: (r.enviado_por_nome as string) ?? null,
+      assinadoEm: (r.assinado_em as string) ?? null,
+      conferidoEm: (r.conferido_em as string) ?? null,
+      faltam: (r.faltam as string[]) ?? [],
+      signatarios: (r.signatarios as ContratoEnviado["signatarios"]) ?? [],
+    }));
+  }
+
+  async registrarContratoAssinatura(c: { clienteId: string; autentiqueId: string; nome: string; signatarios: ContratoEnviado["signatarios"] }) {
+    const { error } = await this.sb.from("contratos_assinatura").insert({
+      org_id: await this.org(),
+      cliente_id: c.clienteId,
+      autentique_id: c.autentiqueId,
+      nome: c.nome,
+      signatarios: c.signatarios,
+    });
+    erro(error);
+  }
+
+  async atualizarContratoAssinatura(id: string, s: { situacao: SituacaoContrato | "cancelado"; assinadoEm: string | null; faltam: string[] }) {
+    const { error } = await this.sb
+      .from("contratos_assinatura")
+      .update({ situacao: s.situacao, assinado_em: s.assinadoEm, faltam: s.faltam, conferido_em: new Date().toISOString() })
+      .eq("id", id);
+    erro(error);
+  }
+
+  async contratoNoServidor(pedido: { acao: "situacao" } | { acao: "enviar" | "conferir"; clienteId: string; reenviar?: boolean }) {
+    const { data } = await this.sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Entre de novo no Aden para enviar o contrato.");
+    const r = await fetch("/api/contrato", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(pedido),
+    });
+    const corpo = (await r.json().catch(() => null)) as { autentiqueLigada?: boolean; teste?: boolean; mensagem?: string; erro?: string } | null;
+    if (!r.ok) throw new Error(corpo?.erro ?? "Não deu para falar com o servidor.");
+    return { autentiqueLigada: !!corpo?.autentiqueLigada, teste: corpo?.teste, mensagem: corpo?.mensagem };
+  }
+
+  // ─── Onboarding ───────────────────────────────────────────────────────────
+
+  async obterModeloOnboarding(): Promise<ModeloOnboarding> {
+    const { data, error } = await this.sb.from("onboarding_modelo").select("*").eq("org_id", await this.org()).maybeSingle();
+    erro(error);
+    if (!data) return structuredClone(MODELO_ONBOARDING_VAZIO);
+    return {
+      secoes: (data.secoes as ModeloOnboarding["secoes"]) ?? [],
+      textoServico: (data.texto_servico as ModeloOnboarding["textoServico"]) ?? {},
+      textoGarantia: (data.texto_garantia as string) ?? null,
+      whatsapp: (data.whatsapp as string) ?? null,
+      instagram: (data.instagram as string) ?? null,
+      email: (data.email as string) ?? null,
+      atendimento: (data.atendimento as string) ?? null,
+    };
+  }
+
+  async salvarModeloOnboarding(m: ModeloOnboarding) {
+    const t = (x: string | null) => x?.trim() || null;
+    const { error } = await this.sb.from("onboarding_modelo").upsert(
+      {
+        org_id: await this.org(),
+        secoes: m.secoes,
+        texto_servico: Object.fromEntries(Object.entries(m.textoServico).filter(([, v]) => v?.trim())),
+        texto_garantia: t(m.textoGarantia),
+        whatsapp: t(m.whatsapp),
+        instagram: t(m.instagram),
+        email: t(m.email),
+        atendimento: t(m.atendimento),
+      },
+      { onConflict: "org_id" },
+    );
+    erro(error);
+  }
+
+  // ─── Briefing do cliente ──────────────────────────────────────────────────
+
+  async listarPerguntasBriefing(): Promise<PerguntaBriefing[]> {
+    const { data, error } = await this.sb.from("briefing_perguntas").select("*").eq("org_id", await this.org()).order("ordem");
+    erro(error);
+    return ((data ?? []) as Linha[]).map((p) => ({
+      id: p.id as string,
+      secao: p.secao as string,
+      pergunta: p.pergunta as string,
+      ajuda: (p.ajuda as string) ?? null,
+      servicoId: (p.servico_id as string) ?? null,
+      ordem: Number(p.ordem ?? 0),
+      ativo: p.ativo as boolean,
+    }));
+  }
+
+  async salvarPerguntaBriefing(p: PerguntaBriefing) {
+    const { error } = await this.sb.from("briefing_perguntas").upsert({
+      id: p.id,
+      org_id: await this.org(),
+      secao: p.secao.trim(),
+      pergunta: p.pergunta.trim(),
+      ajuda: p.ajuda?.trim() || null,
+      servico_id: p.servicoId,
+      ordem: p.ordem,
+      ativo: p.ativo,
+    });
+    erro(error);
+  }
+
+  async removerPerguntaBriefing(id: string) {
+    await this.remover("briefing_perguntas", [id]);
+  }
+
+  async listarRespostasBriefing(clienteId: string): Promise<RespostaBriefing[]> {
+    const { data, error } = await this.sb.from("briefing_respostas").select("*").eq("cliente_id", clienteId);
+    erro(error);
+    return ((data ?? []) as Linha[]).map((r) => ({
+      id: r.id as string,
+      clienteId: r.cliente_id as string,
+      perguntaId: r.pergunta_id as string,
+      perguntaTexto: r.pergunta_texto as string,
+      resposta: (r.resposta as string) ?? null,
+      respondidoPorNome: (r.respondido_por_nome as string) ?? null,
+      respondidoEm: (r.respondido_em as string) ?? null,
+    }));
+  }
+
+  async responderBriefing(clienteId: string, perguntaId: string, resposta: string | null) {
+    // pergunta_texto, quem e quando: o banco preenche (trigger briefing_resposta_autor)
+    const { error } = await this.sb
+      .from("briefing_respostas")
+      .upsert(
+        { org_id: await this.org(), cliente_id: clienteId, pergunta_id: perguntaId, pergunta_texto: "", resposta: resposta?.trim() || null },
+        { onConflict: "cliente_id,pergunta_id" },
+      );
+    erro(error);
   }
 
   // ─── Datas comemorativas ──────────────────────────────────────────────────

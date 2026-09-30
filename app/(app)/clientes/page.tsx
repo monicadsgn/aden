@@ -45,7 +45,7 @@ export default function Clientes() {
     const id = q.get("cliente");
     if (id) setAberto(id);
     const aba = q.get("aba");
-    if (aba === "contrato" || aba === "tarefas" || aba === "contexto" || aba === "financeiro" || aba === "comercial") setAbaInicial(aba);
+    if (aba === "contrato" || aba === "tarefas" || aba === "contexto" || aba === "briefing" || aba === "financeiro" || aba === "comercial") setAbaInicial(aba);
   }, [repo, recarregar]);
 
   // a tela muda na hora; o banco grava quando a pessoa para de digitar

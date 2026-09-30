@@ -166,7 +166,38 @@ migração. Meta: tudo pronto até o fim de outubro.
   no Drive e para o envio do contrato, briefing único no perfil do cliente, template da apresentação comercial. Processo:
   indicação → pesquisa de nicho e concorrência → reunião comercial (follow-up se "vou ver") → proposta → kickoff →
   briefing → planejamento → criativos → monitoramento → relatório no fim do mês.
+  Andamento (30/09/2026, versão de teste): passo 1 (checklist de fechamento na ordem onboarding → contrato →
+  pagamento → pasta → briefing → kickoff → painel; CRM com pesquisa e reunião; mês do onboarding configurável) e passo
+  2 (briefing único, estrutura pronta; as perguntas entram depois da Moni aprovar a lista). Autentique: conta nova no
+  grupoaden1. Passos 3 e 4 partem de como o sistema antigo já faz (Autentique por GraphQL com PDF em multipart; link
+  da InfinitePay pelo checkout com webhook), reescritos aqui dentro.
+  Passo 3 pronto na versão de teste (30/09/2026, migration 0031): contrato montado com a ficha e o modelo de
+  Configurações → Contrato, envio e conferência pela Autentique; espera a chave da API (AUTENTIQUE_TOKEN), o texto de
+  obrigações e disposições, os dados da contratada e quem assina.
+  Cobrança recorrente (30/09/2026, pesquisa): a API de checkout da InfinitePay não tem recorrência (cada link é uma
+  cobrança avulsa; webhook sem assinatura, por isso reconferir pelo payment_check). A recorrência existe só no app
+  (Gestão de Cobranças / Planos de Assinatura), sem API para o Aden ler. Caminhos levados à Moni: link por mês gerado
+  pelo Aden, ou plano no app com o Aden só conferindo. **Decisão da Moni (30/09/2026): plano no app (B), por enquanto.**
+  O passo do fechamento virou "Cobrança criada" e cada pagamento continua lançado em Pagamentos quando cai.
+  InfiniteTag da conta conjunta: grupoaden (30/09/2026). Só é usada se a cobrança mudar para o caminho A (link por mês
+  gerado pelo Aden); no B não entra no sistema.
+  Plano recorrente só para clientes novos; quem cria o plano no app ainda será decidido. Taxa da InfinitePay fica 0%
+  por enquanto (decisão da Moni, 30/09/2026).
+  Briefing gravado (30/09/2026): seções Sobre o negócio, Marca e posicionamento, Redes e conteúdo (Social media) e
+  Materiais e referências; a seção de Tráfego e vendas espera as perguntas do Áleff.
+  Endereço antigo do conector (senha única) desligado em 30/09/2026: os dois sócios usam o código pessoal.
+  Quem assina o contrato pela Aden: o Áleff (decidido em 30/09/2026). O texto do contrato a Moni leva pronto.
+  Onboarding (passo 5) pronto na versão de teste (30/09/2026, migration 0032): texto aprovado pela Moni guardado em
+  Configurações → Onboarding; o PDF de cada cliente junta com o pacote, os serviços contratados, a garantia e o
+  contrato (ficha → Comercial → Fechamento → Gerar onboarding). Contato e atendimento preenchidos pela Moni em 30/09/2026.
+  Teste do contrato pela Autentique aprovado pela Moni (30/09/2026); modo teste desligado. Contrato e onboarding
+  refeitos no padrão de acabamento dos PDFs da Moni e, no mesmo dia, com a identidade real da Aden (aprovada:
+  "belíssimo"). Passo 7 (identidade) feito em 30/09/2026: PDFs e site com a identidade da Aden
+  (cores, Poppins, logo, ícone da aba, painel do cliente).
+  Próximo pedido da Moni (guardado): efeito vidro (glass) nas coisas.
 - **Fase 6 · Skills da Aden:** proposta, contrato, onboarding, fechamento e apresentação em arquivos .skill.
+  Começada em 30/09/2026: `skills/` com aden-proposta, aden-fechamento, aden-contrato e aden-onboarding (usam só o
+  conector do Aden; teste confere as ferramentas citadas). Apresentação espera o material do Áleff.
 
 ## 1. Auditoria de usabilidade: itens que faltam (entram na Fase 1)
 
@@ -190,7 +221,9 @@ graves 5, 6 e 7 foram feitos na Fase 1, em 29/09/2026; os médios 8–14 e os de
 5. **Detalhes 15, 17 e 18 (feitos em 30/09/2026):** texto mínimo de 12 px em frase explicativa; ícones repetidos no menu; bolinha da Proposta
    com explicação.
 
-Perguntas de regra de contrato (a reunião de 29/09 deixou para depois, junto com a seção 2; não inventar a resposta):
+Perguntas de regra de contrato (a reunião de 29/09 deixou para depois, junto com a seção 2; não inventar a resposta).
+Em 30/09/2026 a Moni confirmou: entram no fluxo que será construído depois de algumas semanas com clientes reais; até lá
+ficam fora da pauta (o campo "mês do onboarding cobra mensalidade?" segue vazio, "a definir"):
 - Cliente **pausado**: divide custo fixo? Conta nas horas e no faturamento esperado? Paga mensalidade?
 - **Reunião em que o cliente faltou**: conta como entregue ou fica devendo?
 - **Extras**: só contar, ou avisar que deveriam ser cobrados à parte? (O audiovisual já é extra, só se o cliente pedir.)

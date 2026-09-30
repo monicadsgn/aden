@@ -24,6 +24,13 @@ import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } fro
 import { ROTULO_PECA, estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, publicar, rotuloStatus, situacaoPeca, type Tarefa } from "../calculo/tarefas";
 import type { AtalhosPainel, Configuracao, Meta, Pacote } from "../calculo/tipos";
 import { datasDoPlanejamento, type DataComemorativa, type ItemDoPlanejamento } from "../calculo/datas";
+import { montarFechamento } from "../calculo/fechamento";
+import { montarBriefing, servicosDoCliente } from "../calculo/briefing";
+import { montarOnboarding } from "../calculo/onboarding";
+import { mensagemPedirDados } from "../calculo/contrato";
+import { conferirContratos, contratoDoCliente, enviarContrato } from "../contrato/acoes";
+import { formatarDocumento } from "../formato";
+import { chaveAutentique } from "../contrato/autentique";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
 import { REGRAS_PROTECAO } from "../regras/aprovacao";
@@ -245,6 +252,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         ofertaVerbaIndicadaAteReais: opt(z.number(), "oferta padrão: verba de mídia indicada, até (reais)"),
         ofertaGestaoDepoisDoResultadoReais: opt(z.number(), "oferta padrão: valor da gestão de tráfego depois do resultado (reais)"),
         ofertaMinimoSocialMaisTrafegoReais: opt(z.number(), "oferta padrão: social media + tráfego abaixo disso mostra um aviso na Proposta (reais)"),
+        mensalidadeNoOnboarding: opt(z.boolean(), "o mês do onboarding cobra mensalidade? Só grave o que os sócios decidirem"),
       },
     },
     async ({
@@ -588,17 +596,32 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Definir escopo contratado do cliente",
       description:
-        "Guarda o escopo contratado de um cliente ativo (entregas, custos, tráfego…), no mesmo formato de calcular_cenario, e o valor como mensalidade do contrato. Se algum sócio ficar abaixo do piso, NÃO grava: vira pedido de exceção para o sócio afetado aprovar. Confirme antes de substituir um escopo existente.",
+        "Guarda o escopo contratado de um cliente ativo (entregas, custos, tráfego…), no mesmo formato de calcular_cenario, e o valor como mensalidade do contrato. Atalho: pacote (nome ou id, ver_pacotes) usa as entregas do pacote e mantém o valor mensal já combinado do cliente, igual à ficha. Se algum sócio ficar abaixo do piso, NÃO grava: vira pedido de exceção para o sócio afetado aprovar. Confirme antes de substituir um escopo existente.",
       inputSchema: {
         cliente: z.string().describe("cliente (nome ou id)"),
-        cenario: zCenarioConversa.nullable().describe("escopo; null remove"),
+        cenario: zCenarioConversa.nullable().optional().describe("escopo; null remove"),
+        pacote: z.string().optional().describe("no lugar do cenario: nome ou id do pacote"),
       },
     },
-    async ({ cliente, cenario }) =>
+    async ({ cliente, cenario, pacote }) =>
       executar(async () => {
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const alvo = resolver(config.clientes, cliente, "Cliente");
+        if (pacote) {
+          const pk = resolver(config.pacotes ?? [], pacote, "Pacote");
+          const base = pacoteParaCenario(pk);
+          const cen = alvo.valorMensalCentavos ? { ...base, modo: "valor" as const, mensalidadeCentavos: alvo.valorMensalCentavos } : base;
+          const r = await guardarEscopo(repo, config, alvo.id, { ...cen, clienteId: alvo.id });
+          return {
+            cliente: alvo.nome,
+            pacote: pk.nome,
+            valorMensal: paraReais(r.valorCentavos),
+            gravado: r.gravado || r.pedido?.status === "aplicado",
+            situacao: r.gravado ? "Escopo do pacote guardado." : `Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: pedido de exceção esperando aprovação no site.`,
+          };
+        }
+        if (cenario === undefined) throw new Error("Mande o cenario ou o pacote.");
         if (!cenario) {
           await repo.definirEscopoCliente(alvo.id, null);
           return { cliente: alvo.nome, escopoRemovido: true };
@@ -1114,6 +1137,342 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       }),
   );
 
+  // ─── Fechamento do cliente (Fase 5) ─────────────────────────────────────────
+
+  server.registerTool(
+    "ver_fechamento",
+    {
+      title: "Checklist de fechamento do cliente",
+      description:
+        "Os 7 passos do fechamento, na ordem combinada: onboarding → contrato assinado → cobrança criada (plano no app da InfinitePay) → pasta no Drive → briefing → kickoff → link do painel. Mostra o que foi feito, por quem e quando, e o próximo passo. Sem cliente: todos os fechamentos em andamento.",
+      inputSchema: { cliente: z.string().optional().describe("nome ou id; vazio = todos os fechamentos abertos") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const alvo = cliente ? [resolver(config.clientes, cliente, "Cliente")] : config.clientes.filter((c) => c.ativo && c.fechamentoIniciadoEm);
+        const saida = [];
+        for (const c of alvo) {
+          if (!c.fechamentoIniciadoEm) {
+            saida.push({ cliente: c.nome, fechamento: "sem checklist (cliente anterior ao fechamento); abra com marcar_passo_fechamento" });
+            continue;
+          }
+          const f = montarFechamento(await repo.listarFechamento(c.id), !!c.painelToken);
+          if (!cliente && f.completo) continue;
+          saida.push({
+            cliente: c.nome,
+            feitos: `${f.feitos} de ${f.total}`,
+            proximo: f.proximo?.rotulo ?? null,
+            passos: f.itens.map((i) => ({
+              passo: i.passo,
+              rotulo: i.rotulo,
+              feito: i.feito,
+              ...(i.feitoEm && { quem: i.feitoPorNome, quando: i.feitoEm }),
+              ...(i.link && { link: i.link }),
+              ...(i.data && { data: i.data }),
+            })),
+          });
+        }
+        return {
+          mensalidadeNoOnboarding: config.empresa.mensalidadeNoOnboarding == null ? "a definir" : config.empresa.mensalidadeNoOnboarding ? "cobra" : "não cobra",
+          fechamentos: saida,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "marcar_passo_fechamento",
+    {
+      title: "Marcar passo do fechamento",
+      description:
+        "Marca (ou desmarca com feito=false) um passo do fechamento do cliente. Quem fez é gravado pelo banco. link (https://) guarda o contrato, o link da cobrança ou a pasta no Drive; data (AAAA-MM-DD) é a do kickoff e cria a tarefa da reunião. O link do painel não se marca aqui: ele se confere pelo link criado (link_painel_cliente). Se o cliente ainda não tinha checklist, abre.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id"),
+        passo: z.enum(["onboarding", "contrato", "pagamento", "pasta_drive", "briefing", "kickoff"]),
+        feito: z.boolean().optional().describe("padrão true"),
+        link: z.string().nullable().optional(),
+        data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().describe("kickoff: AAAA-MM-DD"),
+      },
+    },
+    async ({ cliente, passo, feito, link, data }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const antes = await repo.carregarConfig();
+        const c = resolver(antes.clientes, cliente, "Cliente");
+        if (link && !/^https:\/\/\S+$/.test(link.trim())) throw new Error("O link precisa ser completo, começando com https://");
+        if (!c.fechamentoIniciadoEm) {
+          const depois = structuredClone(antes);
+          depois.clientes = depois.clientes.map((x) => (x.id === c.id ? { ...x, fechamentoIniciadoEm: new Date().toISOString() } : x));
+          await salvarDiferenca(repo, antes, depois);
+        }
+        const registros = await repo.listarFechamento(c.id);
+        const jaTinhaKickoff = !!registros.find((r) => r.passo === "kickoff")?.feitoEm;
+        const marcar = feito ?? true;
+        await repo.salvarPassoFechamento({ clienteId: c.id, passo, feito: marcar, ...(link !== undefined && { link }), ...(data !== undefined && { data }) });
+        let tarefa: string | null = null;
+        if (passo === "kickoff" && marcar && data && !jaTinhaKickoff) {
+          const eu = await repo.usuarioAtual();
+          const t = { ...novaTarefa(novoId(), `Kickoff · ${c.nome}`, { clienteId: c.id, responsavelId: eu?.pessoaId ?? null }), vencimento: data, descricao: "Reunião de início com o cliente (checklist de fechamento)." };
+          await repo.salvarTarefa(t);
+          tarefa = t.titulo;
+        }
+        const f = montarFechamento(await repo.listarFechamento(c.id), !!c.painelToken);
+        return { cliente: c.nome, passo, feito: marcar, ...(tarefa && { tarefaCriada: tarefa }), feitos: `${f.feitos} de ${f.total}`, proximo: f.proximo?.rotulo ?? null };
+      }),
+  );
+
+  // ─── Onboarding (Fase 5, passo 5) ─────────────────────────────────────────
+
+  server.registerTool(
+    "ver_onboarding",
+    {
+      title: "Ver o onboarding do cliente",
+      description:
+        "Mostra o onboarding do cliente montado com o texto dos sócios (Configurações → Onboarding), o pacote, os serviços contratados, a garantia e o contrato, e o que ainda falta preencher. O PDF sai no site: ficha → Comercial → Fechamento → Gerar onboarding. Sem cliente: só o texto guardado.",
+      inputSchema: { cliente: z.string().optional().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [config, modelo] = await Promise.all([repo.carregarConfig(), repo.obterModeloOnboarding()]);
+        if (!cliente) return { modelo };
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const d = montarOnboarding(config, c.id, modelo, hojeISO());
+        return { pronto: d.faltando.length === 0, faltando: d.faltando, secoes: d.secoes, comoGerarPdf: "ficha do cliente → Comercial → Fechamento → Gerar onboarding" };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_modelo_onboarding",
+    {
+      title: "Salvar o texto do onboarding",
+      description:
+        "Guarda contato e atendimento do onboarding, a frase da garantia e como funciona cada serviço (servico: nome ou id). Só os campos enviados mudam. NUNCA escreva texto por conta própria: grave só o que os sócios passaram. Títulos e textos das seções se editam no site (Configurações → Onboarding).",
+      inputSchema: {
+        whatsapp: z.string().nullable().optional(),
+        instagram: z.string().nullable().optional(),
+        email: z.string().nullable().optional(),
+        atendimento: z.string().nullable().optional().describe("dias e horário de atendimento"),
+        textoGarantia: z.string().nullable().optional(),
+        servicos: z.array(z.object({ servico: z.string(), texto: z.string() })).optional(),
+      },
+    },
+    async ({ servicos, ...campos }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [config, atual] = await Promise.all([repo.carregarConfig(), repo.obterModeloOnboarding()]);
+        const textoServico = { ...atual.textoServico };
+        for (const s of servicos ?? []) textoServico[resolver(config.servicos, s.servico, "Serviço").id] = s.texto;
+        const novo = { ...atual, ...Object.fromEntries(Object.entries(campos).filter(([, v]) => v !== undefined)), textoServico };
+        await repo.salvarModeloOnboarding(novo);
+        return { salvo: true };
+      }),
+  );
+
+  // ─── Contrato (Fase 5, passo 3) ───────────────────────────────────────────
+
+  server.registerTool(
+    "mensagem_pedir_dados_cliente",
+    {
+      title: "Mensagem pedindo os dados do contrato",
+      description:
+        "Mensagem pronta para mandar ao cliente pelo WhatsApp pedindo só o que o contrato precisa: nome completo (ou razão social), CPF ou CNPJ, e-mail e endereço. Quando o cliente responder, grave com salvar_ficha_cliente (razaoSocial, documento, email, endereco, contato) e confira com ver_contrato.",
+      inputSchema: { cliente: z.string().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        return { cliente: c.nome, mensagem: mensagemPedirDados(c) };
+      }),
+  );
+
+  server.registerTool(
+    "ver_contrato",
+    {
+      title: "Ver o contrato do cliente",
+      description:
+        "Mostra o contrato montado com a ficha do cliente e o modelo da Aden (obrigações, disposições e quem assina), o que ainda falta preencher, se a Autentique está ligada e os contratos já enviados com a situação da assinatura. Sem cliente: só o modelo.",
+      inputSchema: { cliente: z.string().optional().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [config, modelo] = await Promise.all([repo.carregarConfig(), repo.obterModeloContrato()]);
+        const autentique = chaveAutentique() ? (process.env.AUTENTIQUE_SANDBOX?.trim() === "1" ? "ligada (modo teste)" : "ligada") : "não ligada (falta a chave na Vercel)";
+        if (!cliente) return { autentique, modelo };
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const doc = await contratoDoCliente(repo, c.id);
+        const enviados = await repo.listarContratosAssinatura(c.id);
+        return {
+          autentique,
+          pronto: doc.faltando.length === 0,
+          faltando: doc.faltando,
+          contrato: doc,
+          enviados: enviados.map((x) => ({ situacao: x.situacao, enviadoEm: x.enviadoEm, por: x.enviadoPorNome, assinadoEm: x.assinadoEm, faltam: x.faltam })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_modelo_contrato",
+    {
+      title: "Salvar o modelo do contrato",
+      description:
+        "Guarda o que é igual em todo contrato da Aden: dados da contratada, quem assina pela Aden e o texto de obrigações e disposições gerais (uma cláusula por linha; a numeração é do contrato; linhas \"a)\" viram subitens). Só os campos enviados mudam. NUNCA escreva cláusula por conta própria: grave só o texto que os sócios passaram.",
+      inputSchema: {
+        contratadaNome: z.string().nullable().optional(),
+        contratadaDocumento: z.string().nullable().optional().describe("CNPJ"),
+        contratadaEndereco: z.string().nullable().optional(),
+        cidade: z.string().nullable().optional().describe("cidade de assinatura, do cabeçalho e do rodapé (ex.: Recife - Pernambuco)"),
+        obrigacoes: z.string().nullable().optional(),
+        disposicoes: z.string().nullable().optional(),
+        signatariosAden: z.array(z.object({ nome: z.string(), email: z.string().email() })).optional().describe("lista completa de quem assina pela Aden"),
+      },
+    },
+    async (e) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const atual = await repo.obterModeloContrato();
+        const novo = { ...atual, ...Object.fromEntries(Object.entries(e).filter(([, v]) => v !== undefined)) };
+        await repo.salvarModeloContrato(novo);
+        return { salvo: true, modelo: await repo.obterModeloContrato() };
+      }),
+  );
+
+  server.registerTool(
+    "enviar_contrato",
+    {
+      title: "Enviar o contrato para assinatura",
+      description:
+        "Monta o PDF do contrato com a ficha e o modelo e manda pela Autentique para o cliente e para quem assina pela Aden (cada um recebe por e-mail). Não envia se faltar algo (use ver_contrato antes) ou se já houver um esperando assinatura (reenviar=true substitui). Confirme com o sócio antes de enviar: o cliente recebe na hora.",
+      inputSchema: { cliente: z.string().describe("nome ou id"), reenviar: z.boolean().optional() },
+    },
+    async ({ cliente, reenviar }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        return await enviarContrato(repo, c.id, { reenviar });
+      }),
+  );
+
+  server.registerTool(
+    "conferir_contrato",
+    {
+      title: "Conferir a assinatura do contrato",
+      description: "Pergunta à Autentique quem já assinou o contrato do cliente. Assinado por todos → marca sozinho o passo \"Contrato assinado\" do fechamento.",
+      inputSchema: { cliente: z.string().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const r = await conferirContratos(repo, c.id);
+        return r.length ? r : { mensagem: "Nenhum contrato esperando assinatura." };
+      }),
+  );
+
+  // ─── Briefing do cliente (Fase 5) ──────────────────────────────────────────
+
+  server.registerTool(
+    "ver_briefing",
+    {
+      title: "Briefing do cliente",
+      description:
+        "O briefing da ficha do cliente, por seção: cada pergunta, a resposta, quem respondeu e quando. O cliente não preenche: o Áleff responde na reunião dele e a Moni completa na dela. Use o id da pergunta em responder_briefing.",
+      inputSchema: { cliente: z.string().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const [perguntas, respostas] = await Promise.all([repo.listarPerguntasBriefing(), repo.listarRespostasBriefing(c.id)]);
+        const b = montarBriefing(perguntas, respostas, servicosDoCliente(config, c.id));
+        return {
+          cliente: c.nome,
+          respondidas: `${b.respondidas} de ${b.total}`,
+          secoes: b.secoes.map((s) => ({
+            secao: s.secao,
+            perguntas: s.itens.map(({ pergunta: p, resposta: r }) => ({
+              id: p.id,
+              pergunta: p.pergunta,
+              resposta: r?.resposta ?? null,
+              ...(r?.resposta && { quem: r.respondidoPorNome, quando: r.respondidoEm }),
+            })),
+          })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "responder_briefing",
+    {
+      title: "Responder o briefing do cliente",
+      description:
+        "Grava respostas do briefing (várias de uma vez). pergunta = id (de ver_briefing) ou o texto exato da pergunta. Resposta vazia apaga. Quem respondeu é gravado pelo banco. Grave só o que a pessoa disse na conversa ou na reunião.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id"),
+        respostas: z.array(z.object({ pergunta: z.string(), resposta: z.string() })).min(1),
+      },
+    },
+    async ({ cliente, respostas }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const perguntas = (await repo.listarPerguntasBriefing()).filter((p) => p.ativo);
+        const achar = (ref: string) =>
+          perguntas.find((p) => p.id === ref.trim()) ?? perguntas.find((p) => p.pergunta.trim().toLowerCase() === ref.trim().toLowerCase());
+        const faltam = respostas.filter((r) => !achar(r.pergunta)).map((r) => r.pergunta);
+        if (faltam.length) throw new Error(`Pergunta não encontrada: ${faltam.join("; ")}. Veja os ids em ver_briefing.`);
+        for (const r of respostas) await repo.responderBriefing(c.id, achar(r.pergunta)!.id, r.resposta);
+        const b = montarBriefing(perguntas, await repo.listarRespostasBriefing(c.id), servicosDoCliente(config, c.id));
+        return { cliente: c.nome, gravadas: respostas.length, respondidas: `${b.respondidas} de ${b.total}` };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_pergunta_briefing",
+    {
+      title: "Criar ou alterar pergunta do briefing",
+      description:
+        "A lista de perguntas do briefing (Configurações → Briefing). O texto é dos sócios: só grave perguntas que a Moni ou o Áleff aprovaram. servico = nome do serviço (vale só para quem contratou); null = todos. ativo=false tira da lista sem apagar respostas.",
+      inputSchema: {
+        id: z.string().optional().describe("id da pergunta a alterar; vazio = nova"),
+        secao: z.string().optional(),
+        pergunta: z.string().optional(),
+        servico: z.string().nullable().optional(),
+        ordem: z.number().int().optional(),
+        ativo: z.boolean().optional(),
+      },
+    },
+    async ({ id, secao, pergunta, servico, ordem, ativo }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const todas = await repo.listarPerguntasBriefing();
+        const antes = id ? todas.find((p) => p.id === id) : null;
+        if (id && !antes) throw new Error("Pergunta não encontrada.");
+        if (!antes && (!secao?.trim() || !pergunta?.trim())) throw new Error("Pergunta nova precisa de seção e texto.");
+        const p = {
+          id: antes?.id ?? novoId(),
+          secao: (secao ?? antes!.secao).trim(),
+          pergunta: (pergunta ?? antes!.pergunta).trim(),
+          ajuda: antes?.ajuda ?? null,
+          servicoId: servico !== undefined ? (servico ? resolver(config.servicos, servico, "Serviço").id : null) : (antes?.servicoId ?? null),
+          ordem: ordem ?? antes?.ordem ?? Math.max(0, ...todas.map((x) => x.ordem)) + 10,
+          ativo: ativo ?? antes?.ativo ?? true,
+        };
+        await repo.salvarPerguntaBriefing(p);
+        return { salva: p.pergunta, id: p.id, secao: p.secao, criada: !antes };
+      }),
+  );
+
   // ─── Contexto do cliente (memória, Fase 4) ─────────────────────────────────
 
   server.registerTool(
@@ -1179,7 +1538,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Editar a ficha e o contrato do cliente",
       description:
-        "Muda dados de contato e condições do contrato de um cliente existente (para criar cliente use salvar_cliente). Só os campos enviados mudam. Só grave o que foi combinado de verdade. Datas em AAAA-MM-DD.",
+        "Muda dados de contato, os dados do contrato (nome no contrato, CPF/CNPJ, endereço) e as condições do contrato de um cliente existente. Cliente novo, do zero: salvar_cliente (nome e valor mensal) → salvar_ficha_cliente (contato e contrato) → definir_escopo_cliente (pacote ou escopo) → ver_contrato (o que falta). Para pedir os dados ao cliente: mensagem_pedir_dados_cliente. CPF/CNPJ é gravado com ponto, barra e traço. Só os campos enviados mudam. Só grave o que foi combinado de verdade. Datas em AAAA-MM-DD.",
       inputSchema: {
         cliente: z.string().describe("nome ou id"),
         contato: z.string().optional(),
@@ -1188,6 +1547,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         instagram: z.string().optional(),
         segmento: z.string().optional(),
         observacoes: z.string().optional(),
+        razaoSocial: z.string().optional().describe("nome no contrato (razão social ou nome completo); vazio = o nome do cliente"),
+        documento: z.string().optional().describe("CPF ou CNPJ do cliente, vai no contrato"),
+        endereco: z.string().optional().describe("endereço do cliente, vai no contrato"),
         clienteDesde: z.string().nullable().optional(),
         inicioContrato: z.string().nullable().optional(),
         fimContrato: z.string().nullable().optional(),
@@ -1221,6 +1583,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           instagram: def(e.instagram, c.instagram),
           segmento: def(e.segmento, c.segmento),
           observacoes: def(e.observacoes, c.observacoes),
+          razaoSocial: def(e.razaoSocial, c.razaoSocial),
+          documento: e.documento === undefined ? c.documento : formatarDocumento(e.documento),
+          endereco: def(e.endereco, c.endereco),
           clienteDesde: def(e.clienteDesde, c.clienteDesde ?? null),
           contrato: {
             ...k,
@@ -1345,10 +1710,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Mudar a etapa do lead",
       description:
-        "lead_recebido, contato_feito, proposta_enviada ou perdido (com motivo). Para GANHO use ganhar_lead, que também cria o cliente.",
+        "lead_recebido, pesquisa (pesquisa de nicho e concorrência), contato_feito, reuniao (reunião comercial), proposta_enviada ou perdido (com motivo). Para GANHO use ganhar_lead, que também cria o cliente.",
       inputSchema: {
         id: z.string().describe("id ou nome do lead"),
-        etapa: z.enum(["lead_recebido", "contato_feito", "proposta_enviada", "perdido"]),
+        etapa: z.enum(["lead_recebido", "pesquisa", "contato_feito", "reuniao", "proposta_enviada", "perdido"]),
         motivoPerda: z.string().optional(),
       },
     },

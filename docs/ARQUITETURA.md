@@ -403,7 +403,13 @@ planejado. Sobra → reinvestimento → sócios pelo %. Pago inteiro ou em parte
 
 ## Identidade visual
 
-Provisória (pistache, creme e Montserrat são da Mônica Design). Cores, fonte, cantos (inclusive o formato pílula
+Identidade da Aden, aprovada pela Moni em 30/09/2026: logo é só a tipografia "aden" (`components/Marca.tsx`, caminhos
+em `lib/documentos/logo.ts`), branco dominando com o verde #797c46 de apoio, tons de apoio no verde escuro, texto
+verde quase preto (preto só no modo escuro), fonte Poppins (pacote local `@fontsource/poppins`), formas orgânicas
+sem folha nem planta. A logo principal é sempre o texto "aden". O que é pequeno e quadrado (ícone da aba `app/icon.svg`, ícone do
+celular `app/apple-icon.png`, tela de carregamento) usa só a letra "a" num retângulo arredondado: "a" creme no verde
+ou "a" verde no creme (`MarcaIcone` em `components/Marca.tsx`, letra em `LETRA_A`); fica igual no modo escuro
+(tokens `--creme` e `--verde-aden`, que não mudam no escuro). Cores, fonte, cantos (inclusive o formato pílula
 dos botões, abas, seletores e etiquetas: `--raio-botao`) e sombras ficam só em `app/tokens.css`; nenhum componente
 tem cor, fonte ou arredondamento fixo (só círculos de verdade: avatares, pontos, chaves, barras). O logo fica em `components/Marca.tsx` e `app/icon.svg`.
 Verificado em 25/09/2026: trocando só o `tokens.css` por outra paleta e outra fonte, o sistema inteiro muda.
@@ -433,9 +439,45 @@ de um calendário de uma vez (`salvarTarefas`, tudo ou nada), na etapa planejado
 do mês fica em `lib/calculo/datas.ts` (`datasDoPlanejamento`, testada) e sai em `datas_do_mes`; tela em Configurações →
 Datas comemorativas. Atalhos do painel: colunas `painel_*` em `clientes` (links só https), editados na ficha e por
 `atualizar_atalhos_painel`, lidos pelo `painel_cliente`.
-Dinheiro em reais e referências por nome na conversa; a tradução fica em
-`lib/mcp/traducao.ts`. As instruções do servidor proíbem inventar número de negócio.
-Ao criar uma área nova (fases 2+), acrescente as ferramentas dela aqui.
+**Fase 5, passos 1 e 2 (30/09/2026, migrations 0028 e 0029):** checklist de fechamento (`fechamento_passos`, conta em
+`lib/calculo/fechamento.ts`), aberto quando o lead vira cliente (`clientes.fechamento_iniciado_em`), na ordem
+onboarding → contrato → pagamento → pasta no Drive → briefing → kickoff (vira tarefa) → link do painel (conferido pelo
+link da ficha); quem fez vem do banco. CRM ganhou as etapas pesquisa e reunião. "Mês do onboarding cobra mensalidade?"
+em Configurações → Regras da empresa (vazio = a definir). Briefing único: `briefing_perguntas` (texto dos sócios, por
+seção, todos os serviços ou um) e `briefing_respostas` (quem respondeu e o texto da pergunta naquele momento), aba
+Briefing na ficha e Configurações → Briefing; conta em `lib/calculo/briefing.ts`. Conector: `ver_fechamento`,
+`marcar_passo_fechamento`, `ver_briefing`, `responder_briefing`, `salvar_pergunta_briefing`.
+
+**Fase 5, passo 3 (30/09/2026, migration 0031):** contrato com assinatura eletrônica pela Autentique. O texto sai de
+`montarContrato` (`lib/calculo/contrato.ts`, puro e testado): partes, objeto (entregas do escopo com o nome que o cliente
+vê), valor, vencimento, prazo, condições e garantia vêm da ficha como dados; obrigações e disposições gerais são o texto
+dos sócios em Configurações → Contrato (`contrato_modelo`); o sistema não escreve cláusula e lista o que falta. A ficha
+ganhou nome no contrato, CPF/CNPJ e endereço. PDF em `lib/contrato/pdf.ts` (pdf-lib); envio e conferência em
+`lib/contrato/autentique.ts` (GraphQL v2, só no servidor, chave `AUTENTIQUE_TOKEN` na Vercel, `AUTENTIQUE_SANDBOX=1` para
+teste). O site pede por `/api/contrato` com o token da sessão (só sócio); o conector usa `ver_contrato`,
+`salvar_modelo_contrato`, `enviar_contrato` e `conferir_contrato`. Cada envio fica em `contratos_assinatura` (quem enviou
+vem do banco); a ficha confere sozinha ao abrir e, assinado por todos, marca o passo "Contrato assinado".
+
+**Fase 5, passo 5 (30/09/2026, migration 0032):** onboarding do cliente. O texto é da Moni, guardado em
+`onboarding_modelo` (seções com título e texto, "como funciona" de cada serviço, frase da garantia, contato e
+atendimento) e editável em Configurações → Onboarding. `montarOnboarding` (`lib/calculo/onboarding.ts`, puro e
+testado) junta com o pacote do cliente (incluso), os serviços contratados, a garantia e as condições do contrato, e
+lista o que falta. PDF pela impressão do navegador (`/imprimir/onboarding`, `components/impressao/Onboarding.tsx`, com
+teste sem nada interno). Conector: `ver_onboarding`, `salvar_modelo_onboarding`.
+
+**PDFs da Aden (30/09/2026, migration 0033; identidade real aprovada pela Moni no mesmo dia):** contrato e
+onboarding usam `lib/documentos/base.ts` (pdf-lib + fontkit, no servidor e no navegador): Poppins embutida
+(`fontes.ts`, gerado), logo "aden" em vetor (`logo.ts`, do ADEN VERDE.svg), cores da marca (branco domina, verde de
+apoio, tons de apoio no verde escuro, texto verde quase preto), ondas, curvas e cantos arredondados, ícones de traço
+próprios. `contrato-visual.ts`: primeira página com bloco verde, logo branca, título grande e a linha do contratante,
+onda separando do corpo; partes em cartões, cláusulas com número em quadrado verde e título verde em negrito,
+assinaturas em cartões, rodapé com a logo pequena. `onboarding-visual.ts`: capa verde "Olá, [nome]!", seções com
+ícone e cartões (seções curtas duas por página), página final de contato em verde. Medida de texto letra por letra
+(o pdf-lib mede com kerning e desenha sem). O contrato segue a estrutura do contrato da Moni: título "Contrato de
+prestação de serviços · Aden · marca", partes qualificadas em texto corrido (CPF/CNPJ formatados por
+`formatarDocumento`), cláusulas 1.1, 1.2…, valor por extenso, local e data (cidade em `contrato_modelo.cidade`) e
+assinaturas. Conector: `mensagem_pedir_dados_cliente`; `definir_escopo_cliente` aceita `pacote`. Ficha: próximo
+vencimento (`proximoVencimento`).
 
 ## Modelo de dados
 
@@ -449,6 +491,7 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - ✅ `configuracoes_empresa` (reinvestimento, imposto, taxa de recebimento, regra de rateio)
 - ✅ `pessoas` (sócio?, % padrão, piso/h, capacidade h/mês, vínculo opcional com membro)
 - ✅ `datas_comemorativas`, ✅ `datas_do_cliente` (planejamento mensal)
+- ✅ `fechamento_passos` (checklist de fechamento), ✅ `briefing_perguntas`, ✅ `briefing_respostas`, ✅ `contrato_modelo`, ✅ `contratos_assinatura`, ✅ `onboarding_modelo` (Fase 5)
 - ✅ `portas` (códigos pessoais: `uso` porta genérica ou conector do Claude; só hash), ✅ `contexto_cliente` (memória do cliente, Fase 4)
 - `anexos`
 

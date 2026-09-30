@@ -29,7 +29,7 @@ import { podeVer, type Area } from "@/lib/acesso";
 import { useDados, useVariaveisFaltando } from "@/lib/dados/contexto";
 import type { Repositorio, Usuario } from "@/lib/dados/repositorio";
 import { Avatar, TrocarFoto } from "./Avatar";
-import { Marca } from "./Marca";
+import { Marca, MarcaIcone } from "./Marca";
 import { RelogioRodando } from "./tarefas/RelogioRodando";
 import { abrirTour, BotaoAjudaTela, Tour } from "./Ajuda";
 import { Badge, cx } from "./ui";
@@ -240,7 +240,7 @@ export function Shell({ children }: { children: ReactNode }) {
   if (carregando || (repo.modo === "supabase" && !usuario)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Marca />
+        <MarcaIcone className="size-14 animate-pulse" />
       </div>
     );
   }

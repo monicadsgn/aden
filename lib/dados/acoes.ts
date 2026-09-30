@@ -208,6 +208,8 @@ export async function ganharLead(repo: Repositorio, config: Configuracao, lead: 
     email: lead.email,
     instagram: lead.instagram,
     clienteDesde: hojeISO(),
+    // abre o checklist de fechamento (onboarding → contrato → pagamento → pasta → briefing → kickoff → painel)
+    fechamentoIniciadoEm: new Date().toISOString(),
   };
   await repo.salvarConfig({
     pessoas: { salvar: [], remover: [] },

@@ -6,6 +6,10 @@
 //   variáveis do Supabase não estão configuradas (dev local / apresentação).
 
 import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
+import type { RegistroFechamento } from "../calculo/fechamento";
+import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
+import type { ContratoEnviado, ModeloContrato, SituacaoContrato } from "../calculo/contrato";
+import type { ModeloOnboarding } from "../calculo/onboarding";
 import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -279,6 +283,46 @@ export interface Repositorio {
   removerTarefa(id: string): Promise<void>;
   /** várias de uma vez (planejamento mensal): se uma falhar, nenhuma é gravada */
   salvarTarefas(ts: Tarefa[]): Promise<void>;
+
+  // ─── Fechamento do cliente (Fase 5) ─────────────────────────────────────────
+  listarFechamento(clienteId: string): Promise<RegistroFechamento[]>;
+  /** marca (ou desmarca) um passo; quem fez vem do banco */
+  salvarPassoFechamento(p: {
+    clienteId: string;
+    passo: RegistroFechamento["passo"];
+    feito: boolean;
+    link?: string | null;
+    data?: string | null;
+    observacao?: string | null;
+  }): Promise<void>;
+
+  // ─── Contrato (Fase 5, passo 3) ──────────────────────────────────────────────
+  /** o que é igual em todo contrato (texto dos sócios); vazio se nunca foi salvo */
+  obterModeloContrato(): Promise<ModeloContrato>;
+  salvarModeloContrato(m: ModeloContrato): Promise<void>;
+  /** contratos mandados para assinatura, do mais novo para o mais antigo */
+  listarContratosAssinatura(clienteId: string): Promise<ContratoEnviado[]>;
+  /** quem enviou vem do banco */
+  registrarContratoAssinatura(c: { clienteId: string; autentiqueId: string; nome: string; signatarios: ContratoEnviado["signatarios"] }): Promise<void>;
+  atualizarContratoAssinatura(id: string, s: { situacao: SituacaoContrato | "cancelado"; assinadoEm: string | null; faltam: string[] }): Promise<void>;
+  /**
+   * Pelo site: pede ao servidor (a chave da Autentique só existe lá). "situacao" diz se a Autentique está ligada;
+   * "enviar" monta o PDF e manda; "conferir" pergunta à Autentique quem já assinou.
+   */
+  contratoNoServidor(pedido: { acao: "situacao" } | { acao: "enviar" | "conferir"; clienteId: string; reenviar?: boolean }): Promise<{ autentiqueLigada: boolean; teste?: boolean; mensagem?: string }>;
+
+  // ─── Onboarding (Fase 5, passo 5) ────────────────────────────────────────────
+  /** texto do onboarding (dos sócios); vazio se nunca foi salvo */
+  obterModeloOnboarding(): Promise<ModeloOnboarding>;
+  salvarModeloOnboarding(m: ModeloOnboarding): Promise<void>;
+
+  // ─── Briefing do cliente (Fase 5) ────────────────────────────────────────────
+  listarPerguntasBriefing(): Promise<PerguntaBriefing[]>;
+  salvarPerguntaBriefing(p: PerguntaBriefing): Promise<void>;
+  removerPerguntaBriefing(id: string): Promise<void>;
+  listarRespostasBriefing(clienteId: string): Promise<RespostaBriefing[]>;
+  /** quem respondeu vem do banco */
+  responderBriefing(clienteId: string, perguntaId: string, resposta: string | null): Promise<void>;
 
   // ─── Datas comemorativas (planejamento mensal) ───────────────────────────────
   listarDatas(): Promise<{ datas: DataComemorativa[]; ligacoes: DataDoCliente[] }>;

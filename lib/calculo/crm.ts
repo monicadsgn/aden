@@ -1,13 +1,13 @@
 // CRM: leads no funil.
 //
-// Etapas (definidas pela Moni): lead recebido → contato feito → proposta
-// enviada → ganho ou perdido. "Parado" só acende se os sócios configurarem quantos dias
+// Etapas (definidas pela Moni; pesquisa e reunião entraram na Fase 5, do processo do Áleff):
+// lead recebido → pesquisa de nicho → contato feito → reunião comercial → proposta enviada → ganho ou perdido. "Parado" só acende se os sócios configurarem quantos dias
 // (Configurações → Limites e avisos); vazio = nunca acende.
 
 import { hojeISO } from "./dia";
 import type { Id } from "./tipos";
 
-export type EtapaLead = "lead_recebido" | "contato_feito" | "proposta_enviada" | "ganho" | "perdido";
+export type EtapaLead = "lead_recebido" | "pesquisa" | "contato_feito" | "reuniao" | "proposta_enviada" | "ganho" | "perdido";
 export type TipoInteracao = "nota" | "ligacao" | "whatsapp" | "reuniao" | "email" | "proposta" | "follow_up";
 
 export interface Lead {
@@ -50,7 +50,9 @@ export interface InteracaoLead {
 
 export const ETAPAS: { valor: EtapaLead; rotulo: string; aberta: boolean }[] = [
   { valor: "lead_recebido", rotulo: "Lead recebido", aberta: true },
+  { valor: "pesquisa", rotulo: "Pesquisa de nicho", aberta: true },
   { valor: "contato_feito", rotulo: "Contato feito", aberta: true },
+  { valor: "reuniao", rotulo: "Reunião comercial", aberta: true },
   { valor: "proposta_enviada", rotulo: "Proposta enviada", aberta: true },
   { valor: "ganho", rotulo: "Ganho", aberta: false },
   { valor: "perdido", rotulo: "Perdido", aberta: false },

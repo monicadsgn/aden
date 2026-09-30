@@ -5,6 +5,10 @@
 
 import type { Medicao } from "../calculo/calibragem";
 import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
+import type { RegistroFechamento } from "../calculo/fechamento";
+import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
+import { MODELO_VAZIO, type ContratoEnviado, type ModeloContrato } from "../calculo/contrato";
+import { MODELO_ONBOARDING_VAZIO, type ModeloOnboarding } from "../calculo/onboarding";
 import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
 import type { Tarefa } from "../calculo/tarefas";
@@ -50,6 +54,11 @@ interface Banco {
   contexto?: NotaContexto[];
   datas?: DataComemorativa[];
   datasDoCliente?: DataDoCliente[];
+  fechamento?: RegistroFechamento[];
+  perguntasBriefing?: PerguntaBriefing[];
+  respostasBriefing?: RespostaBriefing[];
+  modeloContrato?: ModeloContrato;
+  modeloOnboarding?: ModeloOnboarding;
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -434,6 +443,118 @@ export class RepositorioLocal implements Repositorio {
 
   async salvarTarefas(ts: Tarefa[]) {
     for (const t of ts) await this.salvarTarefa(t);
+  }
+
+  // ─── Fechamento do cliente (no navegador) ──────────────────────────────────
+
+  async listarFechamento(clienteId: string) {
+    return (ler().fechamento ?? []).filter((r) => r.clienteId === clienteId);
+  }
+
+  async salvarPassoFechamento(p: {
+    clienteId: string;
+    passo: RegistroFechamento["passo"];
+    feito: boolean;
+    link?: string | null;
+    data?: string | null;
+    observacao?: string | null;
+  }) {
+    const b = ler();
+    const lista = b.fechamento ?? [];
+    const antes = lista.find((r) => r.clienteId === p.clienteId && r.passo === p.passo);
+    const r: RegistroFechamento = {
+      id: antes?.id ?? novoId(),
+      clienteId: p.clienteId,
+      passo: p.passo,
+      feitoEm: p.feito ? (antes?.feitoEm ?? new Date().toISOString()) : null,
+      feitoPorNome: p.feito ? (antes?.feitoPorNome ?? USUARIO.nome) : null,
+      link: p.link !== undefined ? p.link?.trim() || null : (antes?.link ?? null),
+      data: p.data !== undefined ? p.data || null : (antes?.data ?? null),
+      observacao: p.observacao !== undefined ? p.observacao?.trim() || null : (antes?.observacao ?? null),
+    };
+    b.fechamento = [...lista.filter((x) => x !== antes), r];
+    gravar(b);
+  }
+
+  // ─── Contrato (no navegador: só o modelo; enviar pede o banco conectado) ────
+
+  async obterModeloContrato() {
+    return ler().modeloContrato ?? { ...MODELO_VAZIO, signatariosAden: [] };
+  }
+
+  async salvarModeloContrato(m: ModeloContrato) {
+    const b = ler();
+    b.modeloContrato = m;
+    gravar(b);
+  }
+
+  async listarContratosAssinatura(): Promise<ContratoEnviado[]> {
+    return [];
+  }
+
+  async registrarContratoAssinatura(): Promise<void> {
+    throw new Error("O envio para assinatura só funciona com o banco conectado.");
+  }
+
+  async atualizarContratoAssinatura(): Promise<void> {
+    throw new Error("O envio para assinatura só funciona com o banco conectado.");
+  }
+
+  async contratoNoServidor() {
+    return { autentiqueLigada: false, mensagem: "O envio para assinatura só funciona com o banco conectado." };
+  }
+
+  // ─── Onboarding (no navegador) ────────────────────────────────────────────
+
+  async obterModeloOnboarding() {
+    return ler().modeloOnboarding ?? structuredClone(MODELO_ONBOARDING_VAZIO);
+  }
+
+  async salvarModeloOnboarding(m: ModeloOnboarding) {
+    const b = ler();
+    b.modeloOnboarding = m;
+    gravar(b);
+  }
+
+  // ─── Briefing do cliente (no navegador) ────────────────────────────────────
+
+  async listarPerguntasBriefing() {
+    return (ler().perguntasBriefing ?? []).sort((a, b) => a.ordem - b.ordem);
+  }
+
+  async salvarPerguntaBriefing(p: PerguntaBriefing) {
+    const b = ler();
+    b.perguntasBriefing = [...(b.perguntasBriefing ?? []).filter((x) => x.id !== p.id), p];
+    gravar(b);
+  }
+
+  async removerPerguntaBriefing(id: string) {
+    const b = ler();
+    b.perguntasBriefing = (b.perguntasBriefing ?? []).filter((x) => x.id !== id);
+    b.respostasBriefing = (b.respostasBriefing ?? []).filter((x) => x.perguntaId !== id);
+    gravar(b);
+  }
+
+  async listarRespostasBriefing(clienteId: string) {
+    return (ler().respostasBriefing ?? []).filter((r) => r.clienteId === clienteId);
+  }
+
+  async responderBriefing(clienteId: string, perguntaId: string, resposta: string | null) {
+    const b = ler();
+    const p = (b.perguntasBriefing ?? []).find((x) => x.id === perguntaId);
+    const lista = b.respostasBriefing ?? [];
+    const antes = lista.find((r) => r.clienteId === clienteId && r.perguntaId === perguntaId);
+    const r: RespostaBriefing = {
+      id: antes?.id ?? novoId(),
+      clienteId,
+      perguntaId,
+      perguntaTexto: p?.pergunta ?? antes?.perguntaTexto ?? "",
+      resposta: resposta?.trim() || null,
+      respondidoPorNome: USUARIO.nome,
+      respondidoEm: new Date().toISOString(),
+    };
+    b.respostasBriefing = [...lista.filter((x) => x !== antes), r];
+    gravar(b);
   }
 
   // ─── Datas comemorativas (no navegador) ────────────────────────────────────
