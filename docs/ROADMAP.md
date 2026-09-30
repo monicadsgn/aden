@@ -11,6 +11,8 @@ Plano guardado. **Nada daqui é para construir sem a Moni pedir.** Atualizado em
   Sem clientes reais cadastrados ainda.
 - 29/09/2026: reunião de sociedade com o Áleff. Decisões na seção 0; plano em fases (0 a 6) logo abaixo delas.
   Fase 0 (diagnóstico) entregue e aprovada; próxima é a Fase 1.
+- 30/09/2026: auditoria geral depois das Fases 1 a 6 (inventário, diagnóstico e relatório numerado G1–G10,
+  M1–M18, D1–D11) em `docs/AUDITORIA.md`. Nada corrigido: a Moni aprova por número.
 
 ## Pendências da Moni (fora do código)
 
