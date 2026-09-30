@@ -97,7 +97,6 @@ describe("tela do cliente e PDF", () => {
 describe("PDF do onboarding", () => {
   it("só texto para o cliente: nada de horas, piso, custo nem nome de sócio (confere o que vai para o PDF)", async () => {
     const { montarOnboarding } = await import("@/lib/calculo/onboarding");
-    const { onboardingParaPdf } = await import("@/lib/documentos/onboarding-pdf");
     const c = config();
     const cen = { ...novoCenario("x"), clienteId: "cli" };
     cen.entregas = [{ id: "1", tipoEntregaId: "post", quantidade: 8, horasPorUnidade: null }];
@@ -115,7 +114,8 @@ describe("PDF do onboarding", () => {
       atendimento: null,
     };
     const doc = montarOnboarding(c, "cli", modelo, "2026-10-01");
-    const texto = JSON.stringify(onboardingParaPdf(doc));
+    // o PDF (lib/documentos/onboarding-visual.ts) só recebe este documento
+    const texto = JSON.stringify(doc);
     expect(texto).not.toMatch(/piso|preju[ií]zo|\bh\b|mônica|áleff|reinvest|rateio|custo|divis[ãa]o|percentual|%|1\.500|45,00|35,00/i);
     expect(texto).toContain("planejamos o mês.");
     expect(texto).toContain("8 por mês");

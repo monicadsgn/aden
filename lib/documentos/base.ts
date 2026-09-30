@@ -196,3 +196,15 @@ export function iconeEmCirculo(pagina: PDFPage, nome: NomeIcone, cx: number, cy:
   const t = raio * 1.1;
   icone(pagina, nome, cx - t / 2, cy + t / 2, t, traco, Math.max(1.2, raio / 9));
 }
+
+/** Baixar no navegador (prévia do contrato, onboarding). */
+export function baixarPdf(bytes: Uint8Array, arquivo: string) {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${arquivo}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

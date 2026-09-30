@@ -13,7 +13,7 @@ import type { Configuracao } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
 import { hojeISO } from "@/lib/calculo/dia";
 import { contratoEmPdf } from "@/lib/contrato/pdf";
-import { baixarPdf } from "@/lib/documentos/folha";
+import { baixarPdf } from "@/lib/documentos/base";
 
 const quando = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 const ROTULO = { enviado: "esperando assinatura", assinado: "assinado", recusado: "recusado", cancelado: "substituído" } as const;

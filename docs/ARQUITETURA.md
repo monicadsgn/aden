@@ -459,18 +459,19 @@ testado) junta com o pacote do cliente (incluso), os serviços contratados, a ga
 lista o que falta. PDF pela impressão do navegador (`/imprimir/onboarding`, `components/impressao/Onboarding.tsx`, com
 teste sem nada interno). Conector: `ver_onboarding`, `salvar_modelo_onboarding`.
 
-**PDFs da Aden (30/09/2026, migration 0033):** contrato e onboarding saem do mesmo molde, `lib/documentos/folha.ts`
-(pdf-lib, no servidor e no navegador): folha creme, cabeçalho com a marca, títulos numerados, itens com marcador,
-assinaturas e rodapé com contato e página. Cores em `lib/documentos/identidade.ts`, espelho de `app/tokens.css` com
-teste que confere. Medida de texto letra por letra (o pdf-lib mede com kerning e desenha sem). O contrato segue a
-estrutura do contrato da Moni: título "Contrato de prestação de serviços · Aden · marca", partes qualificadas em texto
-corrido (CPF/CNPJ formatados por `formatarDocumento`), cláusulas 1.1, 1.2…, valor por extenso, local e data (cidade
-em `contrato_modelo.cidade`) e assinaturas. O onboarding é baixado da ficha (Fechamento → Gerar onboarding); a
-página `/imprimir/onboarding` saiu. Conector: `mensagem_pedir_dados_cliente`; `definir_escopo_cliente` aceita
-`pacote`. Ficha: próximo vencimento (`proximoVencimento`) em vez do vencimento do mês.
-Dinheiro em reais e referências por nome na conversa; a tradução fica em
-`lib/mcp/traducao.ts`. As instruções do servidor proíbem inventar número de negócio.
-Ao criar uma área nova (fases 2+), acrescente as ferramentas dela aqui.
+**PDFs da Aden (30/09/2026, migration 0033; identidade real aprovada pela Moni no mesmo dia):** contrato e
+onboarding usam `lib/documentos/base.ts` (pdf-lib + fontkit, no servidor e no navegador): Montserrat embutida
+(`fontes.ts`, gerado), logo "aden" em vetor (`logo.ts`, do ADEN VERDE.svg), cores da marca (branco domina, verde de
+apoio, tons de apoio no verde escuro, texto verde quase preto), ondas, curvas e cantos arredondados, ícones de traço
+próprios. `contrato-visual.ts`: primeira página com bloco verde, logo branca, título grande e a linha do contratante,
+onda separando do corpo; partes em cartões, cláusulas com número em quadrado verde e título verde em negrito,
+assinaturas em cartões, rodapé com a logo pequena. `onboarding-visual.ts`: capa verde "Olá, [nome]!", seções com
+ícone e cartões (seções curtas duas por página), página final de contato em verde. Medida de texto letra por letra
+(o pdf-lib mede com kerning e desenha sem). O contrato segue a estrutura do contrato da Moni: título "Contrato de
+prestação de serviços · Aden · marca", partes qualificadas em texto corrido (CPF/CNPJ formatados por
+`formatarDocumento`), cláusulas 1.1, 1.2…, valor por extenso, local e data (cidade em `contrato_modelo.cidade`) e
+assinaturas. Conector: `mensagem_pedir_dados_cliente`; `definir_escopo_cliente` aceita `pacote`. Ficha: próximo
+vencimento (`proximoVencimento`).
 
 ## Modelo de dados
 

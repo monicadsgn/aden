@@ -81,7 +81,7 @@ export async function onboardingVisual(doc: DocumentoOnboarding, geradoEm: Date 
 
   capa(pdf.addPage([A4.largura, A4.altura]), f, doc);
 
-  const cabecalho = (s: SecaoPronta, n: number, continua: boolean) => {
+  const novaPagina = () => {
     p = pdf.addPage([A4.largura, A4.altura]);
     brancas.push(p);
     const W = A4.largura;
@@ -90,25 +90,57 @@ export async function onboardingVisual(doc: DocumentoOnboarding, geradoEm: Date 
     p.drawSvgPath(`M ${W - 150} 0 H ${W} V 120 C ${W - 40} 130, ${W - 70} 60, ${W - 150} 0 Z`, { x: 0, y: H, color: cor("verdeClaro") });
     p.drawCircle({ x: W - 40, y: 70, size: 70, color: cor("verdeClaro") });
     logo(p, MX, H - 46, 15, cor("verde"));
-    rotulo(p, s.titulo.toUpperCase(), { x: W - MX - 30, y: H - 58, tamanho: 6.8, fonte: f.semi, cor: cor("verdeEscuro"), espacamento: 1, direita: true });
+    rotulo(p, `ONBOARDING · ${doc.cliente}`.toUpperCase(), { x: W - MX - 30, y: H - 58, tamanho: 6.8, fonte: f.semi, cor: cor("verdeEscuro"), espacamento: 1, direita: true });
     y = H - 110;
-    if (continua) return;
+    naPagina = 0;
+  };
+  let naPagina = 0;
+
+  const linhasTitulo = (s: SecaoPronta) => quebrar([{ texto: s.titulo, fonte: "forte" }], f, 25, LARG - 62);
+  const tituloSecao = (s: SecaoPronta, n: number) => {
     iconeEmCirculo(p, iconeDaSecao(s), MX + 24, y - 24, 24, cor("verde"), cor("branco"));
     rotulo(p, String(n).padStart(2, "0"), { x: MX + 62, y: y - 14, tamanho: 9, fonte: f.forte, cor: cor("verde"), espacamento: 1.2 });
-    y = desenharLinhas(p, quebrar([{ texto: s.titulo, fonte: "forte" }], f, 25, LARG - 62), f, { x: MX + 62, y: y - 18, tamanho: 25, cor: cor("verdeProfundo"), entrelinha: 1.15 });
+    y = desenharLinhas(p, linhasTitulo(s), f, { x: MX + 62, y: y - 18, tamanho: 25, cor: cor("verdeProfundo"), entrelinha: 1.15 });
     y -= 34;
+    naPagina += 1;
   };
+
+  // altura que a seção ocupa (mesmas medidas do desenho), para juntar seções curtas duas por página
+  const alturaBloco = (b: Bloco): number => {
+    if (b.tipo === "paragrafo") return quebrar([{ texto: b.texto }], f, 11.5, LARG - 44).length * 11.5 * 1.6 + 36 + 14;
+    if (b.tipo === "numerada")
+      return (
+        b.itens.reduce((soma, it) => {
+          const [rot, ...resto] = it.texto.split(": ");
+          const temRotulo = resto.length > 0 && rot.length < 40;
+          return soma + (temRotulo ? 16 : 0) + quebrar([{ texto: temRotulo ? resto.join(": ") : it.texto }], f, 10.5, LARG - 56).length * 10.5 * 1.55 + 18;
+        }, 0) + 8
+      );
+    return b.itens.reduce((soma, it) => soma + (it.destaque ? 17 : 0) + quebrar([{ texto: it.texto }], f, 10.5, LARG - 70).length * 10.5 * 1.55 + 26 + 10, 0) + 4;
+  };
+  const alturaSecao = (s: SecaoPronta) => 18 + linhasTitulo(s).length * 25 * 1.15 + 34 + s.blocos.reduce((soma, b) => soma + alturaBloco(b), 0);
 
   doc.secoes.forEach((s, i) => {
     const n = i + 1;
     if (s.chave === "contato") {
       const pg = pdf.addPage([A4.largura, A4.altura]);
       contato(pg, f, doc, s, n);
+      naPagina = 2;
       return;
     }
-    cabecalho(s, n, false);
+    // junta com a seção anterior se as duas couberem na mesma página (no máximo duas por página)
+    const cabeAqui = brancas.length > 0 && naPagina === 1 && y - 30 - alturaSecao(s) > BASE - 12;
+    if (cabeAqui) {
+      y -= 10;
+      p.drawSvgPath(`M 0 0 C ${LARG * 0.25} -6, ${LARG * 0.5} 6, ${LARG * 0.75} 0 S ${LARG} 0, ${LARG} 0`, { x: MX, y, borderColor: cor("verdeMedio"), borderWidth: 1 });
+      y -= 20;
+    } else novaPagina();
+    tituloSecao(s, n);
     const caber = (h: number) => {
-      if (y - h < BASE) cabecalho(s, n, true);
+      if (y - h < BASE) {
+        novaPagina();
+        naPagina = 2;
+      }
     };
     for (const b of s.blocos) desenharBloco(b);
 

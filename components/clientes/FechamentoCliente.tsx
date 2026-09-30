@@ -14,8 +14,8 @@ import type { ClienteBase } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
 import { hojeISO } from "@/lib/calculo/dia";
 import { montarOnboarding } from "@/lib/calculo/onboarding";
-import { baixarPdf } from "@/lib/documentos/folha";
-import { onboardingEmPdf } from "@/lib/documentos/onboarding-pdf";
+import { baixarPdf } from "@/lib/documentos/base";
+import { onboardingVisual } from "@/lib/documentos/onboarding-visual";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
 
 const campo = "h-9 rounded-campo border border-linha bg-superficie px-2 text-sm outline-none focus:border-marca focus:ring-2 focus:ring-marca/20";
@@ -60,7 +60,7 @@ export function FechamentoCliente({
       const [config, modelo] = await Promise.all([repo.carregarConfig(), repo.obterModeloOnboarding()]);
       const doc = montarOnboarding(config, c.id, modelo, hojeISO());
       if (doc.faltando.length) throw new Error(`Falta preencher antes de gerar o onboarding: ${doc.faltando.join("; ")}.`);
-      baixarPdf(await onboardingEmPdf(doc), doc.arquivo);
+      baixarPdf(await onboardingVisual(doc), doc.arquivo);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não deu para gerar o onboarding.");
     }
