@@ -138,7 +138,8 @@ migração. Meta: tudo pronto até o fim de outubro.
   batem uma a uma com o sistema antigo (Aden 12, StadiumPlay 25, Olinda 9 + as 5 que esperam aprovação lá); 4 fases
   da logo concluídas lá depois da importação foram concluídas aqui também. Tipo "Logo" (Branding) criado sem tempo por
   entrega (de propósito: a Aden não vende logo, o cronômetro mede o tempo real) e ligado às 6 tarefas da logo. Painel refeito em quadro (colunas que deslizam),
-  migration 0022. Falta: arquivar a área antiga depois das 5 peças da Olinda.
+  migration 0022. Em 30/09/2026 as 5 peças da Olinda que esperavam aprovação vieram já aprovadas (só textos) e a
+  Olinda ganhou o link do painel. Falta só a Moni arquivar a área antiga.
 - **Fase 4 · Os dois sócios pelo Claude:** memória de contexto do cliente no conector (quem anotou); toda ferramenta
   registra qual sócio agiu; passo a passo de configuração com o Áleff.
 - **Fase 5 · Identidade e documentos:** tokens da marca a partir do SVG; proposta em PDF, contrato por e-mail
