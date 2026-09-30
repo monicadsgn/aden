@@ -206,7 +206,9 @@ graves 5, 6 e 7 foram feitos na Fase 1, em 29/09/2026; os médios 8–14 e os de
 5. **Detalhes 15, 17 e 18 (feitos em 30/09/2026):** texto mínimo de 12 px em frase explicativa; ícones repetidos no menu; bolinha da Proposta
    com explicação.
 
-Perguntas de regra de contrato (a reunião de 29/09 deixou para depois, junto com a seção 2; não inventar a resposta):
+Perguntas de regra de contrato (a reunião de 29/09 deixou para depois, junto com a seção 2; não inventar a resposta).
+Em 30/09/2026 a Moni confirmou: entram no fluxo que será construído depois de algumas semanas com clientes reais; até lá
+ficam fora da pauta (o campo "mês do onboarding cobra mensalidade?" segue vazio, "a definir"):
 - Cliente **pausado**: divide custo fixo? Conta nas horas e no faturamento esperado? Paga mensalidade?
 - **Reunião em que o cliente faltou**: conta como entregue ou fica devendo?
 - **Extras**: só contar, ou avisar que deveriam ser cobrados à parte? (O audiovisual já é extra, só se o cliente pedir.)
