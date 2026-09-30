@@ -179,6 +179,8 @@ migração. Meta: tudo pronto até o fim de outubro.
   (Gestão de Cobranças / Planos de Assinatura), sem API para o Aden ler. Caminhos levados à Moni: link por mês gerado
   pelo Aden, ou plano no app com o Aden só conferindo. **Decisão da Moni (30/09/2026): plano no app (B), por enquanto.**
   O passo do fechamento virou "Cobrança criada" e cada pagamento continua lançado em Pagamentos quando cai.
+  InfiniteTag da conta conjunta: grupoaden (30/09/2026). Só é usada se a cobrança mudar para o caminho A (link por mês
+  gerado pelo Aden); no B não entra no sistema.
   Quem assina o contrato pela Aden: o Áleff (decidido em 30/09/2026). O texto do contrato a Moni leva pronto.
   Onboarding (passo 5) pronto na versão de teste (30/09/2026, migration 0032): texto aprovado pela Moni guardado em
   Configurações → Onboarding; o PDF de cada cliente junta com o pacote, os serviços contratados, a garantia e o
