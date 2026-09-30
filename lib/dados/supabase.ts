@@ -19,6 +19,7 @@ import type {
   Membro,
   Convite,
   MembroEquipe,
+  NotaContexto,
   NovoAviso,
   PainelCliente,
   Pedido,
@@ -29,6 +30,8 @@ import type {
   ResumoSimulacao,
   Simulacao,
   StatusPedido,
+  TipoContexto,
+  UsoDoConector,
   Usuario,
 } from "./repositorio";
 
@@ -40,19 +43,48 @@ function erro(e: { message: string } | null) {
   if (e) throw new Error(e.message);
 }
 
+function notaDoBanco(n: Linha): NotaContexto {
+  return {
+    id: n.id as string,
+    clienteId: n.cliente_id as string,
+    tipo: n.tipo as TipoContexto,
+    texto: n.texto as string,
+    autorNome: (n.autor_nome as string) ?? null,
+    peloClaude: n.pelo_claude === true,
+    criadoEm: n.criado_em as string,
+    resolvidoEm: (n.resolvido_em as string) ?? null,
+    resolvidoPorNome: (n.resolvido_por_nome as string) ?? null,
+  };
+}
+
 export class RepositorioSupabase implements Repositorio {
   readonly modo = "supabase" as const;
   private sb: SupabaseClient;
   private orgId: string | null = null;
   private usuario: Usuario | null = null;
 
-  /** `servidor`: sem guardar sessão no navegador (uso pelo conector MCP). */
-  constructor(url: string, chave: string, opcoes: { servidor?: boolean } = {}) {
+  private codigoClaude: string | null;
+
+  /**
+   * `servidor`: sem guardar sessão no navegador (uso pelo conector MCP).
+   * `codigoClaude`: código pessoal do sócio no conector; vai em toda chamada e o banco assina em nome dele (migration 0025).
+   */
+  constructor(url: string, chave: string, opcoes: { servidor?: boolean; codigoClaude?: string } = {}) {
+    this.codigoClaude = opcoes.codigoClaude ?? null;
     this.sb = createClient(url, chave, {
       auth: opcoes.servidor
         ? { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         : { persistSession: true, autoRefreshToken: true },
+      ...(this.codigoClaude ? { global: { headers: { "x-aden-conector": this.codigoClaude } } } : {}),
     });
+  }
+
+  /** Com código do Claude: de quem é o código (null = inválido). Sem código: null. */
+  async donoDoCodigoClaude(): Promise<{ pessoaId: string; nome: string } | null> {
+    if (!this.codigoClaude) return null;
+    const { data, error } = await this.sb.rpc("conector_quem");
+    erro(error);
+    return (data as { pessoaId: string; nome: string } | null) ?? null;
   }
 
   private async org(): Promise<string> {
@@ -93,6 +125,9 @@ export class RepositorioSupabase implements Repositorio {
       pessoaId: (pessoaId as string | null) ?? null,
       fotoUrl,
     };
+    // pelo Claude com código pessoal: quem age é o dono do código
+    const dono = await this.donoDoCodigoClaude();
+    if (dono) this.usuario = { ...this.usuario, nome: `${dono.nome} (pelo Claude)`, pessoaId: dono.pessoaId, fotoUrl: null };
     return this.usuario;
   }
 
@@ -670,6 +705,7 @@ export class RepositorioSupabase implements Repositorio {
       antes: (a.antes as Record<string, unknown>) ?? null,
       depois: (a.depois as Record<string, unknown>) ?? null,
       autor: nomes.get(a.autor_id as string) ?? (a.autor_email as string) ?? "sistema",
+      peloClaude: a.pelo_claude === true,
       em: a.em as string,
     }));
   }
@@ -978,7 +1014,15 @@ export class RepositorioSupabase implements Repositorio {
   // ─── Google Agenda ────────────────────────────────────────────────────────
 
   async listarPortas() {
-    const { data, error } = await this.sb.from("portas").select("id, inicio, criado_em, usado_em, cancelado_em").order("criado_em", { ascending: false });
+    return this.listarCodigos("porta");
+  }
+
+  private async listarCodigos(uso: "porta" | "conector") {
+    const { data, error } = await this.sb
+      .from("portas")
+      .select("id, inicio, criado_em, usado_em, cancelado_em")
+      .eq("uso", uso)
+      .order("criado_em", { ascending: false });
     erro(error);
     return ((data ?? []) as Linha[]).map((p) => ({
       id: p.id as string,
@@ -997,6 +1041,53 @@ export class RepositorioSupabase implements Repositorio {
 
   async cancelarPorta(id: string) {
     const { error } = await this.sb.rpc("porta_cancelar", { p_id: id });
+    erro(error);
+  }
+
+  // ─── Seu Claude (código pessoal do conector) ──────────────────────────────
+
+  async listarCodigosClaude() {
+    return this.listarCodigos("conector");
+  }
+
+  async gerarCodigoClaude() {
+    const { data, error } = await this.sb.rpc("conector_gerar", { p_org: await this.org() });
+    erro(error);
+    return data as string;
+  }
+
+  async usoDoConector(): Promise<UsoDoConector[]> {
+    const { data, error } = await this.sb.rpc("conector_uso", { p_org: await this.org() });
+    erro(error);
+    return (data as UsoDoConector[] | null) ?? [];
+  }
+
+  // ─── Contexto do cliente ──────────────────────────────────────────────────
+
+  async listarContexto(clienteId: string, incluirResolvidas = false) {
+    let q = this.sb.from("contexto_cliente").select("*").eq("cliente_id", clienteId).order("criado_em", { ascending: false });
+    if (!incluirResolvidas) q = q.is("resolvido_em", null);
+    const { data, error } = await q;
+    erro(error);
+    return ((data ?? []) as Linha[]).map(notaDoBanco);
+  }
+
+  async anotarContexto(n: { clienteId: string; tipo: TipoContexto; texto: string }) {
+    // quem anotou vem do banco (trigger contexto_autor)
+    const { data, error } = await this.sb
+      .from("contexto_cliente")
+      .insert({ org_id: await this.org(), cliente_id: n.clienteId, tipo: n.tipo, texto: n.texto.trim() })
+      .select("*")
+      .single();
+    erro(error);
+    return notaDoBanco(data as Linha);
+  }
+
+  async resolverContexto(id: string, resolvida: boolean) {
+    const { error } = await this.sb
+      .from("contexto_cliente")
+      .update({ resolvido_em: resolvida ? new Date().toISOString() : null })
+      .eq("id", id);
     erro(error);
   }
 

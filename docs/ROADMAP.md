@@ -137,13 +137,23 @@ migração. Meta: tudo pronto até o fim de outubro.
   referências, fotos, lembrete) não ligam o relógio até ganharem um tipo. Passo 5 (conferência) em 30/09/2026: peças
   batem uma a uma com o sistema antigo (Aden 12, StadiumPlay 25, Olinda 9 + as 5 que esperam aprovação lá); 4 fases
   da logo concluídas lá depois da importação foram concluídas aqui também. Tipo "Logo" (Branding) criado sem tempo por
-  entrega (falta a Moni dizer) e ligado às 6 tarefas da logo. Painel refeito em quadro (colunas que deslizam),
-  migration 0022. Falta: arquivar a área antiga depois das 5 peças da Olinda.
+  entrega (de propósito: a Aden não vende logo, o cronômetro mede o tempo real) e ligado às 6 tarefas da logo. Painel refeito em quadro (colunas que deslizam),
+  migration 0022. Em 30/09/2026 as 5 peças da Olinda que esperavam aprovação vieram já aprovadas (só textos) e a
+  Olinda ganhou o link do painel. Falta só a Moni arquivar a área antiga.
 - **Fase 4 · Os dois sócios pelo Claude:** memória de contexto do cliente no conector (quem anotou); toda ferramenta
-  registra qual sócio agiu; passo a passo de configuração com o Áleff.
+  registra qual sócio agiu; passo a passo de configuração com o Áleff. Aprovada em 30/09/2026 e feita na versão de
+  teste (migration 0025): código pessoal do conector (Seu Claude, com passo a passo), mudança protegida que só afeta
+  o dono do código vale na hora e a que afeta o outro vira pedido; contexto do cliente com decisão, preferência,
+  pendência e nota (resolvida sai da lista, não se apaga). Endereço antigo do conector: desligar quando os dois
+  usarem o código novo, avisando a Moni antes. O Áleff precisa de login no Aden antes de gerar o código dele.
+  Último passo feito em 30/09/2026: 44 notas ativas do contexto "Aden" do sistema antigo importadas uma vez (32
+  decisões, 2 preferências, 4 pendências, 6 notas), com a data original e a Moni como autora; 6 ficaram de fora por
+  escolha dela. As que citavam o sistema antigo foram reescritas; as que lá já estavam cortadas no limite de 400
+  caracteres vieram como estavam, terminando em "…".
 - **Fase 5 · Identidade e documentos:** tokens da marca a partir do SVG; proposta em PDF, contrato por e-mail
   (Autentique), link de pagamento (InfinitePay), onboarding por serviço, rotina de fechamento, pasta no Drive (pronta
-  para ligar com o e-mail novo), briefing único no perfil do cliente, template da apresentação comercial. Processo:
+  para ligar com o e-mail novo) — e-mail da Aden (30/09/2026): grupoaden1@gmail.com, usado para a pasta do cliente
+  no Drive e para o envio do contrato, briefing único no perfil do cliente, template da apresentação comercial. Processo:
   indicação → pesquisa de nicho e concorrência → reunião comercial (follow-up se "vou ver") → proposta → kickoff →
   briefing → planejamento → criativos → monitoramento → relatório no fim do mês.
 - **Fase 6 · Skills da Aden:** proposta, contrato, onboarding, fechamento e apresentação em arquivos .skill.

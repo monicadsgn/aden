@@ -1,7 +1,7 @@
 // Servidor MCP da Aden: dá ao Claude (projeto no claude.ai) o mesmo acesso que
 // um sócio tem no site. Ele entra com um usuário próprio ("Claude (conector)"),
-// então as permissões do banco (RLS) valem e tudo o que ele alterar aparece no
-// Histórico com o nome dele.
+// então as permissões do banco (RLS) valem. Com o código pessoal do sócio (Fase 4),
+// tudo o que ele alterar aparece no Histórico no nome do sócio, "pelo Claude".
 
 import "server-only";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -24,7 +24,7 @@ import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } fro
 import { ROTULO_PECA, estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, publicar, rotuloStatus, situacaoPeca, type Tarefa } from "../calculo/tarefas";
 import type { Configuracao, Meta, Pacote } from "../calculo/tipos";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
-import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig } from "../dados/repositorio";
+import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
 import { REGRAS_PROTECAO } from "../regras/aprovacao";
 import { PAINEL_CLIENTE_ATIVO } from "../recursos";
 import type { RepositorioSupabase } from "../dados/supabase";
@@ -55,9 +55,14 @@ Regras que você deve seguir:
 - Para saber se cabe cliente novo, use ver_visao_do_mes. Para ver cliente dando prejuízo e os caminhos para resolver, ver_saude_clientes.
 - Tempo por entrega é em MINUTOS (minutosPorUnidade). 20 min, 40 min…
 - Proteção dos sócios: ${REGRAS_PROTECAO}
-  Você (o conector) não é sócio: toda mudança sua em piso, % dos sócios, divisão de horas, tempo por entrega ou números da sociedade
-  vira pedido de aprovação para o sócio afetado (exceto campo que estava vazio). Diga isso a quem está conversando.
+  Você age em nome do sócio dono do código do conector (o Histórico mostra "Nome (pelo Claude)"). Mudança em piso, % dos sócios,
+  divisão de horas, tempo por entrega ou números da sociedade que só afeta esse sócio vale na hora, igual no site; se afeta o
+  outro sócio, vira pedido de aprovação para ele (campo vazio pode ser preenchido direto). Diga isso a quem está conversando.
+  Pelo endereço antigo (sem código pessoal) você não é sócio: toda mudança protegida vira pedido.
   Você nunca aprova pedidos; quem aprova é o sócio, no site (Sócios → Pedidos e avisos).
+- Contexto do cliente (memória): antes de falar de um cliente, leia ver_contexto_cliente. Quando surgir uma decisão, preferência,
+  pendência ou algo que valha lembrar, ofereça anotar com anotar_contexto_cliente (quem anotou fica guardado). Nada se apaga:
+  o que não vale mais é marcado com resolver_nota_contexto e sai da lista principal. Só os sócios veem.
 - Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
 - Sociedade (decidida em 29/09/2026): antes da virada, um sócio recebe um % do que entra (depois do imposto em %)
   e o outro fica com a sobra, escolhendo quanto dela vai para o tráfego próprio da Aden; da virada para cima, a sobra
@@ -145,6 +150,19 @@ export function dataHoraBrasilia(v: string | null): string | null {
   const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})$/.exec(v.trim());
   if (!m) throw new Error(`Data e hora inválidas: ${v}. Use AAAA-MM-DD HH:MM.`);
   return new Date(`${m[1]}T${m[2]}:00-03:00`).toISOString();
+}
+
+const ROTULO_CONTEXTO: Record<TipoContexto, string> = { decisao: "decisão", preferencia: "preferência", pendencia: "pendência", nota: "nota" };
+
+function notaParaConector(n: NotaContexto) {
+  return {
+    id: n.id,
+    tipo: ROTULO_CONTEXTO[n.tipo],
+    texto: n.texto,
+    quem: n.autorNome,
+    quando: n.criadoEm,
+    ...(n.resolvidoEm ? { resolvida: { em: n.resolvidoEm, por: n.resolvidoPorNome } } : {}),
+  };
 }
 
 export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, origem = ""): McpServer {
@@ -877,7 +895,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const c = resolver(config.clientes, cliente, "Cliente");
-        const [tarefas, pagamentos, leads] = await Promise.all([repo.listarTarefas(), repo.listarPagamentos(), repo.listarLeads()]);
+        const [tarefas, pagamentos, leads, contexto] = await Promise.all([repo.listarTarefas(), repo.listarPagamentos(), repo.listarLeads(), repo.listarContexto(c.id)]);
         const k = c.contrato ?? contratoVazio();
         const lead = leads.find((l) => l.clienteId === c.id);
         return {
@@ -903,7 +921,69 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
             .slice(0, 6)
             .map((p) => ({ valor: paraReais(p.valorCentavos), recebidoEm: p.recebidoEm, mes: p.competencia })),
           veioDoCrm: lead ? { lead: lead.nome, origem: lead.origem || null, fechadoEm: lead.fechadoEm } : null,
+          contexto: contexto.slice(0, 10).map(notaParaConector),
+          contextoTotal: contexto.length,
         };
+      }),
+  );
+
+  // ─── Contexto do cliente (memória, Fase 4) ─────────────────────────────────
+
+  server.registerTool(
+    "ver_contexto_cliente",
+    {
+      title: "Contexto do cliente",
+      description:
+        "Memória do cliente: decisões, preferências, pendências e notas, com quem anotou e quando. Leia antes de falar de um cliente. Por padrão só as ativas; resolvidas=true traz também as resolvidas.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id"),
+        tipo: z.enum(["decisao", "preferencia", "pendencia", "nota"]).optional().describe("filtra por tipo"),
+        resolvidas: z.boolean().optional(),
+      },
+    },
+    async ({ cliente, tipo, resolvidas }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const c = resolver((await repo.carregarConfig()).clientes, cliente, "Cliente");
+        const notas = (await repo.listarContexto(c.id, resolvidas === true)).filter((n) => !tipo || n.tipo === tipo);
+        return { cliente: c.nome, notas: notas.map(notaParaConector) };
+      }),
+  );
+
+  server.registerTool(
+    "anotar_contexto_cliente",
+    {
+      title: "Anotar no contexto do cliente",
+      description:
+        "Guarda uma anotação na memória do cliente. tipo: decisao (algo decidido), preferencia (como o cliente gosta), pendencia (algo esperando alguém), nota (o resto). Quem anotou é gravado pelo banco. Confirme o texto com quem está conversando antes de gravar.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id"),
+        tipo: z.enum(["decisao", "preferencia", "pendencia", "nota"]),
+        texto: z.string().min(1),
+      },
+    },
+    async ({ cliente, tipo, texto }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const c = resolver((await repo.carregarConfig()).clientes, cliente, "Cliente");
+        const nota = await repo.anotarContexto({ clienteId: c.id, tipo, texto });
+        return { cliente: c.nome, anotado: notaParaConector(nota) };
+      }),
+  );
+
+  server.registerTool(
+    "resolver_nota_contexto",
+    {
+      title: "Marcar anotação como resolvida",
+      description:
+        "Tira a anotação da lista principal sem apagar (fica no histórico e aparece com resolvidas=true). reabrir=true volta ela para a lista. Use o id que vem de ver_contexto_cliente.",
+      inputSchema: { id: z.string(), reabrir: z.boolean().optional() },
+    },
+    async ({ id, reabrir }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        await repo.resolverContexto(id, reabrir !== true);
+        return { ok: true, situacao: reabrir ? "ativa de novo" : "resolvida" };
       }),
   );
 
@@ -1135,7 +1215,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       executar(async () => {
         const repo = await obterRepo();
         const l = resolver(await repo.listarLeads(), id, "Lead");
-        await repo.salvarInteracao({ id: novoId(), leadId: l.id, tipo: tipo ?? "nota", texto, em: new Date().toISOString(), autorNome: "Claude (conector)" });
+        await repo.salvarInteracao({ id: novoId(), leadId: l.id, tipo: tipo ?? "nota", texto, em: new Date().toISOString(), autorNome: (await repo.usuarioAtual())?.nome ?? "Claude (conector)" });
         if (proximoContato || proximaAcao)
           await repo.salvarLead({ ...l, ...(proximoContato && { proximoContato }), ...(proximaAcao != null && { proximaAcao }) });
         const config = await repo.carregarConfig();

@@ -15,7 +15,7 @@
 - Toda tabela nova: `org_id`, RLS (leitura membro, escrita admin, a menos que a fase peça outra coisa), triggers `carimbar()` e `auditar()`.
 - Motor de cálculo em `lib/calculo/` é puro e testado (`npm test`). Mudou fórmula → atualiza teste e `docs/ARQUITETURA.md`.
 - Next.js 16: ler `node_modules/next/dist/docs/` antes de usar APIs novas (`middleware` virou `proxy`, APIs de request são assíncronas).
-- Conector MCP (`lib/mcp/`): toda área nova ganha ferramentas no conector, para o Claude do claude.ai operar o sistema como um sócio.
+- Conector MCP (`lib/mcp/`): toda área nova ganha ferramentas no conector, para o Claude do claude.ai operar o sistema como um sócio. Cada sócio usa o próprio código (Fase 4, `x-aden-conector`): o banco assina em nome dele "pelo Claude"; o conector nunca aprova pedido. Contexto do cliente (`contexto_cliente`) não se apaga, só se resolve.
 - Campos protegidos (piso, % dos sócios, divisão de horas, tempo por entrega) só mudam por `propor_alteracao` (aprovação do sócio afetado); o banco bloqueia update direto. Regra em `lib/regras/aprovacao.ts`, espelhada nas migrations 0004–0009. Escopo/proposta abaixo do piso = pedido de exceção.
 - Tempo por entrega na tela é em minutos (`CampoMinutos`); por dentro, horas.
 - Todo aviso tem `acao` (botão para o campo que resolve). Campo opcional vazio é `lembrete`, não erro.
@@ -26,7 +26,7 @@
 - Tela Mês, aba Resumo e metas: fala em crescimento ("hora do próximo passo"), nunca "não cabe"/"bloqueado" (há teste).
 - **Plano guardado em `docs/ROADMAP.md`** (próximos passos da auditoria, organização de tarefas com o conflito do cronômetro, perguntas para os sócios). Nada de lá se constrói sem a Moni pedir; ler antes de mexer em tarefas, etapas do cliente ou cronômetro.
 - Menu em 5 grupos (docs/ARQUITETURA.md). Assunto novo entra numa tela que já existe (aba) antes de virar item de menu.
-- Painel do cliente (`/c/[token]`): **ligado** na Fase 3 (chave em `lib/recursos.ts`), cliente por cliente: só quem tem link criado na ficha vê peças (começou pela StadiumPlay; a Olinda entra depois). O cliente só lê/responde pelas funções `painel_cliente`/`responder_peca` (nunca tabela direta). Nada interno sai delas; campos de resposta do cliente só o banco escreve. A própria Aden não tem painel.
+- Painel do cliente (`/c/[token]`): **ligado** na Fase 3 (chave em `lib/recursos.ts`), cliente por cliente: só quem tem link criado na ficha vê peças (StadiumPlay e Olinda). O cliente só lê/responde pelas funções `painel_cliente`/`responder_peca` (nunca tabela direta). Nada interno sai delas; campos de resposta do cliente só o banco escreve. A própria Aden não tem painel.
 - Divisão entre sócios (29/09/2026, detalhe em `docs/ROADMAP.md` seção 0): abaixo do teto da virada, a parte da Mônica é um % do que **entrou** (pago de verdade, parcial gera parcial) depois do imposto em %; custos, taxa de recebimento e tráfego próprio saem do resto. A partir do teto (o que entrou no mês), divisão igual da sobra. Aviso de "bônus" ligado ao valor da parte dela. Teto, % e valor do aviso são campos protegidos na configuração.
 - Imposto: DAS do MEI (fixo, como custo) **ou** % sobre o faturamento, nunca os dois juntos.
 - Limite de reuniões por mês é condição do contrato, não quantidade do pacote. Audiovisual é extra (só se o cliente pedir), fora do pacote padrão.

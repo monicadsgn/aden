@@ -415,7 +415,18 @@ Verificado em 25/09/2026: trocando só o `tokens.css` por outra paleta e outra f
 (percentuais, regime, ordem de distribuição, sócios, serviços, tipos de entrega em minutos, custos fixos, clientes),
 calcular cenário, simulações, histórico, visão do mês, escopo contratado (com a regra do piso), saúde com os caminhos,
 horas do mês, calibragem e medições, pagamentos e repasse, resumo do contador, aprovações (só leitura) e pacote que cabe.
-Mudanças protegidas feitas pelo conector viram pedido de aprovação. Dinheiro em reais e referências por nome na conversa; a tradução fica em
+**Código pessoal (Fase 4, migration 0025):** cada sócio gera o seu em Configurações → Equipe → Seu Claude (tabela
+`portas` com `uso = 'conector'`; só o hash fica guardado) e cola `/api/mcp/<código>` no claude.ai. O servidor manda o
+código no cabeçalho `x-aden-conector` de toda chamada; o banco (`conector_agente`) confere e assina em nome do dono:
+auditoria com `pelo_claude = true` (o Histórico mostra "Nome (pelo Claude)"), carimbos e pedidos (`criar_pedido` via
+`quem_age`). Mudança protegida que só afeta o dono vale na hora (igual no site); se afeta o outro sócio, vira pedido.
+`decidir_pedido` não olha o código: o conector nunca aprova. O código do conector não abre a porta genérica e
+vice-versa. Endereço antigo (senha única `ADEN_MCP_TOKEN`, tudo como "Claude (conector)", toda mudança protegida vira
+pedido) fica ligado por `CONECTOR_ENDERECO_ANTIGO` em `lib/recursos.ts` até os dois sócios usarem o código novo.
+**Contexto do cliente:** `contexto_cliente` (tipo decisão/preferência/pendência/nota, quem anotou e quem resolveu
+preenchidos pelo banco, sem exclusão: resolvida sai da lista). Aba Contexto na ficha do cliente; no conector,
+`ver_contexto_cliente`, `anotar_contexto_cliente`, `resolver_nota_contexto` e o resumo em `ver_cliente`. Só sócios.
+Dinheiro em reais e referências por nome na conversa; a tradução fica em
 `lib/mcp/traducao.ts`. As instruções do servidor proíbem inventar número de negócio.
 Ao criar uma área nova (fases 2+), acrescente as ferramentas dela aqui.
 
@@ -430,6 +441,7 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - ✅ `auditoria` (tabela, registro, ação, antes, depois, autor, data). Só inserida por trigger e sem edição.
 - ✅ `configuracoes_empresa` (reinvestimento, imposto, taxa de recebimento, regra de rateio)
 - ✅ `pessoas` (sócio?, % padrão, piso/h, capacidade h/mês, vínculo opcional com membro)
+- ✅ `portas` (códigos pessoais: `uso` porta genérica ou conector do Claude; só hash), ✅ `contexto_cliente` (memória do cliente, Fase 4)
 - `anexos`
 
 **Comercial / CRM**

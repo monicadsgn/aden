@@ -10,6 +10,7 @@ import { Badge, Botao, CampoTexto, Selecao, Vazio } from "../ui";
 import { PAPEIS } from "@/lib/acesso";
 import { useDados } from "@/lib/dados/contexto";
 import type { Convite, MembroEquipe } from "@/lib/dados/repositorio";
+import { SeuClaude } from "./SeuClaude";
 import { SuaPorta } from "./SuaPorta";
 
 const rotuloPapel = (p: string) => PAPEIS.find((x) => x.valor === p)?.rotulo ?? p;
@@ -141,6 +142,7 @@ export function SecaoEquipe() {
         )}
       </div>
 
+      <SeuClaude />
       <SuaPorta />
     </div>
   );
