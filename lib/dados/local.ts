@@ -428,6 +428,18 @@ export class RepositorioLocal implements Repositorio {
 
   // ─── Google Agenda: só com o banco conectado (o servidor busca no Google) ────
 
+  // ─── Porta genérica: só com o banco conectado ──────────────────────────────
+
+  async listarPortas() {
+    return [];
+  }
+
+  async gerarPorta(): Promise<string> {
+    throw new Error("A porta de acesso só funciona com o banco conectado.");
+  }
+
+  async cancelarPorta() {}
+
   async listarAgendas() {
     return [];
   }

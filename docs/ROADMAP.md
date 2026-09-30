@@ -126,8 +126,10 @@ migração. Meta: tudo pronto até o fim de outubro.
   Aprovada em 30/09/2026: traz só peças abertas (produção, aprovação, agendada) e as publicadas do mês; a área antiga é
   arquivada, não apagada; as 6 tarefas da logo entram no cliente Aden (investido na Aden); reunião de 29/09 e lista de
   dúvidas ficam de fora; painel começa só pela StadiumPlay (a Olinda entra depois das 5 peças que esperam aprovação lá).
-  Passo 1 (etapas de publicação, migration 0020) feito em 30/09/2026. Próximos: 2 porta genérica, 3 painel, 4
-  importação, 5 conferência.
+  Passo 1 (etapas de publicação, migration 0020) e passo 2 (porta genérica, migration 0021) feitos em 30/09/2026.
+  Importação: só os textos (as artes das peças que ainda vão ao ar a Moni põe à mão); tipos: criativos institucionais
+  da Aden → "Criativo de tráfego carrossel" (2) e "estático" (2); 12 posts → "Post simples" (8) e "Carrossel" (4
+  "Inside Aden"). Próximos: 3 painel (só StadiumPlay), 4 importação, 5 conferência.
 - **Fase 4 · Os dois sócios pelo Claude:** memória de contexto do cliente no conector (quem anotou); toda ferramenta
   registra qual sócio agiu; passo a passo de configuração com o Áleff.
 - **Fase 5 · Identidade e documentos:** tokens da marca a partir do SVG; proposta em PDF, contrato por e-mail

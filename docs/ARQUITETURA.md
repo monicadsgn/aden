@@ -296,6 +296,20 @@ ajuste → aprovada → agendada (aprovada, com data) → publicada. `publicar()
 - Conector: `salvar_tarefa` com `legenda` e `publicarEm` (AAAA-MM-DD HH:MM, Brasília), `marcar_publicada`, etapa da
   peça em `listar_tarefas` e `ver_visao_do_dia.publicacao`. Testes em `lib/calculo/publicacao.test.ts`.
 
+## Porta genérica (Fase 3, passo 2, 30/09/2026)
+
+Exceção aprovada em 29/09/2026: um sócio gera o próprio código (Configurações → Equipe e acessos → "Sua porta de
+acesso") e entrega a outro sistema, que usa `/api/porta` para ver e mexer nas tarefas desse sócio. O Aden não guarda
+nada do outro lado.
+- Migration 0021: tabela `portas` (só o hash sha-256 e o começo do código; só o dono lê), funções `porta_gerar`,
+  `porta_cancelar`, `porta_ler`, `porta_salvar_tarefa`, `porta_status`. Quem confere o código é o banco.
+- Só tarefas em que o dono é o responsável (tarefa nova nasce no nome dele); lê nomes de clientes e tipos, nada de
+  valores. Status pela porta: a fazer, em produção, concluída, publicada (sem "com o cliente", que é do painel). O
+  relógio segue a regra de `mudarStatus`.
+- Histórico: `carimbar()` e `auditar()` usam o dono do código como autor quando não há login (`aden.autor_id`).
+- `app/api/porta/route.ts` só traduz (`lib/porta.ts`, testado); cabeçalho `Authorization: Bearer <código>`.
+- Não há ferramenta no conector para gerar código: o conector não é uma pessoa, e o código não deve passar por conversa.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```

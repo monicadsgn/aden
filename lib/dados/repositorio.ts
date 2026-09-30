@@ -109,6 +109,15 @@ export interface AvisoSocio {
 
 export type NovoAviso = Omit<AvisoSocio, "id" | "criadoEm" | "lidoEm">;
 
+export interface PortaDeAcesso {
+  id: string;
+  /** começo do código, para reconhecer */
+  inicio: string;
+  criadoEm: string;
+  usadoEm: string | null;
+  canceladoEm: string | null;
+}
+
 /** O que o cliente vê no painel: só as peças, nunca horas, valores ou sócios. */
 export interface PainelCliente {
   cliente: string;
@@ -233,6 +242,13 @@ export interface Repositorio {
   listarTarefas(): Promise<Tarefa[]>;
   salvarTarefa(t: Tarefa): Promise<void>;
   removerTarefa(id: string): Promise<void>;
+
+  // ─── Porta genérica (código pessoal, Fase 3) ─────────────────────────────────
+  /** meus códigos (só o começo; o código inteiro só aparece ao gerar) */
+  listarPortas(): Promise<PortaDeAcesso[]>;
+  /** gera um código novo e devolve ele inteiro, uma única vez */
+  gerarPorta(): Promise<string>;
+  cancelarPorta(id: string): Promise<void>;
 
   // ─── Google Agenda (só leitura, cada um a sua) ─────────────────────────────
   listarAgendas(): Promise<{ id: string; nome: string; endereco: string }[]>;

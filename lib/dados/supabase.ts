@@ -973,6 +973,29 @@ export class RepositorioSupabase implements Repositorio {
 
   // ─── Google Agenda ────────────────────────────────────────────────────────
 
+  async listarPortas() {
+    const { data, error } = await this.sb.from("portas").select("id, inicio, criado_em, usado_em, cancelado_em").order("criado_em", { ascending: false });
+    erro(error);
+    return ((data ?? []) as Linha[]).map((p) => ({
+      id: p.id as string,
+      inicio: p.inicio as string,
+      criadoEm: p.criado_em as string,
+      usadoEm: (p.usado_em as string) ?? null,
+      canceladoEm: (p.cancelado_em as string) ?? null,
+    }));
+  }
+
+  async gerarPorta() {
+    const { data, error } = await this.sb.rpc("porta_gerar", { p_org: await this.org() });
+    erro(error);
+    return data as string;
+  }
+
+  async cancelarPorta(id: string) {
+    const { error } = await this.sb.rpc("porta_cancelar", { p_id: id });
+    erro(error);
+  }
+
   async listarAgendas() {
     const { data, error } = await this.sb.from("agendas_externas").select("id, nome, url_ical").order("criado_em");
     erro(error);
