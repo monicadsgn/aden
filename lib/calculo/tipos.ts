@@ -412,7 +412,7 @@ export interface Cenario {
  */
 export type NivelAlerta = "erro" | "aviso" | "lembrete" | "info";
 
-export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "datas" | "briefing" | "contrato" | "metas" | "equipe" | "regras" | "limites" | "clientes";
+export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "datas" | "briefing" | "onboarding" | "contrato" | "metas" | "equipe" | "regras" | "limites" | "clientes";
 
 /** Onde se resolve o alerta: um campo das configurações ou um bloco do cenário. */
 /** clienteId: na seção clientes, abre a ficha desse cliente (na aba contrato) */

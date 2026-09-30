@@ -14,6 +14,7 @@ import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
 import type { RegistroFechamento } from "../calculo/fechamento";
 import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
 import { MODELO_VAZIO, type ContratoEnviado, type ModeloContrato, type SituacaoContrato } from "../calculo/contrato";
+import { MODELO_ONBOARDING_VAZIO, type ModeloOnboarding } from "../calculo/onboarding";
 import { separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
 import { avisosDaMudanca } from "./acoes";
 import type {
@@ -1126,6 +1127,41 @@ export class RepositorioSupabase implements Repositorio {
     const corpo = (await r.json().catch(() => null)) as { autentiqueLigada?: boolean; teste?: boolean; mensagem?: string; erro?: string } | null;
     if (!r.ok) throw new Error(corpo?.erro ?? "Não deu para falar com o servidor.");
     return { autentiqueLigada: !!corpo?.autentiqueLigada, teste: corpo?.teste, mensagem: corpo?.mensagem };
+  }
+
+  // ─── Onboarding ───────────────────────────────────────────────────────────
+
+  async obterModeloOnboarding(): Promise<ModeloOnboarding> {
+    const { data, error } = await this.sb.from("onboarding_modelo").select("*").eq("org_id", await this.org()).maybeSingle();
+    erro(error);
+    if (!data) return structuredClone(MODELO_ONBOARDING_VAZIO);
+    return {
+      secoes: (data.secoes as ModeloOnboarding["secoes"]) ?? [],
+      textoServico: (data.texto_servico as ModeloOnboarding["textoServico"]) ?? {},
+      textoGarantia: (data.texto_garantia as string) ?? null,
+      whatsapp: (data.whatsapp as string) ?? null,
+      instagram: (data.instagram as string) ?? null,
+      email: (data.email as string) ?? null,
+      atendimento: (data.atendimento as string) ?? null,
+    };
+  }
+
+  async salvarModeloOnboarding(m: ModeloOnboarding) {
+    const t = (x: string | null) => x?.trim() || null;
+    const { error } = await this.sb.from("onboarding_modelo").upsert(
+      {
+        org_id: await this.org(),
+        secoes: m.secoes,
+        texto_servico: Object.fromEntries(Object.entries(m.textoServico).filter(([, v]) => v?.trim())),
+        texto_garantia: t(m.textoGarantia),
+        whatsapp: t(m.whatsapp),
+        instagram: t(m.instagram),
+        email: t(m.email),
+        atendimento: t(m.atendimento),
+      },
+      { onConflict: "org_id" },
+    );
+    erro(error);
   }
 
   // ─── Briefing do cliente ──────────────────────────────────────────────────

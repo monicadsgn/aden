@@ -93,3 +93,31 @@ describe("tela do cliente e PDF", () => {
     expect(texto).toContain("8 por mês");
   });
 });
+
+describe("PDF do onboarding", () => {
+  it("só texto para o cliente: nada de horas, piso, custo nem nome de sócio", async () => {
+    const { montarOnboarding } = await import("@/lib/calculo/onboarding");
+    const { OnboardingDoc } = await import("../impressao/Onboarding");
+    const c = config();
+    const cen = { ...novoCenario("x"), clienteId: "cli" };
+    cen.entregas = [{ id: "1", tipoEntregaId: "post", quantidade: 8, horasPorUnidade: null }];
+    c.clientes = [{ id: "cli", nome: "Loja", interno: false, participaRateio: true, valorMensalCentavos: 150000, ativo: true, escopo: cen }];
+    const modelo = {
+      secoes: [
+        { chave: "incluso" as const, titulo: "O que está incluso", texto: "" },
+        { chave: "servicos" as const, titulo: "Como funciona", texto: "" },
+      ],
+      textoServico: { sm: "planejamos o mês." },
+      textoGarantia: null,
+      whatsapp: null,
+      instagram: null,
+      email: null,
+      atendimento: null,
+    };
+    const doc = montarOnboarding(c, "cli", modelo, "2026-10-01");
+    const texto = renderToStaticMarkup(<OnboardingDoc doc={doc} />).replace(/<[^>]+>/g, " ");
+    expect(texto).not.toMatch(/piso|preju[ií]zo|\bh\b|mônica|áleff|reinvest|rateio|custo|divis[ãa]o|percentual|%|1\.500|45,00|35,00/i);
+    expect(texto).toContain("planejamos o mês.");
+    expect(texto).toContain("8 por mês");
+  });
+});

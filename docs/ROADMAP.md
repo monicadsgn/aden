@@ -180,8 +180,9 @@ migração. Meta: tudo pronto até o fim de outubro.
   pelo Aden, ou plano no app com o Aden só conferindo. **Decisão da Moni (30/09/2026): plano no app (B), por enquanto.**
   O passo do fechamento virou "Cobrança criada" e cada pagamento continua lançado em Pagamentos quando cai.
   Quem assina o contrato pela Aden: o Áleff (decidido em 30/09/2026). O texto do contrato a Moni leva pronto.
-  Onboarding: rascunho a partir do da MD enviado (30/09/2026); a Moni reescreve no tom da marca e manda. A estrutura
-  (PDF por cliente, texto por serviço em Configurações) só se constrói com o texto dela.
+  Onboarding (passo 5) pronto na versão de teste (30/09/2026, migration 0032): texto aprovado pela Moni guardado em
+  Configurações → Onboarding; o PDF de cada cliente junta com o pacote, os serviços contratados, a garantia e o
+  contrato (ficha → Comercial → Fechamento → Gerar onboarding). Faltam WhatsApp, Instagram e dias/horário de atendimento.
 - **Fase 6 · Skills da Aden:** proposta, contrato, onboarding, fechamento e apresentação em arquivos .skill.
 
 ## 1. Auditoria de usabilidade: itens que faltam (entram na Fase 1)

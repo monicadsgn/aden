@@ -9,6 +9,7 @@ import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
 import type { RegistroFechamento } from "../calculo/fechamento";
 import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
 import type { ContratoEnviado, ModeloContrato, SituacaoContrato } from "../calculo/contrato";
+import type { ModeloOnboarding } from "../calculo/onboarding";
 import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -309,6 +310,11 @@ export interface Repositorio {
    * "enviar" monta o PDF e manda; "conferir" pergunta à Autentique quem já assinou.
    */
   contratoNoServidor(pedido: { acao: "situacao" } | { acao: "enviar" | "conferir"; clienteId: string; reenviar?: boolean }): Promise<{ autentiqueLigada: boolean; teste?: boolean; mensagem?: string }>;
+
+  // ─── Onboarding (Fase 5, passo 5) ────────────────────────────────────────────
+  /** texto do onboarding (dos sócios); vazio se nunca foi salvo */
+  obterModeloOnboarding(): Promise<ModeloOnboarding>;
+  salvarModeloOnboarding(m: ModeloOnboarding): Promise<void>;
 
   // ─── Briefing do cliente (Fase 5) ────────────────────────────────────────────
   listarPerguntasBriefing(): Promise<PerguntaBriefing[]>;

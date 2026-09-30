@@ -8,6 +8,7 @@ import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
 import type { RegistroFechamento } from "../calculo/fechamento";
 import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
 import { MODELO_VAZIO, type ContratoEnviado, type ModeloContrato } from "../calculo/contrato";
+import { MODELO_ONBOARDING_VAZIO, type ModeloOnboarding } from "../calculo/onboarding";
 import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
 import type { Tarefa } from "../calculo/tarefas";
@@ -57,6 +58,7 @@ interface Banco {
   perguntasBriefing?: PerguntaBriefing[];
   respostasBriefing?: RespostaBriefing[];
   modeloContrato?: ModeloContrato;
+  modeloOnboarding?: ModeloOnboarding;
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -500,6 +502,18 @@ export class RepositorioLocal implements Repositorio {
 
   async contratoNoServidor() {
     return { autentiqueLigada: false, mensagem: "O envio para assinatura só funciona com o banco conectado." };
+  }
+
+  // ─── Onboarding (no navegador) ────────────────────────────────────────────
+
+  async obterModeloOnboarding() {
+    return ler().modeloOnboarding ?? structuredClone(MODELO_ONBOARDING_VAZIO);
+  }
+
+  async salvarModeloOnboarding(m: ModeloOnboarding) {
+    const b = ler();
+    b.modeloOnboarding = m;
+    gravar(b);
   }
 
   // ─── Briefing do cliente (no navegador) ────────────────────────────────────

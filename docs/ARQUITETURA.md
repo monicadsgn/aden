@@ -451,6 +451,13 @@ ganhou nome no contrato, CPF/CNPJ e endereço. PDF em `lib/contrato/pdf.ts` (pdf
 teste). O site pede por `/api/contrato` com o token da sessão (só sócio); o conector usa `ver_contrato`,
 `salvar_modelo_contrato`, `enviar_contrato` e `conferir_contrato`. Cada envio fica em `contratos_assinatura` (quem enviou
 vem do banco); a ficha confere sozinha ao abrir e, assinado por todos, marca o passo "Contrato assinado".
+
+**Fase 5, passo 5 (30/09/2026, migration 0032):** onboarding do cliente. O texto é da Moni, guardado em
+`onboarding_modelo` (seções com título e texto, "como funciona" de cada serviço, frase da garantia, contato e
+atendimento) e editável em Configurações → Onboarding. `montarOnboarding` (`lib/calculo/onboarding.ts`, puro e
+testado) junta com o pacote do cliente (incluso), os serviços contratados, a garantia e as condições do contrato, e
+lista o que falta. PDF pela impressão do navegador (`/imprimir/onboarding`, `components/impressao/Onboarding.tsx`, com
+teste de render sem nada interno). Conector: `ver_onboarding`, `salvar_modelo_onboarding`.
 Dinheiro em reais e referências por nome na conversa; a tradução fica em
 `lib/mcp/traducao.ts`. As instruções do servidor proíbem inventar número de negócio.
 Ao criar uma área nova (fases 2+), acrescente as ferramentas dela aqui.
@@ -467,7 +474,7 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - ✅ `configuracoes_empresa` (reinvestimento, imposto, taxa de recebimento, regra de rateio)
 - ✅ `pessoas` (sócio?, % padrão, piso/h, capacidade h/mês, vínculo opcional com membro)
 - ✅ `datas_comemorativas`, ✅ `datas_do_cliente` (planejamento mensal)
-- ✅ `fechamento_passos` (checklist de fechamento), ✅ `briefing_perguntas`, ✅ `briefing_respostas`, ✅ `contrato_modelo`, ✅ `contratos_assinatura` (Fase 5)
+- ✅ `fechamento_passos` (checklist de fechamento), ✅ `briefing_perguntas`, ✅ `briefing_respostas`, ✅ `contrato_modelo`, ✅ `contratos_assinatura`, ✅ `onboarding_modelo` (Fase 5)
 - ✅ `portas` (códigos pessoais: `uso` porta genérica ou conector do Claude; só hash), ✅ `contexto_cliente` (memória do cliente, Fase 4)
 - `anexos`
 

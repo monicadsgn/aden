@@ -27,6 +27,7 @@ import { datasDoPlanejamento, type DataComemorativa, type ItemDoPlanejamento } f
 import { montarFechamento } from "../calculo/fechamento";
 import { montarBriefing, servicosDoCliente } from "../calculo/briefing";
 import { montarContrato } from "../calculo/contrato";
+import { montarOnboarding } from "../calculo/onboarding";
 import { conferirContratos, enviarContrato } from "../contrato/acoes";
 import { chaveAutentique } from "../contrato/autentique";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
@@ -1202,6 +1203,54 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         }
         const f = montarFechamento(await repo.listarFechamento(c.id), !!c.painelToken);
         return { cliente: c.nome, passo, feito: marcar, ...(tarefa && { tarefaCriada: tarefa }), feitos: `${f.feitos} de ${f.total}`, proximo: f.proximo?.rotulo ?? null };
+      }),
+  );
+
+  // ─── Onboarding (Fase 5, passo 5) ─────────────────────────────────────────
+
+  server.registerTool(
+    "ver_onboarding",
+    {
+      title: "Ver o onboarding do cliente",
+      description:
+        "Mostra o onboarding do cliente montado com o texto dos sócios (Configurações → Onboarding), o pacote, os serviços contratados, a garantia e o contrato, e o que ainda falta preencher. O PDF sai no site: ficha → Comercial → Fechamento → Gerar onboarding. Sem cliente: só o texto guardado.",
+      inputSchema: { cliente: z.string().optional().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [config, modelo] = await Promise.all([repo.carregarConfig(), repo.obterModeloOnboarding()]);
+        if (!cliente) return { modelo };
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const d = montarOnboarding(config, c.id, modelo, hojeISO());
+        return { pronto: d.faltando.length === 0, faltando: d.faltando, secoes: d.secoes, comoGerarPdf: "ficha do cliente → Comercial → Fechamento → Gerar onboarding" };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_modelo_onboarding",
+    {
+      title: "Salvar o texto do onboarding",
+      description:
+        "Guarda contato e atendimento do onboarding, a frase da garantia e como funciona cada serviço (servico: nome ou id). Só os campos enviados mudam. NUNCA escreva texto por conta própria: grave só o que os sócios passaram. Títulos e textos das seções se editam no site (Configurações → Onboarding).",
+      inputSchema: {
+        whatsapp: z.string().nullable().optional(),
+        instagram: z.string().nullable().optional(),
+        email: z.string().nullable().optional(),
+        atendimento: z.string().nullable().optional().describe("dias e horário de atendimento"),
+        textoGarantia: z.string().nullable().optional(),
+        servicos: z.array(z.object({ servico: z.string(), texto: z.string() })).optional(),
+      },
+    },
+    async ({ servicos, ...campos }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [config, atual] = await Promise.all([repo.carregarConfig(), repo.obterModeloOnboarding()]);
+        const textoServico = { ...atual.textoServico };
+        for (const s of servicos ?? []) textoServico[resolver(config.servicos, s.servico, "Serviço").id] = s.texto;
+        const novo = { ...atual, ...Object.fromEntries(Object.entries(campos).filter(([, v]) => v !== undefined)), textoServico };
+        await repo.salvarModeloOnboarding(novo);
+        return { salvo: true };
       }),
   );
 

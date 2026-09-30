@@ -151,6 +151,13 @@ class BancoFalso {
   }
   modeloContrato: import("../calculo/contrato").ModeloContrato = { contratadaNome: null, contratadaDocumento: null, contratadaEndereco: null, obrigacoes: null, disposicoes: null, signatariosAden: [] };
   contratos: import("../calculo/contrato").ContratoEnviado[] = [];
+  modeloOnboarding: import("../calculo/onboarding").ModeloOnboarding = { secoes: [], textoServico: {}, textoGarantia: null, whatsapp: null, instagram: null, email: null, atendimento: null };
+  async obterModeloOnboarding() {
+    return structuredClone(this.modeloOnboarding);
+  }
+  async salvarModeloOnboarding(m: import("../calculo/onboarding").ModeloOnboarding) {
+    this.modeloOnboarding = structuredClone(m);
+  }
   async obterModeloContrato() {
     return structuredClone(this.modeloContrato);
   }
@@ -646,6 +653,21 @@ describe("conector: contrato pela Autentique", () => {
     assinou = true;
     expect((await chamar("conferir_contrato", { cliente: "Loja X" }))[0]).toMatchObject({ situacao: "assinado" });
     expect(banco.fechamento.find((r) => r.passo === "contrato")?.feitoEm).toBeTruthy();
+  });
+});
+
+describe("conector: onboarding", () => {
+  it("guarda contato e texto do serviço e mostra o que falta", async () => {
+    await chamar("salvar_cliente", { nome: "Loja Y", valorMensalReais: 1000 });
+    banco.config.servicos = [{ id: "sm", nome: "Social media", divisaoPadrao: {}, ativo: true }];
+    banco.modeloOnboarding.secoes = [{ chave: "contato", titulo: "Fala com a gente", texto: "" }];
+    const v0 = await chamar("ver_onboarding", { cliente: "Loja Y" });
+    expect(v0.faltando).toContain("WhatsApp (Configurações → Onboarding)");
+    await chamar("salvar_modelo_onboarding", { whatsapp: "(81) 0000-0000", instagram: "@aden", email: "a@a.com", atendimento: "seg a sex", servicos: [{ servico: "social media", texto: "planejamos o mês." }] });
+    expect(banco.modeloOnboarding.textoServico).toEqual({ sm: "planejamos o mês." });
+    const v1 = await chamar("ver_onboarding", { cliente: "Loja Y" });
+    expect(v1.pronto).toBe(true);
+    expect(v1.secoes[0].blocos[0].texto).toBe("WhatsApp (81) 0000-0000 · Instagram @aden · a@a.com · seg a sex");
   });
 });
 

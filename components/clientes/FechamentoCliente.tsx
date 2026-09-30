@@ -4,7 +4,8 @@
 // pode ser aberto na mão. Cada passo guarda quem fez e quando (o banco preenche). O link do painel se confere sozinho.
 // Marcar o kickoff com data cria a tarefa da reunião.
 
-import { CheckCircle2, Circle, ClipboardCheck, ExternalLink } from "lucide-react";
+import { CheckCircle2, Circle, ClipboardCheck, ExternalLink, FileDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Botao } from "../ui";
 import { montarFechamento, PASSOS_FECHAMENTO, type RegistroFechamento } from "@/lib/calculo/fechamento";
@@ -12,6 +13,7 @@ import { novoId } from "@/lib/calculo/novo";
 import { novaTarefa } from "@/lib/calculo/tarefas";
 import type { ClienteBase } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
+import { guardarParaImprimir } from "@/lib/impressao";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
 
 const campo = "h-9 rounded-campo border border-linha bg-superficie px-2 text-sm outline-none focus:border-marca focus:ring-2 focus:ring-marca/20";
@@ -29,6 +31,7 @@ export function FechamentoCliente({
   aoAbrir: () => void;
 }) {
   const { repo } = useDados();
+  const router = useRouter();
   const [registros, setRegistros] = useState<RegistroFechamento[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -121,6 +124,18 @@ export function FechamentoCliente({
                     </a>
                   )}
                 </span>
+              )}
+              {passo === "onboarding" && (
+                <Botao
+                  pequeno
+                  icone={FileDown}
+                  onClick={() => {
+                    guardarParaImprimir({ tipo: "onboarding", clienteId: c.id });
+                    router.push("/imprimir/onboarding");
+                  }}
+                >
+                  Gerar onboarding
+                </Botao>
               )}
               {passo === "kickoff" && (
                 <input
