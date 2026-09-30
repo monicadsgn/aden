@@ -7,6 +7,7 @@ import type { Medicao } from "../calculo/calibragem";
 import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
 import type { RegistroFechamento } from "../calculo/fechamento";
 import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
+import { MODELO_VAZIO, type ContratoEnviado, type ModeloContrato } from "../calculo/contrato";
 import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
 import type { Tarefa } from "../calculo/tarefas";
@@ -55,6 +56,7 @@ interface Banco {
   fechamento?: RegistroFechamento[];
   perguntasBriefing?: PerguntaBriefing[];
   respostasBriefing?: RespostaBriefing[];
+  modeloContrato?: ModeloContrato;
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -470,6 +472,34 @@ export class RepositorioLocal implements Repositorio {
     };
     b.fechamento = [...lista.filter((x) => x !== antes), r];
     gravar(b);
+  }
+
+  // ─── Contrato (no navegador: só o modelo; enviar pede o banco conectado) ────
+
+  async obterModeloContrato() {
+    return ler().modeloContrato ?? { ...MODELO_VAZIO, signatariosAden: [] };
+  }
+
+  async salvarModeloContrato(m: ModeloContrato) {
+    const b = ler();
+    b.modeloContrato = m;
+    gravar(b);
+  }
+
+  async listarContratosAssinatura(): Promise<ContratoEnviado[]> {
+    return [];
+  }
+
+  async registrarContratoAssinatura(): Promise<void> {
+    throw new Error("O envio para assinatura só funciona com o banco conectado.");
+  }
+
+  async atualizarContratoAssinatura(): Promise<void> {
+    throw new Error("O envio para assinatura só funciona com o banco conectado.");
+  }
+
+  async contratoNoServidor() {
+    return { autentiqueLigada: false, mensagem: "O envio para assinatura só funciona com o banco conectado." };
   }
 
   // ─── Briefing do cliente (no navegador) ────────────────────────────────────

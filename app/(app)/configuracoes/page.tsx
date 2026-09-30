@@ -3,6 +3,7 @@
 import {
   CalendarHeart,
   FileQuestion,
+  FileSignature,
   History,
   KeyRound,
   Timer,
@@ -32,6 +33,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { TrocarFoto } from "@/components/Avatar";
 import { OQueQuerDizer } from "@/components/Alertas";
 import { SecaoBriefing } from "@/components/configuracoes/SecaoBriefing";
+import { SecaoContrato } from "@/components/configuracoes/SecaoContrato";
 import { SecaoDatas } from "@/components/configuracoes/SecaoDatas";
 import { SecaoEquipe } from "@/components/configuracoes/SecaoEquipe";
 import { SecaoMetas, SecaoPacotes, SecaoTerceiros } from "@/components/configuracoes/SecoesNovas";
@@ -77,6 +79,7 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "pacotes", rotulo: "Pacotes", icone: Package, frase: "Pacotes fechados para a negociação. O preço sai do cálculo, nunca digitado." },
   { id: "datas", rotulo: "Datas comemorativas", icone: CalendarHeart, frase: "As datas que entram no planejamento de cada cliente, com a antecedência da campanha de cada um." },
   { id: "briefing", rotulo: "Briefing", icone: FileQuestion, frase: "As perguntas do briefing que o Áleff e a Moni respondem na ficha de cada cliente." },
+  { id: "contrato", rotulo: "Contrato", icone: FileSignature, frase: "O que é igual em todo contrato da Aden: dados da contratada, quem assina e o texto das obrigações e disposições." },
   { id: "metas", rotulo: "Metas", icone: Trophy, frase: "A trilha de crescimento em degraus, com a ação de cada degrau. Aparece na tela Mês." },
   { id: "equipe", rotulo: "Equipe e acessos", icone: KeyRound, frase: "Quem entra no Aden e o que cada um vê: sócios, equipe, freelancers e contador." },
   { id: "regras", rotulo: "Regras da empresa", icone: Scale, frase: "Regime e imposto, como dividir o custo fixo, reinvestimento, taxas e como distribuir cada pagamento." },
@@ -85,7 +88,7 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
 
 const GRUPOS_SECOES: { titulo: string; ids: SecaoConfig[] }[] = [
   { titulo: "A empresa", ids: ["socios", "equipe", "regras", "custos", "metas", "limites"] },
-  { titulo: "O que a Aden vende", ids: ["servicos", "tipos", "pacotes", "terceiros", "datas", "briefing"] },
+  { titulo: "O que a Aden vende", ids: ["servicos", "tipos", "pacotes", "terceiros", "datas", "briefing", "contrato"] },
 ];
 
 function atualizar<T extends { id: string }>(lista: T[], id: string, patch: Partial<T>): T[] {
@@ -660,6 +663,7 @@ export default function Configuracoes() {
             {secao === "equipe" && <SecaoEquipe />}
             {secao === "datas" && <SecaoDatas clientes={rascunho.clientes} />}
             {secao === "briefing" && <SecaoBriefing servicos={rascunho.servicos} />}
+            {secao === "contrato" && <SecaoContrato />}
 
             {secao === "regras" && (
               <div className="flex flex-col gap-5">

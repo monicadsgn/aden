@@ -8,6 +8,7 @@
 import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
 import type { RegistroFechamento } from "../calculo/fechamento";
 import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
+import type { ContratoEnviado, ModeloContrato, SituacaoContrato } from "../calculo/contrato";
 import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -293,6 +294,21 @@ export interface Repositorio {
     data?: string | null;
     observacao?: string | null;
   }): Promise<void>;
+
+  // ─── Contrato (Fase 5, passo 3) ──────────────────────────────────────────────
+  /** o que é igual em todo contrato (texto dos sócios); vazio se nunca foi salvo */
+  obterModeloContrato(): Promise<ModeloContrato>;
+  salvarModeloContrato(m: ModeloContrato): Promise<void>;
+  /** contratos mandados para assinatura, do mais novo para o mais antigo */
+  listarContratosAssinatura(clienteId: string): Promise<ContratoEnviado[]>;
+  /** quem enviou vem do banco */
+  registrarContratoAssinatura(c: { clienteId: string; autentiqueId: string; nome: string; signatarios: ContratoEnviado["signatarios"] }): Promise<void>;
+  atualizarContratoAssinatura(id: string, s: { situacao: SituacaoContrato | "cancelado"; assinadoEm: string | null; faltam: string[] }): Promise<void>;
+  /**
+   * Pelo site: pede ao servidor (a chave da Autentique só existe lá). "situacao" diz se a Autentique está ligada;
+   * "enviar" monta o PDF e manda; "conferir" pergunta à Autentique quem já assinou.
+   */
+  contratoNoServidor(pedido: { acao: "situacao" } | { acao: "enviar" | "conferir"; clienteId: string; reenviar?: boolean }): Promise<{ autentiqueLigada: boolean; teste?: boolean; mensagem?: string }>;
 
   // ─── Briefing do cliente (Fase 5) ────────────────────────────────────────────
   listarPerguntasBriefing(): Promise<PerguntaBriefing[]>;

@@ -441,6 +441,16 @@ em Configurações → Regras da empresa (vazio = a definir). Briefing único: `
 seção, todos os serviços ou um) e `briefing_respostas` (quem respondeu e o texto da pergunta naquele momento), aba
 Briefing na ficha e Configurações → Briefing; conta em `lib/calculo/briefing.ts`. Conector: `ver_fechamento`,
 `marcar_passo_fechamento`, `ver_briefing`, `responder_briefing`, `salvar_pergunta_briefing`.
+
+**Fase 5, passo 3 (30/09/2026, migration 0031):** contrato com assinatura eletrônica pela Autentique. O texto sai de
+`montarContrato` (`lib/calculo/contrato.ts`, puro e testado): partes, objeto (entregas do escopo com o nome que o cliente
+vê), valor, vencimento, prazo, condições e garantia vêm da ficha como dados; obrigações e disposições gerais são o texto
+dos sócios em Configurações → Contrato (`contrato_modelo`); o sistema não escreve cláusula e lista o que falta. A ficha
+ganhou nome no contrato, CPF/CNPJ e endereço. PDF em `lib/contrato/pdf.ts` (pdf-lib); envio e conferência em
+`lib/contrato/autentique.ts` (GraphQL v2, só no servidor, chave `AUTENTIQUE_TOKEN` na Vercel, `AUTENTIQUE_SANDBOX=1` para
+teste). O site pede por `/api/contrato` com o token da sessão (só sócio); o conector usa `ver_contrato`,
+`salvar_modelo_contrato`, `enviar_contrato` e `conferir_contrato`. Cada envio fica em `contratos_assinatura` (quem enviou
+vem do banco); a ficha confere sozinha ao abrir e, assinado por todos, marca o passo "Contrato assinado".
 Dinheiro em reais e referências por nome na conversa; a tradução fica em
 `lib/mcp/traducao.ts`. As instruções do servidor proíbem inventar número de negócio.
 Ao criar uma área nova (fases 2+), acrescente as ferramentas dela aqui.
@@ -457,7 +467,7 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - ✅ `configuracoes_empresa` (reinvestimento, imposto, taxa de recebimento, regra de rateio)
 - ✅ `pessoas` (sócio?, % padrão, piso/h, capacidade h/mês, vínculo opcional com membro)
 - ✅ `datas_comemorativas`, ✅ `datas_do_cliente` (planejamento mensal)
-- ✅ `fechamento_passos` (checklist de fechamento), ✅ `briefing_perguntas`, ✅ `briefing_respostas` (Fase 5)
+- ✅ `fechamento_passos` (checklist de fechamento), ✅ `briefing_perguntas`, ✅ `briefing_respostas`, ✅ `contrato_modelo`, ✅ `contratos_assinatura` (Fase 5)
 - ✅ `portas` (códigos pessoais: `uso` porta genérica ou conector do Claude; só hash), ✅ `contexto_cliente` (memória do cliente, Fase 4)
 - `anexos`
 

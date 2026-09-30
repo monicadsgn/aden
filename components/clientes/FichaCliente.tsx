@@ -11,6 +11,7 @@ import { Modal } from "../Modal";
 import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
 import { BriefingCliente } from "./BriefingCliente";
 import { ContextoCliente } from "./ContextoCliente";
+import { ContratoCliente } from "./ContratoCliente";
 import { FechamentoCliente } from "./FechamentoCliente";
 import { LinkPainel } from "./LinkPainel";
 import { DetalheTarefa } from "../tarefas/DetalheTarefa";
@@ -200,6 +201,15 @@ export function FichaCliente({
             </Rot>
             <Rot rotulo="E-mail">
               <Texto valor={c.email ?? ""} aoSalvar={(v) => set({ email: v })} />
+            </Rot>
+            <Rot rotulo="Nome no contrato" dica="Razão social ou nome completo. Vazio = o nome do cliente.">
+              <Texto valor={c.razaoSocial ?? ""} aoSalvar={(v) => set({ razaoSocial: v })} />
+            </Rot>
+            <Rot rotulo="CPF ou CNPJ" dica="Vai no contrato.">
+              <Texto valor={c.documento ?? ""} aoSalvar={(v) => set({ documento: v })} />
+            </Rot>
+            <Rot rotulo="Endereço" dica="Vai no contrato.">
+              <Texto valor={c.endereco ?? ""} aoSalvar={(v) => set({ endereco: v })} />
             </Rot>
             <Rot rotulo="Cliente desde">
               <input type="date" className={campo} value={c.clienteDesde ?? ""} onChange={(e) => set({ clienteDesde: e.target.value || null })} />
@@ -481,6 +491,7 @@ export function FichaCliente({
                 aoAbrir={() => set({ fechamentoIniciadoEm: new Date().toISOString() })}
               />
             )}
+            {!c.interno && <ContratoCliente config={config} clienteId={c.id} />}
             {!lead ? (
               <p className="text-xs text-texto-suave">Este cliente não veio pelos leads do Aden.</p>
             ) : (

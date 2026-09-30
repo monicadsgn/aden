@@ -26,6 +26,9 @@ import type { AtalhosPainel, Configuracao, Meta, Pacote } from "../calculo/tipos
 import { datasDoPlanejamento, type DataComemorativa, type ItemDoPlanejamento } from "../calculo/datas";
 import { montarFechamento } from "../calculo/fechamento";
 import { montarBriefing, servicosDoCliente } from "../calculo/briefing";
+import { montarContrato } from "../calculo/contrato";
+import { conferirContratos, enviarContrato } from "../contrato/acoes";
+import { chaveAutentique } from "../contrato/autentique";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
 import { REGRAS_PROTECAO } from "../regras/aprovacao";
@@ -1202,6 +1205,94 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       }),
   );
 
+  // ─── Contrato (Fase 5, passo 3) ───────────────────────────────────────────
+
+  server.registerTool(
+    "ver_contrato",
+    {
+      title: "Ver o contrato do cliente",
+      description:
+        "Mostra o contrato montado com a ficha do cliente e o modelo da Aden (obrigações, disposições e quem assina), o que ainda falta preencher, se a Autentique está ligada e os contratos já enviados com a situação da assinatura. Sem cliente: só o modelo.",
+      inputSchema: { cliente: z.string().optional().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [config, modelo] = await Promise.all([repo.carregarConfig(), repo.obterModeloContrato()]);
+        const autentique = chaveAutentique() ? (process.env.AUTENTIQUE_SANDBOX?.trim() === "1" ? "ligada (modo teste)" : "ligada") : "não ligada (falta a chave na Vercel)";
+        if (!cliente) return { autentique, modelo };
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const doc = montarContrato(config, c.id, modelo);
+        const enviados = await repo.listarContratosAssinatura(c.id);
+        return {
+          autentique,
+          pronto: doc.faltando.length === 0,
+          faltando: doc.faltando,
+          contrato: doc,
+          enviados: enviados.map((x) => ({ situacao: x.situacao, enviadoEm: x.enviadoEm, por: x.enviadoPorNome, assinadoEm: x.assinadoEm, faltam: x.faltam })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_modelo_contrato",
+    {
+      title: "Salvar o modelo do contrato",
+      description:
+        "Guarda o que é igual em todo contrato da Aden: dados da contratada, quem assina pela Aden e o texto de obrigações e disposições gerais (parágrafos separados por linha em branco). Só os campos enviados mudam. NUNCA escreva cláusula por conta própria: grave só o texto que os sócios passaram.",
+      inputSchema: {
+        contratadaNome: z.string().nullable().optional(),
+        contratadaDocumento: z.string().nullable().optional().describe("CNPJ"),
+        contratadaEndereco: z.string().nullable().optional(),
+        obrigacoes: z.string().nullable().optional(),
+        disposicoes: z.string().nullable().optional(),
+        signatariosAden: z.array(z.object({ nome: z.string(), email: z.string().email() })).optional().describe("lista completa de quem assina pela Aden"),
+      },
+    },
+    async (e) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const atual = await repo.obterModeloContrato();
+        const novo = { ...atual, ...Object.fromEntries(Object.entries(e).filter(([, v]) => v !== undefined)) };
+        await repo.salvarModeloContrato(novo);
+        return { salvo: true, modelo: await repo.obterModeloContrato() };
+      }),
+  );
+
+  server.registerTool(
+    "enviar_contrato",
+    {
+      title: "Enviar o contrato para assinatura",
+      description:
+        "Monta o PDF do contrato com a ficha e o modelo e manda pela Autentique para o cliente e para quem assina pela Aden (cada um recebe por e-mail). Não envia se faltar algo (use ver_contrato antes) ou se já houver um esperando assinatura (reenviar=true substitui). Confirme com o sócio antes de enviar: o cliente recebe na hora.",
+      inputSchema: { cliente: z.string().describe("nome ou id"), reenviar: z.boolean().optional() },
+    },
+    async ({ cliente, reenviar }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        return await enviarContrato(repo, c.id, { reenviar });
+      }),
+  );
+
+  server.registerTool(
+    "conferir_contrato",
+    {
+      title: "Conferir a assinatura do contrato",
+      description: "Pergunta à Autentique quem já assinou o contrato do cliente. Assinado por todos → marca sozinho o passo \"Contrato assinado\" do fechamento.",
+      inputSchema: { cliente: z.string().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const r = await conferirContratos(repo, c.id);
+        return r.length ? r : { mensagem: "Nenhum contrato esperando assinatura." };
+      }),
+  );
+
   // ─── Briefing do cliente (Fase 5) ──────────────────────────────────────────
 
   server.registerTool(
@@ -1373,6 +1464,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         instagram: z.string().optional(),
         segmento: z.string().optional(),
         observacoes: z.string().optional(),
+        razaoSocial: z.string().optional().describe("nome no contrato (razão social ou nome completo); vazio = o nome do cliente"),
+        documento: z.string().optional().describe("CPF ou CNPJ do cliente, vai no contrato"),
+        endereco: z.string().optional().describe("endereço do cliente, vai no contrato"),
         clienteDesde: z.string().nullable().optional(),
         inicioContrato: z.string().nullable().optional(),
         fimContrato: z.string().nullable().optional(),
@@ -1406,6 +1500,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           instagram: def(e.instagram, c.instagram),
           segmento: def(e.segmento, c.segmento),
           observacoes: def(e.observacoes, c.observacoes),
+          razaoSocial: def(e.razaoSocial, c.razaoSocial),
+          documento: def(e.documento, c.documento),
+          endereco: def(e.endereco, c.endereco),
           clienteDesde: def(e.clienteDesde, c.clienteDesde ?? null),
           contrato: {
             ...k,

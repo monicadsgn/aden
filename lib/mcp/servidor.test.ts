@@ -2,7 +2,7 @@
 // Números aqui são só fixtures de teste.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Medicao } from "../calculo/calibragem";
 import { configVazia, novoId } from "../calculo/novo";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -148,6 +148,23 @@ class BancoFalso {
       observacao: null,
     };
     this.fechamento = [...this.fechamento.filter((x) => x !== antes), r];
+  }
+  modeloContrato: import("../calculo/contrato").ModeloContrato = { contratadaNome: null, contratadaDocumento: null, contratadaEndereco: null, obrigacoes: null, disposicoes: null, signatariosAden: [] };
+  contratos: import("../calculo/contrato").ContratoEnviado[] = [];
+  async obterModeloContrato() {
+    return structuredClone(this.modeloContrato);
+  }
+  async salvarModeloContrato(m: import("../calculo/contrato").ModeloContrato) {
+    this.modeloContrato = structuredClone(m);
+  }
+  async listarContratosAssinatura(clienteId: string) {
+    return this.contratos.filter((c) => c.clienteId === clienteId);
+  }
+  async registrarContratoAssinatura(c: { clienteId: string; autentiqueId: string; nome: string; signatarios: { nome: string; email: string }[] }) {
+    this.contratos.unshift({ ...c, id: novoId(), situacao: "enviado", enviadoEm: "2026-10-01T12:00:00Z", enviadoPorNome: "Mônica (pelo Claude)", assinadoEm: null, conferidoEm: null, faltam: [] });
+  }
+  async atualizarContratoAssinatura(id: string, s: { situacao: import("../calculo/contrato").ContratoEnviado["situacao"]; assinadoEm: string | null; faltam: string[] }) {
+    this.contratos = this.contratos.map((c) => (c.id === id ? { ...c, ...s } : c));
   }
   perguntasBriefing: import("../calculo/briefing").PerguntaBriefing[] = [];
   respostasBriefing: import("../calculo/briefing").RespostaBriefing[] = [];
@@ -576,6 +593,59 @@ describe("conector: fechamento do cliente", () => {
     const todos = await chamar("ver_fechamento", {});
     expect(todos.mensalidadeNoOnboarding).toBe("a definir");
     expect(todos.fechamentos).toHaveLength(1);
+  });
+});
+
+describe("conector: contrato pela Autentique", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("mostra o que falta, não envia incompleto e, completo, envia e marca o fechamento quando todos assinam", async () => {
+    await chamar("salvar_cliente", { nome: "Loja X", valorMensalReais: 2000 });
+    const v0 = await chamar("ver_contrato", { cliente: "Loja X" });
+    expect(v0.pronto).toBe(false);
+    expect(v0.faltando).toContain("Obrigações das partes (Configurações → Contrato)");
+    await expect(chamar("enviar_contrato", { cliente: "Loja X" })).rejects.toThrow(/Falta preencher/);
+
+    banco.config.tiposEntrega = [{ id: "t", nome: "Post", servicoId: null, horasPorUnidade: 1, ativo: true }];
+    const c = banco.config.clientes[0];
+    c.escopo = { ...(c.escopo ?? (await import("../calculo/novo")).novoCenario("x")), entregas: [{ id: "e", tipoEntregaId: "t", quantidade: 4, horasPorUnidade: null }] };
+    await chamar("salvar_ficha_cliente", { cliente: "Loja X", email: "ana@loja.com", contato: "Ana", documento: "000.000.000-00", endereco: "Rua A", inicioContrato: "2026-10-01", diaPagamento: 10 });
+    await chamar("salvar_modelo_contrato", {
+      contratadaNome: "Aden",
+      contratadaDocumento: "11.111.111/0001-11",
+      obrigacoes: "Texto dos sócios.",
+      disposicoes: "Foro.",
+      signatariosAden: [{ nome: "Mônica", email: "m@aden.com" }],
+    });
+    const v1 = await chamar("ver_contrato", { cliente: "Loja X" });
+    expect(v1).toMatchObject({ pronto: true, faltando: [], autentique: "não ligada (falta a chave na Vercel)" });
+    await expect(chamar("enviar_contrato", { cliente: "Loja X" })).rejects.toThrow(/AUTENTIQUE_TOKEN/);
+
+    vi.stubEnv("AUTENTIQUE_TOKEN", "chave-teste");
+    let assinou = false;
+    const pedidos: RequestInit[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        pedidos.push(init);
+        if (init.body instanceof FormData) return new Response(JSON.stringify({ data: { createDocument: { id: "doc-1" } } }));
+        const sig = (email: string) => ({ name: email, email, action: { name: "SIGN" }, signed: assinou ? { created_at: "2026-10-02 10:00:00" } : null, rejected: null });
+        return new Response(JSON.stringify({ data: { document: { signatures: [sig("ana@loja.com"), sig("m@aden.com")] } } }));
+      }),
+    );
+    const env = await chamar("enviar_contrato", { cliente: "Loja X" });
+    expect(env.para).toEqual(["Ana <ana@loja.com>", "Mônica <m@aden.com>"]);
+    expect((pedidos[0].headers as Record<string, string>).Authorization).toBe("Bearer chave-teste");
+    await expect(chamar("enviar_contrato", { cliente: "Loja X" })).rejects.toThrow(/esperando assinatura/);
+
+    expect((await chamar("conferir_contrato", { cliente: "Loja X" }))[0]).toMatchObject({ situacao: "enviado", faltam: ["ana@loja.com", "m@aden.com"] });
+    expect(banco.fechamento.find((r) => r.passo === "contrato")).toBeUndefined();
+    assinou = true;
+    expect((await chamar("conferir_contrato", { cliente: "Loja X" }))[0]).toMatchObject({ situacao: "assinado" });
+    expect(banco.fechamento.find((r) => r.passo === "contrato")?.feitoEm).toBeTruthy();
   });
 });
 

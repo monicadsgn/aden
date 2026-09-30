@@ -171,6 +171,13 @@ migração. Meta: tudo pronto até o fim de outubro.
   2 (briefing único, estrutura pronta; as perguntas entram depois da Moni aprovar a lista). Autentique: conta nova no
   grupoaden1. Passos 3 e 4 partem de como o sistema antigo já faz (Autentique por GraphQL com PDF em multipart; link
   da InfinitePay pelo checkout com webhook), reescritos aqui dentro.
+  Passo 3 pronto na versão de teste (30/09/2026, migration 0031): contrato montado com a ficha e o modelo de
+  Configurações → Contrato, envio e conferência pela Autentique; espera a chave da API (AUTENTIQUE_TOKEN), o texto de
+  obrigações e disposições, os dados da contratada e quem assina.
+  Cobrança recorrente (30/09/2026, pesquisa): a API de checkout da InfinitePay não tem recorrência (cada link é uma
+  cobrança avulsa; webhook sem assinatura, por isso reconferir pelo payment_check). A recorrência existe só no app
+  (Gestão de Cobranças / Planos de Assinatura), sem API para o Aden ler. Caminhos levados à Moni: link por mês gerado
+  pelo Aden, ou plano no app com o Aden só conferindo. Nada construído até a escolha.
 - **Fase 6 · Skills da Aden:** proposta, contrato, onboarding, fechamento e apresentação em arquivos .skill.
 
 ## 1. Auditoria de usabilidade: itens que faltam (entram na Fase 1)
