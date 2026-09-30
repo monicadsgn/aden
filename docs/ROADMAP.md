@@ -154,6 +154,11 @@ migração. Meta: tudo pronto até o fim de outubro.
   decisões, 2 preferências, 4 pendências, 6 notas), com a data original e a Moni como autora; 6 ficaram de fora por
   escolha dela. As que citavam o sistema antigo foram reescritas; as que lá já estavam cortadas no limite de 400
   caracteres vieram como estavam, terminando em "…".
+- **Planejamento, datas e atalhos (30/09/2026, versão de teste):** importar planejamento mensal (rede e lote
+  internos, peças já visíveis ao cliente em "Vem por aí"), datas comemorativas por cliente com antecedência própria
+  (Configurações → Datas comemorativas; a importação das datas do sistema antigo espera a Moni conferir a lista) e
+  atalhos do painel (planejamento do mês, fotos, identidade, "O que está incluso"), migration 0027. Contexto: 15 notas
+  da Olinda e 4 da StadiumPlay importadas, com a data original e a Moni como autora.
 - **Fase 5 · Identidade e documentos:** tokens da marca a partir do SVG; proposta em PDF, contrato por e-mail
   (Autentique), link de pagamento (InfinitePay), onboarding por serviço, rotina de fechamento, pasta no Drive (pronta
   para ligar com o e-mail novo) — e-mail da Aden (30/09/2026): grupoaden1@gmail.com, usado para a pasta do cliente

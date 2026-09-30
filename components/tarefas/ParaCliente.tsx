@@ -143,6 +143,27 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
           </p>
         )}
 
+        {/* planejamento: rede e lote (internos, o cliente não vê) */}
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          {(
+            [
+              ["rede", "Rede (interno)", "ex.: instagram"],
+              ["lote", "Lote do planejamento (interno)", "ex.: Calendário Outubro — Olinda"],
+            ] as const
+          ).map(([k, rotulo, dica]) => (
+            <label key={k} className="flex min-w-40 flex-1 flex-col gap-1 text-xs font-semibold text-texto-suave">
+              {rotulo}
+              <input
+                key={`${t.id}-${k}-${t[k] ?? ""}`}
+                className="h-9 rounded-campo border border-linha bg-superficie px-2 text-sm font-normal text-texto focus:border-marca focus:outline-none"
+                placeholder={dica}
+                defaultValue={t[k] ?? ""}
+                onBlur={(e) => e.target.value.trim() !== (t[k] ?? "") && void a.salvar({ ...t, [k]: e.target.value.trim() || null })}
+              />
+            </label>
+          ))}
+        </div>
+
         {/* publicação: quando vai ao ar e quando foi */}
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave">

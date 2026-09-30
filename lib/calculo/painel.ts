@@ -78,6 +78,7 @@ export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = ne
   return {
     cliente: cliente.nome,
     limiteRodadas: cliente.contrato?.limiteRodadas ?? null,
+    atalhos: cliente.atalhos ?? null,
     prazoAprovacaoDias: cliente.contrato?.prazoAprovacaoDias ?? null,
     pecas,
   };

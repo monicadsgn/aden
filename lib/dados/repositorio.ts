@@ -5,13 +5,14 @@
 // - local.ts: modo demonstração, salva no navegador. Só é usado quando as
 //   variáveis do Supabase não estão configuradas (dev local / apresentação).
 
+import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
 import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { EventoAgenda } from "../agenda/ics";
-import type { Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
+import type { AtalhosPainel, Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
 import type { ItemProtegido } from "../regras/aprovacao";
 
 export interface Usuario {
@@ -148,6 +149,7 @@ export interface PainelCliente {
   cliente: string;
   limiteRodadas: number | null;
   prazoAprovacaoDias: number | null;
+  atalhos?: AtalhosPainel | null;
   pecas: {
     id: string;
     titulo: string;
@@ -275,6 +277,16 @@ export interface Repositorio {
   listarTarefas(): Promise<Tarefa[]>;
   salvarTarefa(t: Tarefa): Promise<void>;
   removerTarefa(id: string): Promise<void>;
+  /** várias de uma vez (planejamento mensal): se uma falhar, nenhuma é gravada */
+  salvarTarefas(ts: Tarefa[]): Promise<void>;
+
+  // ─── Datas comemorativas (planejamento mensal) ───────────────────────────────
+  listarDatas(): Promise<{ datas: DataComemorativa[]; ligacoes: DataDoCliente[] }>;
+  salvarDataComemorativa(d: DataComemorativa): Promise<void>;
+  removerDataComemorativa(id: string): Promise<void>;
+  /** liga a data a um cliente (antecedência, nota, escondida); uma por data e cliente */
+  salvarDataDoCliente(l: DataDoCliente): Promise<void>;
+  removerDataDoCliente(id: string): Promise<void>;
 
   // ─── Porta genérica (código pessoal, Fase 3) ─────────────────────────────────
   /** meus códigos (só o começo; o código inteiro só aparece ao gerar) */

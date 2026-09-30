@@ -4,6 +4,7 @@
 // sócio, então quem aprova escolhe "decidir como" na tela de aprovações.
 
 import type { Medicao } from "../calculo/calibragem";
+import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
 import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
 import type { Tarefa } from "../calculo/tarefas";
@@ -47,6 +48,8 @@ interface Banco {
   leads?: Lead[];
   interacoes?: InteracaoLead[];
   contexto?: NotaContexto[];
+  datas?: DataComemorativa[];
+  datasDoCliente?: DataDoCliente[];
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -426,6 +429,42 @@ export class RepositorioLocal implements Repositorio {
     b.tarefas = (b.tarefas ?? []).filter((x) => x.id !== id);
     // a medição fica (conta na calibragem), só perde o vínculo
     b.medicoes = (b.medicoes ?? []).map((m) => (m.tarefaId === id ? { ...m, tarefaId: null } : m));
+    gravar(b);
+  }
+
+  async salvarTarefas(ts: Tarefa[]) {
+    for (const t of ts) await this.salvarTarefa(t);
+  }
+
+  // ─── Datas comemorativas (no navegador) ────────────────────────────────────
+
+  async listarDatas() {
+    const b = ler();
+    return { datas: b.datas ?? [], ligacoes: b.datasDoCliente ?? [] };
+  }
+
+  async salvarDataComemorativa(d: DataComemorativa) {
+    const b = ler();
+    b.datas = [...(b.datas ?? []).filter((x) => x.id !== d.id), d];
+    gravar(b);
+  }
+
+  async removerDataComemorativa(id: string) {
+    const b = ler();
+    b.datas = (b.datas ?? []).filter((x) => x.id !== id);
+    b.datasDoCliente = (b.datasDoCliente ?? []).filter((x) => x.dataId !== id);
+    gravar(b);
+  }
+
+  async salvarDataDoCliente(l: DataDoCliente) {
+    const b = ler();
+    b.datasDoCliente = [...(b.datasDoCliente ?? []).filter((x) => x.id !== l.id && !(x.dataId === l.dataId && x.clienteId === l.clienteId)), l];
+    gravar(b);
+  }
+
+  async removerDataDoCliente(id: string) {
+    const b = ler();
+    b.datasDoCliente = (b.datasDoCliente ?? []).filter((x) => x.id !== id);
     gravar(b);
   }
 

@@ -426,6 +426,13 @@ pedido) fica ligado por `CONECTOR_ENDERECO_ANTIGO` em `lib/recursos.ts` até os 
 **Contexto do cliente:** `contexto_cliente` (tipo decisão/preferência/pendência/nota, quem anotou e quem resolveu
 preenchidos pelo banco, sem exclusão: resolvida sai da lista). Aba Contexto na ficha do cliente; no conector,
 `ver_contexto_cliente`, `anotar_contexto_cliente`, `resolver_nota_contexto` e o resumo em `ver_cliente`. Só sócios.
+**Planejamento mensal, datas e atalhos (30/09/2026, migration 0027):** `importar_planejamento_mensal` cria as peças
+de um calendário de uma vez (`salvarTarefas`, tudo ou nada), na etapa planejado e visíveis ao cliente ("Vem por aí");
+`rede` e `lote` da tarefa são internos (filtro por lote na tela Tarefas e em `listar_tarefas`). Datas comemorativas:
+`datas_comemorativas` (a data do ano certo) + `datas_do_cliente` (antecedência e nota por cliente, escondida); a conta
+do mês fica em `lib/calculo/datas.ts` (`datasDoPlanejamento`, testada) e sai em `datas_do_mes`; tela em Configurações →
+Datas comemorativas. Atalhos do painel: colunas `painel_*` em `clientes` (links só https), editados na ficha e por
+`atualizar_atalhos_painel`, lidos pelo `painel_cliente`.
 Dinheiro em reais e referências por nome na conversa; a tradução fica em
 `lib/mcp/traducao.ts`. As instruções do servidor proíbem inventar número de negócio.
 Ao criar uma área nova (fases 2+), acrescente as ferramentas dela aqui.
@@ -441,6 +448,7 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - ✅ `auditoria` (tabela, registro, ação, antes, depois, autor, data). Só inserida por trigger e sem edição.
 - ✅ `configuracoes_empresa` (reinvestimento, imposto, taxa de recebimento, regra de rateio)
 - ✅ `pessoas` (sócio?, % padrão, piso/h, capacidade h/mês, vínculo opcional com membro)
+- ✅ `datas_comemorativas`, ✅ `datas_do_cliente` (planejamento mensal)
 - ✅ `portas` (códigos pessoais: `uso` porta genérica ou conector do Claude; só hash), ✅ `contexto_cliente` (memória do cliente, Fase 4)
 - `anexos`
 

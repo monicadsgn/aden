@@ -10,6 +10,7 @@ import { enderecoDeAgendaValido, type EventoAgenda } from "../agenda/ics";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, ClienteBase, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
+import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
 import { separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
 import { avisosDaMudanca } from "./acoes";
 import type {
@@ -41,6 +42,36 @@ const num = (v: unknown): number | null => (v == null ? null : Number(v));
 
 function erro(e: { message: string } | null) {
   if (e) throw new Error(e.message);
+}
+
+function tarefaParaBanco(t: Tarefa, org_id: string) {
+  return {
+    id: t.id,
+    org_id,
+    titulo: t.titulo,
+    cliente_id: t.clienteId,
+    tipo_entrega_id: t.tipoEntregaId,
+    quantidade: Math.max(1, t.quantidade),
+    status: t.status,
+    prioridade: t.prioridade,
+    responsavel_id: t.responsavelId,
+    inicio: t.inicio,
+    vencimento: t.vencimento,
+    descricao: t.descricao || null,
+    etapas: t.etapas,
+    criado_em: t.criadoEm,
+    concluida_em: t.concluidaEm,
+    // as respostas do cliente (rodadas, feedback, aprovação) só o banco escreve
+    visivel_cliente: t.visivelCliente ?? false,
+    legenda: t.legenda || null,
+    texto_arte: t.textoArte || null,
+    arquivos: t.arquivos ?? [],
+    publicar_em: t.publicarEm ?? null,
+    publicada_em: t.publicadaEm ?? null,
+    agendada_em: t.agendadaEm ?? null,
+    rede: t.rede?.trim() || null,
+    lote: t.lote?.trim() || null,
+  };
 }
 
 function notaDoBanco(n: Linha): NotaContexto {
@@ -263,6 +294,13 @@ export class RepositorioSupabase implements Repositorio {
           observacoes: (c.observacoes as string) ?? "",
           clienteDesde: (c.cliente_desde as string) ?? null,
           painelToken: (c.painel_token as string) ?? null,
+          atalhos: {
+            planejamentoUrl: (c.painel_planejamento_url as string) ?? null,
+            planejamentoRotulo: (c.painel_planejamento_rotulo as string) ?? null,
+            fotosUrl: (c.painel_fotos_url as string) ?? null,
+            identidadeUrl: (c.painel_identidade_url as string) ?? null,
+            inclusoTexto: (c.painel_incluso as string) ?? null,
+          },
           contrato: contrato
             ? {
                 inicio: (contrato.inicio as string) ?? null,
@@ -479,6 +517,11 @@ export class RepositorioSupabase implements Repositorio {
         segmento: c.segmento || null,
         observacoes: c.observacoes || null,
         cliente_desde: c.clienteDesde ?? null,
+        painel_planejamento_url: c.atalhos?.planejamentoUrl?.trim() || null,
+        painel_planejamento_rotulo: c.atalhos?.planejamentoRotulo?.trim() || null,
+        painel_fotos_url: c.atalhos?.fotosUrl?.trim() || null,
+        painel_identidade_url: c.atalhos?.identidadeUrl?.trim() || null,
+        painel_incluso: c.atalhos?.inclusoTexto?.trim() || null,
       })),
     );
     // valor mensal e condições moram no contrato ativo do cliente
@@ -914,41 +957,81 @@ export class RepositorioSupabase implements Repositorio {
       publicarEm: (t.publicar_em as string) ?? null,
       publicadaEm: (t.publicada_em as string) ?? null,
       agendadaEm: (t.agendada_em as string) ?? null,
+      rede: (t.rede as string) ?? null,
+      lote: (t.lote as string) ?? null,
     }));
   }
 
   async salvarTarefa(t: Tarefa) {
     const org_id = await this.org();
-    const { error } = await this.sb.from("tarefas").upsert({
-      id: t.id,
-      org_id,
-      titulo: t.titulo,
-      cliente_id: t.clienteId,
-      tipo_entrega_id: t.tipoEntregaId,
-      quantidade: Math.max(1, t.quantidade),
-      status: t.status,
-      prioridade: t.prioridade,
-      responsavel_id: t.responsavelId,
-      inicio: t.inicio,
-      vencimento: t.vencimento,
-      descricao: t.descricao || null,
-      etapas: t.etapas,
-      criado_em: t.criadoEm,
-      concluida_em: t.concluidaEm,
-      // as respostas do cliente (rodadas, feedback, aprovação) só o banco escreve
-      visivel_cliente: t.visivelCliente ?? false,
-      legenda: t.legenda || null,
-      texto_arte: t.textoArte || null,
-      arquivos: t.arquivos ?? [],
-      publicar_em: t.publicarEm ?? null,
-      publicada_em: t.publicadaEm ?? null,
-      agendada_em: t.agendadaEm ?? null,
-    });
+    const { error } = await this.sb.from("tarefas").upsert(tarefaParaBanco(t, org_id));
+    erro(error);
+  }
+
+  /** várias de uma vez, numa chamada só (se uma falhar, nenhuma é gravada) */
+  async salvarTarefas(ts: Tarefa[]) {
+    if (!ts.length) return;
+    const org_id = await this.org();
+    const { error } = await this.sb.from("tarefas").upsert(ts.map((t) => tarefaParaBanco(t, org_id)));
     erro(error);
   }
 
   async removerTarefa(id: string) {
     await this.remover("tarefas", [id]);
+  }
+
+  // ─── Datas comemorativas ──────────────────────────────────────────────────
+
+  async listarDatas() {
+    const org = await this.org();
+    const [d, l] = await Promise.all([
+      this.sb.from("datas_comemorativas").select("*").eq("org_id", org).order("data"),
+      this.sb.from("datas_do_cliente").select("*").eq("org_id", org),
+    ]);
+    erro(d.error);
+    erro(l.error);
+    return {
+      datas: ((d.data ?? []) as Linha[]).map((x) => ({ id: x.id as string, nome: x.nome as string, data: x.data as string, ativo: x.ativo as boolean })),
+      ligacoes: ((l.data ?? []) as Linha[]).map((x) => ({
+        id: x.id as string,
+        dataId: x.data_id as string,
+        clienteId: x.cliente_id as string,
+        diasAntecedencia: x.dias_antecedencia == null ? null : Number(x.dias_antecedencia),
+        nota: (x.nota as string) ?? null,
+        escondida: x.escondida === true,
+      })),
+    };
+  }
+
+  async salvarDataComemorativa(d: DataComemorativa) {
+    const { error } = await this.sb
+      .from("datas_comemorativas")
+      .upsert({ id: d.id, org_id: await this.org(), nome: d.nome.trim(), data: d.data, ativo: d.ativo });
+    erro(error);
+  }
+
+  async removerDataComemorativa(id: string) {
+    await this.remover("datas_comemorativas", [id]);
+  }
+
+  async salvarDataDoCliente(l: DataDoCliente) {
+    const { error } = await this.sb.from("datas_do_cliente").upsert(
+      {
+        id: l.id,
+        org_id: await this.org(),
+        data_id: l.dataId,
+        cliente_id: l.clienteId,
+        dias_antecedencia: l.diasAntecedencia,
+        nota: l.nota?.trim() || null,
+        escondida: l.escondida,
+      },
+      { onConflict: "data_id,cliente_id" },
+    );
+    erro(error);
+  }
+
+  async removerDataDoCliente(id: string) {
+    await this.remover("datas_do_cliente", [id]);
   }
 
   /** O que a equipe (não sócia) precisa para as tarefas: nomes, tipos de entrega e serviços. Nada de valores. */

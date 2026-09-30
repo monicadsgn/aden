@@ -56,6 +56,11 @@ export interface Tarefa {
   agendadaEm?: string | null;
   /** quando foi ao ar de fato */
   publicadaEm?: string | null;
+  // ─── planejamento mensal (interno: o cliente não vê) ───
+  /** rede onde vai sair (Instagram…) */
+  rede?: string | null;
+  /** calendário que agrupa as peças ("Calendário Outubro — Olinda") */
+  lote?: string | null;
 }
 
 export interface ArquivoPeca {

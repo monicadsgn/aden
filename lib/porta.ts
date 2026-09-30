@@ -67,7 +67,7 @@ export function chamadaDoPedido(corpo: unknown): ChamadaPorta {
 /** Texto de ajuda da porta (tela e resposta sem código). */
 export const COMO_USAR_PORTA = {
   autenticacao: "Cabeçalho Authorization: Bearer <seu código>",
-  ler: "GET /api/porta (?concluidas=1 inclui as concluídas): suas tarefas, os nomes dos clientes e dos tipos de entrega. Cada tarefa traz a etapa da peça (planejado, producao, aguardando, ajuste, aprovada, agendada, publicada, entregue) e, só leitura, enviadaClienteEm, aprovadaEm e agendadaEm.",
+  ler: "GET /api/porta (?concluidas=1 inclui as concluídas): suas tarefas, os nomes dos clientes e dos tipos de entrega. Cada tarefa traz a etapa da peça (planejado, producao, aguardando, ajuste, aprovada, agendada, publicada, entregue) e, só leitura, enviadaClienteEm, aprovadaEm, agendadaEm, rede e lote.",
   salvar: 'POST /api/porta { "acao": "salvar", "tarefa": { "titulo", "cliente", "entrega", "quantidade", "prioridade", "inicio", "vencimento", "descricao", "checklist", "legenda", "publicarEm" } } (com "id" edita; sem, cria no seu nome).',
   status: 'POST /api/porta { "acao": "status", "id": "…", "status": "a_fazer" | "em_producao" | "concluida" | "publicada" | "nao_publicada" }',
 };

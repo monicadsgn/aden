@@ -111,6 +111,26 @@ class BancoFalso {
     this.contexto.push(nota);
     return nota;
   }
+  async salvarTarefas(ts: import("../calculo/tarefas").Tarefa[]) {
+    for (const t of ts) await this.salvarTarefa(t);
+  }
+  datas: import("../calculo/datas").DataComemorativa[] = [];
+  ligacoes: import("../calculo/datas").DataDoCliente[] = [];
+  async listarDatas() {
+    return { datas: structuredClone(this.datas), ligacoes: structuredClone(this.ligacoes) };
+  }
+  async salvarDataComemorativa(d: import("../calculo/datas").DataComemorativa) {
+    this.datas = [...this.datas.filter((x) => x.id !== d.id), d];
+  }
+  async removerDataComemorativa(id: string) {
+    this.datas = this.datas.filter((x) => x.id !== id);
+  }
+  async salvarDataDoCliente(l: import("../calculo/datas").DataDoCliente) {
+    this.ligacoes = [...this.ligacoes.filter((x) => x.id !== l.id), l];
+  }
+  async removerDataDoCliente(id: string) {
+    this.ligacoes = this.ligacoes.filter((x) => x.id !== id);
+  }
   async resolverContexto(id: string, resolvida: boolean) {
     this.contexto = this.contexto.map((n) => (n.id === id ? { ...n, resolvidoEm: resolvida ? "2026-09-30" : null, resolvidoPorNome: resolvida ? "Mônica (pelo Claude)" : null } : n));
   }
@@ -441,6 +461,62 @@ describe("conector: contexto do cliente", () => {
     expect(todas.notas).toHaveLength(2);
     expect(todas.notas.find((n: { id: string }) => n.id === a.anotado.id).resolvida.por).toBe("Mônica (pelo Claude)");
     await expect(chamar("anotar_contexto_cliente", { cliente: "Olinda", tipo: "outro", texto: "x" })).rejects.toThrow();
+  });
+});
+
+describe("conector: planejamento mensal, datas e atalhos", () => {
+  it("importa o planejamento de uma vez: planejado, visível ao cliente, com rede e lote internos", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await chamar("salvar_tipo_entrega", { nome: "Post simples" });
+    await chamar("salvar_tipo_entrega", { nome: "Reels" });
+    const r = await chamar("importar_planejamento_mensal", {
+      cliente: "Olinda",
+      lote: "Calendário Outubro — Olinda",
+      pecas: [
+        { titulo: "Dicionário: Entretela", tipo: "Post simples", textoArte: "ENTRETELA", legenda: "Legenda", rede: "instagram", publicarEm: "2026-10-02" },
+        { titulo: "Tour pela loja", tipo: "Reels", publicarEm: "2026-10-04 18:30" },
+      ],
+    });
+    expect(r.criadas).toBe(2);
+    expect(r.pecas.map((p: { etapa: string }) => p.etapa)).toEqual(["planejado", "planejado"]);
+    const t = banco.tarefas.find((x) => x.titulo === "Dicionário: Entretela")!;
+    expect(t).toMatchObject({ visivelCliente: true, rede: "instagram", lote: "Calendário Outubro — Olinda", status: "a_fazer", vencimento: "2026-10-02", textoArte: "ENTRETELA" });
+    expect(t.publicarEm).toBe("2026-10-02T15:00:00.000Z");
+    const lista = await chamar("listar_tarefas", { lote: "calendário outubro — olinda" });
+    expect(lista).toHaveLength(2);
+    // tipo que não existe: nada é gravado
+    await expect(
+      chamar("importar_planejamento_mensal", { cliente: "Olinda", lote: "X", pecas: [{ titulo: "a", tipo: "Post simples" }, { titulo: "b", tipo: "Sticker" }] }),
+    ).rejects.toThrow(/Nada foi gravado.*Sticker/);
+    expect(banco.tarefas).toHaveLength(2);
+  });
+
+  it("datas comemorativas com a janela de cada cliente", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await chamar("salvar_cliente", { nome: "Stadium", valorMensalReais: 1500 });
+    await chamar("salvar_data_comemorativa", { nome: "Black Friday", data: "2026-11-27" });
+    await chamar("salvar_data_comemorativa", { nome: "Dia das Crianças", data: "2026-10-12" });
+    await chamar("ligar_data_ao_cliente", { data: "Black Friday", cliente: "Olinda", diasAntecedencia: 60 });
+    await chamar("ligar_data_ao_cliente", { data: "Black Friday", cliente: "Stadium", diasAntecedencia: 45 });
+    await chamar("ligar_data_ao_cliente", { data: "Dia das Crianças", cliente: "Olinda", diasAntecedencia: 45, nota: "roupinhas" });
+    const o = await chamar("datas_do_mes", { mes: "2026-10", cliente: "Olinda" });
+    expect(o.datasDoMes).toEqual([{ nome: "Dia das Crianças", data: "2026-10-12", diasAntecedencia: 45, nota: "roupinhas" }]);
+    expect(o.campanhasQueComecam[0]).toMatchObject({ nome: "Black Friday", janelaAbreEm: "2026-09-28", situacao: "já aberta (começou antes)" });
+    const s = await chamar("datas_do_mes", { mes: "2026-10", cliente: "Stadium" });
+    expect(s.campanhasQueComecam[0]).toMatchObject({ janelaAbreEm: "2026-10-13", situacao: "abre neste mês" });
+    await chamar("ligar_data_ao_cliente", { data: "Black Friday", cliente: "Stadium", escondida: true });
+    expect((await chamar("datas_do_mes", { mes: "2026-10", cliente: "Stadium" })).campanhasQueComecam).toEqual([]);
+    const todas = await chamar("ver_datas_comemorativas", { cliente: "Olinda" });
+    expect(todas).toHaveLength(2);
+  });
+
+  it("atalhos do painel: só https, só os campos enviados mudam", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await expect(chamar("atualizar_atalhos_painel", { cliente: "Olinda", fotosUrl: "drive.google.com/x" })).rejects.toThrow(/https/);
+    await chamar("atualizar_atalhos_painel", { cliente: "Olinda", planejamentoUrl: "https://a.com/plano.pdf", planejamentoRotulo: "Planejamento de outubro" });
+    await chamar("atualizar_atalhos_painel", { cliente: "Olinda", inclusoTexto: "15 posts\nReunião mensal" });
+    const f = await chamar("ver_cliente", { cliente: "Olinda" });
+    expect(f.atalhosDoPainel).toMatchObject({ planejamentoUrl: "https://a.com/plano.pdf", planejamentoRotulo: "Planejamento de outubro", inclusoTexto: "15 posts\nReunião mensal", fotosUrl: null });
   });
 });
 
