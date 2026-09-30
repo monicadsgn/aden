@@ -25,6 +25,8 @@
   --marca-tinta: #f1f2e8;    /* fundos bem leves */
   --sobre-marca: #ffffff;    /* texto sobre a cor da marca */
   --destaque: #3e4122;       /* verde profundo: acento das formas decorativas */
+  --creme: #fcf9f1;          /* creme da marca: só no ícone quadrado ("a" creme no verde ou fundo creme) */
+  --verde-aden: #797c46;     /* verde da marca que não muda no modo escuro: só no ícone quadrado */
 
   /* base */
   --fundo: #fafaf6;          /* branco (quase puro) domina */

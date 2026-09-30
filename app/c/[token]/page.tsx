@@ -8,7 +8,7 @@
 import { CalendarClock, FileText, FolderOpen, HelpCircle, Image as ImageIcon, Layers, ListChecks, Palette, Sparkles, Video, type LucideIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Marca } from "@/components/Marca";
+import { Marca, MarcaIcone } from "@/components/Marca";
 import { Modal } from "@/components/Modal";
 import { cx } from "@/components/ui";
 import { aprovarAte, montarQuadro, resumoDoMes, situacaoDaPecaPainel } from "@/lib/calculo/painel";
@@ -110,7 +110,12 @@ export default function PainelDoCliente() {
     timer.current = setTimeout(() => setRecebido(null), 5000);
   };
 
-  if (painel === undefined) return <div className="min-h-screen bg-fundo" />;
+  if (painel === undefined)
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-fundo">
+        <MarcaIcone className="size-14 animate-pulse" />
+      </div>
+    );
   if (painel === null)
     return (
       <main className="flex min-h-screen items-center justify-center bg-fundo px-6 text-center">

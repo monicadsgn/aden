@@ -406,7 +406,10 @@ planejado. Sobra → reinvestimento → sócios pelo %. Pago inteiro ou em parte
 Identidade da Aden, aprovada pela Moni em 30/09/2026: logo é só a tipografia "aden" (`components/Marca.tsx`, caminhos
 em `lib/documentos/logo.ts`), branco dominando com o verde #797c46 de apoio, tons de apoio no verde escuro, texto
 verde quase preto (preto só no modo escuro), fonte Poppins (pacote local `@fontsource/poppins`), formas orgânicas
-sem folha nem planta. O ícone da aba (`app/icon.svg`) é o "a" da marca em branco sobre o verde. Cores, fonte, cantos (inclusive o formato pílula
+sem folha nem planta. A logo principal é sempre o texto "aden". O que é pequeno e quadrado (ícone da aba `app/icon.svg`, ícone do
+celular `app/apple-icon.png`, tela de carregamento) usa só a letra "a" num retângulo arredondado: "a" creme no verde
+ou "a" verde no creme (`MarcaIcone` em `components/Marca.tsx`, letra em `LETRA_A`); fica igual no modo escuro
+(tokens `--creme` e `--verde-aden`, que não mudam no escuro). Cores, fonte, cantos (inclusive o formato pílula
 dos botões, abas, seletores e etiquetas: `--raio-botao`) e sombras ficam só em `app/tokens.css`; nenhum componente
 tem cor, fonte ou arredondamento fixo (só círculos de verdade: avatares, pontos, chaves, barras). O logo fica em `components/Marca.tsx` e `app/icon.svg`.
 Verificado em 25/09/2026: trocando só o `tokens.css` por outra paleta e outra fonte, o sistema inteiro muda.
