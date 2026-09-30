@@ -166,7 +166,13 @@ export class RepositorioSupabase implements Repositorio {
 
   /** Primeiro acesso: cria a senha de quem foi convidado. "confirmar" = falta clicar no e-mail. */
   async criarConta(email: string, senha: string): Promise<"ok" | "confirmar"> {
-    const { data, error } = await this.sb.auth.signUp({ email: email.trim().toLowerCase(), password: senha });
+    // o link de confirmação volta para o endereço onde a conta foi criada (nunca o "Site URL" padrão do Supabase)
+    const volta = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+    const { data, error } = await this.sb.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password: senha,
+      ...(volta && { options: { emailRedirectTo: volta } }),
+    });
     if (error) throw new Error(error.message.includes("already registered") ? "Esse e-mail já tem conta. Use Entrar." : error.message);
     this.usuario = null;
     this.orgId = null;
