@@ -166,6 +166,11 @@ migração. Meta: tudo pronto até o fim de outubro.
   no Drive e para o envio do contrato, briefing único no perfil do cliente, template da apresentação comercial. Processo:
   indicação → pesquisa de nicho e concorrência → reunião comercial (follow-up se "vou ver") → proposta → kickoff →
   briefing → planejamento → criativos → monitoramento → relatório no fim do mês.
+  Andamento (30/09/2026, versão de teste): passo 1 (checklist de fechamento na ordem onboarding → contrato →
+  pagamento → pasta → briefing → kickoff → painel; CRM com pesquisa e reunião; mês do onboarding configurável) e passo
+  2 (briefing único, estrutura pronta; as perguntas entram depois da Moni aprovar a lista). Autentique: conta nova no
+  grupoaden1. Passos 3 e 4 partem de como o sistema antigo já faz (Autentique por GraphQL com PDF em multipart; link
+  da InfinitePay pelo checkout com webhook), reescritos aqui dentro.
 - **Fase 6 · Skills da Aden:** proposta, contrato, onboarding, fechamento e apresentação em arquivos .skill.
 
 ## 1. Auditoria de usabilidade: itens que faltam (entram na Fase 1)

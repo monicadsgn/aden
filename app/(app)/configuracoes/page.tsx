@@ -2,6 +2,7 @@
 
 import {
   CalendarHeart,
+  FileQuestion,
   History,
   KeyRound,
   Timer,
@@ -30,6 +31,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { TrocarFoto } from "@/components/Avatar";
 import { OQueQuerDizer } from "@/components/Alertas";
+import { SecaoBriefing } from "@/components/configuracoes/SecaoBriefing";
 import { SecaoDatas } from "@/components/configuracoes/SecaoDatas";
 import { SecaoEquipe } from "@/components/configuracoes/SecaoEquipe";
 import { SecaoMetas, SecaoPacotes, SecaoTerceiros } from "@/components/configuracoes/SecoesNovas";
@@ -74,6 +76,7 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "terceiros", rotulo: "Terceiros", icone: Truck, frase: "Serviços terceirizados cobrados por saída (ex.: audiovisual). Custo só do cliente que recebe." },
   { id: "pacotes", rotulo: "Pacotes", icone: Package, frase: "Pacotes fechados para a negociação. O preço sai do cálculo, nunca digitado." },
   { id: "datas", rotulo: "Datas comemorativas", icone: CalendarHeart, frase: "As datas que entram no planejamento de cada cliente, com a antecedência da campanha de cada um." },
+  { id: "briefing", rotulo: "Briefing", icone: FileQuestion, frase: "As perguntas do briefing que o Áleff e a Moni respondem na ficha de cada cliente." },
   { id: "metas", rotulo: "Metas", icone: Trophy, frase: "A trilha de crescimento em degraus, com a ação de cada degrau. Aparece na tela Mês." },
   { id: "equipe", rotulo: "Equipe e acessos", icone: KeyRound, frase: "Quem entra no Aden e o que cada um vê: sócios, equipe, freelancers e contador." },
   { id: "regras", rotulo: "Regras da empresa", icone: Scale, frase: "Regime e imposto, como dividir o custo fixo, reinvestimento, taxas e como distribuir cada pagamento." },
@@ -82,7 +85,7 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
 
 const GRUPOS_SECOES: { titulo: string; ids: SecaoConfig[] }[] = [
   { titulo: "A empresa", ids: ["socios", "equipe", "regras", "custos", "metas", "limites"] },
-  { titulo: "O que a Aden vende", ids: ["servicos", "tipos", "pacotes", "terceiros", "datas"] },
+  { titulo: "O que a Aden vende", ids: ["servicos", "tipos", "pacotes", "terceiros", "datas", "briefing"] },
 ];
 
 function atualizar<T extends { id: string }>(lista: T[], id: string, patch: Partial<T>): T[] {
@@ -656,6 +659,7 @@ export default function Configuracoes() {
             {secao === "metas" && <SecaoMetas rascunho={rascunho} set={set} />}
             {secao === "equipe" && <SecaoEquipe />}
             {secao === "datas" && <SecaoDatas clientes={rascunho.clientes} />}
+            {secao === "briefing" && <SecaoBriefing servicos={rascunho.servicos} />}
 
             {secao === "regras" && (
               <div className="flex flex-col gap-5">
@@ -749,6 +753,24 @@ export default function Configuracoes() {
                     <strong className="text-texto">Custo primeiro:</strong> o que entra paga primeiro os custos do mês daquele cliente; só o que passar disso vai para os sócios.{" "}
                     <strong className="text-texto">Proporcional:</strong> cada real que entra já é dividido entre custos e sócios, na mesma proporção do mês inteiro.
                     {e.ordemDistribuicao == null && <span className="font-semibold text-aviso"> Enquanto estiver vazia, o sistema não distribui os pagamentos.</span>}
+                  </p>
+                </Bloco>
+
+                <Bloco titulo="Mês do onboarding">
+                  <div className="sm:col-span-2">
+                    <Segmentado
+                      rotulo="O mês do onboarding cobra mensalidade?"
+                      valor={e.mensalidadeNoOnboarding == null ? null : e.mensalidadeNoOnboarding ? "sim" : "nao"}
+                      aoMudar={(v) => setE({ mensalidadeNoOnboarding: v == null ? null : v === "sim" })}
+                      opcoes={[
+                        { valor: "sim", rotulo: "Cobra" },
+                        { valor: "nao", rotulo: "Não cobra" },
+                      ]}
+                    />
+                  </div>
+                  <p className="text-[12px] leading-snug text-texto-suave sm:col-span-2">
+                    O primeiro mês do cliente, enquanto acontece o onboarding. Aparece no checklist de fechamento da ficha.
+                    {e.mensalidadeNoOnboarding == null && <span className="font-semibold text-aviso"> Vazio = ainda a definir entre os sócios.</span>}
                   </p>
                 </Bloco>
 

@@ -37,7 +37,9 @@ import { formatarMoeda } from "@/lib/formato";
 
 export const COR_ETAPA: Record<Lead["etapa"], string> = {
   lead_recebido: "bg-superficie-2 text-texto",
+  pesquisa: "bg-marca-suave text-marca-forte",
   contato_feito: "bg-info text-superficie",
+  reuniao: "bg-marca text-sobre-marca",
   proposta_enviada: "bg-aviso text-superficie",
   ganho: "bg-ok text-superficie",
   perdido: "bg-erro text-superficie",

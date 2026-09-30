@@ -6,6 +6,8 @@
 //   variáveis do Supabase não estão configuradas (dev local / apresentação).
 
 import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
+import type { RegistroFechamento } from "../calculo/fechamento";
+import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
 import type { Medicao } from "../calculo/calibragem";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -279,6 +281,26 @@ export interface Repositorio {
   removerTarefa(id: string): Promise<void>;
   /** várias de uma vez (planejamento mensal): se uma falhar, nenhuma é gravada */
   salvarTarefas(ts: Tarefa[]): Promise<void>;
+
+  // ─── Fechamento do cliente (Fase 5) ─────────────────────────────────────────
+  listarFechamento(clienteId: string): Promise<RegistroFechamento[]>;
+  /** marca (ou desmarca) um passo; quem fez vem do banco */
+  salvarPassoFechamento(p: {
+    clienteId: string;
+    passo: RegistroFechamento["passo"];
+    feito: boolean;
+    link?: string | null;
+    data?: string | null;
+    observacao?: string | null;
+  }): Promise<void>;
+
+  // ─── Briefing do cliente (Fase 5) ────────────────────────────────────────────
+  listarPerguntasBriefing(): Promise<PerguntaBriefing[]>;
+  salvarPerguntaBriefing(p: PerguntaBriefing): Promise<void>;
+  removerPerguntaBriefing(id: string): Promise<void>;
+  listarRespostasBriefing(clienteId: string): Promise<RespostaBriefing[]>;
+  /** quem respondeu vem do banco */
+  responderBriefing(clienteId: string, perguntaId: string, resposta: string | null): Promise<void>;
 
   // ─── Datas comemorativas (planejamento mensal) ───────────────────────────────
   listarDatas(): Promise<{ datas: DataComemorativa[]; ligacoes: DataDoCliente[] }>;

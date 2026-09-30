@@ -433,6 +433,14 @@ de um calendário de uma vez (`salvarTarefas`, tudo ou nada), na etapa planejado
 do mês fica em `lib/calculo/datas.ts` (`datasDoPlanejamento`, testada) e sai em `datas_do_mes`; tela em Configurações →
 Datas comemorativas. Atalhos do painel: colunas `painel_*` em `clientes` (links só https), editados na ficha e por
 `atualizar_atalhos_painel`, lidos pelo `painel_cliente`.
+**Fase 5, passos 1 e 2 (30/09/2026, migrations 0028 e 0029):** checklist de fechamento (`fechamento_passos`, conta em
+`lib/calculo/fechamento.ts`), aberto quando o lead vira cliente (`clientes.fechamento_iniciado_em`), na ordem
+onboarding → contrato → pagamento → pasta no Drive → briefing → kickoff (vira tarefa) → link do painel (conferido pelo
+link da ficha); quem fez vem do banco. CRM ganhou as etapas pesquisa e reunião. "Mês do onboarding cobra mensalidade?"
+em Configurações → Regras da empresa (vazio = a definir). Briefing único: `briefing_perguntas` (texto dos sócios, por
+seção, todos os serviços ou um) e `briefing_respostas` (quem respondeu e o texto da pergunta naquele momento), aba
+Briefing na ficha e Configurações → Briefing; conta em `lib/calculo/briefing.ts`. Conector: `ver_fechamento`,
+`marcar_passo_fechamento`, `ver_briefing`, `responder_briefing`, `salvar_pergunta_briefing`.
 Dinheiro em reais e referências por nome na conversa; a tradução fica em
 `lib/mcp/traducao.ts`. As instruções do servidor proíbem inventar número de negócio.
 Ao criar uma área nova (fases 2+), acrescente as ferramentas dela aqui.
@@ -449,6 +457,7 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 - ✅ `configuracoes_empresa` (reinvestimento, imposto, taxa de recebimento, regra de rateio)
 - ✅ `pessoas` (sócio?, % padrão, piso/h, capacidade h/mês, vínculo opcional com membro)
 - ✅ `datas_comemorativas`, ✅ `datas_do_cliente` (planejamento mensal)
+- ✅ `fechamento_passos` (checklist de fechamento), ✅ `briefing_perguntas`, ✅ `briefing_respostas` (Fase 5)
 - ✅ `portas` (códigos pessoais: `uso` porta genérica ou conector do Claude; só hash), ✅ `contexto_cliente` (memória do cliente, Fase 4)
 - `anexos`
 

@@ -24,6 +24,8 @@ import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } fro
 import { ROTULO_PECA, estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, publicar, rotuloStatus, situacaoPeca, type Tarefa } from "../calculo/tarefas";
 import type { AtalhosPainel, Configuracao, Meta, Pacote } from "../calculo/tipos";
 import { datasDoPlanejamento, type DataComemorativa, type ItemDoPlanejamento } from "../calculo/datas";
+import { montarFechamento } from "../calculo/fechamento";
+import { montarBriefing, servicosDoCliente } from "../calculo/briefing";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
 import { REGRAS_PROTECAO } from "../regras/aprovacao";
@@ -245,6 +247,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         ofertaVerbaIndicadaAteReais: opt(z.number(), "oferta padrão: verba de mídia indicada, até (reais)"),
         ofertaGestaoDepoisDoResultadoReais: opt(z.number(), "oferta padrão: valor da gestão de tráfego depois do resultado (reais)"),
         ofertaMinimoSocialMaisTrafegoReais: opt(z.number(), "oferta padrão: social media + tráfego abaixo disso mostra um aviso na Proposta (reais)"),
+        mensalidadeNoOnboarding: opt(z.boolean(), "o mês do onboarding cobra mensalidade? Só grave o que os sócios decidirem"),
       },
     },
     async ({
@@ -1114,6 +1117,188 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       }),
   );
 
+  // ─── Fechamento do cliente (Fase 5) ─────────────────────────────────────────
+
+  server.registerTool(
+    "ver_fechamento",
+    {
+      title: "Checklist de fechamento do cliente",
+      description:
+        "Os 7 passos do fechamento, na ordem combinada: onboarding → contrato assinado → link de pagamento → pasta no Drive → briefing → kickoff → link do painel. Mostra o que foi feito, por quem e quando, e o próximo passo. Sem cliente: todos os fechamentos em andamento.",
+      inputSchema: { cliente: z.string().optional().describe("nome ou id; vazio = todos os fechamentos abertos") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const alvo = cliente ? [resolver(config.clientes, cliente, "Cliente")] : config.clientes.filter((c) => c.ativo && c.fechamentoIniciadoEm);
+        const saida = [];
+        for (const c of alvo) {
+          if (!c.fechamentoIniciadoEm) {
+            saida.push({ cliente: c.nome, fechamento: "sem checklist (cliente anterior ao fechamento); abra com marcar_passo_fechamento" });
+            continue;
+          }
+          const f = montarFechamento(await repo.listarFechamento(c.id), !!c.painelToken);
+          if (!cliente && f.completo) continue;
+          saida.push({
+            cliente: c.nome,
+            feitos: `${f.feitos} de ${f.total}`,
+            proximo: f.proximo?.rotulo ?? null,
+            passos: f.itens.map((i) => ({
+              passo: i.passo,
+              rotulo: i.rotulo,
+              feito: i.feito,
+              ...(i.feitoEm && { quem: i.feitoPorNome, quando: i.feitoEm }),
+              ...(i.link && { link: i.link }),
+              ...(i.data && { data: i.data }),
+            })),
+          });
+        }
+        return {
+          mensalidadeNoOnboarding: config.empresa.mensalidadeNoOnboarding == null ? "a definir" : config.empresa.mensalidadeNoOnboarding ? "cobra" : "não cobra",
+          fechamentos: saida,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "marcar_passo_fechamento",
+    {
+      title: "Marcar passo do fechamento",
+      description:
+        "Marca (ou desmarca com feito=false) um passo do fechamento do cliente. Quem fez é gravado pelo banco. link (https://) guarda o contrato, o link de pagamento ou a pasta no Drive; data (AAAA-MM-DD) é a do kickoff e cria a tarefa da reunião. O link do painel não se marca aqui: ele se confere pelo link criado (link_painel_cliente). Se o cliente ainda não tinha checklist, abre.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id"),
+        passo: z.enum(["onboarding", "contrato", "pagamento", "pasta_drive", "briefing", "kickoff"]),
+        feito: z.boolean().optional().describe("padrão true"),
+        link: z.string().nullable().optional(),
+        data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().describe("kickoff: AAAA-MM-DD"),
+      },
+    },
+    async ({ cliente, passo, feito, link, data }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const antes = await repo.carregarConfig();
+        const c = resolver(antes.clientes, cliente, "Cliente");
+        if (link && !/^https:\/\/\S+$/.test(link.trim())) throw new Error("O link precisa ser completo, começando com https://");
+        if (!c.fechamentoIniciadoEm) {
+          const depois = structuredClone(antes);
+          depois.clientes = depois.clientes.map((x) => (x.id === c.id ? { ...x, fechamentoIniciadoEm: new Date().toISOString() } : x));
+          await salvarDiferenca(repo, antes, depois);
+        }
+        const registros = await repo.listarFechamento(c.id);
+        const jaTinhaKickoff = !!registros.find((r) => r.passo === "kickoff")?.feitoEm;
+        const marcar = feito ?? true;
+        await repo.salvarPassoFechamento({ clienteId: c.id, passo, feito: marcar, ...(link !== undefined && { link }), ...(data !== undefined && { data }) });
+        let tarefa: string | null = null;
+        if (passo === "kickoff" && marcar && data && !jaTinhaKickoff) {
+          const eu = await repo.usuarioAtual();
+          const t = { ...novaTarefa(novoId(), `Kickoff · ${c.nome}`, { clienteId: c.id, responsavelId: eu?.pessoaId ?? null }), vencimento: data, descricao: "Reunião de início com o cliente (checklist de fechamento)." };
+          await repo.salvarTarefa(t);
+          tarefa = t.titulo;
+        }
+        const f = montarFechamento(await repo.listarFechamento(c.id), !!c.painelToken);
+        return { cliente: c.nome, passo, feito: marcar, ...(tarefa && { tarefaCriada: tarefa }), feitos: `${f.feitos} de ${f.total}`, proximo: f.proximo?.rotulo ?? null };
+      }),
+  );
+
+  // ─── Briefing do cliente (Fase 5) ──────────────────────────────────────────
+
+  server.registerTool(
+    "ver_briefing",
+    {
+      title: "Briefing do cliente",
+      description:
+        "O briefing da ficha do cliente, por seção: cada pergunta, a resposta, quem respondeu e quando. O cliente não preenche: o Áleff responde na reunião dele e a Moni completa na dela. Use o id da pergunta em responder_briefing.",
+      inputSchema: { cliente: z.string().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const [perguntas, respostas] = await Promise.all([repo.listarPerguntasBriefing(), repo.listarRespostasBriefing(c.id)]);
+        const b = montarBriefing(perguntas, respostas, servicosDoCliente(config, c.id));
+        return {
+          cliente: c.nome,
+          respondidas: `${b.respondidas} de ${b.total}`,
+          secoes: b.secoes.map((s) => ({
+            secao: s.secao,
+            perguntas: s.itens.map(({ pergunta: p, resposta: r }) => ({
+              id: p.id,
+              pergunta: p.pergunta,
+              resposta: r?.resposta ?? null,
+              ...(r?.resposta && { quem: r.respondidoPorNome, quando: r.respondidoEm }),
+            })),
+          })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "responder_briefing",
+    {
+      title: "Responder o briefing do cliente",
+      description:
+        "Grava respostas do briefing (várias de uma vez). pergunta = id (de ver_briefing) ou o texto exato da pergunta. Resposta vazia apaga. Quem respondeu é gravado pelo banco. Grave só o que a pessoa disse na conversa ou na reunião.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id"),
+        respostas: z.array(z.object({ pergunta: z.string(), resposta: z.string() })).min(1),
+      },
+    },
+    async ({ cliente, respostas }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const perguntas = (await repo.listarPerguntasBriefing()).filter((p) => p.ativo);
+        const achar = (ref: string) =>
+          perguntas.find((p) => p.id === ref.trim()) ?? perguntas.find((p) => p.pergunta.trim().toLowerCase() === ref.trim().toLowerCase());
+        const faltam = respostas.filter((r) => !achar(r.pergunta)).map((r) => r.pergunta);
+        if (faltam.length) throw new Error(`Pergunta não encontrada: ${faltam.join("; ")}. Veja os ids em ver_briefing.`);
+        for (const r of respostas) await repo.responderBriefing(c.id, achar(r.pergunta)!.id, r.resposta);
+        const b = montarBriefing(perguntas, await repo.listarRespostasBriefing(c.id), servicosDoCliente(config, c.id));
+        return { cliente: c.nome, gravadas: respostas.length, respondidas: `${b.respondidas} de ${b.total}` };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_pergunta_briefing",
+    {
+      title: "Criar ou alterar pergunta do briefing",
+      description:
+        "A lista de perguntas do briefing (Configurações → Briefing). O texto é dos sócios: só grave perguntas que a Moni ou o Áleff aprovaram. servico = nome do serviço (vale só para quem contratou); null = todos. ativo=false tira da lista sem apagar respostas.",
+      inputSchema: {
+        id: z.string().optional().describe("id da pergunta a alterar; vazio = nova"),
+        secao: z.string().optional(),
+        pergunta: z.string().optional(),
+        servico: z.string().nullable().optional(),
+        ordem: z.number().int().optional(),
+        ativo: z.boolean().optional(),
+      },
+    },
+    async ({ id, secao, pergunta, servico, ordem, ativo }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const todas = await repo.listarPerguntasBriefing();
+        const antes = id ? todas.find((p) => p.id === id) : null;
+        if (id && !antes) throw new Error("Pergunta não encontrada.");
+        if (!antes && (!secao?.trim() || !pergunta?.trim())) throw new Error("Pergunta nova precisa de seção e texto.");
+        const p = {
+          id: antes?.id ?? novoId(),
+          secao: (secao ?? antes!.secao).trim(),
+          pergunta: (pergunta ?? antes!.pergunta).trim(),
+          ajuda: antes?.ajuda ?? null,
+          servicoId: servico !== undefined ? (servico ? resolver(config.servicos, servico, "Serviço").id : null) : (antes?.servicoId ?? null),
+          ordem: ordem ?? antes?.ordem ?? Math.max(0, ...todas.map((x) => x.ordem)) + 10,
+          ativo: ativo ?? antes?.ativo ?? true,
+        };
+        await repo.salvarPerguntaBriefing(p);
+        return { salva: p.pergunta, id: p.id, secao: p.secao, criada: !antes };
+      }),
+  );
+
   // ─── Contexto do cliente (memória, Fase 4) ─────────────────────────────────
 
   server.registerTool(
@@ -1345,10 +1530,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Mudar a etapa do lead",
       description:
-        "lead_recebido, contato_feito, proposta_enviada ou perdido (com motivo). Para GANHO use ganhar_lead, que também cria o cliente.",
+        "lead_recebido, pesquisa (pesquisa de nicho e concorrência), contato_feito, reuniao (reunião comercial), proposta_enviada ou perdido (com motivo). Para GANHO use ganhar_lead, que também cria o cliente.",
       inputSchema: {
         id: z.string().describe("id ou nome do lead"),
-        etapa: z.enum(["lead_recebido", "contato_feito", "proposta_enviada", "perdido"]),
+        etapa: z.enum(["lead_recebido", "pesquisa", "contato_feito", "reuniao", "proposta_enviada", "perdido"]),
         motivoPerda: z.string().optional(),
       },
     },

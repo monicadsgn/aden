@@ -11,6 +11,8 @@ import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, ClienteBase, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
 import type { DataComemorativa, DataDoCliente } from "../calculo/datas";
+import type { RegistroFechamento } from "../calculo/fechamento";
+import type { PerguntaBriefing, RespostaBriefing } from "../calculo/briefing";
 import { separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
 import { avisosDaMudanca } from "./acoes";
 import type {
@@ -212,6 +214,7 @@ export class RepositorioSupabase implements Repositorio {
       empresa: {
         regime: (e?.regime as Configuracao["empresa"]["regime"]) ?? null,
         ordemDistribuicao: (e?.ordem_distribuicao as Configuracao["empresa"]["ordemDistribuicao"]) ?? null,
+        mensalidadeNoOnboarding: (e?.mensalidade_no_onboarding as boolean | null) ?? null,
         medicoesCalibragem: num(e?.medicoes_calibragem),
         diferencaSugerirPct: num(e?.diferenca_sugerir_pct),
         diasLeadParado: num(e?.dias_lead_parado),
@@ -294,6 +297,7 @@ export class RepositorioSupabase implements Repositorio {
           observacoes: (c.observacoes as string) ?? "",
           clienteDesde: (c.cliente_desde as string) ?? null,
           painelToken: (c.painel_token as string) ?? null,
+          fechamentoIniciadoEm: (c.fechamento_iniciado_em as string) ?? null,
           atalhos: {
             planejamentoUrl: (c.painel_planejamento_url as string) ?? null,
             planejamentoRotulo: (c.painel_planejamento_rotulo as string) ?? null,
@@ -392,6 +396,7 @@ export class RepositorioSupabase implements Repositorio {
         org_id,
         regime: a.empresa.regime ?? null,
         ordem_distribuicao: a.empresa.ordemDistribuicao ?? null,
+        mensalidade_no_onboarding: a.empresa.mensalidadeNoOnboarding ?? null,
         medicoes_calibragem: a.empresa.medicoesCalibragem ?? null,
         diferenca_sugerir_pct: a.empresa.diferencaSugerirPct ?? null,
         dias_lead_parado: a.empresa.diasLeadParado ?? null,
@@ -522,6 +527,7 @@ export class RepositorioSupabase implements Repositorio {
         painel_fotos_url: c.atalhos?.fotosUrl?.trim() || null,
         painel_identidade_url: c.atalhos?.identidadeUrl?.trim() || null,
         painel_incluso: c.atalhos?.inclusoTexto?.trim() || null,
+        fechamento_iniciado_em: c.fechamentoIniciadoEm ?? null,
       })),
     );
     // valor mensal e condições moram no contrato ativo do cliente
@@ -978,6 +984,104 @@ export class RepositorioSupabase implements Repositorio {
 
   async removerTarefa(id: string) {
     await this.remover("tarefas", [id]);
+  }
+
+  // ─── Fechamento do cliente ────────────────────────────────────────────────
+
+  async listarFechamento(clienteId: string): Promise<RegistroFechamento[]> {
+    const { data, error } = await this.sb.from("fechamento_passos").select("*").eq("cliente_id", clienteId);
+    erro(error);
+    return ((data ?? []) as Linha[]).map((r) => ({
+      id: r.id as string,
+      clienteId: r.cliente_id as string,
+      passo: r.passo as RegistroFechamento["passo"],
+      feitoEm: (r.feito_em as string) ?? null,
+      feitoPorNome: (r.feito_por_nome as string) ?? null,
+      link: (r.link as string) ?? null,
+      data: (r.data as string) ?? null,
+      observacao: (r.observacao as string) ?? null,
+    }));
+  }
+
+  async salvarPassoFechamento(p: {
+    clienteId: string;
+    passo: RegistroFechamento["passo"];
+    feito: boolean;
+    link?: string | null;
+    data?: string | null;
+    observacao?: string | null;
+  }) {
+    const linha: Linha = {
+      org_id: await this.org(),
+      cliente_id: p.clienteId,
+      passo: p.passo,
+      // o banco guarda o momento e quem fez (trigger fechamento_autor)
+      feito_em: p.feito ? new Date().toISOString() : null,
+    };
+    if (p.link !== undefined) linha.link = p.link?.trim() || null;
+    if (p.data !== undefined) linha.data = p.data || null;
+    if (p.observacao !== undefined) linha.observacao = p.observacao?.trim() || null;
+    const { error } = await this.sb.from("fechamento_passos").upsert(linha, { onConflict: "cliente_id,passo" });
+    erro(error);
+  }
+
+  // ─── Briefing do cliente ──────────────────────────────────────────────────
+
+  async listarPerguntasBriefing(): Promise<PerguntaBriefing[]> {
+    const { data, error } = await this.sb.from("briefing_perguntas").select("*").eq("org_id", await this.org()).order("ordem");
+    erro(error);
+    return ((data ?? []) as Linha[]).map((p) => ({
+      id: p.id as string,
+      secao: p.secao as string,
+      pergunta: p.pergunta as string,
+      ajuda: (p.ajuda as string) ?? null,
+      servicoId: (p.servico_id as string) ?? null,
+      ordem: Number(p.ordem ?? 0),
+      ativo: p.ativo as boolean,
+    }));
+  }
+
+  async salvarPerguntaBriefing(p: PerguntaBriefing) {
+    const { error } = await this.sb.from("briefing_perguntas").upsert({
+      id: p.id,
+      org_id: await this.org(),
+      secao: p.secao.trim(),
+      pergunta: p.pergunta.trim(),
+      ajuda: p.ajuda?.trim() || null,
+      servico_id: p.servicoId,
+      ordem: p.ordem,
+      ativo: p.ativo,
+    });
+    erro(error);
+  }
+
+  async removerPerguntaBriefing(id: string) {
+    await this.remover("briefing_perguntas", [id]);
+  }
+
+  async listarRespostasBriefing(clienteId: string): Promise<RespostaBriefing[]> {
+    const { data, error } = await this.sb.from("briefing_respostas").select("*").eq("cliente_id", clienteId);
+    erro(error);
+    return ((data ?? []) as Linha[]).map((r) => ({
+      id: r.id as string,
+      clienteId: r.cliente_id as string,
+      perguntaId: r.pergunta_id as string,
+      perguntaTexto: r.pergunta_texto as string,
+      resposta: (r.resposta as string) ?? null,
+      respondidoPorNome: (r.respondido_por_nome as string) ?? null,
+      respondidoEm: (r.respondido_em as string) ?? null,
+    }));
+  }
+
+  async responderBriefing(clienteId: string, perguntaId: string, resposta: string | null) {
+    // pergunta_texto, quem e quando: o banco preenche (trigger briefing_resposta_autor)
+    const { error } = await this.sb
+      .from("briefing_respostas")
+      .upsert(
+        { org_id: await this.org(), cliente_id: clienteId, pergunta_id: perguntaId, pergunta_texto: "", resposta: resposta?.trim() || null },
+        { onConflict: "cliente_id,pergunta_id" },
+      );
+    erro(error);
   }
 
   // ─── Datas comemorativas ──────────────────────────────────────────────────

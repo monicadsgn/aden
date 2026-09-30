@@ -157,6 +157,8 @@ export interface ClienteBase {
   painelToken?: string | null;
   /** atalhos que o cliente vê no painel (links só https) */
   atalhos?: AtalhosPainel | null;
+  /** quando o fechamento começou (lead virou cliente); vazio = sem checklist de fechamento */
+  fechamentoIniciadoEm?: string | null;
 }
 
 /** Atalhos do painel do cliente: o que ele abre sem pedir por fora. Tudo opcional. */
@@ -222,6 +224,8 @@ export interface ConfigEmpresa {
   taxaRecebimentoFixaCentavos?: Centavos;
   /** teto anual de faturamento do regime (ex.: MEI) */
   tetoFaturamentoAnualCentavos?: Centavos;
+  /** o mês do onboarding cobra mensalidade? null = ainda a definir entre os sócios */
+  mensalidadeNoOnboarding?: boolean | null;
   /** avisar quando a projeção anual passar deste % do teto */
   avisoTetoPct?: Pct;
   /** sócio com uso abaixo deste % da capacidade aparece como "com folga sobrando" */
@@ -404,7 +408,7 @@ export interface Cenario {
  */
 export type NivelAlerta = "erro" | "aviso" | "lembrete" | "info";
 
-export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "datas" | "metas" | "equipe" | "regras" | "limites" | "clientes";
+export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "datas" | "briefing" | "metas" | "equipe" | "regras" | "limites" | "clientes";
 
 /** Onde se resolve o alerta: um campo das configurações ou um bloco do cenário. */
 /** clienteId: na seção clientes, abre a ficha desse cliente (na aba contrato) */

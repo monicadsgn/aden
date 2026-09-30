@@ -131,6 +131,42 @@ class BancoFalso {
   async removerDataDoCliente(id: string) {
     this.ligacoes = this.ligacoes.filter((x) => x.id !== id);
   }
+  fechamento: import("../calculo/fechamento").RegistroFechamento[] = [];
+  async listarFechamento(clienteId: string) {
+    return this.fechamento.filter((r) => r.clienteId === clienteId);
+  }
+  async salvarPassoFechamento(p: { clienteId: string; passo: import("../calculo/fechamento").RegistroFechamento["passo"]; feito: boolean; link?: string | null; data?: string | null }) {
+    const antes = this.fechamento.find((r) => r.clienteId === p.clienteId && r.passo === p.passo);
+    const r = {
+      id: antes?.id ?? novoId(),
+      clienteId: p.clienteId,
+      passo: p.passo,
+      feitoEm: p.feito ? (antes?.feitoEm ?? "2026-10-01T12:00:00Z") : null,
+      feitoPorNome: p.feito ? "Mônica (pelo Claude)" : null,
+      link: p.link !== undefined ? p.link : (antes?.link ?? null),
+      data: p.data !== undefined ? p.data : (antes?.data ?? null),
+      observacao: null,
+    };
+    this.fechamento = [...this.fechamento.filter((x) => x !== antes), r];
+  }
+  perguntasBriefing: import("../calculo/briefing").PerguntaBriefing[] = [];
+  respostasBriefing: import("../calculo/briefing").RespostaBriefing[] = [];
+  async listarPerguntasBriefing() {
+    return structuredClone(this.perguntasBriefing);
+  }
+  async salvarPerguntaBriefing(p: import("../calculo/briefing").PerguntaBriefing) {
+    this.perguntasBriefing = [...this.perguntasBriefing.filter((x) => x.id !== p.id), p];
+  }
+  async listarRespostasBriefing(clienteId: string) {
+    return this.respostasBriefing.filter((r) => r.clienteId === clienteId);
+  }
+  async responderBriefing(clienteId: string, perguntaId: string, resposta: string | null) {
+    const p = this.perguntasBriefing.find((x) => x.id === perguntaId)!;
+    this.respostasBriefing = [
+      ...this.respostasBriefing.filter((r) => !(r.clienteId === clienteId && r.perguntaId === perguntaId)),
+      { id: novoId(), clienteId, perguntaId, perguntaTexto: p.pergunta, resposta: resposta?.trim() || null, respondidoPorNome: "Mônica (pelo Claude)", respondidoEm: "2026-10-01" },
+    ];
+  }
   async resolverContexto(id: string, resolvida: boolean) {
     this.contexto = this.contexto.map((n) => (n.id === id ? { ...n, resolvidoEm: resolvida ? "2026-09-30" : null, resolvidoPorNome: resolvida ? "Mônica (pelo Claude)" : null } : n));
   }
@@ -517,6 +553,45 @@ describe("conector: planejamento mensal, datas e atalhos", () => {
     await chamar("atualizar_atalhos_painel", { cliente: "Olinda", inclusoTexto: "15 posts\nReunião mensal" });
     const f = await chamar("ver_cliente", { cliente: "Olinda" });
     expect(f.atalhosDoPainel).toMatchObject({ planejamentoUrl: "https://a.com/plano.pdf", planejamentoRotulo: "Planejamento de outubro", inclusoTexto: "15 posts\nReunião mensal", fotosUrl: null });
+  });
+});
+
+describe("conector: fechamento do cliente", () => {
+  it("abre o checklist, marca na ordem, kickoff com data vira tarefa e o CRM tem as etapas novas", async () => {
+    await chamar("salvar_lead", { nome: "Loja Nova", valorEstimadoReais: 2000 });
+    await chamar("mover_lead", { id: "Loja Nova", etapa: "pesquisa" });
+    await chamar("mover_lead", { id: "Loja Nova", etapa: "reuniao" });
+    await chamar("ganhar_lead", { id: "Loja Nova" });
+    const v0 = await chamar("ver_fechamento", { cliente: "Loja Nova" });
+    expect(v0.fechamentos[0]).toMatchObject({ feitos: "0 de 7", proximo: "Onboarding enviado" });
+    await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "onboarding" });
+    await expect(chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "contrato", link: "autentique.com/x" })).rejects.toThrow(/https/);
+    await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "contrato", link: "https://assina.exemplo/doc" });
+    const k = await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "kickoff", data: "2026-10-05" });
+    expect(k).toMatchObject({ tarefaCriada: "Kickoff · Loja Nova", feitos: "3 de 7", proximo: "Link de pagamento enviado" });
+    expect(banco.tarefas.find((t) => t.titulo === "Kickoff · Loja Nova")?.vencimento).toBe("2026-10-05");
+    // marcar o kickoff de novo não duplica a tarefa
+    await chamar("marcar_passo_fechamento", { cliente: "Loja Nova", passo: "kickoff", data: "2026-10-06" });
+    expect(banco.tarefas.filter((t) => t.titulo === "Kickoff · Loja Nova")).toHaveLength(1);
+    const todos = await chamar("ver_fechamento", {});
+    expect(todos.mensalidadeNoOnboarding).toBe("a definir");
+    expect(todos.fechamentos).toHaveLength(1);
+  });
+});
+
+describe("conector: briefing do cliente", () => {
+  it("perguntas dos sócios, respostas com quem respondeu, contagem do que falta", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await expect(chamar("salvar_pergunta_briefing", { pergunta: "Sem seção" })).rejects.toThrow(/seção/);
+    const p1 = await chamar("salvar_pergunta_briefing", { secao: "Sobre o negócio", pergunta: "O que vocês vendem e pra quem?" });
+    await chamar("salvar_pergunta_briefing", { secao: "Sobre o negócio", pergunta: "Quem aprova as peças?" });
+    const r = await chamar("responder_briefing", { cliente: "Olinda", respostas: [{ pergunta: p1.id, resposta: "Máquinas de costura" }] });
+    expect(r.respondidas).toBe("1 de 2");
+    await chamar("responder_briefing", { cliente: "Olinda", respostas: [{ pergunta: "quem aprova as peças?", resposta: "A Regi" }] });
+    const v = await chamar("ver_briefing", { cliente: "Olinda" });
+    expect(v.respondidas).toBe("2 de 2");
+    expect(v.secoes[0].perguntas[1]).toMatchObject({ resposta: "A Regi", quem: "Mônica (pelo Claude)" });
+    await expect(chamar("responder_briefing", { cliente: "Olinda", respostas: [{ pergunta: "Não existe", resposta: "x" }] })).rejects.toThrow(/não encontrada/);
   });
 });
 

@@ -3,13 +3,15 @@
 // Ficha do cliente: tudo de um cliente num lugar só (dados, contrato e escopo, tarefas,
 // pagamentos e a conversa que veio do CRM). Edita no lugar e salva ao sair do campo.
 
-import { BookMarked, Calculator, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, SlidersHorizontal, User, Wallet } from "lucide-react";
+import { BookMarked, Calculator, FileQuestion, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, SlidersHorizontal, User, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Modal } from "../Modal";
 import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
+import { BriefingCliente } from "./BriefingCliente";
 import { ContextoCliente } from "./ContextoCliente";
+import { FechamentoCliente } from "./FechamentoCliente";
 import { LinkPainel } from "./LinkPainel";
 import { DetalheTarefa } from "../tarefas/DetalheTarefa";
 import { LinhaTarefa } from "../tarefas/LinhaTarefa";
@@ -28,7 +30,7 @@ import { useDados } from "@/lib/dados/contexto";
 import { formatarMoeda } from "@/lib/formato";
 import { enviarCenario } from "@/lib/navegacao";
 
-export type Aba = "resumo" | "contrato" | "tarefas" | "contexto" | "financeiro" | "comercial";
+export type Aba = "resumo" | "contrato" | "tarefas" | "contexto" | "briefing" | "financeiro" | "comercial";
 
 export const SITUACAO_PAGAMENTO: Record<SituacaoPagamento, { rotulo: string; tom: "ok" | "aviso" | "erro" | "neutro" }> = {
   pago: { rotulo: "pago", tom: "ok" },
@@ -171,6 +173,7 @@ export function FichaCliente({
               { valor: "contrato", rotulo: "Contrato", icone: FileSignature },
               { valor: "tarefas", rotulo: `Tarefas${abertas.length ? ` (${abertas.length})` : ""}`, icone: ClipboardList },
               { valor: "contexto", rotulo: "Contexto", icone: BookMarked },
+              { valor: "briefing", rotulo: "Briefing", icone: FileQuestion },
               { valor: "financeiro", rotulo: "Pagamentos", icone: Wallet },
               { valor: "comercial", rotulo: "Comercial", icone: Handshake },
             ]}
@@ -421,6 +424,8 @@ export function FichaCliente({
 
         {aba === "contexto" && <ContextoCliente clienteId={c.id} />}
 
+        {aba === "briefing" && <BriefingCliente clienteId={c.id} config={config} />}
+
         {aba === "financeiro" && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
@@ -468,6 +473,14 @@ export function FichaCliente({
 
         {aba === "comercial" && (
           <div className="flex flex-col gap-3">
+            {!c.interno && (
+              <FechamentoCliente
+                cliente={c}
+                a={a}
+                mensalidadeNoOnboarding={config.empresa.mensalidadeNoOnboarding}
+                aoAbrir={() => set({ fechamentoIniciadoEm: new Date().toISOString() })}
+              />
+            )}
             {!lead ? (
               <p className="text-xs text-texto-suave">Este cliente não veio pelos leads do Aden.</p>
             ) : (
