@@ -146,7 +146,10 @@ migração. Meta: tudo pronto até o fim de outubro.
   o dono do código vale na hora e a que afeta o outro vira pedido; contexto do cliente com decisão, preferência,
   pendência e nota (resolvida sai da lista, não se apaga). Endereço antigo do conector: desligar quando os dois
   usarem o código novo, avisando a Moni antes. O Áleff precisa de login no Aden antes de gerar o código dele.
-  Último passo: importar uma vez as notas ativas do contexto "Aden" do sistema antigo que a Moni escolher.
+  Último passo feito em 30/09/2026: 44 notas ativas do contexto "Aden" do sistema antigo importadas uma vez (32
+  decisões, 2 preferências, 4 pendências, 6 notas), com a data original e a Moni como autora; 6 ficaram de fora por
+  escolha dela. As que citavam o sistema antigo foram reescritas; as que lá já estavam cortadas no limite de 400
+  caracteres vieram como estavam, terminando em "…".
 - **Fase 5 · Identidade e documentos:** tokens da marca a partir do SVG; proposta em PDF, contrato por e-mail
   (Autentique), link de pagamento (InfinitePay), onboarding por serviço, rotina de fechamento, pasta no Drive (pronta
   para ligar com o e-mail novo) — e-mail da Aden (30/09/2026): grupoaden1@gmail.com, usado para a pasta do cliente
