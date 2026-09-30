@@ -18,7 +18,7 @@ import { DetalheTarefa } from "../tarefas/DetalheTarefa";
 import { LinhaTarefa } from "../tarefas/LinhaTarefa";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
 import { Badge, Botao, CampoMoeda, CampoNumero, Interruptor, Segmentado, Selecao } from "../ui";
-import { contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio, vencimentoDoContrato } from "@/lib/calculo/clientes";
+import { contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio, proximoVencimento } from "@/lib/calculo/clientes";
 import { rotuloEtapa, TIPOS_INTERACAO, type InteracaoLead, type Lead } from "@/lib/calculo/crm";
 import { hojeISO } from "@/lib/calculo/dia";
 import { novoCenario, novoId } from "@/lib/calculo/novo";
@@ -28,7 +28,7 @@ import { novaTarefa } from "@/lib/calculo/tarefas";
 import type { AtalhosPainel, ClienteBase, Configuracao, DadosContrato } from "@/lib/calculo/tipos";
 import { guardarEscopo } from "@/lib/dados/acoes";
 import { useDados } from "@/lib/dados/contexto";
-import { formatarMoeda } from "@/lib/formato";
+import { formatarDocumento, formatarMoeda } from "@/lib/formato";
 import { enviarCenario } from "@/lib/navegacao";
 
 export type Aba = "resumo" | "contrato" | "tarefas" | "contexto" | "briefing" | "financeiro" | "comercial";
@@ -206,7 +206,7 @@ export function FichaCliente({
               <Texto valor={c.razaoSocial ?? ""} aoSalvar={(v) => set({ razaoSocial: v })} />
             </Rot>
             <Rot rotulo="CPF ou CNPJ" dica="Vai no contrato.">
-              <Texto valor={c.documento ?? ""} aoSalvar={(v) => set({ documento: v })} />
+              <Texto valor={c.documento ?? ""} aoSalvar={(v) => set({ documento: formatarDocumento(v) })} />
             </Rot>
             <Rot rotulo="Endereço" dica="Vai no contrato.">
               <Texto valor={c.endereco ?? ""} aoSalvar={(v) => set({ endereco: v })} />
@@ -335,7 +335,7 @@ export function FichaCliente({
               </div>
             ) : null}
             <div className="flex flex-wrap gap-2 text-xs">
-              {vencimentoDoContrato(k, hoje.slice(0, 7)) && <Badge>vence este mês: {dataBr(vencimentoDoContrato(k, hoje.slice(0, 7))!)}</Badge>}
+              {proximoVencimento(k, hoje) && <Badge>próximo vencimento: {dataBr(proximoVencimento(k, hoje)!)}</Badge>}
               {fidelidade && <Badge tom={fidelidade > hoje ? "info" : "neutro"}>fidelidade até {dataBr(fidelidade)}</Badge>}
               {aviso && <Badge tom={aviso >= hoje ? "aviso" : "neutro"}>avisar se não renovar até {dataBr(aviso)}</Badge>}
             </div>

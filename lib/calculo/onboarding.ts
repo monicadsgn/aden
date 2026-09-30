@@ -85,6 +85,10 @@ export interface SecaoPronta {
 export interface DocumentoOnboarding {
   cliente: string;
   arquivo: string;
+  /** serviços contratados (ex.: "Social media + Tráfego pago") */
+  subtitulo: string;
+  /** contato da Aden no rodapé de cada página */
+  rodape: string;
   secoes: SecaoPronta[];
   /** o que falta para gerar (vazio = pronto) */
   faltando: string[];
@@ -149,6 +153,12 @@ export function montarOnboarding(config: Configuracao, clienteId: Id, modelo: Mo
   }
 
   const mes = hoje.slice(0, 7).split("-").reverse().join("-");
-  const nomeArquivo = c.nome.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w]+/g, "");
-  return { cliente: c.nome, arquivo: `onboarding_${nomeArquivo}_${mes}`, secoes, faltando: [...new Set(faltando)] };
+  const nomeArquivo = c.nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]+/g, "");
+  const doCliente = servicosDoCliente(config, c.id);
+  const subtitulo = config.servicos
+    .filter((x) => doCliente.has(x.id))
+    .map((x) => x.nome)
+    .join(" + ");
+  const rodape = [modelo.whatsapp, modelo.instagram, modelo.email].map((x) => x?.trim()).filter(Boolean).join(" | ");
+  return { cliente: c.nome, arquivo: `Onboarding_Aden_${nomeArquivo}_${mes}`, subtitulo, rodape, secoes, faltando: [...new Set(faltando)] };
 }

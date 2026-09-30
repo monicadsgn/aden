@@ -53,7 +53,9 @@ describe("onboarding do cliente", () => {
   it("junta o texto dos sócios com o pacote, o serviço contratado, a garantia e o contrato", () => {
     const d = montarOnboarding(config(), "c", modelo, "2026-10-05");
     expect(d.faltando).toEqual([]);
-    expect(d.arquivo).toBe("onboarding_LojaAcao_10-2026");
+    expect(d.arquivo).toBe("Onboarding_Aden_LojaAcao_10-2026");
+    expect(d.subtitulo).toBe("Social media");
+    expect(d.rodape).toBe("(81) 0000-0000 | @aden | a@a.com");
     const s = Object.fromEntries(d.secoes.map((x) => [x.titulo, x.blocos]));
     expect(s["Boas-vindas"]).toEqual([{ tipo: "paragrafo", texto: "Agora é com a gente. Segunda linha." }]);
     expect(s["O que está incluso"][0]).toEqual({ tipo: "lista", itens: [{ destaque: null, texto: "Social media · Post: 8 por mês" }] });

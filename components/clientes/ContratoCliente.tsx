@@ -4,13 +4,16 @@
 // falta, manda para assinatura pela Autentique e confere quem já assinou. Assinado por todos → o passo "Contrato
 // assinado" do fechamento é marcado sozinho. Ao abrir a aba, confere sozinho o que estiver esperando assinatura.
 
-import { FileSignature, RefreshCw, Send } from "lucide-react";
+import { FileDown, FileSignature, MessageSquareText, RefreshCw, Send } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Botao } from "../ui";
-import { montarContrato, type ContratoEnviado, type DocumentoContrato } from "@/lib/calculo/contrato";
+import { mensagemPedirDados, montarContrato, type ContratoEnviado, type DocumentoContrato } from "@/lib/calculo/contrato";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
+import { hojeISO } from "@/lib/calculo/dia";
+import { contratoEmPdf } from "@/lib/contrato/pdf";
+import { baixarPdf } from "@/lib/documentos/folha";
 
 const quando = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 const ROTULO = { enviado: "esperando assinatura", assinado: "assinado", recusado: "recusado", cancelado: "substituído" } as const;
@@ -26,8 +29,8 @@ export function ContratoCliente({ config, clienteId }: { config: Configuracao; c
   const conferiu = useRef(false);
 
   const carregar = useCallback(async () => {
-    const [modelo, lista] = await Promise.all([repo.obterModeloContrato(), repo.listarContratosAssinatura(clienteId)]);
-    setDoc(montarContrato(config, clienteId, modelo));
+    const [modelo, lista, onboarding] = await Promise.all([repo.obterModeloContrato(), repo.listarContratosAssinatura(clienteId), repo.obterModeloOnboarding()]);
+    setDoc(montarContrato(config, clienteId, modelo, { hoje: hojeISO(), contato: { whatsapp: onboarding.whatsapp, email: onboarding.email } }));
     setEnviados(lista);
     return lista;
   }, [repo, config, clienteId]);
@@ -98,28 +101,47 @@ export function ContratoCliente({ config, clienteId }: { config: Configuracao; c
           ))}
         </ul>
       )}
+      {!pronto && doc.faltando.some((f) => f.includes("ficha → Dados")) && (
+        <div>
+          <Botao
+            pequeno
+            icone={MessageSquareText}
+            onClick={() => {
+              const c = config.clientes.find((x) => x.id === clienteId);
+              if (!c) return;
+              void navigator.clipboard
+                .writeText(mensagemPedirDados(c))
+                .then(() => setMsg({ texto: "Mensagem copiada: cole no WhatsApp do cliente. Quando ele responder, preencha em Dados (ou peça ao Claude)." }))
+                .catch(() => setMsg({ texto: mensagemPedirDados(c) }));
+            }}
+          >
+            Copiar mensagem pedindo os dados
+          </Botao>
+        </div>
+      )}
 
       <details className="rounded-item bg-superficie-2/60 px-3 py-2 text-[13px]">
         <summary className="cursor-pointer font-semibold">Ver o texto do contrato</summary>
         <div className="mt-2 flex flex-col gap-3">
           <p className="font-bold">{doc.titulo}</p>
-          {doc.secoes.map((s, i) => (
-            <div key={s.titulo}>
-              <p className="font-semibold">
-                {i + 1}. {s.titulo}
-              </p>
-              {s.itens?.map((it) => (
-                <p key={it.rotulo} className="pl-3">
-                  {it.rotulo}: {it.valor}
-                </p>
-              ))}
-              {s.paragrafos?.map((p, j) => (
-                <p key={j} className="pl-3 pt-1">
-                  {p}
+          <p className="text-texto-suave">{doc.linhaTopo}</p>
+          {doc.partes.map((p) => (
+            <p key={p.rotulo}>
+              <strong>{p.rotulo}:</strong> {p.texto}
+            </p>
+          ))}
+          <p>{doc.abertura}</p>
+          {doc.clausulas.map((c) => (
+            <div key={c.titulo}>
+              <p className="font-semibold uppercase">{c.titulo}</p>
+              {c.itens.map((it, j) => (
+                <p key={j} className={it.sub ? "pl-8" : "pl-3"}>
+                  <strong>{it.marcador}</strong> {it.texto}
                 </p>
               ))}
             </div>
           ))}
+          <p>{doc.localData}</p>
           <p className="text-texto-suave">Assinam: {doc.signatarios.map((s) => `${s.nome} (${s.email})`).join(", ") || "—"}</p>
         </div>
       </details>
@@ -136,6 +158,9 @@ export function ContratoCliente({ config, clienteId }: { config: Configuracao; c
             {assinado ? "Enviar um contrato novo" : "Enviar para assinatura"}
           </Botao>
         )}
+        <Botao pequeno variante="fantasma" icone={FileDown} onClick={() => void contratoEmPdf(doc).then((b) => baixarPdf(b, doc.arquivo))}>
+          Baixar PDF
+        </Botao>
         {aberto && (
           <>
             <Botao pequeno icone={RefreshCw} disabled={ocupado || !ligada?.sim} onClick={() => void pedir("conferir")}>

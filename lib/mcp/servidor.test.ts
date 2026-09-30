@@ -623,6 +623,7 @@ describe("conector: contrato pela Autentique", () => {
     await chamar("salvar_modelo_contrato", {
       contratadaNome: "Aden",
       contratadaDocumento: "11.111.111/0001-11",
+      cidade: "Recife - Pernambuco",
       obrigacoes: "Texto dos sócios.",
       disposicoes: "Foro.",
       signatariosAden: [{ nome: "Mônica", email: "m@aden.com" }],
@@ -653,6 +654,25 @@ describe("conector: contrato pela Autentique", () => {
     assinou = true;
     expect((await chamar("conferir_contrato", { cliente: "Loja X" }))[0]).toMatchObject({ situacao: "assinado" });
     expect(banco.fechamento.find((r) => r.passo === "contrato")?.feitoEm).toBeTruthy();
+  });
+});
+
+describe("conector: cliente novo do zero", () => {
+  it("cria, preenche ficha e contrato, põe o pacote e pede os dados ao cliente", async () => {
+    banco.config.tiposEntrega = [{ id: "t", nome: "Post", servicoId: null, horasPorUnidade: 1, ativo: true }];
+    banco.config.pacotes = [{ id: "pk", nome: "Social padrão", descricao: "", itensCliente: [], rotina: [{ tipoEntregaId: "t", quantidade: 8 }], entrada: [], padrao: true, ativo: true }];
+    await chamar("salvar_cliente", { nome: "Loja Z", valorMensalReais: 1800 });
+    const msg = await chamar("mensagem_pedir_dados_cliente", { cliente: "Loja Z" });
+    expect(msg.mensagem).toContain("CPF ou CNPJ");
+    expect(msg.mensagem).toContain("Endereço completo");
+    await chamar("salvar_ficha_cliente", { cliente: "Loja Z", contato: "Bia Lima", email: "bia@z.com", razaoSocial: "Z Comércio Ltda", documento: "12345678000190", endereco: "Rua Z, 1", inicioContrato: "2026-10-01", diaPagamento: 5 });
+    const c = banco.config.clientes.find((x) => x.nome === "Loja Z")!;
+    expect(c.documento).toBe("12.345.678/0001-90");
+    const e = await chamar("definir_escopo_cliente", { cliente: "Loja Z", pacote: "social padrão" });
+    expect(e).toMatchObject({ pacote: "Social padrão" });
+    const v = await chamar("ver_contrato", { cliente: "Loja Z" });
+    expect(v.faltando.filter((f: string) => f.includes("ficha"))).toEqual([]);
+    expect(v.contrato.titulo).toBe("Contrato de prestação de serviços · Aden · Loja Z");
   });
 });
 

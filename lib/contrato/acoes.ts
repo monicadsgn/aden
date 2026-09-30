@@ -9,10 +9,18 @@ import { contratoEmPdf } from "./pdf";
 
 const aberto = (c: ContratoEnviado) => c.situacao === "enviado";
 
+/** Hoje no horário do Brasil (o servidor roda em UTC). */
+export const hojeNoBrasil = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+
+/** Contrato montado com a ficha, o modelo e o contato da Aden (rodapé). */
+export async function contratoDoCliente(repo: Repositorio, clienteId: string) {
+  const [config, modelo, onboarding] = await Promise.all([repo.carregarConfig(), repo.obterModeloContrato(), repo.obterModeloOnboarding()]);
+  return montarContrato(config, clienteId, modelo, { hoje: hojeNoBrasil(), contato: { whatsapp: onboarding.whatsapp, email: onboarding.email } });
+}
+
 /** Monta o contrato com a ficha e o modelo e manda para assinatura. Não envia se faltar algo ou se já houver um aberto. */
 export async function enviarContrato(repo: Repositorio, clienteId: string, opcoes: { reenviar?: boolean } = {}) {
-  const [config, modelo, enviados] = await Promise.all([repo.carregarConfig(), repo.obterModeloContrato(), repo.listarContratosAssinatura(clienteId)]);
-  const doc = montarContrato(config, clienteId, modelo);
+  const [doc, enviados] = await Promise.all([contratoDoCliente(repo, clienteId), repo.listarContratosAssinatura(clienteId)]);
   if (doc.faltando.length) throw new Error(`Falta preencher antes de enviar: ${doc.faltando.join("; ")}.`);
   const emAberto = enviados.find(aberto);
   if (emAberto && !opcoes.reenviar)

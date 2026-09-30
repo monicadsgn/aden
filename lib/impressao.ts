@@ -4,7 +4,7 @@ import type { Cenario } from "./calculo/tipos";
 
 const CHAVE = "aden:imprimir";
 
-export type ParaImprimir = { tipo: "proposta"; cenario: Cenario; clienteNome: string; valorCentavos: number } | { tipo: "onboarding"; clienteId: string };
+export type ParaImprimir = { tipo: "proposta"; cenario: Cenario; clienteNome: string; valorCentavos: number };
 
 export function guardarParaImprimir(p: ParaImprimir) {
   try {

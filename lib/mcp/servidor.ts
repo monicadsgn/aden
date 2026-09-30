@@ -26,9 +26,10 @@ import type { AtalhosPainel, Configuracao, Meta, Pacote } from "../calculo/tipos
 import { datasDoPlanejamento, type DataComemorativa, type ItemDoPlanejamento } from "../calculo/datas";
 import { montarFechamento } from "../calculo/fechamento";
 import { montarBriefing, servicosDoCliente } from "../calculo/briefing";
-import { montarContrato } from "../calculo/contrato";
 import { montarOnboarding } from "../calculo/onboarding";
-import { conferirContratos, enviarContrato } from "../contrato/acoes";
+import { mensagemPedirDados } from "../calculo/contrato";
+import { conferirContratos, contratoDoCliente, enviarContrato } from "../contrato/acoes";
+import { formatarDocumento } from "../formato";
 import { chaveAutentique } from "../contrato/autentique";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
@@ -595,17 +596,32 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Definir escopo contratado do cliente",
       description:
-        "Guarda o escopo contratado de um cliente ativo (entregas, custos, tráfego…), no mesmo formato de calcular_cenario, e o valor como mensalidade do contrato. Se algum sócio ficar abaixo do piso, NÃO grava: vira pedido de exceção para o sócio afetado aprovar. Confirme antes de substituir um escopo existente.",
+        "Guarda o escopo contratado de um cliente ativo (entregas, custos, tráfego…), no mesmo formato de calcular_cenario, e o valor como mensalidade do contrato. Atalho: pacote (nome ou id, ver_pacotes) usa as entregas do pacote e mantém o valor mensal já combinado do cliente, igual à ficha. Se algum sócio ficar abaixo do piso, NÃO grava: vira pedido de exceção para o sócio afetado aprovar. Confirme antes de substituir um escopo existente.",
       inputSchema: {
         cliente: z.string().describe("cliente (nome ou id)"),
-        cenario: zCenarioConversa.nullable().describe("escopo; null remove"),
+        cenario: zCenarioConversa.nullable().optional().describe("escopo; null remove"),
+        pacote: z.string().optional().describe("no lugar do cenario: nome ou id do pacote"),
       },
     },
-    async ({ cliente, cenario }) =>
+    async ({ cliente, cenario, pacote }) =>
       executar(async () => {
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const alvo = resolver(config.clientes, cliente, "Cliente");
+        if (pacote) {
+          const pk = resolver(config.pacotes ?? [], pacote, "Pacote");
+          const base = pacoteParaCenario(pk);
+          const cen = alvo.valorMensalCentavos ? { ...base, modo: "valor" as const, mensalidadeCentavos: alvo.valorMensalCentavos } : base;
+          const r = await guardarEscopo(repo, config, alvo.id, { ...cen, clienteId: alvo.id });
+          return {
+            cliente: alvo.nome,
+            pacote: pk.nome,
+            valorMensal: paraReais(r.valorCentavos),
+            gravado: r.gravado || r.pedido?.status === "aplicado",
+            situacao: r.gravado ? "Escopo do pacote guardado." : `Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: pedido de exceção esperando aprovação no site.`,
+          };
+        }
+        if (cenario === undefined) throw new Error("Mande o cenario ou o pacote.");
         if (!cenario) {
           await repo.definirEscopoCliente(alvo.id, null);
           return { cliente: alvo.nome, escopoRemovido: true };
@@ -1257,6 +1273,23 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   // ─── Contrato (Fase 5, passo 3) ───────────────────────────────────────────
 
   server.registerTool(
+    "mensagem_pedir_dados_cliente",
+    {
+      title: "Mensagem pedindo os dados do contrato",
+      description:
+        "Mensagem pronta para mandar ao cliente pelo WhatsApp pedindo só o que o contrato precisa: nome completo (ou razão social), CPF ou CNPJ, e-mail e endereço. Quando o cliente responder, grave com salvar_ficha_cliente (razaoSocial, documento, email, endereco, contato) e confira com ver_contrato.",
+      inputSchema: { cliente: z.string().describe("nome ou id") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        return { cliente: c.nome, mensagem: mensagemPedirDados(c) };
+      }),
+  );
+
+  server.registerTool(
     "ver_contrato",
     {
       title: "Ver o contrato do cliente",
@@ -1271,7 +1304,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const autentique = chaveAutentique() ? (process.env.AUTENTIQUE_SANDBOX?.trim() === "1" ? "ligada (modo teste)" : "ligada") : "não ligada (falta a chave na Vercel)";
         if (!cliente) return { autentique, modelo };
         const c = resolver(config.clientes, cliente, "Cliente");
-        const doc = montarContrato(config, c.id, modelo);
+        const doc = await contratoDoCliente(repo, c.id);
         const enviados = await repo.listarContratosAssinatura(c.id);
         return {
           autentique,
@@ -1288,11 +1321,12 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Salvar o modelo do contrato",
       description:
-        "Guarda o que é igual em todo contrato da Aden: dados da contratada, quem assina pela Aden e o texto de obrigações e disposições gerais (parágrafos separados por linha em branco). Só os campos enviados mudam. NUNCA escreva cláusula por conta própria: grave só o texto que os sócios passaram.",
+        "Guarda o que é igual em todo contrato da Aden: dados da contratada, quem assina pela Aden e o texto de obrigações e disposições gerais (uma cláusula por linha; a numeração é do contrato; linhas \"a)\" viram subitens). Só os campos enviados mudam. NUNCA escreva cláusula por conta própria: grave só o texto que os sócios passaram.",
       inputSchema: {
         contratadaNome: z.string().nullable().optional(),
         contratadaDocumento: z.string().nullable().optional().describe("CNPJ"),
         contratadaEndereco: z.string().nullable().optional(),
+        cidade: z.string().nullable().optional().describe("cidade de assinatura, do cabeçalho e do rodapé (ex.: Recife - Pernambuco)"),
         obrigacoes: z.string().nullable().optional(),
         disposicoes: z.string().nullable().optional(),
         signatariosAden: z.array(z.object({ nome: z.string(), email: z.string().email() })).optional().describe("lista completa de quem assina pela Aden"),
@@ -1504,7 +1538,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Editar a ficha e o contrato do cliente",
       description:
-        "Muda dados de contato e condições do contrato de um cliente existente (para criar cliente use salvar_cliente). Só os campos enviados mudam. Só grave o que foi combinado de verdade. Datas em AAAA-MM-DD.",
+        "Muda dados de contato, os dados do contrato (nome no contrato, CPF/CNPJ, endereço) e as condições do contrato de um cliente existente. Cliente novo, do zero: salvar_cliente (nome e valor mensal) → salvar_ficha_cliente (contato e contrato) → definir_escopo_cliente (pacote ou escopo) → ver_contrato (o que falta). Para pedir os dados ao cliente: mensagem_pedir_dados_cliente. CPF/CNPJ é gravado com ponto, barra e traço. Só os campos enviados mudam. Só grave o que foi combinado de verdade. Datas em AAAA-MM-DD.",
       inputSchema: {
         cliente: z.string().describe("nome ou id"),
         contato: z.string().optional(),
@@ -1550,7 +1584,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           segmento: def(e.segmento, c.segmento),
           observacoes: def(e.observacoes, c.observacoes),
           razaoSocial: def(e.razaoSocial, c.razaoSocial),
-          documento: def(e.documento, c.documento),
+          documento: e.documento === undefined ? c.documento : formatarDocumento(e.documento),
           endereco: def(e.endereco, c.endereco),
           clienteDesde: def(e.clienteDesde, c.clienteDesde ?? null),
           contrato: {

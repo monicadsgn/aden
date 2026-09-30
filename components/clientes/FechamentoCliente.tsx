@@ -5,7 +5,6 @@
 // Marcar o kickoff com data cria a tarefa da reunião.
 
 import { CheckCircle2, Circle, ClipboardCheck, ExternalLink, FileDown } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Botao } from "../ui";
 import { montarFechamento, PASSOS_FECHAMENTO, type RegistroFechamento } from "@/lib/calculo/fechamento";
@@ -13,7 +12,10 @@ import { novoId } from "@/lib/calculo/novo";
 import { novaTarefa } from "@/lib/calculo/tarefas";
 import type { ClienteBase } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
-import { guardarParaImprimir } from "@/lib/impressao";
+import { hojeISO } from "@/lib/calculo/dia";
+import { montarOnboarding } from "@/lib/calculo/onboarding";
+import { baixarPdf } from "@/lib/documentos/folha";
+import { onboardingEmPdf } from "@/lib/documentos/onboarding-pdf";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
 
 const campo = "h-9 rounded-campo border border-linha bg-superficie px-2 text-sm outline-none focus:border-marca focus:ring-2 focus:ring-marca/20";
@@ -31,7 +33,6 @@ export function FechamentoCliente({
   aoAbrir: () => void;
 }) {
   const { repo } = useDados();
-  const router = useRouter();
   const [registros, setRegistros] = useState<RegistroFechamento[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -52,6 +53,18 @@ export function FechamentoCliente({
     );
 
   const f = montarFechamento(registros, !!c.painelToken);
+
+  const gerarOnboarding = async () => {
+    setErro(null);
+    try {
+      const [config, modelo] = await Promise.all([repo.carregarConfig(), repo.obterModeloOnboarding()]);
+      const doc = montarOnboarding(config, c.id, modelo, hojeISO());
+      if (doc.faltando.length) throw new Error(`Falta preencher antes de gerar o onboarding: ${doc.faltando.join("; ")}.`);
+      baixarPdf(await onboardingEmPdf(doc), doc.arquivo);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não deu para gerar o onboarding.");
+    }
+  };
 
   const salvar = async (passo: RegistroFechamento["passo"], patch: { feito: boolean; link?: string | null; data?: string | null }) => {
     setErro(null);
@@ -129,10 +142,7 @@ export function FechamentoCliente({
                 <Botao
                   pequeno
                   icone={FileDown}
-                  onClick={() => {
-                    guardarParaImprimir({ tipo: "onboarding", clienteId: c.id });
-                    router.push("/imprimir/onboarding");
-                  }}
+                  onClick={() => void gerarOnboarding()}
                 >
                   Gerar onboarding
                 </Botao>

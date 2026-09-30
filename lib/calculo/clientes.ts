@@ -45,6 +45,15 @@ export function vencimentoDoContrato(k: DadosContrato, competencia: string): str
   return k.diaPagamento != null ? vencimentoNoMes(k.diaPagamento, competencia) : null;
 }
 
+/** Próximo vencimento a partir de hoje: o deste mês, ou o do mês seguinte se o deste já passou. */
+export function proximoVencimento(k: DadosContrato, hoje: string): string | null {
+  const este = vencimentoDoContrato(k, hoje.slice(0, 7));
+  if (!este || este >= hoje) return este;
+  const [a, m] = hoje.split("-").map(Number);
+  const seguinte = `${m === 12 ? a + 1 : a}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}`;
+  return vencimentoDoContrato(k, seguinte);
+}
+
 /** Fim da fidelidade: início + prazo mínimo (em meses). */
 export function fimDaFidelidade(k: DadosContrato): string | null {
   if (!k.inicio || !k.prazoMinimoMeses) return null;

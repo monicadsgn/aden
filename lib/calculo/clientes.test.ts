@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contratoVazio, fimDaFidelidade, lembretesDeContrato, prazoDoAvisoPrevio, ultimoDiaUtil, vencimentoDoContrato, vencimentoNoMes } from "./clientes";
+import { contratoVazio, fimDaFidelidade, lembretesDeContrato, prazoDoAvisoPrevio, ultimoDiaUtil, proximoVencimento, vencimentoDoContrato, vencimentoNoMes } from "./clientes";
 import type { ClienteBase } from "./tipos";
 
 describe("contrato do cliente", () => {
@@ -50,5 +50,15 @@ describe("vencimento no último dia útil", () => {
     const k = { ...contratoVazio(), diaPagamento: 20, venceUltimoDiaUtil: true };
     expect(vencimentoDoContrato(k, "2026-10")).toBe("2026-10-30");
     expect(vencimentoDoContrato({ ...k, venceUltimoDiaUtil: false }, "2026-10")).toBe("2026-10-20");
+  });
+});
+
+describe("próximo vencimento", () => {
+  it("pagamento no dia 1, hoje 30/09: é 01/10, não 01/09", () => {
+    const k = { ...contratoVazio(), diaPagamento: 1 };
+    expect(proximoVencimento(k, "2026-09-30")).toBe("2026-10-01");
+    expect(proximoVencimento(k, "2026-10-01")).toBe("2026-10-01");
+    expect(proximoVencimento({ ...k, diaPagamento: 5 }, "2026-12-20")).toBe("2027-01-05");
+    expect(proximoVencimento(contratoVazio(), "2026-09-30")).toBeNull();
   });
 });

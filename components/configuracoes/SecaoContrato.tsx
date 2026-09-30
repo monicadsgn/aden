@@ -86,6 +86,7 @@ export function SecaoContrato() {
           {texto("contratadaNome", "Nome (razão social)")}
           {texto("contratadaDocumento", "CNPJ")}
           {texto("contratadaEndereco", "Endereço")}
+          {texto("cidade", "Cidade", "Vai no cabeçalho, no local e data e no rodapé. Ex.: Recife - Pernambuco")}
         </div>
       </div>
 
@@ -121,8 +122,8 @@ export function SecaoContrato() {
         </div>
       </div>
 
-      {paragrafo("obrigacoes", "Obrigações das partes", "O que a Aden faz e o que o cliente precisa fazer. Um parágrafo por cláusula, separados por uma linha em branco.")}
-      {paragrafo("disposicoes", "Disposições gerais", "Rescisão, confidencialidade, foro etc. Um parágrafo por cláusula, separados por uma linha em branco.")}
+      {paragrafo("obrigacoes", "Obrigações das partes", "O que a Aden faz e o que o cliente precisa fazer. Uma cláusula por linha: a numeração (4.1, 4.2…) é do contrato. Linhas começando com a), b)… viram subitens.")}
+      {paragrafo("disposicoes", "Disposições gerais", "Rescisão, confidencialidade, foro etc. Uma cláusula por linha: a numeração é do contrato. Linhas começando com a), b)… viram subitens.")}
 
       {erro && <p className="text-xs font-semibold text-erro">{erro}</p>}
       {salvo && !erro && <p className="text-xs text-texto-suave">Salvo.</p>}
