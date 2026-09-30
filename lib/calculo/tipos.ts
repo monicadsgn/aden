@@ -155,6 +155,20 @@ export interface ClienteBase {
   contrato?: DadosContrato | null;
   /** código do link do painel do cliente (só se muda por gerarLinkPainel) */
   painelToken?: string | null;
+  /** atalhos que o cliente vê no painel (links só https) */
+  atalhos?: AtalhosPainel | null;
+}
+
+/** Atalhos do painel do cliente: o que ele abre sem pedir por fora. Tudo opcional. */
+export interface AtalhosPainel {
+  /** PDF do planejamento do mês */
+  planejamentoUrl: string | null;
+  /** texto do botão, ex.: "Planejamento de outubro" */
+  planejamentoRotulo: string | null;
+  fotosUrl: string | null;
+  identidadeUrl: string | null;
+  /** "O que está incluso" (o que o serviço cobre e o que é extra), texto simples */
+  inclusoTexto: string | null;
 }
 
 /** Condições combinadas com o cliente. Nenhuma vem pronta: é o que foi assinado. */
@@ -390,7 +404,7 @@ export interface Cenario {
  */
 export type NivelAlerta = "erro" | "aviso" | "lembrete" | "info";
 
-export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "metas" | "equipe" | "regras" | "limites" | "clientes";
+export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "datas" | "metas" | "equipe" | "regras" | "limites" | "clientes";
 
 /** Onde se resolve o alerta: um campo das configurações ou um bloco do cenário. */
 /** clienteId: na seção clientes, abre a ficha desse cliente (na aba contrato) */

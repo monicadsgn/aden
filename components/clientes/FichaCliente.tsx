@@ -22,7 +22,7 @@ import { novoCenario, novoId } from "@/lib/calculo/novo";
 import { pacoteParaCenario } from "@/lib/calculo/pacotes";
 import type { Pagamento, SituacaoPagamento } from "@/lib/calculo/pagamentos";
 import { novaTarefa } from "@/lib/calculo/tarefas";
-import type { ClienteBase, Configuracao, DadosContrato } from "@/lib/calculo/tipos";
+import type { AtalhosPainel, ClienteBase, Configuracao, DadosContrato } from "@/lib/calculo/tipos";
 import { guardarEscopo } from "@/lib/dados/acoes";
 import { useDados } from "@/lib/dados/contexto";
 import { formatarMoeda } from "@/lib/formato";
@@ -40,6 +40,8 @@ export const SITUACAO_PAGAMENTO: Record<SituacaoPagamento, { rotulo: string; tom
 
 const campo =
   "sem-contorno h-9 w-full rounded-campo border border-linha bg-superficie px-3 text-sm placeholder:text-texto-suave/70 focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20";
+
+const ATALHOS_VAZIOS: AtalhosPainel = { planejamentoUrl: null, planejamentoRotulo: null, fotosUrl: null, identidadeUrl: null, inclusoTexto: null };
 
 function Rot({ rotulo, children, dica }: { rotulo: string; children: ReactNode; dica?: ReactNode }) {
   return (
@@ -217,6 +219,46 @@ export function FichaCliente({
             <div className="sm:col-span-2">
               {PAINEL_CLIENTE_ATIVO && !c.interno && <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />}
             </div>
+            {PAINEL_CLIENTE_ATIVO && !c.interno && c.painelToken && (
+              <div className="grid gap-3 rounded-bloco border border-linha p-3 sm:col-span-2 sm:grid-cols-2">
+                <p className="text-[12px] text-texto-suave sm:col-span-2">
+                  <strong className="text-texto">Atalhos do painel.</strong> O que o cliente abre direto no painel, sem pedir por fora. Links completos, começando com https://. Vazio = não
+                  aparece. Todo mês, troque o planejamento.
+                </p>
+                {(
+                  [
+                    ["planejamentoUrl", "PDF do planejamento do mês", "https://…"],
+                    ["planejamentoRotulo", "Texto do botão do planejamento", "ex.: Planejamento de outubro"],
+                    ["fotosUrl", "Pasta de fotos (Drive)", "https://…"],
+                    ["identidadeUrl", "Pasta da identidade visual", "https://…"],
+                  ] as const
+                ).map(([k, rotulo, dica]) => (
+                  <Rot key={k} rotulo={rotulo}>
+                    <Texto
+                      valor={c.atalhos?.[k] ?? ""}
+                      placeholder={dica}
+                      aoSalvar={(v) => {
+                        const limpo = v.trim();
+                        if (k !== "planejamentoRotulo" && limpo && !/^https:\/\/\S+$/.test(limpo)) return setMsg("O link precisa ser completo, começando com https://.");
+                        set({ atalhos: { ...ATALHOS_VAZIOS, ...c.atalhos, [k]: limpo || null } });
+                      }}
+                    />
+                  </Rot>
+                ))}
+                <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave sm:col-span-2">
+                  O que está incluso (o cliente lê no painel)
+                  <textarea
+                    key={`incluso-${c.id}`}
+                    className="min-h-20 rounded-campo border border-linha bg-superficie px-3 py-2 text-sm font-normal text-texto focus:border-marca focus:outline-none"
+                    defaultValue={c.atalhos?.inclusoTexto ?? ""}
+                    placeholder="O que o serviço cobre e o que é extra."
+                    onBlur={(e) =>
+                      e.target.value.trim() !== (c.atalhos?.inclusoTexto ?? "") && set({ atalhos: { ...ATALHOS_VAZIOS, ...c.atalhos, inclusoTexto: e.target.value.trim() || null } })
+                    }
+                  />
+                </label>
+              </div>
+            )}
             <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave sm:col-span-2">
               Observações
               <textarea

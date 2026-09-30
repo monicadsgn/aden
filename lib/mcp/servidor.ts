@@ -22,7 +22,8 @@ import { avisosDePublicacao, hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
 import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } from "../calculo/pacotes";
 import { ROTULO_PECA, estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, publicar, rotuloStatus, situacaoPeca, type Tarefa } from "../calculo/tarefas";
-import type { Configuracao, Meta, Pacote } from "../calculo/tipos";
+import type { AtalhosPainel, Configuracao, Meta, Pacote } from "../calculo/tipos";
+import { datasDoPlanejamento, type DataComemorativa, type ItemDoPlanejamento } from "../calculo/datas";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
 import { REGRAS_PROTECAO } from "../regras/aprovacao";
@@ -145,11 +146,29 @@ function aplicar<T extends object>(alvo: T, patch: Partial<Record<keyof T, unkno
 }
 
 /** "AAAA-MM-DD HH:MM" no horário de Brasília → ISO. null tira a data. */
+/** "AAAA-MM-DD" (dia em Brasília) de um instante ISO. */
+export function dataDeBrasilia(iso: string): string {
+  return new Date(new Date(iso).getTime() - 3 * 3600000).toISOString().slice(0, 10);
+}
+
 export function dataHoraBrasilia(v: string | null): string | null {
   if (v == null) return null;
   const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})$/.exec(v.trim());
   if (!m) throw new Error(`Data e hora inválidas: ${v}. Use AAAA-MM-DD HH:MM.`);
   return new Date(`${m[1]}T${m[2]}:00-03:00`).toISOString();
+}
+
+/** acha a data pelo id, pelo nome (se só houver uma) ou por "Nome AAAA-MM-DD" */
+function acharData(datas: DataComemorativa[], ref: string): DataComemorativa {
+  const r = ref.trim().toLowerCase();
+  const porId = datas.find((d) => d.id === ref.trim());
+  if (porId) return porId;
+  const exata = datas.filter((d) => `${d.nome} ${d.data}`.toLowerCase() === r);
+  if (exata.length === 1) return exata[0];
+  const porNome = datas.filter((d) => d.nome.toLowerCase() === r);
+  if (porNome.length === 1) return porNome[0];
+  if (porNome.length > 1) throw new Error(`Há mais de uma "${ref}": use o id ou "Nome AAAA-MM-DD" (${porNome.map((d) => d.data).join(", ")}).`);
+  throw new Error(`Data comemorativa não encontrada: ${ref}. Cadastre com salvar_data_comemorativa.`);
 }
 
 const ROTULO_CONTEXTO: Record<TipoContexto, string> = { decisao: "decisão", preferencia: "preferência", pendencia: "pendência", nota: "nota" };
@@ -922,9 +941,176 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
             .slice(0, 6)
             .map((p) => ({ valor: paraReais(p.valorCentavos), recebidoEm: p.recebidoEm, mes: p.competencia })),
           veioDoCrm: lead ? { lead: lead.nome, origem: lead.origem || null, fechadoEm: lead.fechadoEm } : null,
+          atalhosDoPainel: c.atalhos ?? null,
           contexto: contexto.slice(0, 10).map(notaParaConector),
           contextoTotal: contexto.length,
         };
+      }),
+  );
+
+  // ─── Datas comemorativas (planejamento mensal) ─────────────────────────────
+
+  server.registerTool(
+    "datas_do_mes",
+    {
+      title: "Datas comemorativas do planejamento",
+      description:
+        "Antes de montar o planejamento mensal de um cliente, chame com o mês (AAAA-MM). Devolve datasDoMes (caem no mês: o post da data entra neste planejamento) e campanhasQueComecam (a data é depois, mas a janela de antecedência desse cliente abre ou já está aberta neste mês: entra ao menos um post de aquecimento). Cada item traz a nota de ideia. Nunca invente data que não veio daqui; se achar que falta alguma, sugira à Moni.",
+      inputSchema: {
+        mes: z.string().regex(/^\d{4}-\d{2}$/).describe("mês do planejamento, AAAA-MM"),
+        cliente: z.string().optional().describe("nome ou id; vazio = todos"),
+      },
+    },
+    async ({ mes, cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const cid = cliente ? resolver(config.clientes, cliente, "Cliente").id : null;
+        const { datas, ligacoes } = await repo.listarDatas();
+        const r = datasDoPlanejamento(mes, datas, ligacoes, cid);
+        const nomeCli = (id: string) => config.clientes.find((c) => c.id === id)?.nome ?? "?";
+        const item = (i: ItemDoPlanejamento) => ({
+          nome: i.nome,
+          data: i.data,
+          ...(cid ? {} : { cliente: nomeCli(i.clienteId) }),
+          diasAntecedencia: i.diasAntecedencia,
+          ...(i.nota && { nota: i.nota }),
+          ...(i.janelaAbreEm && { janelaAbreEm: i.janelaAbreEm, situacao: i.situacao }),
+        });
+        return { mes, ...(cid && { cliente: nomeCli(cid) }), datasDoMes: r.datasDoMes.map(item), campanhasQueComecam: r.campanhasQueComecam.map(item) };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_data_comemorativa",
+    {
+      title: "Criar ou alterar data comemorativa",
+      description:
+        "A data em si (nome e dia, do ano certo: Black Friday muda todo ano). Para valer para um cliente, ligue com ligar_data_ao_cliente. ativo=false tira de todos os planejamentos sem apagar. Só grave datas que a Moni ou o Áleff confirmaram.",
+      inputSchema: {
+        id: z.string().optional().describe("id ou nome da data a alterar; vazio = nova"),
+        nome: z.string().optional(),
+        data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("AAAA-MM-DD"),
+        ativo: z.boolean().optional(),
+      },
+    },
+    async ({ id, nome, data, ativo }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const { datas } = await repo.listarDatas();
+        const original = id ? acharData(datas, id) : null;
+        if (!original && (!nome || !data)) throw new Error("Data nova precisa de nome e data (AAAA-MM-DD).");
+        const d = { id: original?.id ?? novoId(), nome: (nome ?? original!.nome).trim(), data: data ?? original!.data, ativo: ativo ?? original?.ativo ?? true };
+        await repo.salvarDataComemorativa(d);
+        return { salva: `${d.nome} (${d.data})`, id: d.id, criada: !original };
+      }),
+  );
+
+  server.registerTool(
+    "ligar_data_ao_cliente",
+    {
+      title: "Ligar data comemorativa a um cliente",
+      description:
+        "Diz que a data vale para o cliente, com os dias de antecedência da campanha dele (cada cliente tem a sua janela) e uma nota de ideia. escondida=true tira do planejamento desse cliente sem apagar; desligar=true tira a ligação. Só grave números que a Moni ou o Áleff disseram.",
+      inputSchema: {
+        data: z.string().describe("id da data, ou nome (se houver mais de uma com o mesmo nome, use 'Nome AAAA-MM-DD')"),
+        cliente: z.string().describe("nome ou id"),
+        diasAntecedencia: z.number().int().min(0).nullable().optional().describe("dias antes da data em que a campanha começa; null = só o post do dia"),
+        nota: z.string().nullable().optional(),
+        escondida: z.boolean().optional(),
+        desligar: z.boolean().optional(),
+      },
+    },
+    async ({ data, cliente, diasAntecedencia, nota, escondida, desligar }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const { datas, ligacoes } = await repo.listarDatas();
+        const d = acharData(datas, data);
+        const antes = ligacoes.find((l) => l.dataId === d.id && l.clienteId === c.id);
+        if (desligar) {
+          if (antes) await repo.removerDataDoCliente(antes.id);
+          return { data: `${d.nome} (${d.data})`, cliente: c.nome, ligada: false };
+        }
+        const l = {
+          id: antes?.id ?? novoId(),
+          dataId: d.id,
+          clienteId: c.id,
+          diasAntecedencia: diasAntecedencia !== undefined ? diasAntecedencia : (antes?.diasAntecedencia ?? null),
+          nota: nota !== undefined ? nota : (antes?.nota ?? null),
+          escondida: escondida ?? antes?.escondida ?? false,
+        };
+        await repo.salvarDataDoCliente(l);
+        return { data: `${d.nome} (${d.data})`, cliente: c.nome, diasAntecedencia: l.diasAntecedencia, nota: l.nota, escondida: l.escondida };
+      }),
+  );
+
+  server.registerTool(
+    "ver_datas_comemorativas",
+    {
+      title: "Ver datas comemorativas cadastradas",
+      description: "Todas as datas, com os clientes ligados a cada uma (antecedência, nota, escondida). Use para achar o id antes de alterar.",
+      inputSchema: { cliente: z.string().optional().describe("filtrar por cliente (nome ou id)") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const cid = cliente ? resolver(config.clientes, cliente, "Cliente").id : null;
+        const { datas, ligacoes } = await repo.listarDatas();
+        return datas
+          .map((d) => ({
+            id: d.id,
+            nome: d.nome,
+            data: d.data,
+            ativo: d.ativo,
+            clientes: ligacoes
+              .filter((l) => l.dataId === d.id && (!cid || l.clienteId === cid))
+              .map((l) => ({
+                cliente: config.clientes.find((c) => c.id === l.clienteId)?.nome ?? "?",
+                diasAntecedencia: l.diasAntecedencia,
+                nota: l.nota,
+                escondida: l.escondida,
+              })),
+          }))
+          .filter((d) => !cid || d.clientes.length > 0);
+      }),
+  );
+
+  // ─── Atalhos do painel do cliente ──────────────────────────────────────────
+
+  server.registerTool(
+    "atualizar_atalhos_painel",
+    {
+      title: "Atalhos do painel do cliente",
+      description:
+        "O que o cliente abre no painel dele: PDF do planejamento do mês (com o texto do botão, ex.: 'Planejamento de outubro'), pasta de fotos no Drive, pasta da identidade visual e o texto 'O que está incluso' (o que o serviço cobre e o que é extra; quebras de linha são mantidas). Só os campos enviados mudam; texto vazio limpa. Links precisam começar com https://. Todo mês, troque o planejamento.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id"),
+        planejamentoUrl: z.string().optional(),
+        planejamentoRotulo: z.string().optional(),
+        fotosUrl: z.string().optional(),
+        identidadeUrl: z.string().optional(),
+        inclusoTexto: z.string().optional(),
+      },
+    },
+    async ({ cliente, ...campos }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const antes = await repo.carregarConfig();
+        const c = resolver(antes.clientes, cliente, "Cliente");
+        for (const k of ["planejamentoUrl", "fotosUrl", "identidadeUrl"] as const) {
+          const v = campos[k]?.trim();
+          if (v && !/^https:\/\/\S+$/.test(v)) throw new Error(`${k} precisa ser um link completo começando com https://`);
+        }
+        const atual: AtalhosPainel = c.atalhos ?? { planejamentoUrl: null, planejamentoRotulo: null, fotosUrl: null, identidadeUrl: null, inclusoTexto: null };
+        const novo: AtalhosPainel = { ...atual };
+        for (const [k, v] of Object.entries(campos) as [keyof AtalhosPainel, string | undefined][]) if (v !== undefined) novo[k] = v.trim() || null;
+        const depois = structuredClone(antes);
+        depois.clientes = depois.clientes.map((x) => (x.id === c.id ? { ...x, atalhos: novo } : x));
+        await salvarDiferenca(repo, antes, depois);
+        return { cliente: c.nome, atalhos: novo, painel: c.painelToken ? "já aparece no painel" : "este cliente ainda não tem link do painel" };
       }),
   );
 
@@ -1468,10 +1654,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       description: "Tarefas com status, cliente, entrega, responsável, prazo, checklist e tempo já medido. Por padrão só as abertas.",
       inputSchema: {
         cliente: z.string().optional().describe("filtrar por cliente (nome ou id)"),
+        lote: z.string().optional().describe("filtrar por lote do planejamento (ex.: Calendário Outubro — Olinda)"),
         incluirConcluidas: z.boolean().optional(),
       },
     },
-    async ({ cliente, incluirConcluidas }) =>
+    async ({ cliente, lote, incluirConcluidas }) =>
       executar(async () => {
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
@@ -1479,7 +1666,12 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const cid = cliente ? resolver(config.clientes, cliente, "Cliente").id : null;
         const nome = <T extends { id: string; nome: string }>(l: T[], id: string | null) => (id ? (l.find((x) => x.id === id)?.nome ?? null) : null);
         return tarefas
-          .filter((t) => (incluirConcluidas || t.status !== "concluida") && (!cid || t.clienteId === cid))
+          .filter(
+            (t) =>
+              (incluirConcluidas || t.status !== "concluida") &&
+              (!cid || t.clienteId === cid) &&
+              (!lote || (t.lote ?? "").toLowerCase() === lote.trim().toLowerCase()),
+          )
           .map((t) => {
             const m = medicaoDaTarefa(t, medicoes);
             const est = estimativaHoras(t, config);
@@ -1495,6 +1687,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               inicio: t.inicio,
               vencimento: t.vencimento,
               checklist: t.etapas.map((e) => `${e.feita ? "[x]" : "[ ]"} ${e.titulo}`),
+              ...(t.rede && { rede: t.rede }),
+              ...(t.lote && { lote: t.lote }),
               estimativaMin: est == null ? null : Math.round(est * 60),
               tempoMedidoMin: m ? Math.round(segundosDaMedicao(m) / 60) : 0,
               relogio: m?.estado ?? "nunca ligado",
@@ -1535,6 +1729,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         textoArte: z.string().optional().describe("o que vai escrito dentro da arte (o cliente lê antes da legenda)"),
         agendada: z.boolean().optional().describe("true = o post já foi programado (aprovada → agendada); false desfaz"),
         publicarEm: z.string().nullable().optional().describe("quando a peça vai ao ar: AAAA-MM-DD HH:MM (horário de Brasília); null tira"),
+        rede: z.string().nullable().optional().describe("rede onde vai sair (ex.: instagram); interno, o cliente não vê"),
+        lote: z.string().nullable().optional().describe("calendário que agrupa as peças (ex.: Calendário Outubro — Olinda); interno"),
+        mostrarAoCliente: z.boolean().optional().describe("true = aparece no painel do cliente (planejada entra em 'Vem por aí'); false esconde"),
       },
     },
     async (e) =>
@@ -1567,9 +1764,85 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.textoArte != null && { textoArte: e.textoArte }),
           ...(e.agendada != null && { agendadaEm: e.agendada ? (base.agendadaEm ?? new Date().toISOString()) : null }),
           ...(e.publicarEm !== undefined && { publicarEm: dataHoraBrasilia(e.publicarEm) }),
+          ...(e.rede !== undefined && { rede: e.rede?.trim() || null }),
+          ...(e.lote !== undefined && { lote: e.lote?.trim() || null }),
+          ...(e.mostrarAoCliente != null && { visivelCliente: e.mostrarAoCliente }),
         };
         await repo.salvarTarefa(t);
         return { salva: t.titulo, id: t.id, criada: !antes };
+      }),
+  );
+
+  server.registerTool(
+    "importar_planejamento_mensal",
+    {
+      title: "Importar o planejamento mensal",
+      description:
+        "Cria as peças de um planejamento que a Moni já fechou com o cliente, todas de uma vez, na etapa 'planejado' (o cliente já vê em 'Vem por aí' no painel dele). Use o nome do tipo de entrega do Aden em 'tipo' (ex.: Post simples, Reels, Carrossel, Stories, Card de jogo). Preencha textoArte e publicarEm sempre que o plano trouxer; lote agrupa o calendário (ex.: Calendário Outubro — Olinda). Rede e lote são internos. Se uma peça tiver erro, nenhuma é gravada.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id"),
+        lote: z.string().describe("nome curto do calendário, ex.: Calendário Outubro — Olinda"),
+        pecas: z
+          .array(
+            z.object({
+              titulo: z.string().min(1).describe("tema do post (referência interna)"),
+              tipo: z.string().describe("tipo de entrega do Aden (nome ou id)"),
+              textoArte: z.string().optional().describe("o que vai escrito dentro da arte"),
+              legenda: z.string().optional(),
+              rede: z.string().optional().describe("ex.: instagram (interno)"),
+              publicarEm: z.string().optional().describe("AAAA-MM-DD ou AAAA-MM-DD HH:MM (horário de Brasília); só a data = meio-dia"),
+            }),
+          )
+          .min(1),
+      },
+    },
+    async ({ cliente, lote, pecas }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const c = resolver(config.clientes, cliente, "Cliente");
+        const eu = await repo.usuarioAtual();
+        const tipos = config.tiposEntrega.filter((t) => t.ativo);
+        const erros: string[] = [];
+        const novas: Tarefa[] = pecas.map((p, i) => {
+          let tipoId: string | null = null;
+          try {
+            tipoId = resolver(tipos, p.tipo, "Tipo de entrega").id;
+          } catch {
+            erros.push(`peça ${i + 1} (${p.titulo}): tipo "${p.tipo}" não existe`);
+          }
+          let publicarEm: string | null = null;
+          if (p.publicarEm) {
+            const v = /^\d{4}-\d{2}-\d{2}$/.test(p.publicarEm.trim()) ? `${p.publicarEm.trim()} 12:00` : p.publicarEm;
+            try {
+              publicarEm = dataHoraBrasilia(v);
+            } catch {
+              erros.push(`peça ${i + 1} (${p.titulo}): data "${p.publicarEm}" inválida (AAAA-MM-DD ou AAAA-MM-DD HH:MM)`);
+            }
+          }
+          const t = novaTarefa(novoId(), p.titulo.trim(), { clienteId: c.id, responsavelId: eu?.pessoaId ?? null });
+          return {
+            ...t,
+            tipoEntregaId: tipoId,
+            textoArte: p.textoArte ?? "",
+            legenda: p.legenda ?? "",
+            rede: p.rede?.trim() || null,
+            lote: lote.trim(),
+            publicarEm,
+            vencimento: publicarEm ? dataDeBrasilia(publicarEm) : null,
+            visivelCliente: true,
+          };
+        });
+        if (erros.length)
+          throw new Error(`Nada foi gravado. Corrija: ${erros.join("; ")}. Tipos que existem: ${tipos.map((t) => t.nome).join(", ")}.`);
+        await repo.salvarTarefas(novas);
+        return {
+          cliente: c.nome,
+          lote: lote.trim(),
+          criadas: novas.length,
+          pecas: novas.map((t) => ({ id: t.id, titulo: t.titulo, vaiAoArEm: t.publicarEm, etapa: ROTULO_PECA[situacaoPeca(t)] })),
+          painelDoCliente: c.painelToken ? "aparecem em 'Vem por aí'" : "este cliente ainda não tem link do painel",
+        };
       }),
   );
 

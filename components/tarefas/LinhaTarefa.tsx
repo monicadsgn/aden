@@ -36,6 +36,7 @@ export function MetaTarefa({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
   return (
     <>
       {cliente && <span className="max-w-32 truncate rounded-botao bg-marca-suave px-2 py-0.5 text-[10px] font-semibold text-marca-forte">{cliente.nome}</span>}
+      {t.lote && <span className="max-w-40 truncate rounded-botao border border-linha px-2 py-0.5 text-[10px] font-semibold text-texto-suave" title="Lote do planejamento">{t.lote}</span>}
       {t.etapas.length > 0 && (
         <span className="inline-flex items-center gap-1 text-[11px] text-texto-suave tabular-nums">
           <ListChecks size={12} aria-hidden /> {feitas}/{t.etapas.length}

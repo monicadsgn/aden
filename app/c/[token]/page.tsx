@@ -5,7 +5,7 @@
 // publicado), para o cliente ver tudo de uma vez sem descer a página. Mostra só as peças que a
 // Aden marcou para ele; aprova ou pede ajuste. Nada interno: nem valores, nem horas, nem notas.
 
-import { CalendarClock, FileText, HelpCircle, Image as ImageIcon, Layers, Sparkles, Video, type LucideIcon } from "lucide-react";
+import { CalendarClock, FileText, FolderOpen, HelpCircle, Image as ImageIcon, Layers, ListChecks, Palette, Sparkles, Video, type LucideIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Modal } from "@/components/Modal";
@@ -16,6 +16,9 @@ import type { PainelCliente } from "@/lib/dados/repositorio";
 import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
 
 type Peca = PainelCliente["pecas"][number];
+
+const estiloAtalho =
+  "inline-flex items-center gap-1.5 rounded-botao border border-linha px-3 py-1.5 text-xs font-semibold text-texto-suave transition hover:border-marca/50 hover:text-texto";
 
 const MOTIVOS_TEXTO = ["Muito longo", "Muito formal", "Emoji demais", "Não parece a nossa voz", "Falta informação"];
 
@@ -63,6 +66,7 @@ export default function PainelDoCliente() {
   const [erro, setErro] = useState<string | null>(null);
   const [recebido, setRecebido] = useState<string | null>(null);
   const [resumoAberto, setResumoAberto] = useState(false);
+  const [inclusoAberto, setInclusoAberto] = useState(false);
   const [passo, setPasso] = useState<number | null>(null);
   const [colunaVisivel, setColunaVisivel] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -122,6 +126,8 @@ export default function PainelDoCliente() {
   const mes = new Date().toISOString().slice(0, 7);
   const resumo = resumoDoMes(painel.pecas, mes);
   const temResumo = resumo.publicados + resumo.agendados + resumo.emAndamento + resumo.ajustesPedidos > 0;
+  const at = painel.atalhos;
+  const temAtalho = !!(at?.planejamentoUrl || at?.fotosUrl || at?.identidadeUrl || at?.inclusoTexto);
   const tutorial = passosDoTutorial(colunas.some((c) => c.id === "planejado"));
   const passoAtual = passo == null ? null : Math.min(passo, tutorial.length - 1);
 
@@ -163,15 +169,33 @@ export default function PainelDoCliente() {
         </div>
       </header>
 
-      {temResumo && (
+      {(temResumo || temAtalho) && (
         <nav aria-label="Atalhos" className="-mt-2 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setResumoAberto(true)}
-            className="rounded-botao border border-linha px-3 py-1.5 text-xs font-semibold text-texto-suave transition hover:border-marca/50 hover:text-texto"
-          >
-            Resumo do mês
-          </button>
+          {at?.planejamentoUrl && (
+            <a href={at.planejamentoUrl} target="_blank" rel="noreferrer" className={cx(estiloAtalho, "border-marca/40 text-texto")}>
+              <FileText size={13} /> {at.planejamentoRotulo || "Planejamento do mês"}
+            </a>
+          )}
+          {at?.fotosUrl && (
+            <a href={at.fotosUrl} target="_blank" rel="noreferrer" className={estiloAtalho}>
+              <FolderOpen size={13} /> Fotos
+            </a>
+          )}
+          {at?.identidadeUrl && (
+            <a href={at.identidadeUrl} target="_blank" rel="noreferrer" className={estiloAtalho}>
+              <Palette size={13} /> Identidade visual
+            </a>
+          )}
+          {at?.inclusoTexto && (
+            <button type="button" onClick={() => setInclusoAberto(true)} className={estiloAtalho}>
+              <ListChecks size={13} /> O que está incluso
+            </button>
+          )}
+          {temResumo && (
+            <button type="button" onClick={() => setResumoAberto(true)} className={estiloAtalho}>
+              Resumo do mês
+            </button>
+          )}
         </nav>
       )}
 
@@ -361,6 +385,17 @@ export default function PainelDoCliente() {
           <img src={zoom} alt="" className="max-h-full max-w-full rounded-item object-contain" />
         </button>
       )}
+
+      {/* o que está incluso */}
+      <Modal
+        aberto={inclusoAberto}
+        aoFechar={() => setInclusoAberto(false)}
+        largura="sm"
+        titulo="O que está incluso"
+        subtitulo="O que o seu plano cobre e o que é à parte."
+      >
+        <p className="text-sm leading-relaxed whitespace-pre-line">{at?.inclusoTexto}</p>
+      </Modal>
 
       {/* resumo do mês */}
       <Modal

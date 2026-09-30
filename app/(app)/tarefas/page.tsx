@@ -76,6 +76,7 @@ export default function Tarefas() {
   const [rapida, setRapida] = useState("");
   const [cliente, setCliente] = useState<string | null>(null);
   const [resp, setResp] = useState<string | null>(null);
+  const [lote, setLote] = useState<string | null>(null);
   const [mostrarConcluidas, setMostrarConcluidas] = useState(false);
 
   useEffect(() => {
@@ -105,9 +106,11 @@ export default function Tarefas() {
     } catch {}
   };
 
+  // lotes do planejamento mensal (só os que têm tarefa aberta)
+  const lotes = [...new Set(a.tarefas.filter((t) => t.lote && t.status !== "concluida").map((t) => t.lote!))].sort();
   const filtradas = useMemo(
-    () => a.tarefas.filter((t) => (!cliente || t.clienteId === cliente) && (!resp || t.responsavelId === resp)),
-    [a.tarefas, cliente, resp],
+    () => a.tarefas.filter((t) => (!cliente || t.clienteId === cliente) && (!resp || t.responsavelId === resp) && (!lote || t.lote === lote)),
+    [a.tarefas, cliente, resp, lote],
   );
   const grupos = useMemo(() => agruparPorPrazo(filtradas, new Date()), [filtradas]);
   const concluidas = filtradas.filter((t) => t.status === "concluida").length;
@@ -169,6 +172,16 @@ export default function Tarefas() {
             opcoes={a.config.pessoas.filter((p) => p.ativo).map((p) => ({ valor: p.id, rotulo: p.nome }))}
             aoMudar={setResp}
           />
+          {lotes.length > 0 && (
+            <Selecao
+              className="w-full sm:w-60"
+              ariaLabel="Filtrar por lote do planejamento"
+              valor={lote}
+              vazio="Todos os lotes"
+              opcoes={lotes.map((l) => ({ valor: l, rotulo: l }))}
+              aoMudar={setLote}
+            />
+          )}
         </div>
 
         {podeCriar && <input
