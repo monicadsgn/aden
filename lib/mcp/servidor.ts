@@ -1973,6 +1973,30 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   // ─── Tarefas ──────────────────────────────────────────────────────────────
 
   server.registerTool(
+    "quem_sou_eu",
+    {
+      title: "Quem está usando o conector",
+      description:
+        "Diz de qual sócio é o código deste conector (quem está conversando com você): nome e papel. Use no começo do chat para saber quem é \"eu\" (ex.: \"o que eu tenho pra fazer?\" → ver_visao_do_dia com este nome) e quem é o outro sócio.",
+      inputSchema: {},
+    },
+    async () =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [eu, config] = await Promise.all([repo.usuarioAtual(), repo.carregarConfig()]);
+        if (!eu) throw new Error("Não deu para saber de quem é este código.");
+        const nome = eu.nome.replace(/\s*\(pelo Claude\)$/, "");
+        const socios = config.pessoas.filter((p) => p.socio && p.ativo);
+        const pessoa = socios.find((p) => p.id === eu.pessoaId);
+        return {
+          voce: pessoa?.nome ?? nome,
+          papel: eu.papel === "admin" ? "sócio" : eu.papel,
+          outrosSocios: socios.filter((p) => p.id !== eu.pessoaId).map((p) => p.nome),
+        };
+      }),
+  );
+
+  server.registerTool(
     "ver_visao_do_dia",
     {
       title: "Visão do dia",

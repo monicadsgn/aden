@@ -676,6 +676,17 @@ describe("conector: cliente novo do zero", () => {
   });
 });
 
+describe("conector: quem sou eu", () => {
+  it("diz de quem é o código e quem é o outro sócio", async () => {
+    banco.config.pessoas = [
+      { id: "p1", nome: "Mônica", socio: true, percentualPadrao: 50, pisoHoraCentavos: null, capacidadeHorasMes: null, ativo: true },
+      { id: "a", nome: "Áleff", socio: true, percentualPadrao: 50, pisoHoraCentavos: null, capacidadeHorasMes: null, ativo: true },
+    ];
+    const r = await chamar("quem_sou_eu");
+    expect(r).toEqual({ voce: "Mônica", papel: "sócio", outrosSocios: ["Áleff"] });
+  });
+});
+
 describe("conector: onboarding", () => {
   it("guarda contato e texto do serviço e mostra o que falta", async () => {
     await chamar("salvar_cliente", { nome: "Loja Y", valorMensalReais: 1000 });
