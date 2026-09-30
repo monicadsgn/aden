@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { dataHoraBrasilia } from "../mcp/servidor";
 import type { Medicao } from "./calibragem";
 import { avisosDePublicacao } from "./dia";
-import { aplicarResposta, montarPainel } from "./painel";
+import { aplicarResposta, montarPainel, montarQuadro, resumoDoMes } from "./painel";
 import { novaTarefa, publicar, situacaoPeca } from "./tarefas";
 import type { ClienteBase } from "./tipos";
 
@@ -19,9 +19,11 @@ describe("etapas da peça", () => {
     const enviada = { ...plan, status: "revisao" as const, enviadaClienteEm: "2026-10-01T12:00:00Z" };
     expect(situacaoPeca(enviada)).toBe("aguardando");
     const aprovada = aplicarResposta(enviada, "aprovar", "", agora);
-    expect(situacaoPeca(aprovada)).toBe("agendada");
-    expect(situacaoPeca({ ...aprovada, publicarEm: null })).toBe("aprovada");
-    const pub = publicar(aprovada, null, agora).tarefa;
+    // aprovada com data continua "aprovada" até a equipe programar o post
+    expect(situacaoPeca(aprovada)).toBe("aprovada");
+    const agendada = { ...aprovada, agendadaEm: agora.toISOString() };
+    expect(situacaoPeca(agendada)).toBe("agendada");
+    const pub = publicar(agendada, null, agora).tarefa;
     expect(pub).toMatchObject({ status: "concluida", publicadaEm: agora.toISOString() });
     expect(situacaoPeca(pub)).toBe("publicada");
   });
@@ -75,5 +77,45 @@ describe("conector: data e hora de Brasília", () => {
     expect(dataHoraBrasilia("2026-10-04 12:00")).toBe("2026-10-04T15:00:00.000Z");
     expect(dataHoraBrasilia(null)).toBeNull();
     expect(() => dataHoraBrasilia("04/10/2026")).toThrow(/AAAA-MM-DD HH:MM/);
+  });
+});
+
+describe("quadro do painel do cliente", () => {
+  const base = { arquivos: [], legenda: null, vencimento: null, rodadas: 0, feedback: null, feedbackEm: null, aprovadaEm: null, enviadaEm: null, respostas: [], publicarEm: null, publicadaEm: null, agendadaEm: null as string | null, tipo: null as string | null, titulo: "x" };
+  const pecas = [
+    { ...base, id: "plan", status: "a_fazer" as const, publicarEm: "2026-10-08T15:00:00Z" },
+    { ...base, id: "prod", status: "em_producao" as const },
+    { ...base, id: "aj", status: "em_producao" as const, feedbackEm: "2026-10-01T12:00:00Z", respostas: [{ decisao: "ajustar" as const, texto: "Arte: trocar", em: "2026-10-01T12:00:00Z" }] },
+    { ...base, id: "esp", status: "revisao" as const, enviadaEm: "2026-10-01T12:00:00Z" },
+    { ...base, id: "apr", status: "em_producao" as const, aprovadaEm: "2026-10-01T12:00:00Z", publicarEm: "2026-10-05T15:00:00Z" },
+    { ...base, id: "ag2", status: "em_producao" as const, aprovadaEm: "2026-10-01T12:00:00Z", agendadaEm: "2026-10-01T13:00:00Z", publicarEm: "2026-10-06T15:00:00Z", tipo: "Reels" },
+    { ...base, id: "ag1", status: "em_producao" as const, aprovadaEm: "2026-10-01T12:00:00Z", agendadaEm: "2026-10-01T13:00:00Z", publicarEm: "2026-10-04T15:00:00Z", tipo: "Reels" },
+    { ...base, id: "pub", status: "concluida" as const, aprovadaEm: "2026-10-01T12:00:00Z", publicarEm: "2026-10-02T15:00:00Z", publicadaEm: "2026-10-02T15:00:00Z", tipo: "Post simples" },
+  ];
+
+  it("colunas na ordem do caminho do post; aprovação e publicados sempre aparecem", () => {
+    const q = montarQuadro(pecas);
+    expect(q.map((c) => [c.id, c.pecas.map((p) => p.id)])).toEqual([
+      ["planejado", ["plan"]],
+      ["producao", ["prod", "aj"]],
+      ["aguardando", ["esp"]],
+      ["aprovada", ["apr"]],
+      ["agendada", ["ag1", "ag2"]],
+      ["publicada", ["pub"]],
+    ]);
+    expect(montarQuadro([]).map((c) => c.id)).toEqual(["aguardando", "publicada"]);
+  });
+
+  it("resumo do mês: publicados, agendados, em andamento, ajustes e formatos", () => {
+    expect(resumoDoMes(pecas, "2026-10")).toEqual({
+      publicados: 1,
+      agendados: 2,
+      emAndamento: 3,
+      ajustesPedidos: 1,
+      porTipo: [
+        { tipo: "Reels", quantidade: 2 },
+        { tipo: "Post simples", quantidade: 1 },
+      ],
+    });
   });
 });

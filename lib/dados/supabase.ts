@@ -865,6 +865,7 @@ export class RepositorioSupabase implements Repositorio {
       concluidaEm: (t.concluida_em as string) ?? null,
       visivelCliente: (t.visivel_cliente as boolean) ?? false,
       legenda: (t.legenda as string) ?? "",
+      textoArte: (t.texto_arte as string) ?? "",
       arquivos: Array.isArray(t.arquivos) ? (t.arquivos as ArquivoPeca[]) : [],
       enviadaClienteEm: (t.enviada_cliente_em as string) ?? null,
       rodadas: Number(t.rodadas ?? 0),
@@ -874,6 +875,7 @@ export class RepositorioSupabase implements Repositorio {
       respostasCliente: Array.isArray(t.respostas_cliente) ? (t.respostas_cliente as RespostaCliente[]) : [],
       publicarEm: (t.publicar_em as string) ?? null,
       publicadaEm: (t.publicada_em as string) ?? null,
+      agendadaEm: (t.agendada_em as string) ?? null,
     }));
   }
 
@@ -898,9 +900,11 @@ export class RepositorioSupabase implements Repositorio {
       // as respostas do cliente (rodadas, feedback, aprovação) só o banco escreve
       visivel_cliente: t.visivelCliente ?? false,
       legenda: t.legenda || null,
+      texto_arte: t.textoArte || null,
       arquivos: t.arquivos ?? [],
       publicar_em: t.publicarEm ?? null,
       publicada_em: t.publicadaEm ?? null,
+      agendada_em: t.agendadaEm ?? null,
     });
     erro(error);
   }

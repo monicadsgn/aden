@@ -296,6 +296,17 @@ ajuste → aprovada → agendada (aprovada, com data) → publicada. `publicar()
 - Conector: `salvar_tarefa` com `legenda` e `publicarEm` (AAAA-MM-DD HH:MM, Brasília), `marcar_publicada`, etapa da
   peça em `listar_tarefas` e `ver_visao_do_dia.publicacao`. Testes em `lib/calculo/publicacao.test.ts`.
 
+## Painel do cliente em quadro (Fase 3, 30/09/2026)
+
+`/c/[token]`: colunas que deslizam para o lado, na ordem do caminho do post (`montarQuadro` em `lib/calculo/painel.ts`):
+Vem por aí → Em produção (com o ajuste pedido) → Aguardando sua aprovação (primeira no celular) → Aprovada →
+Agendada → Publicado recentemente (as 7 mais novas). "Aguardando" e "Publicado" sempre aparecem; as outras, só com
+peça. Card com a arte e a faixa "Entra/Entrou dia X"; peça aberta com texto da arte, legenda e, no rodapé, "Ajustar
+arte", "Ajustar texto" (com motivos rápidos) e "Aprovar"; aviso "Recebido!" depois de responder; "Resumo do mês"
+(`resumoDoMes`) nos atalhos. Migration 0022: `texto_arte` (o que vai escrito na arte; o cliente lê antes da legenda) e
+`agendada_em` (a equipe programou o post: aprovada → agendada), e o painel devolve o formato (nome do tipo). A
+descrição da tarefa continua interna e nunca sai para o cliente.
+
 ## Porta genérica (Fase 3, passo 2, 30/09/2026)
 
 Exceção aprovada em 29/09/2026: um sócio gera o próprio código (Configurações → Equipe e acessos → "Sua porta de

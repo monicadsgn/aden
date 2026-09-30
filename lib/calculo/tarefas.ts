@@ -36,6 +36,8 @@ export interface Tarefa {
   // ─── painel do cliente ───
   /** aparece no painel do cliente */
   visivelCliente?: boolean;
+  /** texto que vai escrito dentro da arte (o cliente lê antes da legenda) */
+  textoArte?: string;
   /** texto que vai junto com a peça (legenda do post) */
   legenda?: string;
   /** artes da peça (endereços no Storage) */
@@ -50,6 +52,8 @@ export interface Tarefa {
   // ─── publicação (Fase 3) ───
   /** quando a peça vai ao ar (data e hora do calendário) */
   publicarEm?: string | null;
+  /** quando a equipe programou o post (no Instagram, por exemplo): aprovada → agendada */
+  agendadaEm?: string | null;
   /** quando foi ao ar de fato */
   publicadaEm?: string | null;
 }
@@ -68,16 +72,16 @@ export interface RespostaCliente {
 
 /**
  * Etapa da peça (a mesma para a equipe e para o cliente), calculada sem mudar o status da tarefa:
- * planejado → produção → esperando aprovação (ou ajuste) → aprovada → agendada → publicada.
+ * planejado → produção → esperando aprovação (ou ajuste) → aprovada → agendada (programada) → publicada.
  * "entregue" = tarefa concluída sem data de publicação (ex.: um PDF).
  */
 export type SituacaoPeca = "planejado" | "producao" | "aguardando" | "ajuste" | "aprovada" | "agendada" | "publicada" | "entregue";
 
 export function situacaoPeca(
-  t: Pick<Tarefa, "status" | "clienteAprovouEm" | "feedbackEm" | "enviadaClienteEm"> & Partial<Pick<Tarefa, "publicarEm" | "publicadaEm">>,
+  t: Pick<Tarefa, "status" | "clienteAprovouEm" | "feedbackEm" | "enviadaClienteEm"> & Partial<Pick<Tarefa, "publicarEm" | "publicadaEm" | "agendadaEm">>,
 ): SituacaoPeca {
   if (t.publicadaEm) return "publicada";
-  if (t.clienteAprovouEm) return t.publicarEm ? "agendada" : "aprovada";
+  if (t.clienteAprovouEm) return t.agendadaEm ? "agendada" : "aprovada";
   if (t.status === "revisao") return "aguardando";
   if (t.status === "concluida") return "entregue";
   // voltou para produção depois de um pedido de ajuste do cliente

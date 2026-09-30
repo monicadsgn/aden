@@ -33,7 +33,7 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
   const rodadas = t.rodadas ?? 0;
   const prazo = sit === "aguardando" ? aprovarAte(t.enviadaClienteEm ?? null, cliente.contrato?.prazoAprovacaoDias ?? null) : null;
   const arquivos = t.arquivos ?? [];
-  const ehPeca = aberto || !!(t.visivelCliente || arquivos.length > 0 || t.legenda || t.publicarEm || t.publicadaEm);
+  const ehPeca = aberto || !!(t.visivelCliente || arquivos.length > 0 || t.legenda || t.textoArte || t.publicarEm || t.publicadaEm);
 
   if (!ehPeca)
     return (
@@ -63,6 +63,15 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
         )}
       </div>
 
+        <label className="mt-3 flex flex-col gap-1 text-xs font-semibold text-texto-suave">
+          Texto da arte (o que vai escrito dentro dela; o cliente lê antes da legenda)
+          <textarea
+            key={`${t.id}-arte`}
+            className="min-h-12 rounded-campo border border-linha bg-superficie px-3 py-2 text-sm font-normal text-texto focus:border-marca focus:outline-none"
+            defaultValue={t.textoArte ?? ""}
+            onBlur={(e) => e.target.value !== (t.textoArte ?? "") && void a.salvar({ ...t, textoArte: e.target.value })}
+          />
+        </label>
         <label className="mt-3 flex flex-col gap-1 text-xs font-semibold text-texto-suave">
           Legenda / texto que o cliente vai ler
           <textarea
@@ -130,7 +139,7 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
         )}
         {(sit === "aprovada" || sit === "agendada") && t.clienteAprovouEm && (
           <p className="mt-3 flex items-center gap-2 rounded-item bg-ok-suave px-3 py-2 text-xs text-ok">
-            <CheckCircle2 size={14} /> Aprovada pelo cliente em {dataBr(t.clienteAprovouEm)}. {sit === "agendada" ? "Já tem data para ir ao ar." : "Ponha a data para ir ao ar."}
+            <CheckCircle2 size={14} /> Aprovada pelo cliente em {dataBr(t.clienteAprovouEm)}. {sit === "agendada" ? "Já está programada." : "Quando programar o post, marque como agendada."}
           </p>
         )}
 
@@ -159,12 +168,24 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
               </Botao>
             </>
           ) : (
-            <Botao pequeno icone={Megaphone} onClick={() => void a.marcarPublicada(t, true)}>
-              Marcar como publicada
-            </Botao>
+            <>
+              <Botao
+                pequeno
+                icone={CalendarClock}
+                variante={t.agendadaEm ? "primario" : undefined}
+                onClick={() => void a.salvar({ ...t, agendadaEm: t.agendadaEm ? null : new Date().toISOString() })}
+              >
+                {t.agendadaEm ? "Agendada (desfazer)" : "Marcar como agendada"}
+              </Botao>
+              <Botao pequeno icone={Megaphone} onClick={() => void a.marcarPublicada(t, true)}>
+                Marcar como publicada
+              </Botao>
+            </>
           )}
         </div>
-        <p className="mt-1 text-[12px] text-texto-suave">Com a data, a peça aparece como planejada (antes de aprovar) ou agendada (depois). Publicada conclui a tarefa.</p>
+        <p className="mt-1 text-[12px] text-texto-suave">
+          Com a data, a peça aparece como planejada antes de aprovar. Depois de aprovada, “agendada” é quando vocês já programaram o post. Publicada conclui a tarefa.
+        </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {!interno && (sit === "planejado" || sit === "producao" || sit === "ajuste") && (

@@ -1437,7 +1437,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou editar tarefa",
       description:
-        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. checklist substitui a lista inteira. Peça de conteúdo: legenda e publicarEm (quando vai ao ar); com data, a peça fica 'planejado' antes de aprovar e 'agendada' depois.",
+        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. checklist substitui a lista inteira. Peça de conteúdo: textoArte, legenda, publicarEm (quando vai ao ar) e agendada (já programada). Com data, fica 'planejado' antes de aprovar; aprovada vira 'agendada' quando marcada como programada.",
       inputSchema: {
         id: z.string().optional(),
         titulo: z.string().optional(),
@@ -1451,6 +1451,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         descricao: z.string().optional(),
         checklist: z.array(z.object({ titulo: z.string(), feita: z.boolean().optional() })).optional(),
         legenda: z.string().optional().describe("texto que vai junto com a peça (legenda do post)"),
+        textoArte: z.string().optional().describe("o que vai escrito dentro da arte (o cliente lê antes da legenda)"),
+        agendada: z.boolean().optional().describe("true = o post já foi programado (aprovada → agendada); false desfaz"),
         publicarEm: z.string().nullable().optional().describe("quando a peça vai ao ar: AAAA-MM-DD HH:MM (horário de Brasília); null tira"),
       },
     },
@@ -1481,6 +1483,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.descricao != null && { descricao: e.descricao }),
           ...(e.checklist && { etapas: e.checklist.map((c) => ({ id: novoId(), titulo: c.titulo, feita: !!c.feita })) }),
           ...(e.legenda != null && { legenda: e.legenda }),
+          ...(e.textoArte != null && { textoArte: e.textoArte }),
+          ...(e.agendada != null && { agendadaEm: e.agendada ? (base.agendadaEm ?? new Date().toISOString()) : null }),
           ...(e.publicarEm !== undefined && { publicarEm: dataHoraBrasilia(e.publicarEm) }),
         };
         await repo.salvarTarefa(t);

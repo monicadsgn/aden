@@ -139,6 +139,12 @@ export interface PainelCliente {
     /** quando vai ao ar e quando foi (Fase 3) */
     publicarEm?: string | null;
     publicadaEm?: string | null;
+    /** formato (nome do tipo de entrega) */
+    tipo?: string | null;
+    /** o que vai escrito dentro da arte */
+    textoArte?: string | null;
+    /** quando a equipe programou o post */
+    agendadaEm?: string | null;
   }[];
 }
 

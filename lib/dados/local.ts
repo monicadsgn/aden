@@ -467,7 +467,7 @@ export class RepositorioLocal implements Repositorio {
   async painelCliente(token: string) {
     const b = ler();
     const c = b.config.clientes.find((x) => x.painelToken === token && x.ativo);
-    return c ? montarPainel(c, b.tarefas ?? []) : null;
+    return c ? montarPainel(c, b.tarefas ?? [], new Date(), b.config.tiposEntrega) : null;
   }
 
   async responderPeca(token: string, tarefaId: string, decisao: "aprovar" | "ajustar", texto: string) {
