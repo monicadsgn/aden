@@ -499,7 +499,7 @@ export default function Configuracoes() {
               <div className="flex flex-col gap-2">
                 <p className="text-[12px] text-texto-suave">
                   Digite o tempo em <strong>minutos</strong> (20 min, 40 min…). <Lock size={10} className="inline" /> É protegido: muda quanto cada hora vale. Roteiro e direção de
-                  gravação são feitos pelos sócios, com tempo. Entrega feita por um terceiro (ex.: gravação) não tem tempo dos sócios: escolha em &quot;Quem faz&quot;.
+                  gravação são feitos pelos sócios, com tempo. Entrega feita por um terceiro (ex.: gravação) não tem tempo dos sócios: escolha em &quot;Quem faz&quot;. &quot;Como o cliente vê&quot; troca o nome só no painel do cliente (ex.: Post).
                 </p>
                 {(COM_VOLUME.botaoCalibragem || temMedicao) && (
                   <Link
@@ -560,6 +560,13 @@ export default function Configuracoes() {
                       </Alvo>
                     )}
                     <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label="Remover tipo" onClick={() => set({ tiposEntrega: rascunho.tiposEntrega.filter((x) => x.id !== t.id) })} />
+                    <CampoTexto
+                      className="col-span-full sm:max-w-sm"
+                      rotulo="Como o cliente vê (opcional)"
+                      placeholder={t.nome || "igual ao nome"}
+                      valor={t.nomeCliente ?? ""}
+                      aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { nomeCliente: v || null }) })}
+                    />
                     {t.terceiroId && (
                       <p className="col-span-full text-xs text-texto-suave">Não conta horas dos sócios. Vira custo do cliente, pelo valor cadastrado em Terceiros.</p>
                     )}

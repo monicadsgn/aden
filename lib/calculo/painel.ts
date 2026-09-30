@@ -28,9 +28,29 @@ export interface PecaPainel {
   agendadaEm: string | null;
 }
 
+/**
+ * Título como o cliente vê: sem a etiqueta interna de organização no começo ("[CLIENTE] - …") e sem o
+ * "Tráfego:" dos criativos. Dentro do sistema o título continua igual. Espelhada no banco (painel_cliente,
+ * migration 0026): mudou aqui, muda lá.
+ */
+export function tituloParaCliente(titulo: string): string {
+  const limpo = titulo
+    .replace(/^\s*\[[^\]]*\]\s*[-–—:]?\s*/, "")
+    .replace(/^\s*tr[aá]fego\s*:\s*/i, "")
+    .trim();
+  if (!limpo) return titulo.trim();
+  return limpo.charAt(0).toLocaleUpperCase("pt-BR") + limpo.slice(1);
+}
+
+/** Nome do tipo de entrega no painel: o "como o cliente vê" do tipo, se preenchido (ex.: "Post"); se não, o nome. */
+export function nomeDoTipoParaCliente(t: Pick<TipoEntrega, "nome" | "nomeCliente"> | undefined): string | null {
+  if (!t) return null;
+  return t.nomeCliente?.trim() || t.nome;
+}
+
 const JANELA_DIAS_ENTREGUES = 60; // peças entregues somem do painel depois de um tempo (só organização da tela)
 
-export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = new Date(), tipos: Pick<TipoEntrega, "id" | "nome">[] = []) {
+export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = new Date(), tipos: Pick<TipoEntrega, "id" | "nome" | "nomeCliente">[] = []) {
   const limite = agora.getTime() - JANELA_DIAS_ENTREGUES * 86400000;
   const recente = (iso: string | null | undefined) => !!iso && new Date(iso).getTime() > limite;
   const pecas: PecaPainel[] = tarefas
@@ -38,7 +58,7 @@ export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = ne
     .sort((a, b) => (b.enviadaClienteEm ?? b.criadoEm).localeCompare(a.enviadaClienteEm ?? a.criadoEm))
     .map((t) => ({
       id: t.id,
-      titulo: t.titulo,
+      titulo: tituloParaCliente(t.titulo),
       legenda: t.legenda || null,
       arquivos: t.arquivos ?? [],
       status: t.status,
@@ -51,7 +71,7 @@ export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = ne
       respostas: t.respostasCliente ?? [],
       publicarEm: t.publicarEm ?? null,
       publicadaEm: t.publicadaEm ?? null,
-      tipo: tipos.find((x) => x.id === t.tipoEntregaId)?.nome ?? null,
+      tipo: nomeDoTipoParaCliente(tipos.find((x) => x.id === t.tipoEntregaId)),
       textoArte: t.textoArte || null,
       agendadaEm: t.agendadaEm ?? null,
     }));

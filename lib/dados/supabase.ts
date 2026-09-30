@@ -235,6 +235,7 @@ export class RepositorioSupabase implements Repositorio {
         ativo: t.ativo as boolean,
         calibrarDesde: (t.calibrar_desde as string) ?? null,
         terceiroId: (t.terceiro_id as string) ?? null,
+        nomeCliente: (t.nome_cliente as string) ?? null,
       })),
       custosFixos: ((cus.data ?? []) as Linha[]).map((c) => ({
         id: c.id as string,
@@ -444,6 +445,7 @@ export class RepositorioSupabase implements Repositorio {
         ativo: t.ativo,
         calibrar_desde: t.calibrarDesde ?? null,
         terceiro_id: t.terceiroId ?? null,
+        nome_cliente: t.nomeCliente?.trim() || null,
         ordem: i,
       })),
     );
@@ -971,6 +973,7 @@ export class RepositorioSupabase implements Repositorio {
       ativo: t.ativo as boolean,
       calibrarDesde: (t.calibrar_desde as string) ?? null,
       terceiroId: (t.terceiro_id as string) ?? null,
+      nomeCliente: (t.nome_cliente as string) ?? null,
     }));
     return c;
   }
