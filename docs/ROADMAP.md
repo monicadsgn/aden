@@ -130,7 +130,12 @@ migração. Meta: tudo pronto até o fim de outubro.
   Importação: só os textos (as artes das peças que ainda vão ao ar a Moni põe à mão); tipos: criativos institucionais
   da Aden → "Criativo de tráfego carrossel" (2) e "estático" (2); 12 posts → "Post simples" (8) e "Carrossel" (4
   "Inside Aden"). Passo 3 (painel ligado, só para cliente com link; StadiumPlay primeiro) feito em 30/09/2026.
-  Próximos: 4 importação, 5 conferência.
+  Passo 4 (importação única) feito em 30/09/2026, com backup antes: 59 tarefas e peças, todas com a Moni responsável
+  (Aden 23: 12 posts, 4 criativos, 6 da logo, referências; StadiumPlay 26: 25 peças no painel e a tarefa das fotos;
+  Olinda 10: 9 peças e o lembrete do dia 15). Só textos, sem artes. Ficaram para uma passada curta: as 5 peças da
+  Olinda que esperavam aprovação no sistema antigo (entram já aprovadas). Tarefas sem tipo de entrega (logo,
+  referências, fotos, lembrete) não ligam o relógio até ganharem um tipo. Próximo: 5 conferência e arquivar a área
+  antiga.
 - **Fase 4 · Os dois sócios pelo Claude:** memória de contexto do cliente no conector (quem anotou); toda ferramenta
   registra qual sócio agiu; passo a passo de configuração com o Áleff.
 - **Fase 5 · Identidade e documentos:** tokens da marca a partir do SVG; proposta em PDF, contrato por e-mail
