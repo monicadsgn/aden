@@ -368,10 +368,10 @@ export function FichaCliente({
         {aba === "financeiro" && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
-              <Link href="/pagamentos" className="inline-flex items-center gap-1.5 rounded-botao bg-marca px-3 py-1.5 text-xs font-semibold text-sobre-marca">
+              <Link href={`/pagamentos?cliente=${c.id}`} className="inline-flex items-center gap-1.5 rounded-botao bg-marca px-3 py-1.5 text-xs font-semibold text-sobre-marca">
                 <Wallet size={13} /> Registrar pagamento
               </Link>
-              <Link href="/mes?aba=clientes" className="inline-flex items-center gap-1.5 rounded-botao border border-linha px-3 py-1.5 text-xs font-semibold">
+              <Link href={`/mes?aba=clientes&cliente=${c.id}`} className="inline-flex items-center gap-1.5 rounded-botao border border-linha px-3 py-1.5 text-xs font-semibold">
                 Ver a saúde deste cliente
               </Link>
             </div>

@@ -73,7 +73,7 @@ Regras que você deve seguir:
 - Aprovação de conteúdo pelo cliente: por enquanto é feita fora do Aden (o painel do cliente do Aden está desligado).
   Tarefa em status revisao = "com o cliente", esperando a aprovação dele.
 - Clientes: ver_cliente (ficha completa) e salvar_ficha_cliente (contato e condições do contrato).
-- CRM: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
+- Leads: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
 - O Aden é a central da agência (tarefas, calendário, comercial, financeiro, metas). "O que tenho pra hoje?" → ver_visao_do_dia.
 - Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist)
   e mudar_status_tarefa. O cronômetro fica DENTRO da tarefa (botão Começar no site); você não liga relógio, mas pode
@@ -496,7 +496,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   server.registerTool(
     "ver_visao_do_mes",
     {
-      title: "Visão do mês (capacidade)",
+      title: "Mês: resumo e capacidade",
       description:
         "Espaço para vender: quantos clientes do pacote padrão ainda cabem (pelas horas livres), a trilha de metas (degrau atual e quanto falta), horas de cada sócio e de cada cliente, faturamento e teto do regime. Fale em tom de crescimento: quando não couber mais, é hora do próximo passo da trilha.",
       inputSchema: {},
@@ -575,7 +575,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   server.registerTool(
     "ver_saude_clientes",
     {
-      title: "Saúde dos clientes no mês",
+      title: "Mês: cada cliente (saúde)",
       description:
         "Para cada cliente ativo: previsto (escopo + contrato) × realizado (horas corrigidas à mão, ou o cronômetro das tarefas do cliente no mês, ou média medida, ou previsão; valor dos pagamentos), valor por hora de cada sócio contra o piso, de onde vem cada número de horas e, quando há problema, os caminhos calculados: subir o valor, cortar escopo, misto, ou aceitar a exceção (quanto cada sócio perde por mês).",
       inputSchema: { competencia: zCompetencia },
@@ -960,7 +960,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   server.registerTool(
     "listar_leads",
     {
-      title: "Listar leads do CRM",
+      title: "Listar leads",
       description: "Leads do funil com etapa, dias na etapa, valor estimado, próximo contato e responsável. Por padrão só os em aberto. Inclui o resumo do funil.",
       inputSchema: { incluirFechados: z.boolean().optional() },
     },
@@ -1249,7 +1249,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou alterar degrau da trilha de metas",
       description:
-        "Degrau da trilha de crescimento (Visão do mês). SÓ cadastre metas que os sócios definiram na conversa; nunca invente. Critério: faturamento_mensal (alvo em reais), clientes (quantidade), recebido_socio (reais por sócio no mês), uso_capacidade (%). A ordem é a da lista (posicao começa em 1).",
+        "Degrau da trilha de crescimento (tela Mês, aba Resumo). SÓ cadastre metas que os sócios definiram na conversa; nunca invente. Critério: faturamento_mensal (alvo em reais), clientes (quantidade), recebido_socio (reais por sócio no mês), uso_capacidade (%). A ordem é a da lista (posicao começa em 1).",
       inputSchema: {
         id: z.string().optional().describe("id ou nome do degrau a alterar; vazio = novo"),
         nome: z.string().optional(),

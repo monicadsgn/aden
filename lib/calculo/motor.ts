@@ -536,7 +536,7 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         nivel: "aviso",
         texto: `Clientes sem valor mensal na base de rateio (contados como R$ 0): ${semValor.map((c) => c.nome).join(", ")}.`,
         explica: "Na regra de rateio proporcional, quem paga mais leva uma parte maior dos custos fixos. Um cliente sem valor mensal conta como R$ 0 e não leva nenhuma parte. Preencha o valor de cada cliente.",
-        acao: { rotulo: "Preencher os valores", destino: { tipo: "config", secao: "clientes" } },
+        acao: { rotulo: "Preencher os valores", destino: { tipo: "config", secao: "clientes", ...(semValor.length === 1 ? { clienteId: semValor[0].id } : {}) } },
       });
   }
   if (!opcoes.semRateio) {

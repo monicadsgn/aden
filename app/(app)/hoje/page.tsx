@@ -70,7 +70,7 @@ function Cartao({ rotulo, valor, icone: Ic, tom, ativo, aoClicar }: { rotulo: st
       onClick={aoClicar}
       aria-pressed={ativo}
       className={cx(
-        "relative flex flex-col items-start gap-1 rounded-bloco border p-3 text-left transition-colors",
+        "relative flex min-w-[7.5rem] shrink-0 flex-col items-start gap-1 rounded-bloco border p-3 text-left transition-colors sm:min-w-0",
         ativo ? "border-marca bg-marca-tinta" : "border-linha bg-superficie hover:border-marca/50",
       )}
     >
@@ -261,11 +261,11 @@ export default function VisaoDoDia() {
   return (
     <div className="pb-16">
       <div className="relative overflow-hidden border-b border-linha bg-marca-tinta/60">
-        <div className="relative mx-auto flex max-w-[1300px] flex-wrap items-center gap-4 px-4 py-6 sm:px-6 lg:px-8">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-bloco bg-marca text-sobre-marca shadow-card">
-            <Sun size={22} />
+        <div className="relative mx-auto flex max-w-[1300px] flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-bloco bg-marca text-sobre-marca shadow-card sm:size-12">
+            <Sun size={20} />
           </span>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 basis-40">
             <p className="text-xs font-semibold text-texto-suave">
               {primeiraMaiuscula(new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }))}
             </p>
@@ -274,8 +274,11 @@ export default function VisaoDoDia() {
               {usuario?.nome && repo.modo !== "local" ? `, ${usuario.nome.split(" ")[0]}` : ""}
             </h1>
           </div>
+          <span className="sm:order-last">
+            <BotaoAjudaTela />
+          </span>
           {socio && socios.length > 1 && (
-            <div className="flex items-center gap-1 rounded-botao bg-superficie-2 p-1" role="radiogroup" aria-label="De quem">
+            <div className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-botao bg-superficie-2 p-1 sm:order-none sm:w-auto" role="radiogroup" aria-label="De quem">
               {[...socios.map((p) => ({ id: p.id as string | null, nome: p.id === eu ? "Minhas" : p.nome, foto: p.fotoUrl })), { id: null, nome: "Todos", foto: undefined }].map((o) => (
                 <button
                   key={o.id ?? "todos"}
@@ -284,7 +287,7 @@ export default function VisaoDoDia() {
                   aria-checked={pessoa === o.id}
                   onClick={() => setDeQuem(o.id)}
                   className={cx(
-                    "inline-flex items-center gap-1.5 rounded-botao px-3 py-1.5 text-xs font-semibold transition-all",
+                    "inline-flex flex-1 items-center justify-center gap-1.5 rounded-botao px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all sm:flex-none",
                     pessoa === o.id ? "bg-superficie text-marca-forte shadow-card" : "text-texto-suave hover:text-texto",
                   )}
                 >
@@ -294,7 +297,6 @@ export default function VisaoDoDia() {
               ))}
             </div>
           )}
-          <BotaoAjudaTela />
         </div>
       </div>
 
@@ -304,7 +306,7 @@ export default function VisaoDoDia() {
         {socio && <ParaComecar passos={passosParaComecar(cfg)} />}
 
         <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-5">
             <Cartao rotulo="Para hoje" valor={v.hoje.length} icone={Sun} tom="destaque" ativo={aberto === "hoje"} aoClicar={() => setAberto(aberto === "hoje" ? null : "hoje")} />
             <Cartao rotulo="Atrasadas" valor={v.atrasadas.length} icone={AlertTriangle} tom="alerta" ativo={aberto === "atrasadas"} aoClicar={() => setAberto(aberto === "atrasadas" ? null : "atrasadas")} />
             <Cartao rotulo="Próximos 7 dias" valor={v.semana.length} icone={CalendarDays} ativo={aberto === "semana"} aoClicar={() => setAberto(aberto === "semana" ? null : "semana")} />
@@ -595,10 +597,26 @@ export default function VisaoDoDia() {
                 </Link>
               )}
               {financeiro.atrasados.length > 0 && (
-                <p className="mt-3 flex items-start gap-1.5 rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro">
-                  <Clock size={13} className="mt-px shrink-0" />
-                  Mês passado em aberto: {financeiro.atrasados.map((d) => `${d.nome} (falta ${formatarMoeda(d.faltaReceberCentavos)})`).join(", ")}.
-                </p>
+                <div className="mt-3 flex flex-col gap-1.5 rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro">
+                  <p className="flex items-start gap-1.5 font-semibold">
+                    <Clock size={13} className="mt-px shrink-0" />
+                    Mês passado em aberto
+                  </p>
+                  <p className="text-[12px]">O mês passado já acabou e estes clientes não pagaram tudo. Se o dinheiro já caiu, registre; se não, vale cobrar.</p>
+                  {financeiro.atrasados.map((d) => (
+                    <div key={d.clienteId} className="flex flex-wrap items-center gap-2">
+                      <span className="flex-1">
+                        <strong>{d.nome}</strong>: falta {formatarMoeda(d.faltaReceberCentavos)}
+                      </span>
+                      <Link
+                        href={`/pagamentos?cliente=${d.clienteId}&mes=${d.competencia}`}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-botao bg-erro px-2.5 py-1 text-[11px] font-bold text-superficie hover:opacity-90"
+                      >
+                        Registrar o que caiu
+                      </Link>
+                    </div>
+                  ))}
+                </div>
               )}
             </Bloco>
             )}

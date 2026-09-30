@@ -77,6 +77,11 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "limites", rotulo: "Limites e avisos", icone: Gauge, frase: "Quando o sistema acende um alerta. Vazio = sem aviso." },
 ];
 
+const GRUPOS_SECOES: { titulo: string; ids: SecaoConfig[] }[] = [
+  { titulo: "A empresa", ids: ["socios", "equipe", "regras", "custos", "metas", "limites"] },
+  { titulo: "O que a Aden vende", ids: ["servicos", "tipos", "pacotes", "terceiros"] },
+];
+
 function atualizar<T extends { id: string }>(lista: T[], id: string, patch: Partial<T>): T[] {
   return lista.map((x) => (x.id === id ? { ...x, ...patch } : x));
 }
@@ -284,34 +289,43 @@ export default function Configuracoes() {
           </p>
         </div>
 
-        {/* abas */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Seções das configurações">
-          {secoesVisiveis.map((s) => {
-            const Ic = s.icone;
-            const n = faltando[s.id].length;
-            const sel = s.id === secao;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={sel}
-                onClick={() => irPara(s.id)}
-                className={cx(
-                  "flex shrink-0 items-center gap-1.5 rounded-botao border px-3.5 py-2 text-xs font-bold transition-all",
-                  sel ? "border-marca bg-marca text-sobre-marca shadow-card" : "border-linha bg-superficie text-texto hover:border-marca/50",
-                )}
-              >
-                <Ic size={14} />
-                {s.rotulo}
-                {n > 0 && (
-                  <span className={cx("rounded-botao px-1.5 py-px text-[9px] font-bold uppercase", sel ? "bg-sobre-marca/25" : "bg-aviso-suave text-aviso")} title={faltando[s.id].join(", ")}>
-                    falta preencher
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* abas em dois grupos (médio 12): a empresa e o que ela vende */}
+        <div className="flex flex-col gap-3 md:flex-row md:gap-6" role="tablist" aria-label="Seções das configurações">
+          {GRUPOS_SECOES.map((g) => (
+            <div key={g.titulo} className="flex min-w-0 flex-col gap-1.5">
+              <p className="px-1 text-[11px] font-bold tracking-wide text-texto-suave uppercase">{g.titulo}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {g.ids
+                  .flatMap((id) => secoesVisiveis.filter((s) => s.id === id))
+                  .map((s) => {
+                    const Ic = s.icone;
+                    const n = faltando[s.id].length;
+                    const sel = s.id === secao;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={sel}
+                        onClick={() => irPara(s.id)}
+                        className={cx(
+                          "flex shrink-0 items-center gap-1.5 rounded-botao border px-3.5 py-2 text-xs font-bold transition-all",
+                          sel ? "border-marca bg-marca text-sobre-marca shadow-card" : "border-linha bg-superficie text-texto hover:border-marca/50",
+                        )}
+                      >
+                        <Ic size={14} />
+                        {s.rotulo}
+                        {n > 0 && (
+                          <span className={cx("rounded-botao px-1.5 py-px text-[9px] font-bold uppercase", sel ? "bg-sobre-marca/25" : "bg-aviso-suave text-aviso")} title={faltando[s.id].join(", ")}>
+                            falta preencher
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+          ))}
         </div>
 
         <Card>

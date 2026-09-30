@@ -26,8 +26,8 @@ mercado (ClickUp, Asana, Runrun.it, Operand, mLabs). Olhando só o que importa c
 3. **Contador de "paradas"** na Visão do dia (ClickUp, Asana): guardado junto com as etapas de tarefa.
 4. **Cobrança automática e lembrete** (Operand): Fase 5 (link InfinitePay).
 5. **Relatório do mês para o cliente** (mLabs): processo combinado termina nele; hoje é manual.
-6. **Configurações longas:** mesmo com Metas e Limites escondidos, são 8 abas. O médio 12 (dois grupos) resolve se ainda
-   pesar depois da Fase 2.
+6. **Configurações longas:** resolvido pelo médio 12 (30/09/2026): abas em dois grupos, "A empresa" e "O que a Aden
+   vende".
 7. **Tabelas no celular** (Mês → Cada cliente) rolam para o lado; aceitável com 2 a 5 clientes, rever com mais.
 
 ### O que foi escondido na Fase 1 (volta sozinho quando tiver dado)
@@ -36,3 +36,17 @@ Chaves em `COM_VOLUME` (`lib/recursos.ts`): aba Horas do Mês; Configurações �
 Calibragem. Na calculadora, "Mais opções" (Quem executa, Tráfego, Projetos pontuais, Percentuais, Meses sem cobrança) e
 "Ver a conta inteira" (indicadores por hora e passo a passo). Na Visão do dia, Próximos dias, Depende de mim e Metas só
 aparecem quando têm algo.
+
+## Médios 8–14 (30/09/2026)
+
+- 8: aviso igual em vários clientes (ex.: ordem de distribuição vazia) vira uma faixa amarela só, no topo de Pagamentos
+  e de Mês → Cada cliente (`avisosRepetidos`/`FaixaRepetida` em `components/Alertas.tsx`).
+- 9: "Mês passado em aberto" na Visão do dia explica o que é e tem o botão "Registrar o que caiu" por cliente.
+- 10: links levam o cliente (e o mês) junto: Pagamentos lê `?cliente=&mes=`; ficha → Pagamentos e → Cada cliente
+  (abre o detalhe dele); aviso "sem valor mensal" abre a ficha do cliente no contrato (`DestinoAlerta.clienteId`).
+- 11: topo da Visão do dia no celular: data e saudação numa linha, seletor de pessoa numa linha inteira, contadores numa
+  faixa que desliza para o lado.
+- 12: Configurações em dois grupos (ver item 6 acima).
+- 13: contador vê Pagamentos só para consulta: sem registrar, sem apagar e sem a divisão entre sócios.
+- 14: nomes alinhados com o menu: "Proposta" (não "Negociação") em Relatórios, no PDF e no nome da simulação salva;
+  "Leads" (não "CRM") na ajuda e no conector; títulos das ferramentas do Mês no conector.

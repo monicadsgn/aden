@@ -55,13 +55,13 @@ export default function Pdfs() {
           <Card>
             <TituloCard icone={Calculator} titulo="Proposta para o cliente" descricao="Entregas, quantidades e um valor. Nunca piso, horas, divisão entre sócios nem custo interno." />
             <div className="flex flex-col gap-3 px-5 pb-5 text-xs text-texto-suave">
-              <p>Sai da calculadora (cartão “Para o cliente”) ou da negociação ao vivo, com a versão escolhida. Abaixo do piso de um sócio, só com a aprovação dele.</p>
+              <p>Sai da calculadora (cartão “Para o cliente”) ou da tela Proposta, com a versão escolhida. Abaixo do piso de um sócio, só com a aprovação dele.</p>
               <div className="flex flex-wrap gap-2">
                 <Link href="/calculadora" className={botao}>
                   Calculadora
                 </Link>
                 <Link href="/negociacao" className={botao}>
-                  Negociação
+                  Proposta
                 </Link>
               </div>
             </div>

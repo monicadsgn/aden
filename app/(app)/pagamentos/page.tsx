@@ -2,7 +2,7 @@
 
 import { AlertOctagon, CheckCircle2, Clock, Plus, Trash2, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BotaoAcao, OQueQuerDizer } from "@/components/Alertas";
+import { BotaoAcao, FaixaRepetida, OQueQuerDizer, avisosRepetidos } from "@/components/Alertas";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Card, CampoMoeda, CampoTexto, Rotulo, Selecao, TituloCard, Vazio, cx } from "@/components/ui";
 import { configVazia, novoId } from "@/lib/calculo/novo";
@@ -17,7 +17,9 @@ import { formatarMoeda } from "@/lib/formato";
 const hoje = () => new Date().toISOString().slice(0, 10);
 
 export default function Pagamentos() {
-  const { repo } = useDados();
+  const { repo, usuario } = useDados();
+  // contador: só lê os pagamentos (médio 13); não registra, não apaga e não vê a divisão entre sócios
+  const soLeitura = usuario?.papel === "contador";
   const [config, setConfig] = useState<Configuracao>(configVazia());
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [competencia, setCompetencia] = useState(competenciaAtual);
@@ -38,6 +40,13 @@ export default function Pagamentos() {
       try {
         setConfig(await repo.carregarConfig());
         await recarregar();
+        // links de outras telas trazem o cliente e o mês junto (médio 10)
+        const q = new URLSearchParams(window.location.search);
+        const cliente = q.get("cliente");
+        const mes = q.get("mes");
+        const mesValido = mes && /^\d{4}-\d{2}$/.test(mes) ? mes : null;
+        if (cliente || mesValido) setNovo((n) => ({ ...n, clienteId: cliente ?? n.clienteId, competencia: mesValido ?? n.competencia }));
+        if (mesValido) setCompetencia(mesValido);
       } catch (e) {
         setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao carregar." });
       } finally {
@@ -79,6 +88,8 @@ export default function Pagamentos() {
 
   const distribuicoes = useMemo(() => ativos.filter((c) => clienteNoMes(c, competencia)).map((c) => distribuirPagamentos(config, c, competencia, pagamentos, hoje())), [ativos, config, competencia, pagamentos]);
 
+  const comuns = useMemo(() => avisosRepetidos(distribuicoes.map((d) => d.bloqueio)), [distribuicoes]);
+
   if (!carregado) return null;
 
   return (
@@ -92,74 +103,82 @@ export default function Pagamentos() {
       <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
         {mensagem && <p className={cx("px-1 text-xs font-semibold", mensagem.tom === "erro" ? "text-erro" : "text-ok")}>{mensagem.texto}</p>}
 
-        <Card>
-          <TituloCard icone={Plus} titulo="Caiu um pagamento" descricao="Mês de referência = o mês que o cliente está pagando (pode ser um mês atrasado)." />
-          <div className="grid gap-4 px-5 pb-5 lg:grid-cols-2">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Selecao
-                className="sm:col-span-2"
-                rotulo="Cliente"
-                valor={novo.clienteId}
-                vazio="Escolha o cliente…"
-                opcoes={ativos.map((c) => ({ valor: c.id, rotulo: c.nome }))}
-                aoMudar={(v) => setNovo({ ...novo, clienteId: v })}
-              />
-              <div>
-                <Rotulo>Mês de referência</Rotulo>
-                <input
-                  type="month"
-                  value={novo.competencia}
-                  onChange={(e) => e.target.value && setNovo({ ...novo, competencia: e.target.value })}
-                  className="h-10 w-full rounded-campo border border-linha bg-superficie px-3 text-sm focus:border-marca focus:outline-none"
+        {soLeitura && (
+          <p className="rounded-card bg-info-suave px-4 py-3 text-xs font-medium text-info">
+            Você vê os pagamentos só para consulta. Para registrar ou corrigir um pagamento, fale com os sócios.
+          </p>
+        )}
+
+        {!soLeitura && (
+          <Card>
+            <TituloCard icone={Plus} titulo="Caiu um pagamento" descricao="Mês de referência = o mês que o cliente está pagando (pode ser um mês atrasado)." />
+            <div className="grid gap-4 px-5 pb-5 lg:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Selecao
+                  className="sm:col-span-2"
+                  rotulo="Cliente"
+                  valor={novo.clienteId}
+                  vazio="Escolha o cliente…"
+                  opcoes={ativos.map((c) => ({ valor: c.id, rotulo: c.nome }))}
+                  aoMudar={(v) => setNovo({ ...novo, clienteId: v })}
                 />
-              </div>
-              <div>
-                <Rotulo>Data em que caiu</Rotulo>
-                <input
-                  type="date"
-                  value={novo.data}
-                  onChange={(e) => e.target.value && setNovo({ ...novo, data: e.target.value })}
-                  className="h-10 w-full rounded-campo border border-linha bg-superficie px-3 text-sm focus:border-marca focus:outline-none"
-                />
-              </div>
-              <CampoMoeda rotulo="Valor que caiu" valor={novo.valor} aoMudar={(v) => setNovo({ ...novo, valor: v })} />
-              <CampoTexto rotulo="Observação (opcional)" valor={novo.obs} aoMudar={(v) => setNovo({ ...novo, obs: v })} />
-              <div className="sm:col-span-2">
-                <CampoMoeda className="sm:max-w-xs" rotulo="Taxa deste pagamento (só se foi cartão)" valor={novo.taxa} aoMudar={(v) => setNovo({ ...novo, taxa: v })} />
-                <p className="mt-1 text-[11px] text-texto-suave">Vazio = taxa padrão das Regras (Pix não cobra). Preencha com o que o banco descontou de verdade; o padrão não muda.</p>
-              </div>
-              <div className="sm:col-span-2">
-                <Botao variante="primario" icone={Plus} disabled={!clienteNovo || !novo.valor} onClick={registrar}>
-                  Registrar pagamento
-                </Botao>
-              </div>
-            </div>
-            <div className="rounded-bloco bg-marca-tinta/60 p-4">
-              <p className="mb-2 text-xs font-bold">Para onde vai este pagamento</p>
-              {!previa && <p className="text-[11px] text-texto-suave">Escolha o cliente e digite o valor para ver a divisão.</p>}
-              {previa?.d.bloqueio && (
-                <div className="flex flex-col gap-2 rounded-item bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
-                  <span>{previa.d.bloqueio.texto}</span>
-                  <div>
-                    <BotaoAcao a={previa.d.bloqueio} />
-                  </div>
-                  <OQueQuerDizer explica={previa.d.bloqueio.explica} />
+                <div>
+                  <Rotulo>Mês de referência</Rotulo>
+                  <input
+                    type="month"
+                    value={novo.competencia}
+                    onChange={(e) => e.target.value && setNovo({ ...novo, competencia: e.target.value })}
+                    className="h-10 w-full rounded-campo border border-linha bg-superficie px-3 text-sm focus:border-marca focus:outline-none"
+                  />
                 </div>
-              )}
-              {previa?.parte && (
-                <>
-                  <Destinos b={previa.parte} config={config} />
-                  <p className="mt-2 text-[11px] text-texto-suave">
-                    {config.empresa.ordemDistribuicao === "custo_primeiro"
-                      ? "Custo primeiro: enquanto os custos do mês não estão cobertos, o dinheiro vai para eles."
-                      : "Proporcional: cada real vai para custos e sócios na mesma proporção do mês inteiro."}
-                    {previa.parte.atrasado && " Este pagamento chegou depois do mês de referência: fica marcado como atrasado."}
-                  </p>
-                </>
-              )}
+                <div>
+                  <Rotulo>Data em que caiu</Rotulo>
+                  <input
+                    type="date"
+                    value={novo.data}
+                    onChange={(e) => e.target.value && setNovo({ ...novo, data: e.target.value })}
+                    className="h-10 w-full rounded-campo border border-linha bg-superficie px-3 text-sm focus:border-marca focus:outline-none"
+                  />
+                </div>
+                <CampoMoeda rotulo="Valor que caiu" valor={novo.valor} aoMudar={(v) => setNovo({ ...novo, valor: v })} />
+                <CampoTexto rotulo="Observação (opcional)" valor={novo.obs} aoMudar={(v) => setNovo({ ...novo, obs: v })} />
+                <div className="sm:col-span-2">
+                  <CampoMoeda className="sm:max-w-xs" rotulo="Taxa deste pagamento (só se foi cartão)" valor={novo.taxa} aoMudar={(v) => setNovo({ ...novo, taxa: v })} />
+                  <p className="mt-1 text-[11px] text-texto-suave">Vazio = taxa padrão das Regras (Pix não cobra). Preencha com o que o banco descontou de verdade; o padrão não muda.</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <Botao variante="primario" icone={Plus} disabled={!clienteNovo || !novo.valor} onClick={registrar}>
+                    Registrar pagamento
+                  </Botao>
+                </div>
+              </div>
+              <div className="rounded-bloco bg-marca-tinta/60 p-4">
+                <p className="mb-2 text-xs font-bold">Para onde vai este pagamento</p>
+                {!previa && <p className="text-[11px] text-texto-suave">Escolha o cliente e digite o valor para ver a divisão.</p>}
+                {previa?.d.bloqueio && (
+                  <div className="flex flex-col gap-2 rounded-item bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
+                    <span>{previa.d.bloqueio.texto}</span>
+                    <div>
+                      <BotaoAcao a={previa.d.bloqueio} />
+                    </div>
+                    <OQueQuerDizer explica={previa.d.bloqueio.explica} />
+                  </div>
+                )}
+                {previa?.parte && (
+                  <>
+                    <Destinos b={previa.parte} config={config} />
+                    <p className="mt-2 text-[11px] text-texto-suave">
+                      {config.empresa.ordemDistribuicao === "custo_primeiro"
+                        ? "Custo primeiro: enquanto os custos do mês não estão cobertos, o dinheiro vai para eles."
+                        : "Proporcional: cada real vai para custos e sócios na mesma proporção do mês inteiro."}
+                      {previa.parte.atrasado && " Este pagamento chegou depois do mês de referência: fica marcado como atrasado."}
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="flex-1 text-base font-bold">Pagamentos do mês</h2>
@@ -171,6 +190,8 @@ export default function Pagamentos() {
             className="h-10 rounded-campo border border-linha bg-superficie px-3 text-sm focus:border-marca focus:outline-none"
           />
         </div>
+
+        {!soLeitura && <FaixaRepetida alertas={comuns.repetidos} />}
 
         {ativos.length === 0 && (
           <Vazio icone={Wallet} titulo="Nenhum cliente ativo">
@@ -204,11 +225,11 @@ export default function Pagamentos() {
                     <p className={cx("numero font-bold", d.situacao === "atrasado" && "text-erro")}>{formatarMoeda(d.faltaReceberCentavos)}</p>
                   </div>
                 </div>
-                {d.bloqueio && (
+                {!soLeitura && comuns.soDele(d.bloqueio) && (
                   <div className="flex flex-wrap items-center gap-2 rounded-item bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
-                    <span className="flex-1">{d.bloqueio.texto}</span>
-                    <BotaoAcao a={d.bloqueio} />
-                    <OQueQuerDizer explica={d.bloqueio.explica} />
+                    <span className="flex-1">{d.bloqueio!.texto}</span>
+                    <BotaoAcao a={d.bloqueio!} />
+                    <OQueQuerDizer explica={d.bloqueio!.explica} />
                   </div>
                 )}
                 {doCliente.map((p) => {
@@ -222,20 +243,22 @@ export default function Pagamentos() {
                         {p.observacao && <span className="text-[11px] text-texto-suave">· {p.observacao}</span>}
                         {p.taxaCentavos != null && <span className="text-[11px] text-texto-suave">· taxa {formatarMoeda(p.taxaCentavos)}</span>}
                         <span className="flex-1" />
-                        <Botao
-                          pequeno
-                          variante="perigo"
-                          icone={Trash2}
-                          aria-label="Apagar pagamento"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            if (!confirm("Apagar este pagamento? A exclusão fica no histórico.")) return;
-                            await repo.removerPagamento(p.id);
-                            await recarregar();
-                          }}
-                        />
+                        {!soLeitura && (
+                          <Botao
+                            pequeno
+                            variante="perigo"
+                            icone={Trash2}
+                            aria-label="Apagar pagamento"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              if (!confirm("Apagar este pagamento? A exclusão fica no histórico.")) return;
+                              await repo.removerPagamento(p.id);
+                              await recarregar();
+                            }}
+                          />
+                        )}
                       </summary>
-                      {parte && (
+                      {parte && !soLeitura && (
                         <div className="mt-2">
                           <Destinos b={parte} config={config} />
                         </div>
@@ -243,7 +266,7 @@ export default function Pagamentos() {
                     </details>
                   );
                 })}
-                {!d.bloqueio && d.recebidoCentavos > 0 && (
+                {!d.bloqueio && !soLeitura && d.recebidoCentavos > 0 && (
                   <details className="text-[12px]">
                     <summary className="cursor-pointer font-semibold text-texto-suave">Total do mês até agora, por destino</summary>
                     <div className="mt-2">

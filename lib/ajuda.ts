@@ -134,7 +134,7 @@ export const GLOSSARIO: Termo[] = [
   {
     id: "lead",
     termo: "Lead",
-    frase: "Alguém que mostrou interesse na Aden mas ainda não fechou. Fica no CRM até virar cliente (ganho) ou desistir (perdido).",
+    frase: "Alguém que mostrou interesse na Aden mas ainda não fechou. Fica em Leads até virar cliente (ganho) ou desistir (perdido).",
     exemplo: "Uma loja que mandou mensagem no Instagram pedindo orçamento é um lead na etapa \"Lead recebido\".",
   },
   {

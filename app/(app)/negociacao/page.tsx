@@ -115,7 +115,7 @@ export default function Negociacao() {
     const lista = [...versoes, v];
     setVersoes(lista);
     try {
-      const nomeSim = `Negociação · ${nomeCliente || "cliente novo"}`;
+      const nomeSim = `Proposta · ${nomeCliente || "cliente novo"}`;
       const cens = lista.map((x) => x.estado.cenario);
       await repo.salvarSimulacao({ id: simId, nome: nomeSim, cenarios: cens }, cens.map((x) => calcularCenario(config, x)), config);
       setAviso(`${v.nome} guardada.`);
@@ -127,7 +127,7 @@ export default function Negociacao() {
   // Os detalhes mostram piso, horas e divisão: nunca abrir sem querer com o cliente olhando.
   const verDetalhes = () => {
     if (!confirm("Os detalhes mostram números internos (piso, horas, divisão entre os sócios). Abrir agora, longe da tela do cliente?")) return;
-    enviarCenario({ origem: "apresentacao", nome: `Negociação · ${nomeCliente || "cliente novo"}`, cenarios: [cen] });
+    enviarCenario({ origem: "apresentacao", nome: `Proposta · ${nomeCliente || "cliente novo"}`, cenarios: [cen] });
     router.push("/calculadora");
   };
 

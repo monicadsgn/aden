@@ -17,7 +17,7 @@ export default function ImprimirProposta() {
   useEffect(() => {
     (async () => {
       const p = lerParaImprimir();
-      if (!p || p.tipo !== "proposta") return setErro("Nada para imprimir. Volte e use “Exportar PDF” na calculadora ou na negociação.");
+      if (!p || p.tipo !== "proposta") return setErro("Nada para imprimir. Volte e use “Exportar PDF” na Calculadora ou na Proposta.");
       const config = await repo.carregarConfig();
       const r = calcularCenario(config, p.cenario);
       setDoc(

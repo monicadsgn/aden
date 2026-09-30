@@ -218,7 +218,7 @@ export interface ConfigEmpresa {
   medicoesCalibragem?: number | null;
   /** sugerir atualizar o padrão quando a média medida diferir mais que este %; vazio = qualquer diferença */
   diferencaSugerirPct?: Pct;
-  /** lead parado na mesma etapa há este número de dias acende o aviso no CRM; vazio = nunca */
+  /** lead parado na mesma etapa há este número de dias acende o aviso em Leads; vazio = nunca */
   diasLeadParado?: number | null;
   /** depois de quantos follow-ups sem resposta o sistema sugere marcar o lead como perdido; vazio = nunca */
   followUpsMaximo?: number | null;
@@ -391,7 +391,8 @@ export type NivelAlerta = "erro" | "aviso" | "lembrete" | "info";
 export type SecaoConfig = "socios" | "servicos" | "tipos" | "custos" | "terceiros" | "pacotes" | "metas" | "equipe" | "regras" | "limites" | "clientes";
 
 /** Onde se resolve o alerta: um campo das configurações ou um bloco do cenário. */
-export type DestinoAlerta = { tipo: "config"; secao: SecaoConfig; campo?: string } | { tipo: "cenario"; bloco: string };
+/** clienteId: na seção clientes, abre a ficha desse cliente (na aba contrato) */
+export type DestinoAlerta = { tipo: "config"; secao: SecaoConfig; campo?: string; clienteId?: string } | { tipo: "cenario"; bloco: string };
 
 export interface Alerta {
   nivel: NivelAlerta;

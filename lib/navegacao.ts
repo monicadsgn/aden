@@ -2,15 +2,15 @@
 
 import type { DestinoAlerta, SecaoConfig } from "./calculo/tipos";
 
-export function linkConfig(secao: SecaoConfig, campo?: string): string {
-  // os dados do cliente moram só na ficha (grave 5 da auditoria)
-  if (secao === "clientes") return "/clientes";
+export function linkConfig(secao: SecaoConfig, campo?: string, clienteId?: string): string {
+  // os dados do cliente moram só na ficha (grave 5 da auditoria); com o cliente, abre a ficha dele
+  if (secao === "clientes") return clienteId ? `/clientes?cliente=${clienteId}&aba=contrato` : "/clientes";
   return `/configuracoes?secao=${secao}${campo ? `&campo=${campo}` : ""}`;
 }
 
 /** Link do destino; null quando o destino é um bloco da própria tela (cenário). */
 export function linkDoDestino(d: DestinoAlerta): string | null {
-  return d.tipo === "config" ? linkConfig(d.secao, d.campo) : null;
+  return d.tipo === "config" ? linkConfig(d.secao, d.campo, d.clienteId) : null;
 }
 
 /** Evento para quem guarda blocos fechados (ex.: "Mais opções" da calculadora) abrir o bloco pedido. */

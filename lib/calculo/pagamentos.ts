@@ -146,8 +146,8 @@ export function distribuirPagamentos(
     return bloqueado({
       nivel: "erro",
       texto: `${cliente.nome} não tem valor mensal de contrato: sem ele não dá para saber quanto de cada pagamento é custo.`,
-      explica: "Para saber quanto de cada pagamento é custo e quanto é sobra, o sistema compara com o valor mensal do contrato. Ex.: contrato de R$ 2.000 com um pagamento de R$ 1.000 é metade do mês. Preencha o valor em Clientes.",
-      acao: { rotulo: "Preencher o valor", destino: { tipo: "config", secao: "clientes" } },
+      explica: "Para saber quanto de cada pagamento é custo e quanto é sobra, o sistema compara com o valor mensal do contrato. Ex.: contrato de R$ 2.000 com um pagamento de R$ 1.000 é metade do mês. Preencha o valor na ficha do cliente (Clientes e contratos).",
+      acao: { rotulo: "Preencher o valor", destino: { tipo: "config", secao: "clientes", clienteId: cliente.id } },
     });
 
   const cenario = cliente.escopo ? escopoDoCliente(cliente) : { ...novoCenario(cliente.nome), clienteId: cliente.id };

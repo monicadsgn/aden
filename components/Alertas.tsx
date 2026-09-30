@@ -119,3 +119,34 @@ export function ListaAlertas({ alertas }: { alertas: Alerta[] }) {
     </div>
   );
 }
+
+/**
+ * Avisos que se repetem em vários clientes (ex.: ordem de distribuição vazia): viram uma faixa
+ * amarela só, no topo. Devolve os repetidos e um filtro para esconder o mesmo aviso em cada cliente.
+ */
+export function avisosRepetidos(lista: (Alerta | null | undefined)[]) {
+  const vezes = new Map<string, { a: Alerta; n: number }>();
+  for (const a of lista) if (a) vezes.set(a.texto, { a, n: (vezes.get(a.texto)?.n ?? 0) + 1 });
+  const repetidos = [...vezes.values()].filter((v) => v.n > 1).map((v) => v.a);
+  const textos = new Set(repetidos.map((a) => a.texto));
+  return { repetidos, soDele: (a: Alerta | null | undefined) => (a && !textos.has(a.texto) ? a : null) };
+}
+
+export function FaixaRepetida({ alertas }: { alertas: Alerta[] }) {
+  if (!alertas.length) return null;
+  return (
+    <div className="flex flex-col gap-2 rounded-card bg-aviso-suave px-4 py-3 text-xs font-medium text-aviso">
+      {alertas.map((a) => (
+        <div key={a.texto} className="flex flex-wrap items-center gap-2">
+          <AlertTriangle size={15} className="shrink-0" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="font-bold">Vale para todos os clientes: </span>
+            {a.texto}
+          </span>
+          <BotaoAcao a={{ ...a, nivel: "aviso" }} />
+          <OQueQuerDizer explica={a.explica} />
+        </div>
+      ))}
+    </div>
+  );
+}

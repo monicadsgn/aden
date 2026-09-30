@@ -16,8 +16,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { BotaoAcao, OQueQuerDizer } from "@/components/Alertas";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BotaoAcao, FaixaRepetida, OQueQuerDizer, avisosRepetidos } from "@/components/Alertas";
 import { Modal } from "@/components/Modal";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Card, CampoMoeda, CampoNumero, EtiquetaOrigem, Vazio, cx } from "@/components/ui";
@@ -189,7 +189,9 @@ function CartaoCliente({
   aoSalvar,
   aoAbrir,
   aoPedirExcecao,
+  competencia,
 }: {
+  competencia: string;
   config: Configuracao;
   cliente: ClienteBase;
   salvo: RegistroMesCliente | null;
@@ -257,7 +259,7 @@ function CartaoCliente({
           {s.pagamentosCentavos != null && s.origemValor !== "pagamentos" && (
             <span className="text-texto-suave">(entrou até agora {formatarMoeda(s.pagamentosCentavos)}; o mês ainda não fechou)</span>
           )}
-          <Link href="/pagamentos" className="font-semibold text-marca-forte underline">
+          <Link href={`/pagamentos?cliente=${s.id}&mes=${competencia}`} className="font-semibold text-marca-forte underline">
             Registrar pagamento
           </Link>
         </div>
@@ -290,7 +292,7 @@ function CartaoCliente({
         <p className="-mt-2 text-[11px] text-texto-suave">
           As horas vêm do cronômetro das tarefas deste cliente no mês. Só preencha aqui para corrigir (ex.: trabalho feito sem ligar o relógio). Sem tarefa medida, o sistema usa a
           previsão e marca que é previsão. Pagamentos vão em{" "}
-          <Link href="/pagamentos" className="underline">
+          <Link href={`/pagamentos?cliente=${s.id}&mes=${competencia}`} className="underline">
             Registrar pagamento
           </Link>
           .
@@ -384,6 +386,7 @@ export default function Saude() {
   const [calibragem, setCalibragem] = useState<CalibragemTipo[]>([]);
   const [medicoes, setMedicoes] = useState<Medicao[]>([]);
   const [aberto, setAberto] = useState<string | null>(null);
+  const abriuDoLink = useRef(false);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [carregado, setCarregado] = useState(false);
   const [mensagem, setMensagem] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
@@ -401,6 +404,10 @@ export default function Saude() {
         setMedicoes(meds);
         setCalibragem(calcularCalibragem(cfg, meds));
         setPedidos(await repo.listarPedidos().catch(() => []));
+        // vindo da ficha do cliente (?cliente=): abre o detalhe dele
+        const id = new URLSearchParams(window.location.search).get("cliente");
+        if (id && !abriuDoLink.current) setAberto(id);
+        abriuDoLink.current = true;
       } catch (e) {
         setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao carregar." });
       } finally {
@@ -425,6 +432,7 @@ export default function Saude() {
     [ativos, config, registros, calibragem, pagamentos, competencia, mesFechado, medicoes],
   );
   const comProblema = saudes.filter((x) => x.s.prejuizoSilencioso);
+  const comuns = avisosRepetidos(saudes.map((x) => x.s.bloqueio));
 
   const abrir = (c: Cenario, nome: string) => {
     enviarCenario({ origem: "saude", nome, cenarios: [c] });
@@ -487,6 +495,8 @@ export default function Saude() {
               : "Nenhum cliente abaixo do piso nas horas registradas ou medidas deste mês."}
           </div>
         )}
+
+        <FaixaRepetida alertas={comuns.repetidos} />
 
         {ativos.length === 0 && (
           <Vazio icone={HeartPulse} titulo="Nenhum cliente ativo">
@@ -565,6 +575,7 @@ export default function Saude() {
             salvo={registros[c.id] ?? null}
             aoAbrir={abrir}
             aoPedirExcecao={() => pedirExcecao(c, sol)}
+            competencia={competencia}
             aoSalvar={async (r) => {
               try {
                 await repo.salvarMesCliente(competencia, c.id, r);
