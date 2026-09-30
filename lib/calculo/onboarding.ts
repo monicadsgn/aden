@@ -78,6 +78,7 @@ export function blocosDoTexto(texto: string): Bloco[] {
 
 export interface SecaoPronta {
   titulo: string;
+  chave: ChaveSecao;
   blocos: Bloco[];
 }
 
@@ -89,6 +90,10 @@ export interface DocumentoOnboarding {
   subtitulo: string;
   /** contato da Aden no rodapé de cada página */
   rodape: string;
+  /** "Olá, [nome]!" da capa: primeiro nome do contato, ou o nome do cliente */
+  saudacao: string;
+  /** contato da Aden, para a página final */
+  contato: { whatsapp: string | null; instagram: string | null; email: string | null; atendimento: string | null };
   secoes: SecaoPronta[];
   /** o que falta para gerar (vazio = pronto) */
   faltando: string[];
@@ -149,7 +154,7 @@ export function montarOnboarding(config: Configuracao, clienteId: Id, modelo: Mo
       if (vazio(modelo.atendimento) && !usaAtendimento) faltando.push("Dias e horário de atendimento (Configurações → Onboarding)");
       if (partes.length) blocos.push({ tipo: "paragrafo", texto: partes.join(" · ") });
     }
-    if (blocos.length) secoes.push({ titulo: s.titulo.trim(), blocos });
+    if (blocos.length) secoes.push({ titulo: s.titulo.trim(), chave: s.chave, blocos });
   }
 
   const mes = hoje.slice(0, 7).split("-").reverse().join("-");
@@ -160,5 +165,15 @@ export function montarOnboarding(config: Configuracao, clienteId: Id, modelo: Mo
     .map((x) => x.nome)
     .join(" + ");
   const rodape = [modelo.whatsapp, modelo.instagram, modelo.email].map((x) => x?.trim()).filter(Boolean).join(" | ");
-  return { cliente: c.nome, arquivo: `Onboarding_Aden_${nomeArquivo}_${mes}`, subtitulo, rodape, secoes, faltando: [...new Set(faltando)] };
+  const t = (x: string | null) => x?.trim() || null;
+  return {
+    cliente: c.nome,
+    arquivo: `Onboarding_Aden_${nomeArquivo}_${mes}`,
+    subtitulo,
+    rodape,
+    saudacao: c.contato?.trim().split(/\s+/)[0] || c.nome,
+    contato: { whatsapp: t(modelo.whatsapp), instagram: t(modelo.instagram), email: t(modelo.email), atendimento: t(modelo.atendimento) },
+    secoes,
+    faltando: [...new Set(faltando)],
+  };
 }
