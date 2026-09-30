@@ -3,11 +3,11 @@
 // - branco domina, verde de apoio; tons de apoio puxam para o verde mais escuro; preto só na versão negativa
 //   (o texto é um verde quase preto, nunca preto puro);
 // - formas orgânicas: ondas, curvas e cantos arredondados. Nada de folha ou planta.
-// Roda no servidor (contrato para a Autentique) e no navegador (baixar PDF). Fonte Montserrat embutida.
+// Roda no servidor (contrato para a Autentique) e no navegador (baixar PDF). Fonte Poppins embutida (escolha da Moni, 30/09/2026).
 
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { MONTSERRAT_FORTE, MONTSERRAT_REGULAR, MONTSERRAT_SEMI } from "./fontes";
+import { FONTE_FORTE, FONTE_REGULAR, FONTE_SEMI } from "./fontes";
 import { LOGO_ADEN } from "./logo";
 
 export const CORES_ADEN = {
@@ -49,9 +49,9 @@ export async function novoDocumento(titulo: string, geradoEm: Date = new Date())
   pdf.setProducer("Aden");
   pdf.setCreationDate(geradoEm);
   const fontes: Fontes = {
-    regular: await pdf.embedFont(bytes(MONTSERRAT_REGULAR), { subset: true }),
-    semi: await pdf.embedFont(bytes(MONTSERRAT_SEMI), { subset: true }),
-    forte: await pdf.embedFont(bytes(MONTSERRAT_FORTE), { subset: true }),
+    regular: await pdf.embedFont(bytes(FONTE_REGULAR), { subset: true }),
+    semi: await pdf.embedFont(bytes(FONTE_SEMI), { subset: true }),
+    forte: await pdf.embedFont(bytes(FONTE_FORTE), { subset: true }),
   };
   return { pdf, fontes };
 }

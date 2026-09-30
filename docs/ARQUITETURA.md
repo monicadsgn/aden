@@ -460,7 +460,7 @@ lista o que falta. PDF pela impressão do navegador (`/imprimir/onboarding`, `co
 teste sem nada interno). Conector: `ver_onboarding`, `salvar_modelo_onboarding`.
 
 **PDFs da Aden (30/09/2026, migration 0033; identidade real aprovada pela Moni no mesmo dia):** contrato e
-onboarding usam `lib/documentos/base.ts` (pdf-lib + fontkit, no servidor e no navegador): Montserrat embutida
+onboarding usam `lib/documentos/base.ts` (pdf-lib + fontkit, no servidor e no navegador): Poppins embutida
 (`fontes.ts`, gerado), logo "aden" em vetor (`logo.ts`, do ADEN VERDE.svg), cores da marca (branco domina, verde de
 apoio, tons de apoio no verde escuro, texto verde quase preto), ondas, curvas e cantos arredondados, ícones de traço
 próprios. `contrato-visual.ts`: primeira página com bloco verde, logo branca, título grande e a linha do contratante,
