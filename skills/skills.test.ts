@@ -11,8 +11,8 @@ const ferramentas = new Set([...servidor.matchAll(/registerTool\(\s*"([a-z_]+)"/
 const valores = new Set(["pasta_drive", "proposta_enviada", "lead_recebido", "contato_feito"]);
 
 describe("skills da Aden", () => {
-  it("existem as quatro da Fase 6", () => {
-    expect(skills.map((s) => s.name).sort()).toEqual(["aden-contrato", "aden-fechamento", "aden-onboarding", "aden-proposta"]);
+  it("existem as cinco da Fase 6", () => {
+    expect(skills.map((s) => s.name).sort()).toEqual(["aden-contrato", "aden-fechamento", "aden-onboarding", "aden-proposta", "aden-rotina"]);
   });
 
   for (const s of skills) {
