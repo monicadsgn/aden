@@ -2,35 +2,37 @@
    TOKENS DA ADEN — o único lugar para trocar cores e fonte.
    Os componentes só usam estes nomes (bg-marca, text-texto-suave…).
 
-   PROVISÓRIO (29/09/2026): o verde (#797c46) e o creme (#fcf9f1) são as cores
-   do SVG da logo da Aden, mas a paleta ainda não está fechada. Os tons de apoio,
-   o acento e a Montserrat continuam provisórios. Quando a identidade fechar:
-   1. Fonte: troque o @import abaixo pelo pacote da nova fonte
-      (npm install @fontsource-variable/<fonte>) e ajuste --fonte.
-      Fontes vêm de pacote local, não do Google Fonts (a política de
-      segurança do app só carrega fontes do próprio domínio).
-   2. Cores: troque os valores em :root e nos dois blocos de modo escuro.
-   3. Logo: components/Marca.tsx (logo da tela) e app/icon.svg (ícone da aba).
+   IDENTIDADE DA ADEN (30/09/2026, aprovada pela Moni):
+   - logo é só a tipografia "aden" (components/Marca.tsx, caminhos em lib/documentos/logo.ts);
+   - branco domina, verde (#797c46) de apoio; tons de apoio puxam para o verde mais escuro;
+   - preto só na versão negativa (modo escuro); o texto é um verde quase preto;
+   - fonte Poppins; formas orgânicas (curvas, cantos arredondados), nada de folha ou planta.
+   Os PDFs (contrato, onboarding) usam as mesmas cores em lib/documentos/base.ts.
+   Fontes vêm de pacote local, não do Google Fonts (a política de segurança do
+   app só carrega fontes do próprio domínio).
    ════════════════════════════════════════════════════════════════════════ */
 
-@import "@fontsource-variable/montserrat";
+@import "@fontsource/poppins/400.css";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/poppins/700.css";
 
 :root {
   /* marca */
-  --marca: #797c46;          /* verde da logo da Aden (provisório) */
+  --marca: #797c46;          /* verde da Aden */
   --marca-forte: #5c5f33;    /* texto/realce sobre fundo claro */
-  --marca-suave: #e8e9d6;    /* fundos tingidos, badges */
-  --marca-tinta: #f2f2e6;    /* fundos bem leves */
-  --sobre-marca: #fcf9f1;    /* texto sobre a cor da marca */
-  --destaque: #c9a86a;       /* acento secundário para formas decorativas */
+  --marca-suave: #e6e8d6;    /* fundos tingidos, badges */
+  --marca-tinta: #f1f2e8;    /* fundos bem leves */
+  --sobre-marca: #ffffff;    /* texto sobre a cor da marca */
+  --destaque: #3e4122;       /* verde profundo: acento das formas decorativas */
 
   /* base */
-  --fundo: #fcf9f1;          /* creme da logo da Aden (provisório) */
+  --fundo: #fafaf6;          /* branco (quase puro) domina */
   --superficie: #ffffff;
-  --superficie-2: #f6f2e6;
-  --linha: #e7e1cf;
-  --texto: #2a2b1e;
-  --texto-suave: #6b6c58;
+  --superficie-2: #f3f4ec;
+  --linha: #e4e6d6;
+  --texto: #2b2e1a;
+  --texto-suave: #6a6d55;
 
   /* estados */
   --erro: #b3422e;
@@ -43,8 +45,8 @@
   --info-suave: #e3ecf1;
 
   /* tipografia */
-  --fonte: "Montserrat Variable", "Montserrat", system-ui, sans-serif;
-  --fonte-numeros: "Montserrat Variable", "Montserrat", system-ui, sans-serif;
+  --fonte: "Poppins", system-ui, sans-serif;
+  --fonte-numeros: "Poppins", system-ui, sans-serif;
 
   /* forma — cantos. Para botões quadrados, troque --raio-botao por um valor pequeno */
   --raio: 1.25rem;           /* cartões */
@@ -52,8 +54,8 @@
   --raio-item: 0.75rem;      /* itens de menu, ícones, botões de ícone */
   --raio-pequeno: 0.75rem;   /* campos de texto e seleção */
   --raio-botao: 9999px;      /* botões, abas, seletores, etiquetas (hoje: pílula) */
-  --sombra: 0 1px 2px rgb(42 43 30 / 0.04), 0 8px 24px -12px rgb(42 43 30 / 0.12);
-  --sombra-forte: 0 2px 4px rgb(42 43 30 / 0.06), 0 20px 40px -20px rgb(42 43 30 / 0.25);
+  --sombra: 0 1px 2px rgb(43 46 26 / 0.04), 0 8px 24px -12px rgb(43 46 26 / 0.12);
+  --sombra-forte: 0 2px 4px rgb(43 46 26 / 0.06), 0 20px 40px -20px rgb(43 46 26 / 0.25);
 
   color-scheme: light;
 }
@@ -66,7 +68,7 @@
     --marca-suave: #34361f;
     --marca-tinta: #25261a;
     --sobre-marca: #17180f;
-    --destaque: #d4b67a;
+    --destaque: #7c8052;
     --fundo: #16170f;
     --superficie: #1f2016;
     --superficie-2: #28291d;
@@ -90,7 +92,7 @@
   --marca-suave: #34361f;
   --marca-tinta: #25261a;
   --sobre-marca: #17180f;
-  --destaque: #d4b67a;
+  --destaque: #7c8052;
   --fundo: #16170f;
   --superficie: #1f2016;
   --superficie-2: #28291d;

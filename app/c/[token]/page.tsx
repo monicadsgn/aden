@@ -8,6 +8,7 @@
 import { CalendarClock, FileText, FolderOpen, HelpCircle, Image as ImageIcon, Layers, ListChecks, Palette, Sparkles, Video, type LucideIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Marca } from "@/components/Marca";
 import { Modal } from "@/components/Modal";
 import { cx } from "@/components/ui";
 import { aprovarAte, montarQuadro, resumoDoMes, situacaoDaPecaPainel } from "@/lib/calculo/painel";
@@ -161,8 +162,8 @@ export default function PainelDoCliente() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 bg-fundo px-4 pt-8 pb-28 sm:px-8">
-      <header className="flex items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-item bg-marca text-lg font-extrabold text-sobre-marca">a</span>
+      <header className="flex flex-col gap-4">
+        <Marca />
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight">Olá, {painel.cliente}</h1>
           <p className="text-sm text-texto-suave">Seus posts com a Aden</p>

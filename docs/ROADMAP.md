@@ -185,7 +185,8 @@ migração. Meta: tudo pronto até o fim de outubro.
   contrato (ficha → Comercial → Fechamento → Gerar onboarding). Contato e atendimento preenchidos pela Moni em 30/09/2026.
   Teste do contrato pela Autentique aprovado pela Moni (30/09/2026); modo teste desligado. Contrato e onboarding
   refeitos no padrão de acabamento dos PDFs da Moni e, no mesmo dia, com a identidade real da Aden (aprovada:
-  "belíssimo"). Passo 7 (identidade) começou pelos PDFs; o site ainda usa os tokens provisórios.
+  "belíssimo"). Passo 7 (identidade) feito em 30/09/2026: PDFs e site com a identidade da Aden
+  (cores, Poppins, logo, ícone da aba, painel do cliente).
 - **Fase 6 · Skills da Aden:** proposta, contrato, onboarding, fechamento e apresentação em arquivos .skill.
 
 ## 1. Auditoria de usabilidade: itens que faltam (entram na Fase 1)
