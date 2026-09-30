@@ -81,6 +81,9 @@ export interface MesDeCima {
 
 const noMes = (data: string, mes: string) => data.slice(0, 7) === mes;
 
+/** A própria Aden (cliente interno) nunca conta como dinheiro que entrou. */
+const idsInternos = (config: Configuracao) => new Set(config.clientes.filter((c) => c.interno).map((c) => c.id));
+
 export function calcularMesDeCima(config: Configuracao, pagamentos: Pagamento[], mes: string): MesDeCima {
   const e = config.empresa;
   const alertas: Alerta[] = [];
@@ -88,7 +91,8 @@ export function calcularMesDeCima(config: Configuracao, pagamentos: Pagamento[],
   const socios = config.pessoas.filter((p) => p.ativo && p.socio);
 
   // O que entrou
-  const doMes = pagamentos.filter((p) => noMes(p.recebidoEm, mes));
+  const internos = idsInternos(config);
+  const doMes = pagamentos.filter((p) => noMes(p.recebidoEm, mes) && !internos.has(p.clienteId));
   const entrou = doMes.reduce((a, p) => a + p.valorCentavos, 0);
   const porCliente = config.clientes
     .map((c) => ({ clienteId: c.id, nome: c.nome, centavos: doMes.filter((p) => p.clienteId === c.id).reduce((a, p) => a + p.valorCentavos, 0) }))
@@ -233,6 +237,7 @@ export function calcularMesDeCima(config: Configuracao, pagamentos: Pagamento[],
  * o que já entrou no mês e o valor mensal dos contratos ativos. null = não estoura no ano.
  */
 export function mesQueEstouraOTeto(config: Configuracao, pagamentos: Pagamento[], hoje: string): string | null {
+  const internos = idsInternos(config);
   const teto = config.empresa.tetoFaturamentoAnualCentavos;
   if (teto == null || teto <= 0) return null;
   const ano = hoje.slice(0, 4);
@@ -240,7 +245,7 @@ export function mesQueEstouraOTeto(config: Configuracao, pagamentos: Pagamento[]
   const contratado = config.clientes.filter((c) => c.ativo && !c.interno).reduce((a, c) => a + v0(c.valorMensalCentavos), 0);
   const entrouNoMes = (m: number) => {
     const chave = `${ano}-${String(m).padStart(2, "0")}`;
-    return pagamentos.filter((p) => noMes(p.recebidoEm, chave)).reduce((a, p) => a + p.valorCentavos, 0);
+    return pagamentos.filter((p) => noMes(p.recebidoEm, chave) && !internos.has(p.clienteId)).reduce((a, p) => a + p.valorCentavos, 0);
   };
   let soma = 0;
   for (let m = 1; m <= 12; m++) {

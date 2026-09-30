@@ -9,6 +9,7 @@ import {
   Lightbulb,
   Save,
   Scissors,
+  Sprout,
   ShieldAlert,
   TrendingDown,
   TrendingUp,
@@ -20,9 +21,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BotaoAcao, FaixaRepetida, OQueQuerDizer, avisosRepetidos } from "@/components/Alertas";
 import { Modal } from "@/components/Modal";
 import { CabecalhoPagina } from "@/components/Shell";
-import { Badge, Botao, Card, CampoMoeda, CampoNumero, EtiquetaOrigem, Vazio, cx } from "@/components/ui";
+import { Badge, Botao, Card, CampoMoeda, CampoNumero, EtiquetaOrigem, TituloCard, Vazio, cx } from "@/components/ui";
 import { calcularCalibragem, type CalibragemTipo, type Medicao } from "@/lib/calculo/calibragem";
-import { calcularSaudeCliente, escopoDoCliente, horasDasTarefas, rotuloOrigemHoras, type RegistroMesCliente, type SaudeCliente } from "@/lib/calculo/mes";
+import { calcularSaudeCliente, escopoDoCliente, horasDasTarefas, horasInvestidasNaAden, rotuloOrigemHoras, type RegistroMesCliente, type SaudeCliente } from "@/lib/calculo/mes";
 import { ehServicoTrafego, prepararMes } from "@/lib/calculo/motor";
 import { configVazia } from "@/lib/calculo/novo";
 import { somaPagamentos, type Pagamento } from "@/lib/calculo/pagamentos";
@@ -416,7 +417,10 @@ export default function Saude() {
     })();
   }, [repo, carregarMes, competencia]);
 
-  const ativos = config.clientes.filter((c) => c.ativo);
+  // a própria Aden (interno) não tem piso nem valor por hora: fica fora da tabela, no card "Investido na Aden"
+  const ativos = config.clientes.filter((c) => c.ativo && !c.interno);
+  const internos = config.clientes.filter((c) => c.ativo && c.interno);
+  const investido = horasInvestidasNaAden(config, medicoes, competencia);
   const mesFechado = competencia < competenciaAtual();
   const saudes = useMemo(
     () =>
@@ -558,6 +562,25 @@ export default function Saude() {
             <p className="border-t border-linha px-4 py-2.5 text-[12px] text-texto-suave">
               Clique num cliente para ver o detalhe: previsto × real, quanto cada sócio recebe por hora e, se algo ficar abaixo do piso, os caminhos para resolver.
             </p>
+          </Card>
+        )}
+
+        {internos.length > 0 && (
+          <Card>
+            <TituloCard
+              icone={Sprout}
+              titulo="Investido na Aden"
+              descricao="Horas que cada sócio pôs na própria Aden neste mês (posts, criativos, reestruturação), pelo cronômetro das tarefas. Não é cliente pagante: fica fora do faturamento, do piso e da divisão."
+            />
+            <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2">
+              {investido.map((x) => (
+                <div key={x.pessoaId} className="rounded-bloco bg-superficie-2/70 px-3 py-2">
+                  <p className="text-[12px] font-semibold text-texto-suave">{x.nome}</p>
+                  <p className="numero text-xl font-extrabold">{formatarHoras(x.horas)}</p>
+                  <p className="text-[12px] text-texto-suave">{x.medicoes ? `${x.medicoes} ${x.medicoes === 1 ? "medição" : "medições"} no cronômetro` : "nenhuma tarefa medida ainda"}</p>
+                </div>
+              ))}
+            </div>
           </Card>
         )}
 

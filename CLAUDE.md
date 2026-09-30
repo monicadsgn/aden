@@ -31,6 +31,7 @@
 - Imposto: DAS do MEI (fixo, como custo) **ou** % sobre o faturamento, nunca os dois juntos.
 - Limite de reuniões por mês é condição do contrato, não quantidade do pacote. Audiovisual é extra (só se o cliente pedir), fora do pacote padrão.
 - WhatsApp continua com o nome Alfall (número do Áleff) até existir um número só da empresa: não trocar essas referências para Aden.
+- A própria Aden é cliente interno (`interno=true`): tarefas, peças e cronômetro iguais aos outros; sem mensalidade, fora do faturamento, rateio, sociedade, teto do MEI e "falta entrar"; nunca pede exceção de piso; horas aparecem no Mês como "investido na Aden".
 - Acessos: sócio (admin) vê tudo; equipe/freelancer só tarefas (RLS da migration 0018, nomes via `equipe_nomes`). Tabela nova com dado sensível: leitura só `eh_membro` (sócio), nunca liberar para a equipe sem pensar.
 
 <!-- BEGIN:nextjs-agent-rules -->

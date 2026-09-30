@@ -514,9 +514,11 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
   // imposto fixo mensal (ex.: MEI) é custo da empresa: entra no rateio junto com os custos fixos
   const impostoFixo = v0(config.empresa.impostoFixoMensalCentavos);
   const totalFixo = config.custosFixos.filter((c) => c.ativo && !c.planejado).reduce((a, c) => a + v0(c.valorMensalCentavos), 0) + impostoFixo;
-  const base = config.clientes.filter((c) => c.ativo && c.participaRateio);
+  // cliente interno (a própria Aden) não leva nem divide custo fixo: não paga nada
+  const base = config.clientes.filter((c) => c.ativo && c.participaRateio && !c.interno);
   const outros = base.filter((c) => c.id !== cenario.clienteId);
-  const rateioAtivo = !opcoes.semRateio && totalFixo > 0;
+  const doCenarioInterno = config.clientes.some((c) => c.id === cenario.clienteId && c.interno);
+  const rateioAtivo = !opcoes.semRateio && totalFixo > 0 && !doCenarioInterno;
   const regra = config.empresa.regraRateio;
   let bloqueio: Alerta | null = null;
   if (rateioAtivo && regra == null) {
@@ -1281,7 +1283,7 @@ export function calcularTeto(config: Configuracao, clienteId: Id | null, receita
   const teto = config.empresa.tetoFaturamentoAnualCentavos;
   if (!positivo(teto)) return null;
   const outros = config.clientes
-    .filter((c) => c.ativo && c.id !== clienteId)
+    .filter((c) => c.ativo && !c.interno && c.id !== clienteId)
     .reduce((a, c) => a + v0(c.valorMensalCentavos), 0);
   const anual = (outros + v0(receitaMensal)) * 12;
   const pct = (anual / teto) * 100;

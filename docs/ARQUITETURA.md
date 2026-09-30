@@ -266,6 +266,21 @@ percentual, valor ou link do painel). Convite por e-mail (`convites`); no primei
 /entrar e `aceitar_convite()` a torna membro (equipe e freelancer ganham uma "pessoa" não sócia para receber tarefas).
 Sócio não muda o próprio acesso. Testado no banco com um freelancer de mentira dentro de transação desfeita.
 
+## A própria Aden como cliente interno (30/09/2026)
+
+`clientes.interno = true` (coluna da 0001, sem migração nova). A Aden tem tarefas, peças e cronômetro como qualquer
+cliente, mas:
+
+- sem mensalidade: fora do faturamento (`calcularVisaoMes`), do teto do MEI (`calcularTeto`, `mesQueEstouraOTeto`), da
+  regra da sociedade (`calcularMesDeCima` ignora pagamento dela; o conector recusa registrar pagamento nela), de
+  Pagamentos e do "falta entrar";
+- não divide nem recebe custo fixo (`prepararMes`: base do rateio sem internos; escopo dela com rateio desligado);
+- escopo livre, guardado direto, nunca vira pedido de exceção de piso (`guardarEscopo`);
+- as horas do cronômetro nela aparecem no Mês → Cada cliente no card "Investido na Aden", por sócio
+  (`horasInvestidasNaAden`), fora da tabela de clientes pagantes; no conector, `ver_saude_clientes.investidoNaAden`.
+
+Testes em `lib/calculo/interno.test.ts`.
+
 ## Fórmulas da calculadora (`lib/calculo/motor.ts`)
 
 ```

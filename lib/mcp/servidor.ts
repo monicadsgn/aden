@@ -9,7 +9,7 @@ import { z } from "zod";
 import { pacoteQueCabe } from "../calculo/apresentacao";
 import { calcularCalibragem, segundosDaMedicao, type Medicao } from "../calculo/calibragem";
 import { documentoContador } from "../calculo/documentos";
-import { calcularSaudeCliente, calcularVisaoMes, horasDasTarefas, rotuloOrigemHoras } from "../calculo/mes";
+import { calcularSaudeCliente, calcularVisaoMes, horasDasTarefas, horasInvestidasNaAden, rotuloOrigemHoras } from "../calculo/mes";
 import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
@@ -426,7 +426,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "salvar_cliente",
     {
       title: "Criar ou alterar cliente (base do rateio)",
-      description: "Cliente ativo e valor mensal do contrato vigente. interno=true para a rede da própria Aden.",
+      description: "Cliente ativo e valor mensal do contrato vigente. interno=true para a própria Aden: sem mensalidade, fora do faturamento, do rateio, da sociedade e do teto do MEI, sem pedido de exceção de piso; tarefas e cronômetro iguais aos outros, horas contadas como investidas na Aden.",
       inputSchema: {
         id: z.string().optional().describe("id ou nome do cliente a alterar; vazio = novo"),
         nome: z.string().optional(),
@@ -440,7 +440,12 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
-        const patch = { ...resto, ...(valorMensalReais !== undefined ? { valorMensalCentavos: paraCentavos(valorMensalReais) } : {}) };
+        const patch = {
+          ...resto,
+          // a própria Aden não divide custo fixo
+          ...(resto.interno ? { participaRateio: false } : {}),
+          ...(valorMensalReais !== undefined ? { valorMensalCentavos: paraCentavos(valorMensalReais) } : {}),
+        };
         let clientes;
         if (id) {
           const alvo = resolver(antes.clientes, id, "Cliente");
@@ -577,7 +582,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Mês: cada cliente (saúde)",
       description:
-        "Para cada cliente ativo: previsto (escopo + contrato) × realizado (horas corrigidas à mão, ou o cronômetro das tarefas do cliente no mês, ou média medida, ou previsão; valor dos pagamentos), valor por hora de cada sócio contra o piso, de onde vem cada número de horas e, quando há problema, os caminhos calculados: subir o valor, cortar escopo, misto, ou aceitar a exceção (quanto cada sócio perde por mês).",
+        "Para cada cliente pagante ativo: previsto (escopo + contrato) × realizado (horas corrigidas à mão, ou o cronômetro das tarefas do cliente no mês, ou média medida, ou previsão; valor dos pagamentos), valor por hora de cada sócio contra o piso, de onde vem cada número de horas e, quando há problema, os caminhos calculados: subir o valor, cortar escopo, misto, ou aceitar a exceção (quanto cada sócio perde por mês). A própria Aden (cliente interno) fica fora da lista: suas horas vêm em investidoNaAden.",
       inputSchema: { competencia: zCompetencia },
     },
     async ({ competencia }) =>
@@ -588,8 +593,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const calibragem = calcularCalibragem(config, medicoes);
         return {
           competencia: mes,
+          investidoNaAden: config.clientes.some((c) => c.ativo && c.interno)
+            ? horasInvestidasNaAden(config, medicoes, mes).map((x) => ({ socio: x.nome, horas: Math.round(x.horas * 10) / 10, medicoes: x.medicoes }))
+            : null,
           clientes: config.clientes
-            .filter((c) => c.ativo)
+            .filter((c) => c.ativo && !c.interno)
             .map((c) => {
               const s = calcularSaudeCliente(config, c, registros[c.id] ?? null, {
                 calibragem,
@@ -1613,6 +1621,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const alvo = resolver(config.clientes, cliente, "Cliente");
+        if (alvo.interno) throw new Error(`${alvo.nome} é a própria Aden (cliente interno): não tem mensalidade nem pagamento.`);
         const mes = competencia ?? competenciaAtual();
         const hoje = new Date().toISOString().slice(0, 10);
         const id = novoId();

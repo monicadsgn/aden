@@ -199,8 +199,18 @@ export function FichaCliente({
             </Rot>
             <div className="flex flex-col justify-end gap-2 pb-1">
               <Interruptor ligado={c.ativo} rotulo="Cliente ativo" aoMudar={(v) => set({ ativo: v })} />
-              <Interruptor ligado={c.participaRateio} rotulo="Divide os custos fixos (rateio)" aoMudar={(v) => set({ participaRateio: v })} />
-              <Interruptor ligado={c.interno} rotulo="Interno (rede da própria Aden)" aoMudar={(v) => set({ interno: v })} />
+              {!c.interno && <Interruptor ligado={c.participaRateio} rotulo="Divide os custos fixos (rateio)" aoMudar={(v) => set({ participaRateio: v })} />}
+              <Interruptor
+                ligado={c.interno}
+                rotulo="É a própria Aden (cliente interno)"
+                aoMudar={(v) => set(v ? { interno: true, participaRateio: false } : { interno: false })}
+              />
+              {c.interno && (
+                <p className="text-[12px] text-texto-suave">
+                  Sem mensalidade: fica fora do faturamento, do rateio, da divisão entre sócios e do teto do MEI, e não pede exceção de piso. Tarefas e cronômetro funcionam igual; as horas
+                  aparecem no Mês como investidas na Aden.
+                </p>
+              )}
             </div>
             <div className="sm:col-span-2">
               {PAINEL_CLIENTE_ATIVO && <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />}

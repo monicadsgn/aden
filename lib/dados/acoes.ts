@@ -140,6 +140,11 @@ export async function guardarEscopo(repo: Repositorio, config: Configuracao, cli
   const cliente = config.clientes.find((c) => c.id === clienteId);
   if (!cliente) throw new Error("Cliente não encontrado.");
   const escopo: Cenario = { ...cenario, clienteId };
+  // a própria Aden (interno): escopo livre, sem mensalidade e sem pedido de exceção de piso
+  if (cliente.interno) {
+    await repo.definirEscopoCliente(clienteId, escopo);
+    return { gravado: true, pedido: null, valorCentavos: cliente.valorMensalCentavos, abaixo: [] };
+  }
   const valor = valorDoContrato(config, escopo);
   const avaliado = calcularCenario(config, { ...escopo, modo: "valor", mensalidadeCentavos: valor });
   if (avaliado.bloqueio) throw new Error(avaliado.bloqueio.texto);

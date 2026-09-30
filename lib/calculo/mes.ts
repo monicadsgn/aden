@@ -105,7 +105,8 @@ export function calcularVisaoMes(config: Configuracao): VisaoMes {
     };
   });
 
-  const faturamento = ativos.reduce((a, c) => a + v0(c.valorMensalCentavos), 0);
+  // a própria Aden (cliente interno) não fatura
+  const faturamento = ativos.filter((c) => !c.interno).reduce((a, c) => a + v0(c.valorMensalCentavos), 0);
   return {
     socios: visaoSocios,
     clientes,
@@ -229,6 +230,35 @@ export function horasDasTarefas(medicoes: Medicao[], clienteId: Id, competencia:
     out.set(m.pessoaId, { horas: atual.horas + seg / 3600, medicoes: atual.medicoes + 1 });
   }
   return out;
+}
+
+export interface InvestidoNaAden {
+  pessoaId: Id;
+  nome: string;
+  horas: number;
+  medicoes: number;
+}
+
+/**
+ * Horas de cada sócio investidas na própria Aden no mês (clientes internos), pelo cronômetro das tarefas.
+ * Ficam separadas das horas de cliente pagante: não têm piso, valor por hora nem exceção.
+ */
+export function horasInvestidasNaAden(config: Configuracao, medicoes: Medicao[], competencia: string, agora: Date = new Date()): InvestidoNaAden[] {
+  const internos = config.clientes.filter((c) => c.ativo && c.interno);
+  return config.pessoas
+    .filter((p) => p.ativo && p.socio)
+    .map((p) => {
+      let horas = 0;
+      let n = 0;
+      for (const c of internos) {
+        const h = horasDasTarefas(medicoes, c.id, competencia, agora).get(p.id);
+        if (h) {
+          horas += h.horas;
+          n += h.medicoes;
+        }
+      }
+      return { pessoaId: p.id, nome: p.nome, horas, medicoes: n };
+    });
 }
 
 /** Mesmo preparo do mês, mas com outras horas por pessoa. */
