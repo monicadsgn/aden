@@ -3,7 +3,7 @@
 // CRM: o funil de vendas. Colunas por etapa (arrastar muda a etapa), tempo parado em
 // cada etapa, próximo contato e valor estimado. Clicar no lead abre a ficha.
 
-import { CalendarClock, Coins, Handshake, Plus, Target, Trophy, XCircle, type LucideIcon } from "lucide-react";
+import { CalendarClock, Coins, MessagesSquare, Plus, Target, Trophy, XCircle, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { COR_ETAPA, DetalheLead } from "@/components/crm/DetalheLead";
@@ -99,7 +99,7 @@ export default function Crm() {
   return (
     <div className="pb-16">
       <CabecalhoPagina
-        icone={Handshake}
+        icone={MessagesSquare}
         selo="Clientes"
         titulo="Leads"
         descricao="Cada pessoa interessada na Aden, da primeira mensagem até fechar. Arraste o card para mudar de etapa; clique para ver a ficha."

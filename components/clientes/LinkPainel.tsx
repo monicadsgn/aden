@@ -28,7 +28,7 @@ export function LinkPainel({ clienteId, token, aoMudar }: { clienteId: string; t
       <p className="mb-1 flex items-center gap-1.5 text-sm font-bold">
         <Link2 size={15} /> Painel do cliente
       </p>
-      <p className="mb-3 text-[11px] text-texto-suave">
+      <p className="mb-3 text-[12px] text-texto-suave">
         Um link só deste cliente, sem senha. Ele vê as peças que vocês marcarem para ele e aprova ou pede ajuste. Nunca vê valores, horas nem nada interno.
       </p>
       {erro && <p className="mb-2 text-xs text-erro">{erro}</p>}

@@ -79,7 +79,7 @@ export function SecaoEquipe() {
             Convidar
           </Botao>
         </div>
-        <p className="mt-2 text-[11px] text-texto-suave">O Aden não manda e-mail sozinho: avise a pessoa por WhatsApp com o endereço de entrada.</p>
+        <p className="mt-2 text-[12px] text-texto-suave">O Aden não manda e-mail sozinho: avise a pessoa por WhatsApp com o endereço de entrada.</p>
       </div>
 
       {msg && <p className={msg.tom === "ok" ? "rounded-bloco bg-ok-suave px-3 py-2 text-xs text-ok" : "rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro"}>{msg.texto}</p>}

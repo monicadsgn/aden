@@ -3,7 +3,7 @@
 // Mês visto de cima: o que entrou, para onde foi e quanto fica para cada sócio,
 // pela regra da sociedade (lib/calculo/sociedade.ts). Substitui a aba Sócios (29/09/2026).
 
-import { ArrowDown, Gift, Megaphone, Receipt, Rocket, Wallet } from "lucide-react";
+import { ArrowDown, Gift, Megaphone, Receipt, Rocket, PieChart } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BotaoAcao, OQueQuerDizer } from "@/components/Alertas";
 import { CabecalhoPagina } from "@/components/Shell";
@@ -66,7 +66,7 @@ export default function VistoDeCima() {
   return (
     <div className="pb-16">
       <CabecalhoPagina
-        icone={Wallet}
+        icone={PieChart}
         selo="Dinheiro e mês"
         titulo="Mês visto de cima"
         descricao="O que entrou, para onde foi e quanto fica para cada sócio."

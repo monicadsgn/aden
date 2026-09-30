@@ -137,7 +137,7 @@ function EditorEntregas({
             )}
             <Botao variante="perigo" icone={Trash2} aria-label="Remover entrega" onClick={() => aoMudar(linhas.filter((x) => x.id !== l.id))} />
             {sobreposto && (
-              <p className="col-span-full -mt-1 text-[11px] font-medium text-aviso">
+              <p className="col-span-full -mt-1 text-[12px] font-medium text-aviso">
                 Tempo por entrega diferente do padrão ({formatarDuracao(tipo?.horasPorUnidade)}).{" "}
                 <button type="button" className="underline" onClick={() => mudar(l.id, { horasPorUnidade: null })}>
                   Voltar ao padrão
@@ -246,7 +246,7 @@ function CustosDeTerceiros({ cenario, config, aoMudar }: { cenario: Cenario; con
           <div key={t.id} className="grid items-end gap-3 rounded-bloco bg-superficie-2/60 p-3 sm:grid-cols-[1fr_12rem]">
             <div className="text-[13px]">
               <p className="font-semibold">{t.nome}</p>
-              <p className="text-[11px] text-texto-suave">
+              <p className="text-[12px] text-texto-suave">
                 {n} saída{n === 1 ? "" : "s"} × ({t.valorPorSaidaCentavos != null ? formatarMoeda(t.valorPorSaidaCentavos) : "valor vazio"} +{" "}
                 {d != null ? formatarMoeda(d) : "deslocamento vazio"}) = <strong className="text-texto">{formatarMoeda(total)}</strong> por mês
               </p>
@@ -260,7 +260,7 @@ function CustosDeTerceiros({ cenario, config, aoMudar }: { cenario: Cenario; con
           </div>
         );
       })}
-      <p className="text-[11px] text-texto-suave">Cliente longe custa mais deslocamento. Vazio = usa o médio de Configurações → Terceiros.</p>
+      <p className="text-[12px] text-texto-suave">Cliente longe custa mais deslocamento. Vazio = usa o médio de Configurações → Terceiros.</p>
     </div>
   );
 }
@@ -473,7 +473,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
         <TituloCard icone={Megaphone} titulo="Cobrança do tráfego pago" detalhes={<DetalhesTrafego />} descricao="A verba de mídia é do cliente e fica por fora. Aqui é só como a Aden cobra pela gestão." />
         <Secao>
           {t.modelo == null && !temEntregaDeTrafego(config, cenario) && (
-            <p className="mb-2 rounded-bloco bg-superficie-2 px-3 py-2 text-[11px] text-texto-suave">
+            <p className="mb-2 rounded-bloco bg-superficie-2 px-3 py-2 text-[12px] text-texto-suave">
               Esta versão não tem nenhuma entrega de tráfego, então conta como “sem tráfego”. Só precisa escolher o modelo se incluir entregas de tráfego.
             </p>
           )}
@@ -504,7 +504,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
                 valor={t.verbaMensalCentavos}
                 aoMudar={(v) => setT({ verbaMensalCentavos: v })}
               />
-              <p className="mt-1.5 text-[11px] leading-snug text-texto-suave">
+              <p className="mt-1.5 text-[12px] leading-snug text-texto-suave">
                 Paga pelo cliente direto na plataforma: não passa pela conta da Aden, não é faturamento e não entra em imposto, taxa nem receita.
                 {t.modelo === "percentual_verba"
                   ? " Aqui ela serve só de base: o que a Aden fatura é o percentual."
@@ -512,7 +512,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
               </p>
             </div>
           )}
-          <p className="mt-2 text-[11px] text-texto-suave">As horas de gestão do tráfego entram como entregas (ex.: um tipo de entrega mensal de gestão).</p>
+          <p className="mt-2 text-[12px] text-texto-suave">As horas de gestão do tráfego entram como entregas (ex.: um tipo de entrega mensal de gestão).</p>
         </Secao>
       </Card>
       )}
@@ -653,7 +653,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
                 { valor: "mensalidade", rotulo: "B · paga só a gestão de tráfego" },
               ]}
             />
-            <p className="mt-1.5 text-[11px] text-texto-suave">As duas opções aparecem lado a lado no resultado. A escolhida é a que vale para os alertas e a comparação.</p>
+            <p className="mt-1.5 text-[12px] text-texto-suave">As duas opções aparecem lado a lado no resultado. A escolhida é a que vale para os alertas e a comparação.</p>
           </div>
         </Secao>
       </Card>

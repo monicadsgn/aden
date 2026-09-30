@@ -377,7 +377,7 @@ export function DetalheLead({
           <ol className="flex flex-col gap-2 border-l-2 border-linha pl-3">
             {interacoes.map((i) => (
               <li key={i.id} className="text-[13px]">
-                <p className="text-[11px] text-texto-suave">
+                <p className="text-[12px] text-texto-suave">
                   <strong className="text-texto">{TIPOS_INTERACAO.find((t) => t.valor === i.tipo)?.rotulo}</strong> ·{" "}
                   {new Date(i.em).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   {i.autorNome && ` · ${i.autorNome}`}

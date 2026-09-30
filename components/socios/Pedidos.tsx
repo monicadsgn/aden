@@ -102,7 +102,7 @@ export default function Aprovacoes() {
                 {st.rotulo}
               </Badge>
             </div>
-            <p className="text-[11px] text-texto-suave">
+            <p className="text-[12px] text-texto-suave">
               Pedido por {p.autorNome ?? "—"} em {quando(p.criadoEm)}
               {p.decididoEm && ` · decidido em ${quando(p.decididoEm)}`}
             </p>
@@ -149,7 +149,7 @@ export default function Aprovacoes() {
                 );
               })}
             </div>
-            {p.motivo && <p className="text-[11px] text-texto-suave">Motivo: {p.motivo}</p>}
+            {p.motivo && <p className="text-[12px] text-texto-suave">Motivo: {p.motivo}</p>}
             {p.status === "pendente" && (
               <div className="flex flex-wrap gap-2">
                 {podeDecidir && (

@@ -128,7 +128,7 @@ export default function Historico() {
                       <p className="text-[13px]">
                         <strong>{r.autor}</strong> {r.acao} <Badge tom="marca">{TABELAS[r.tabela] ?? r.tabela}</Badge> {nome && <strong>{nome}</strong>}
                       </p>
-                      <p className="text-[11px] text-texto-suave">
+                      <p className="text-[12px] text-texto-suave">
                         {new Date(r.em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
                       </p>
                       {lista.length > 0 && (

@@ -182,7 +182,7 @@ function Cascata({ m, taxaFixa }: { m: ResultadoMes; taxaFixa: number | null }) 
           ) : undefined
         }
       />
-      {m.rateio.totalFixoCentavos > 0 && <p className="-mt-0.5 mb-1 text-[11px] leading-snug text-texto-suave">{m.rateio.explicacao}</p>}
+      {m.rateio.totalFixoCentavos > 0 && <p className="-mt-0.5 mb-1 text-[12px] leading-snug text-texto-suave">{m.rateio.explicacao}</p>}
       <LinhaCascata rotulo="Sobra depois dos custos" valor={m.sobraCentavos} forte />
       <LinhaCascata
         rotulo={`Reinvestimento (${formatarPct(m.reinvestimentoPct)})`}
@@ -270,7 +270,7 @@ function Indicador({ icone, rotulo, valor, dica }: { icone: LucideIcon; rotulo: 
         <span className="text-[11px] leading-tight font-semibold text-texto-suave">{rotulo}</span>
       </div>
       <p className="numero mt-2 text-lg font-extrabold">{valor}</p>
-      <p className="mt-0.5 text-[10px] leading-tight text-texto-suave">{dica}</p>
+      <p className="mt-0.5 text-[12px] leading-snug text-texto-suave">{dica}</p>
     </div>
   );
 }
@@ -299,7 +299,7 @@ function BlocoEntrada({ e, mesesDesejados }: { e: ResultadoEntrada; mesesDesejad
             <p className={cx("numero text-2xl font-extrabold", e.mesesParaSePagar == null ? "text-erro" : "text-texto")}>
               {e.mesesParaSePagar == null ? "não se paga" : e.mesesParaSePagar === 0 ? "já está paga" : fmtMeses(e.mesesParaSePagar)}
             </p>
-            <p className="mt-0.5 text-[10px] leading-tight text-texto-suave">
+            <p className="mt-0.5 text-[12px] leading-snug text-texto-suave">
               {e.folgaMensalRotinaCentavos != null
                 ? `a rotina gera ${formatarMoeda(Math.max(0, e.folgaMensalRotinaCentavos))}/mês acima do piso de todos`
                 : "defina os percentuais e o valor da rotina"}
@@ -394,7 +394,7 @@ function BlocoProposta({
         <div className="rounded-bloco bg-marca-tinta p-4">
           <p className="text-[11px] font-semibold text-texto-suave">Investimento mensal</p>
           <p className="numero text-3xl font-extrabold">{formatarMoeda(valor)}</p>
-          {arredondado && <p className="mt-1 text-[11px] text-texto-suave">Arredondado para cima, como definido nas configurações.</p>}
+          {arredondado && <p className="mt-1 text-[12px] text-texto-suave">Arredondado para cima, como definido nas configurações.</p>}
         </div>
         <p className="rounded-bloco border border-dashed border-linha px-3 py-2 text-xs leading-relaxed text-texto-suave">{texto}</p>
         <div className="flex flex-wrap gap-2">
@@ -707,7 +707,7 @@ export function PainelResultado({
                     <div key={t.tipoEntregaId} className="flex flex-wrap items-center gap-3 py-2">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-semibold">{t.nome}</p>
-                        <p className="text-[11px] text-texto-suave">
+                        <p className="text-[12px] text-texto-suave">
                           {config.tiposEntrega.find((x) => x.id === t.tipoEntregaId)?.audiovisual
                             ? "feito por terceiro · só custo"
                             : t.horasPorUnidade != null
@@ -804,7 +804,7 @@ export function PainelResultado({
             <div className="col-span-2 rounded-bloco bg-marca-tinta p-3">
               <p className="text-[11px] font-semibold text-texto-suave">Valor mínimo do projeto</p>
               <p className="numero text-xl font-extrabold">{pf.minimo.possivel ? formatarMoeda(pf.minimo.mensalidadeMinimaCentavos) : "—"}</p>
-              {!pf.minimo.possivel && <p className="text-[11px] text-erro">{pf.minimo.motivo}</p>}
+              {!pf.minimo.possivel && <p className="text-[12px] text-erro">{pf.minimo.motivo}</p>}
             </div>
             {pf.resultado?.pessoas
               .filter((p) => p.horas > 0)

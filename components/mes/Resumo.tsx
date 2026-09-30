@@ -259,13 +259,13 @@ export default function VisaoDoMes() {
             <div className="rounded-bloco bg-marca-tinta p-4">
               <p className="text-[11px] font-semibold text-texto-suave">Por mês (soma dos contratos)</p>
               <p className="numero text-2xl font-extrabold">{formatarMoeda(v.faturamentoMensalCentavos)}</p>
-              <p className="mt-1 text-[11px] text-texto-suave">No ano, mantendo esses clientes: {formatarMoeda(v.faturamentoMensalCentavos * 12)}.</p>
+              <p className="mt-1 text-[12px] text-texto-suave">No ano, mantendo esses clientes: {formatarMoeda(v.faturamentoMensalCentavos * 12)}.</p>
             </div>
             {v.teto ? (
               <div className="rounded-bloco bg-superficie-2/60 p-4">
                 <p className="text-[11px] font-semibold text-texto-suave">Teto do ano: {formatarMoeda(v.teto.tetoCentavos)}</p>
                 <p className="numero text-2xl font-extrabold">{formatarPct(v.teto.pct)} do teto</p>
-                <p className="mt-1 text-[11px] leading-snug">
+                <p className="mt-1 text-[12px] leading-snug">
                   {v.teto.anualCentavos < v.teto.tetoCentavos
                     ? `Ainda há ${formatarMoeda(v.teto.tetoCentavos - v.teto.anualCentavos)} de espaço no ano dentro do regime.`
                     : "O faturamento do ano chegou ao teto: hora de conversar com o contador sobre o próximo regime."}

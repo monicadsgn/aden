@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, FileDown, HandCoins, Save, X } from "lucide-react";
+import { BotaoAjudaTela } from "@/components/Ajuda";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BlocoGarantia } from "@/components/apresentacao/Garantia";
@@ -202,7 +203,12 @@ export default function Negociacao() {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-fundo">
       <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-linha bg-fundo/95 px-4 py-3 backdrop-blur sm:px-8">
-        <Marca />
+        <span className="sm:hidden">
+          <Marca compacta />
+        </span>
+        <span className="hidden sm:inline-flex">
+          <Marca />
+        </span>
         <div className="min-w-0 flex-1">
           <CampoTexto ariaLabel="Nome do cliente" placeholder="Nome do cliente" valor={nomeCliente} aoMudar={setNomeCliente} className="max-w-xs" />
         </div>
@@ -215,6 +221,7 @@ export default function Negociacao() {
           <Eye size={14} />
           <span className="hidden sm:inline">Só para os sócios</span>
         </button>
+        <BotaoAjudaTela chave="/negociacao" />
         <button type="button" onClick={sair} aria-label="Sair da proposta" className="flex size-10 items-center justify-center rounded-item hover:bg-superficie-2">
           <X size={20} />
         </button>

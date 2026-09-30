@@ -96,7 +96,7 @@ function Solucoes({
         <Lightbulb size={14} /> Caminhos para sair do piso, calculados com os números {sol.base === "real" ? "reais do mês" : "do contrato"}
       </p>
       {sol.faltando.length > 0 && (
-        <p className="rounded-item bg-aviso-suave px-3 py-2 text-[11px] font-medium text-aviso">
+        <p className="rounded-item bg-aviso-suave px-3 py-2 text-[12px] font-medium text-aviso">
           Para calcular {sol.cenarioBase ? "tudo" : "os caminhos"}, falta: {sol.faltando.join("; ")}.
         </p>
       )}
@@ -126,11 +126,11 @@ function Solucoes({
               <Abrir aoAbrir={aoAbrir} c={c.cenario} nome={c.cenario.nome} />
             </div>
           ))}
-          <p className="pl-6 text-[10px] text-texto-suave">É um ou outro (não a soma). Mesmo cálculo do “o que cabe” da calculadora.</p>
+          <p className="pl-6 text-[12px] text-texto-suave">É um ou outro (não a soma). Mesmo cálculo do “o que cabe” da calculadora.</p>
         </div>
       )}
       {sol.corteSozinhoNaoResolve && (
-        <p className="rounded-item bg-superficie px-3 py-2 text-[11px] text-texto-suave">Nenhum corte de um tipo só resolve: combine cortes na calculadora ou suba o valor.</p>
+        <p className="rounded-item bg-superficie px-3 py-2 text-[12px] text-texto-suave">Nenhum corte de um tipo só resolve: combine cortes na calculadora ou suba o valor.</p>
       )}
       {sol.misto.length > 0 && (
         <div className="flex flex-col gap-1.5 rounded-item bg-superficie px-3 py-2 text-xs">
@@ -289,7 +289,7 @@ function CartaoCliente({
             <CampoMoeda rotulo="Quanto entrou (lançamento antigo)" valor={reg.valorRecebidoCentavos} aoMudar={(v) => setReg({ ...reg, valorRecebidoCentavos: v })} />
           )}
         </div>
-        <p className="-mt-2 text-[11px] text-texto-suave">
+        <p className="-mt-2 text-[12px] text-texto-suave">
           As horas vêm do cronômetro das tarefas deste cliente no mês. Só preencha aqui para corrigir (ex.: trabalho feito sem ligar o relógio). Sem tarefa medida, o sistema usa a
           previsão e marca que é previsão. Pagamentos vão em{" "}
           <Link href={`/pagamentos?cliente=${s.id}&mes=${competencia}`} className="underline">

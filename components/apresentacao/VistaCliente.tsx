@@ -1,6 +1,6 @@
 // O que o cliente vê na negociação ao vivo. Recebe só a VistaApresentacao, que já não
 // carrega nada interno (horas, piso, divisão, custo fixo, reinvestimento).
-// O sinal para o operador é um ponto que muda de cor, sem nenhuma palavra.
+// O sinal para o operador é um ponto que muda de cor, sem nenhuma palavra (a legenda fica no "?" da tela, lib/ajuda.ts).
 
 import { Minus, Plus } from "lucide-react";
 import type { VistaApresentacao } from "@/lib/calculo/apresentacao";

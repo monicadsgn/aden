@@ -164,7 +164,7 @@ export default function Calibragem() {
           </div>
         </Card>
         {usuario?.pessoaId == null && repo.modo === "supabase" && (
-          <p className="text-[11px] text-texto-suave">Seu login não está ligado a um sócio: atualizar um tempo vira pedido para quem executa aprovar.</p>
+          <p className="text-[12px] text-texto-suave">Seu login não está ligado a um sócio: atualizar um tempo vira pedido para quem executa aprovar.</p>
         )}
       </div>
     </div>

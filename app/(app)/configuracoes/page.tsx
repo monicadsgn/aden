@@ -10,7 +10,7 @@ import {
   Building2,
   Check,
   Clock3,
-  Gauge,
+  SlidersHorizontal,
   Layers,
   Lock,
   Plus,
@@ -74,7 +74,7 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "metas", rotulo: "Metas", icone: Trophy, frase: "A trilha de crescimento em degraus, com a ação de cada degrau. Aparece na tela Mês." },
   { id: "equipe", rotulo: "Equipe e acessos", icone: KeyRound, frase: "Quem entra no Aden e o que cada um vê: sócios, equipe, freelancers e contador." },
   { id: "regras", rotulo: "Regras da empresa", icone: Scale, frase: "Regime e imposto, como dividir o custo fixo, reinvestimento, taxas e como distribuir cada pagamento." },
-  { id: "limites", rotulo: "Limites e avisos", icone: Gauge, frase: "Quando o sistema acende um alerta. Vazio = sem aviso." },
+  { id: "limites", rotulo: "Limites e avisos", icone: SlidersHorizontal, frase: "Quando o sistema acende um alerta. Vazio = sem aviso." },
 ];
 
 const GRUPOS_SECOES: { titulo: string; ids: SecaoConfig[] }[] = [
@@ -97,7 +97,7 @@ function SomaPct({ soma, total }: { soma: number; total: number }) {
 }
 
 function Explica({ children }: { children: ReactNode }) {
-  return <p className="self-end pb-2 text-[11px] leading-snug text-texto-suave">{children}</p>;
+  return <p className="self-end pb-2 text-[12px] leading-snug text-texto-suave">{children}</p>;
 }
 
 /** Marca o campo para o botão dos avisos saber onde levar. */
@@ -332,7 +332,7 @@ export default function Configuracoes() {
           <TituloCard icone={atual.icone} titulo={atual.rotulo} descricao={atual.frase} />
           <div className="px-5 pb-5">
             {faltando[secao].length > 0 && (
-              <p className="mb-3 rounded-bloco bg-aviso-suave px-3 py-2 text-[11px] font-medium text-aviso">Falta preencher: {faltando[secao].join(", ")}.</p>
+              <p className="mb-3 rounded-bloco bg-aviso-suave px-3 py-2 text-[12px] font-medium text-aviso">Falta preencher: {faltando[secao].join(", ")}.</p>
             )}
 
             {secao === "socios" && (
@@ -441,7 +441,7 @@ export default function Configuracoes() {
 
             {secao === "servicos" && (
               <div className="flex flex-col gap-3">
-                <p className="text-[11px] text-texto-suave">
+                <p className="text-[12px] text-texto-suave">
                   <Lock size={10} className="inline" /> A divisão de horas é protegida: diz quem trabalha em cada serviço e, por isso, quanto cada hora dele vale.
                 </p>
                 {rascunho.servicos.length === 0 && (
@@ -497,7 +497,7 @@ export default function Configuracoes() {
 
             {secao === "tipos" && (
               <div className="flex flex-col gap-2">
-                <p className="text-[11px] text-texto-suave">
+                <p className="text-[12px] text-texto-suave">
                   Digite o tempo em <strong>minutos</strong> (20 min, 40 min…). <Lock size={10} className="inline" /> É protegido: muda quanto cada hora vale. Roteiro e direção de
                   gravação são feitos pelos sócios, com tempo. Entrega feita por um terceiro (ex.: gravação) não tem tempo dos sócios: escolha em &quot;Quem faz&quot;.
                 </p>
@@ -591,14 +591,14 @@ export default function Configuracoes() {
                     <OQueQuerDizer explica={dobro.explica} />
                   </div>
                 )}
-                <p className="text-[11px] text-texto-suave">
+                <p className="text-[12px] text-texto-suave">
                   O imposto do MEI não entra aqui: ele tem campo próprio em{" "}
                   <button type="button" className="font-semibold text-marca-forte underline" onClick={() => irPara("regras")}>
                     Regras da empresa
                   </button>
                   , e o sistema já soma os dois na hora de dividir entre os clientes.
                 </p>
-                <p className="text-[11px] text-texto-suave">
+                <p className="text-[12px] text-texto-suave">
                   <strong className="text-texto">Quem paga:</strong> se um sócio paga do próprio bolso, o custo continua contando no preço das propostas, mas no mês visto de cima
                   aparece em &quot;bancado por&quot; e não sai do caixa da Aden. <strong className="text-texto">Planejado:</strong> custo guardado para quando o caixa permitir; fica
                   desligado e avisa quando a sobra do mês cobre.
@@ -676,7 +676,7 @@ export default function Configuracoes() {
                       <Explica>Para regimes em que o imposto é uma porcentagem do que entra.</Explica>
                     </>
                   )}
-                  {e.regime == null && <p className="text-[11px] text-aviso sm:col-span-2">Escolha o regime: no MEI, o campo de imposto em % some e não entra na conta.</p>}
+                  {e.regime == null && <p className="text-[12px] text-aviso sm:col-span-2">Escolha o regime: no MEI, o campo de imposto em % some e não entra na conta.</p>}
                   {dobro && (
                     <div className="flex flex-wrap items-center gap-2 rounded-bloco bg-erro-suave px-3 py-2 text-xs font-medium text-erro sm:col-span-2">
                       <span className="flex-1">{dobro.texto}</span>
@@ -700,7 +700,7 @@ export default function Configuracoes() {
                       ]}
                     />
                   </Alvo>
-                  <p className="text-[11px] leading-snug text-texto-suave sm:col-span-2">
+                  <p className="text-[12px] leading-snug text-texto-suave sm:col-span-2">
                     <strong className="text-texto">Igual:</strong> cada cliente paga a mesma parte. <strong className="text-texto">Proporcional:</strong> quem paga mais leva uma parte maior.
                     Na calculadora, o cliente que está sendo simulado conta como mais um. Sem regra escolhida, a calculadora não mostra resultado, porque o custo fixo sumiria da conta.
                   </p>
@@ -734,7 +734,7 @@ export default function Configuracoes() {
                       ]}
                     />
                   </Alvo>
-                  <p className="text-[11px] leading-snug text-texto-suave sm:col-span-2">
+                  <p className="text-[12px] leading-snug text-texto-suave sm:col-span-2">
                     <strong className="text-texto">Custo primeiro:</strong> o que entra paga primeiro os custos do mês daquele cliente; só o que passar disso vai para os sócios.{" "}
                     <strong className="text-texto">Proporcional:</strong> cada real que entra já é dividido entre custos e sócios, na mesma proporção do mês inteiro.
                     {e.ordemDistribuicao == null && <span className="font-semibold text-aviso"> Enquanto estiver vazia, o sistema não distribui os pagamentos.</span>}
@@ -845,7 +845,7 @@ export default function Configuracoes() {
         </Card>
 
         {usuario?.pessoaId == null && repo.modo === "supabase" && usuario?.papel === "admin" && (
-          <p className="text-[11px] text-texto-suave">
+          <p className="text-[12px] text-texto-suave">
             Seu login ainda não está ligado a um sócio: mudanças em campos protegidos que você fizer vão esperar a aprovação de todos os afetados. Ligue em Sócios → Login deste sócio.
           </p>
         )}

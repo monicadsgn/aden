@@ -498,7 +498,7 @@ export default function VisaoDoDia() {
                       <div className="mt-2 h-2 overflow-hidden rounded-full bg-superficie-2">
                         <div className="h-full rounded-full bg-marca" style={{ width: `${degrau.progressoPct}%` }} />
                       </div>
-                      <p className="mt-1 text-[11px] text-texto-suave">
+                      <p className="mt-1 text-[12px] text-texto-suave">
                         {fmtMeta(degrau.valor)} de {fmtMeta(degrau.meta.alvo)} · faltam {fmtMeta(degrau.falta)}
                       </p>
                     </>

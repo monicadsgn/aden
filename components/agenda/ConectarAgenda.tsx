@@ -80,7 +80,7 @@ export function ConectarAgenda({ aberto, aoFechar, aoMudar }: { aberto: boolean;
             Conectar
           </Botao>
         </div>
-        <p className="text-[11px] text-texto-suave">
+        <p className="text-[12px] text-texto-suave">
           Por enquanto o Aden só lê a agenda: os compromissos aparecem aqui, mas criar evento continua sendo no Google. Mudanças podem levar alguns minutos para aparecer.
         </p>
       </div>

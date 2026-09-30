@@ -317,7 +317,7 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
       </div>
 
       {cal && cal.alvo != null && (
-        <p className="mt-2 rounded-bloco bg-marca-tinta px-3 py-2 text-[11px] text-texto-suave">
+        <p className="mt-2 rounded-bloco bg-marca-tinta px-3 py-2 text-[12px] text-texto-suave">
           {cal.situacao === "calibrado"
             ? `${tipo?.nome} já está calibrado (média ${formatarMinutos(cal.mediaMinutos)} por entrega). O tempo continua contando para acompanhar.`
             : `Calibragem de ${tipo?.nome}: ${cal.medicoes} de ${cal.alvo} entregas medidas. Aperte Começar ao iniciar e conclua a tarefa ao terminar.`}{" "}

@@ -50,3 +50,14 @@ aparecem quando têm algo.
 - 13: contador vê Pagamentos só para consulta: sem registrar, sem apagar e sem a divisão entre sócios.
 - 14: nomes alinhados com o menu: "Proposta" (não "Negociação") em Relatórios, no PDF e no nome da simulação salva;
   "Leads" (não "CRM") na ajuda e no conector; títulos das ferramentas do Mês no conector.
+
+## Cabeçalho no celular e detalhes 15, 17 e 18 (30/09/2026)
+
+- Cabeçalho de todas as telas (`CabecalhoPagina`) no celular: ícone, título e "?" numa linha; a frase e os botões
+  embaixo, na largura inteira. Na Proposta, só o "a" da marca no celular, para caber o nome do cliente.
+- 15: frase de explicação com no mínimo 12 px (rótulos curtos e títulos em maiúsculas continuam menores).
+- 17: o ícone do topo de cada tela é o mesmo do menu (Clientes e contratos, Leads), e nenhum ícone serve para duas
+  coisas (Visto de cima deixou a carteira de Pagamentos; Limites deixou o medidor da Calibragem; Custos fixos ficou
+  com o prédio).
+- 18: a bolinha da Proposta continua sem palavra na tela do cliente; a legenda (verde, vermelho, cinza) fica no "?"
+  da Proposta, que agora aparece no topo dela.

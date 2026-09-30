@@ -135,7 +135,7 @@ migração. Meta: tudo pronto até o fim de outubro.
 ## 1. Auditoria de usabilidade: itens que faltam (entram na Fase 1)
 
 Itens da auditoria de usabilidade aprovados pela Moni (os graves 1–4 e os detalhes 16 e 19 já foram feitos; os
-graves 5, 6 e 7 foram feitos na Fase 1, em 29/09/2026; os médios 8–14 em 30/09/2026, no branch de teste; próximos: detalhes 15, 17 e 18):
+graves 5, 6 e 7 foram feitos na Fase 1, em 29/09/2026; os médios 8–14 e os detalhes 15, 17 e 18 em 30/09/2026):
 
 1. **Grave 5:** dados do cliente num lugar só. Tirar a aba Clientes das Configurações; a ficha do cliente é o único lugar.
    "Personalizar escopo" na ficha abre a Proposta e volta para a ficha.
@@ -151,7 +151,7 @@ graves 5, 6 e 7 foram feitos na Fase 1, em 29/09/2026; os médios 8–14 em 30/0
    - 12: abas das Configurações em dois grupos.
    - 13: contador vê Pagamentos só leitura.
    - 14: nomes que ainda divergem.
-5. **Detalhes 15, 17 e 18:** texto mínimo de 12 px em frase explicativa; ícones repetidos no menu; bolinha da Proposta
+5. **Detalhes 15, 17 e 18 (feitos em 30/09/2026):** texto mínimo de 12 px em frase explicativa; ícones repetidos no menu; bolinha da Proposta
    com explicação.
 
 Perguntas de regra de contrato (a reunião de 29/09 deixou para depois, junto com a seção 2; não inventar a resposta):

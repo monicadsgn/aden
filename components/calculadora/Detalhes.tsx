@@ -172,7 +172,7 @@ export function DetalhesCustos({ config, m }: { config: Configuracao; m: Resulta
           ...(m ? [["Parte deste cliente (rateio)", formatarMoeda(m.rateio.quotaCentavos)] as [ReactNode, ReactNode]] : []),
         ]}
       />
-      {m?.rateio.explicacao && <p className="mt-1.5 text-[11px] text-texto-suave">{m.rateio.explicacao}</p>}
+      {m?.rateio.explicacao && <p className="mt-1.5 text-[12px] text-texto-suave">{m.rateio.explicacao}</p>}
     </Detalhe>
   );
 }

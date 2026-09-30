@@ -387,17 +387,21 @@ export function CabecalhoPagina({
         <path fill="currentColor" d="M44.7,-58.3C57.1,-49.7,66.2,-36.1,70.6,-21C75,-5.9,74.7,10.8,68.4,24.8C62.1,38.8,49.8,50.2,35.7,58.3C21.6,66.4,5.7,71.2,-10.8,70.1C-27.3,69,-44.5,62,-56.4,49.6C-68.3,37.2,-75,19.4,-74.4,2.2C-73.8,-15,-65.9,-31.6,-54,-40.6C-42.1,-49.6,-26.2,-51,-11.6,-56.3C3,-61.6,32.3,-66.9,44.7,-58.3Z" />
       </svg>
       <span className="pointer-events-none absolute right-48 -bottom-10 size-24 rounded-full bg-destaque/15" aria-hidden />
-      <div className="relative mx-auto flex max-w-[1500px] flex-wrap items-center gap-4 px-4 py-6 sm:px-6 lg:px-8">
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-bloco bg-marca text-sobre-marca shadow-card">
-          <Icone size={22} />
+      {/* no celular: ícone, título e "?" numa linha; a frase e as ações ocupam a largura inteira embaixo */}
+      <div className="relative mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-bloco bg-marca text-sobre-marca shadow-card sm:size-12">
+          <Icone size={20} />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-40">
           {selo && <Badge tom="marca">{selo}</Badge>}
           <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">{titulo}</h1>
-          {descricao && <p className="mt-0.5 max-w-2xl text-sm text-texto-suave">{descricao}</p>}
+          {descricao && <p className="mt-0.5 hidden max-w-2xl text-sm text-texto-suave sm:block">{descricao}</p>}
         </div>
+        <span className="sm:order-last">
+          <BotaoAjudaTela chave={ajuda} />
+        </span>
+        {descricao && <p className="w-full text-sm text-texto-suave sm:hidden">{descricao}</p>}
         {acoes && <div className="nao-imprimir flex w-full flex-wrap items-center gap-2 sm:w-auto">{acoes}</div>}
-        <BotaoAjudaTela chave={ajuda} />
       </div>
     </div>
   );

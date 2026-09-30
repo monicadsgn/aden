@@ -2,7 +2,7 @@
 
 // Clientes e contratos: a lista de clientes e a ficha de cada um.
 
-import { Building2, ClipboardList, Plus, Users } from "lucide-react";
+import { FileSignature, ClipboardList, Plus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FichaCliente, SITUACAO_PAGAMENTO, type Aba } from "@/components/clientes/FichaCliente";
 import { CabecalhoPagina } from "@/components/Shell";
@@ -122,7 +122,7 @@ export default function Clientes() {
   return (
     <div className="pb-16">
       <CabecalhoPagina
-        icone={Building2}
+        icone={FileSignature}
         selo="Clientes"
         titulo="Clientes e contratos"
         descricao="A ficha de cada cliente: contato, contrato, escopo, tarefas, pagamentos e a conversa de antes de fechar."

@@ -144,7 +144,7 @@ export default function Pagamentos() {
                 <CampoTexto rotulo="Observação (opcional)" valor={novo.obs} aoMudar={(v) => setNovo({ ...novo, obs: v })} />
                 <div className="sm:col-span-2">
                   <CampoMoeda className="sm:max-w-xs" rotulo="Taxa deste pagamento (só se foi cartão)" valor={novo.taxa} aoMudar={(v) => setNovo({ ...novo, taxa: v })} />
-                  <p className="mt-1 text-[11px] text-texto-suave">Vazio = taxa padrão das Regras (Pix não cobra). Preencha com o que o banco descontou de verdade; o padrão não muda.</p>
+                  <p className="mt-1 text-[12px] text-texto-suave">Vazio = taxa padrão das Regras (Pix não cobra). Preencha com o que o banco descontou de verdade; o padrão não muda.</p>
                 </div>
                 <div className="sm:col-span-2">
                   <Botao variante="primario" icone={Plus} disabled={!clienteNovo || !novo.valor} onClick={registrar}>
@@ -154,7 +154,7 @@ export default function Pagamentos() {
               </div>
               <div className="rounded-bloco bg-marca-tinta/60 p-4">
                 <p className="mb-2 text-xs font-bold">Para onde vai este pagamento</p>
-                {!previa && <p className="text-[11px] text-texto-suave">Escolha o cliente e digite o valor para ver a divisão.</p>}
+                {!previa && <p className="text-[12px] text-texto-suave">Escolha o cliente e digite o valor para ver a divisão.</p>}
                 {previa?.d.bloqueio && (
                   <div className="flex flex-col gap-2 rounded-item bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
                     <span>{previa.d.bloqueio.texto}</span>
@@ -167,7 +167,7 @@ export default function Pagamentos() {
                 {previa?.parte && (
                   <>
                     <Destinos b={previa.parte} config={config} />
-                    <p className="mt-2 text-[11px] text-texto-suave">
+                    <p className="mt-2 text-[12px] text-texto-suave">
                       {config.empresa.ordemDistribuicao === "custo_primeiro"
                         ? "Custo primeiro: enquanto os custos do mês não estão cobertos, o dinheiro vai para eles."
                         : "Proporcional: cada real vai para custos e sócios na mesma proporção do mês inteiro."}

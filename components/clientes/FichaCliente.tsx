@@ -264,7 +264,7 @@ export function FichaCliente({
                 <Rot rotulo="A garantia vale até">
                   <input type="date" className={campo} value={k.garantiaAte ?? ""} onChange={(e) => setK({ garantiaAte: e.target.value || null })} />
                 </Rot>
-                <p className="text-[11px] text-texto-suave sm:col-span-2">Enquanto o resultado não vem, a gestão do tráfego não é cobrada. Escreva o que foi combinado para ninguém discutir depois.</p>
+                <p className="text-[12px] text-texto-suave sm:col-span-2">Enquanto o resultado não vem, a gestão do tráfego não é cobrada. Escreva o que foi combinado para ninguém discutir depois.</p>
               </div>
             ) : null}
             <div className="flex flex-wrap gap-2 text-xs">
@@ -389,7 +389,7 @@ export function FichaCliente({
                   )}
                   .
                 </p>
-                <p className="text-[11px] text-texto-suave">Conta os pagamentos com referência a este mês, mesmo que tenham caído em partes.</p>
+                <p className="text-[12px] text-texto-suave">Conta os pagamentos com referência a este mês, mesmo que tenham caído em partes.</p>
               </div>
             )}
             {pags.length === 0 ? (
@@ -433,7 +433,7 @@ export function FichaCliente({
                   <ol className="flex flex-col gap-2 border-l-2 border-linha pl-3">
                     {interacoes.map((i) => (
                       <li key={i.id} className="text-[13px]">
-                        <p className="text-[11px] text-texto-suave">
+                        <p className="text-[12px] text-texto-suave">
                           <strong className="text-texto">{TIPOS_INTERACAO.find((t) => t.valor === i.tipo)?.rotulo}</strong> · {new Date(i.em).toLocaleDateString("pt-BR")}
                           {i.autorNome && ` · ${i.autorNome}`}
                         </p>

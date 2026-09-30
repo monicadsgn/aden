@@ -43,8 +43,8 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/negociacao": {
     titulo: "Proposta",
     texto:
-      "A tela para mostrar ao cliente durante a conversa: escolha um pacote e personalize na hora. Ele vê só entregas e valor, nunca custos nem a divisão entre sócios. O botão \"Só para os sócios\" abre os números internos: use longe da tela do cliente.",
-    termos: ["escopo"],
+      "A tela para mostrar ao cliente na conversa: escolha um pacote e personalize na hora; ele vê só entregas e valor, e o botão \"Só para os sócios\" abre os números internos (use longe da tela dele). O pontinho ao lado do valor é um sinal só para você, sem palavra para o cliente entender: verde = o preço paga o piso de cada sócio e cabe nas horas do mês; vermelho = algum sócio fica abaixo do piso, as horas não cabem ou a conta fecha no negativo (o PDF espera a aprovação do sócio afetado); cinza = ainda falta dado para calcular.",
+    termos: ["escopo", "piso"],
   },
   "/tarefas": {
     titulo: "Tarefas",

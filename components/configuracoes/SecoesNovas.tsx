@@ -29,7 +29,7 @@ export function SecaoTerceiros({ rascunho, set }: Props) {
   const usadoPor = (id: string) => rascunho.tiposEntrega.filter((t) => t.terceiroId === id).map((t) => t.nome);
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[11px] text-texto-suave">
+      <p className="text-[12px] text-texto-suave">
         Serviço terceirizado cobrado <strong>por saída</strong> (ex.: audiovisual: a pessoa vai ao cliente, grava, edita e entrega). O custo de cada cliente é
         saídas por mês × (valor por saída + deslocamento). É custo só do cliente que recebe a gravação, nunca dividido entre todos. Mudou o valor aqui, todos os pacotes
         e escopos recalculam. Ligue o terceiro a um tipo de entrega em <strong>Tipos de entrega</strong>.
@@ -56,7 +56,7 @@ export function SecaoTerceiros({ rascunho, set }: Props) {
               valor={t.fraseCliente}
               aoMudar={(v) => setLista(atualizar(lista, t.id, { fraseCliente: v }))}
             />
-            <p className="text-[11px] text-texto-suave">
+            <p className="text-[12px] text-texto-suave">
               {tipos.length ? `Usado em: ${tipos.join(", ")}.` : "Ainda não está ligado a nenhum tipo de entrega."}
               {t.valorPorSaidaCentavos != null && ` Cada saída custa ${formatarMoeda(t.valorPorSaidaCentavos + (t.deslocamentoMedioCentavos ?? 0))} com o deslocamento médio.`}
             </p>
@@ -97,7 +97,7 @@ function ItensDoPacote({
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs font-bold">{titulo}</p>
-      <p className="-mt-1 text-[11px] text-texto-suave">{explica}</p>
+      <p className="-mt-1 text-[12px] text-texto-suave">{explica}</p>
       {itens.map((i, idx) => (
         <div key={idx} className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
           <Selecao
@@ -128,16 +128,16 @@ function PrecoCalculado({ config, pacote }: { config: Configuracao; pacote: Paco
       <div>
         <p className="text-[11px] font-semibold text-texto-suave">Manutenção mensal (calculada)</p>
         <p className="numero text-xl font-extrabold">{p.mensalCentavos != null ? formatarMoeda(p.mensalCentavos) : "—"}</p>
-        <p className="text-[11px] text-texto-suave">{horas != null ? `${formatarDuracao(horas)} de trabalho por mês` : (p.motivo ?? "")}</p>
+        <p className="text-[12px] text-texto-suave">{horas != null ? `${formatarDuracao(horas)} de trabalho por mês` : (p.motivo ?? "")}</p>
       </div>
       <div>
         <p className="text-[11px] font-semibold text-texto-suave">Primeiro mês · entrada (calculada)</p>
         <p className="numero text-xl font-extrabold">{p.entradaAConfirmar ? "a confirmar" : p.entradaCentavos != null ? formatarMoeda(p.entradaCentavos) : "—"}</p>
-        <p className="text-[11px] text-texto-suave">
+        <p className="text-[12px] text-texto-suave">
           {p.entradaAConfirmar ? "Faltam as quantidades do primeiro mês." : horasEntrada != null ? `${formatarDuracao(horasEntrada)} de trabalho, uma vez só` : "Sem entrada."}
         </p>
       </div>
-      <p className="text-[10px] text-texto-suave sm:col-span-2">
+      <p className="text-[12px] text-texto-suave sm:col-span-2">
         Ninguém digita preço: sai do tempo de cada entrega, do piso de cada sócio, dos custos (terceiros inclusos) e do rateio. Mudou a configuração, o preço muda junto.
       </p>
     </div>
@@ -149,7 +149,7 @@ export function SecaoPacotes({ rascunho, set }: Props) {
   const setLista = (pacotes: Pacote[]) => set({ pacotes });
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[11px] text-texto-suave">
+      <p className="text-[12px] text-texto-suave">
         Pacotes fechados para a negociação. O cliente vê só o nome, as frases do que está incluso e o valor; nunca quantidades nem horas. As quantidades ficam aqui, para
         o sistema calcular.
       </p>
@@ -191,7 +191,7 @@ export function SecaoPacotes({ rascunho, set }: Props) {
                 Adicionar frase
               </Botao>
             </div>
-            <p className="text-[11px] text-texto-suave">A frase de cada terceiro usado (ex.: gravação e edição) entra sozinha.</p>
+            <p className="text-[12px] text-texto-suave">A frase de cada terceiro usado (ex.: gravação e edição) entra sozinha.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <ItensDoPacote
@@ -256,7 +256,7 @@ export function SecaoMetas({ rascunho, set }: Props) {
   };
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[11px] text-texto-suave">
+      <p className="text-[12px] text-texto-suave">
         A trilha de crescimento da Aden, em degraus, na ordem em que vocês querem chegar. Cada degrau tem um critério, um alvo e o que fazer quando chegar lá. Aparece
         no topo da tela Mês. Degrau batido fica marcado como conquistado, com a data.
       </p>
