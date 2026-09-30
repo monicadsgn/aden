@@ -384,7 +384,7 @@ describe("modo apresentação", () => {
   it("a vista não carrega nenhum dado interno", () => {
     const c = config();
     const v = vistaApresentacao(c, { cenario: cenario([["post", 8], ["carr", 4]]), desligados: {} });
-    expect(Object.keys(v).sort()).toEqual(["incluiTrafego", "servicos", "sinal", "valorCentavos", "verbaMidiaCentavos"]);
+    expect(Object.keys(v).sort()).toEqual(["garantia", "incluiTrafego", "servicos", "sinal", "valorCentavos", "verbaMidiaCentavos"]);
     const texto = JSON.stringify(v);
     for (const proibido of ["piso", "hora", "horas", "percentual", "socio", "rateio", "reinvest", "custo", "4500", "Mônica", "Áleff"])
       expect(texto.toLowerCase()).not.toContain(proibido.toLowerCase());

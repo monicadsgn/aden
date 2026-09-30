@@ -227,6 +227,7 @@ function CartaoSocio({ p, grande, foto }: { p: ResultadoPessoa; grande?: boolean
         )}
       </div>
       <div className="relative mt-3 flex flex-col gap-1.5">
+        {p.regraParte && <p className="text-[12px] text-texto-suave">{p.regraParte}</p>}
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
           <p className="text-[11px] font-semibold text-texto-suave">Recebe no mês</p>
           <p className={cx("numero font-extrabold", grande ? "text-3xl" : "text-xl")}>{formatarMoeda(p.valorCentavos)}</p>

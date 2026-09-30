@@ -8,6 +8,8 @@
 
 import type { DistribuicaoCliente, Pagamento } from "./pagamentos";
 import type { Cenario, Configuracao, Id } from "./tipos";
+import { formatarMoeda } from "../formato";
+import { garantiaParaCliente, type GarantiaCliente } from "./apresentacao";
 
 const v0 = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? 0 : v);
 
@@ -48,6 +50,8 @@ export interface DocumentoProposta {
   incluiTrafego: boolean;
   verbaMidiaCentavos: number | null;
   observacao: string;
+  /** tráfego com garantia: as frases da oferta (vazio = sem garantia) */
+  garantia: string[];
 }
 
 function agrupar(config: Configuracao, linhas: Cenario["entregas"]) {
@@ -82,7 +86,19 @@ export function documentoProposta(
     incluiTrafego: opcoes.incluiTrafego,
     verbaMidiaCentavos: opcoes.verbaMidiaCentavos,
     observacao: `Um valor só, com ${opcoes.incluiTrafego ? "gestão de tráfego, " : ""}produção, planejamento e todas as ferramentas incluídos. Sem cobranças separadas.${opcoes.verbaMidiaCentavos ? " A verba de anúncios é paga por vocês direto na plataforma." : ""}`,
+    garantia: frasesDaGarantia(garantiaParaCliente(config, cenario)),
   };
+}
+
+/** As frases da garantia, iguais às da tela da Proposta. */
+export function frasesDaGarantia(g: GarantiaCliente | null): string[] {
+  if (!g) return [];
+  const out = ["Tráfego com garantia: vocês só pagam a gestão do tráfego quando o resultado vier."];
+  if (g.verbaDeCentavos != null && g.verbaAteCentavos != null)
+    out.push(`Investimento em anúncios indicado: de ${formatarMoeda(g.verbaDeCentavos)} a ${formatarMoeda(g.verbaAteCentavos)} por mês, pago direto na plataforma.`);
+  else if (g.verbaDeCentavos != null) out.push(`Investimento em anúncios indicado: a partir de ${formatarMoeda(g.verbaDeCentavos)} por mês, pago direto na plataforma.`);
+  if (g.gestaoDepoisCentavos != null) out.push(`Depois do resultado, a gestão do tráfego passa a ${formatarMoeda(g.gestaoDepoisCentavos)} por mês.`);
+  return out;
 }
 
 // ─── Resumo do contador ─────────────────────────────────────────────────────

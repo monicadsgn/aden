@@ -41,6 +41,7 @@ import {
   CampoNumero,
   CampoPct,
   CampoTexto,
+  Interruptor,
   Segmentado,
   Selecao,
   TituloCard,
@@ -583,11 +584,38 @@ export default function Configuracoes() {
                   </button>
                   , e o sistema já soma os dois na hora de dividir entre os clientes.
                 </p>
+                <p className="text-[11px] text-texto-suave">
+                  <strong className="text-texto">Quem paga:</strong> se um sócio paga do próprio bolso, o custo continua contando no preço das propostas, mas no mês visto de cima
+                  aparece em &quot;bancado por&quot; e não sai do caixa da Aden. <strong className="text-texto">Planejado:</strong> custo guardado para quando o caixa permitir; fica
+                  desligado e avisa quando a sobra do mês cobre.
+                </p>
                 {rascunho.custosFixos.map((c) => (
-                  <div key={c.id} className="grid grid-cols-[1fr_9rem_auto] items-end gap-2">
-                    <CampoTexto ariaLabel="Nome do custo" placeholder="Ex.: nome da assinatura" valor={c.nome} aoMudar={(v) => set({ custosFixos: atualizar(rascunho.custosFixos, c.id, { nome: v }) })} />
-                    <CampoMoeda ariaLabel="Valor mensal" valor={c.valorMensalCentavos} aoMudar={(v) => set({ custosFixos: atualizar(rascunho.custosFixos, c.id, { valorMensalCentavos: v }) })} />
-                    <Botao variante="perigo" icone={Trash2} aria-label="Remover custo" onClick={() => set({ custosFixos: rascunho.custosFixos.filter((x) => x.id !== c.id) })} />
+                  <div key={c.id} className={cx("flex flex-col gap-2 rounded-bloco bg-superficie-2/60 p-3", !c.ativo && "opacity-70")}>
+                    <div className="grid grid-cols-[1fr_9rem_auto] items-end gap-2">
+                      <CampoTexto ariaLabel="Nome do custo" placeholder="Ex.: nome da assinatura" valor={c.nome} aoMudar={(v) => set({ custosFixos: atualizar(rascunho.custosFixos, c.id, { nome: v }) })} />
+                      <CampoMoeda ariaLabel="Valor mensal" valor={c.valorMensalCentavos} aoMudar={(v) => set({ custosFixos: atualizar(rascunho.custosFixos, c.id, { valorMensalCentavos: v }) })} />
+                      <Botao variante="perigo" icone={Trash2} aria-label="Remover custo" onClick={() => set({ custosFixos: rascunho.custosFixos.filter((x) => x.id !== c.id) })} />
+                    </div>
+                    <div className="flex flex-wrap items-end gap-4">
+                      <Selecao
+                        className="w-48"
+                        rotulo="Quem paga"
+                        valor={c.pagoPorPessoaId ?? null}
+                        vazio="A Aden (caixa)"
+                        opcoes={rascunho.pessoas.filter((p) => p.socio && p.ativo).map((p) => ({ valor: p.id, rotulo: `${p.nome} (do bolso)` }))}
+                        aoMudar={(v) => set({ custosFixos: atualizar(rascunho.custosFixos, c.id, { pagoPorPessoaId: v }) })}
+                      />
+                      <Interruptor
+                        ligado={c.ativo}
+                        rotulo="Ligado"
+                        aoMudar={(v) => set({ custosFixos: atualizar(rascunho.custosFixos, c.id, { ativo: v, planejado: v ? false : c.planejado }) })}
+                      />
+                      <Interruptor
+                        ligado={!!c.planejado}
+                        rotulo="Planejado (para quando o caixa permitir)"
+                        aoMudar={(v) => set({ custosFixos: atualizar(rascunho.custosFixos, c.id, { planejado: v, ativo: v ? false : c.ativo }) })}
+                      />
+                    </div>
                   </div>
                 ))}
                 <div className="flex flex-wrap items-center gap-3">
@@ -697,6 +725,81 @@ export default function Configuracoes() {
                     <strong className="text-texto">Proporcional:</strong> cada real que entra já é dividido entre custos e sócios, na mesma proporção do mês inteiro.
                     {e.ordemDistribuicao == null && <span className="font-semibold text-aviso"> Enquanto estiver vazia, o sistema não distribui os pagamentos.</span>}
                   </p>
+                </Bloco>
+
+                <Bloco titulo="Divisão entre os sócios">
+                  <p className="text-[12px] leading-snug text-texto-suave sm:col-span-2">
+                    Antes da virada, um sócio recebe um % do que entra (depois do imposto em %). Do resto saem a taxa e os custos; o que sobra fica com o outro sócio, que
+                    escolhe quanto disso vai para o tráfego da Aden. Quando entrar no mês o valor da virada, a sobra passa a ser dividida pelo % de cada sócio e o tráfego
+                    fica com o mínimo. <Lock size={11} className="inline" /> Os números são protegidos: mudar vale depois da aprovação.
+                  </p>
+                  <Alvo campo="sociedade">
+                    <Selecao
+                      rotulo="Quem recebe o % antes da virada"
+                      valor={e.socioPercentualId ?? null}
+                      vazio="Escolha o sócio…"
+                      disabled={!!original.empresa.socioPercentualId}
+                      opcoes={rascunho.pessoas.filter((p) => p.socio && p.ativo).map((p) => ({ valor: p.id, rotulo: p.nome }))}
+                      aoMudar={(v) => setE({ socioPercentualId: v })}
+                    />
+                  </Alvo>
+                  <CampoPct rotulo={<span className="flex items-center gap-1"><Lock size={11} /> % do que entra</span>} valor={e.sociedadePctSocio ?? null} aoMudar={(v) => setE({ sociedadePctSocio: v })} />
+                  <Selecao
+                    rotulo="Quem fica com a sobra"
+                    valor={e.socioSobraId ?? null}
+                    vazio="Escolha o sócio…"
+                    disabled={!!original.empresa.socioSobraId}
+                    opcoes={rascunho.pessoas.filter((p) => p.socio && p.ativo && p.id !== e.socioPercentualId).map((p) => ({ valor: p.id, rotulo: p.nome }))}
+                    aoMudar={(v) => setE({ socioSobraId: v })}
+                  />
+                  <CampoPct
+                    rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Da sobra, vai para o tráfego</span>}
+                    valor={e.sociedadeSobraTrafegoPct ?? null}
+                    aoMudar={(v) => setE({ sociedadeSobraTrafegoPct: v })}
+                  />
+                  <CampoMoeda
+                    rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Virada: quando entrar no mês</span>}
+                    valor={e.sociedadeTetoViradaCentavos ?? null}
+                    aoMudar={(v) => setE({ sociedadeTetoViradaCentavos: v })}
+                  />
+                  <CampoMoeda
+                    rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Parte acima disso vira bônus</span>}
+                    valor={e.sociedadeAvisoBonusCentavos ?? null}
+                    aoMudar={(v) => setE({ sociedadeAvisoBonusCentavos: v })}
+                  />
+                  <CampoMoeda
+                    rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Mínimo do tráfego próprio por mês</span>}
+                    valor={e.trafegoProprioMinimoCentavos ?? null}
+                    aoMudar={(v) => setE({ trafegoProprioMinimoCentavos: v })}
+                  />
+                  <Explica>
+                    Quem escolhe quanto da sobra vai para o tráfego é quem fica com ela: mudar esse % pede a aprovação só dele. Os outros números pedem a aprovação dos
+                    dois. Depois de escolhidos, quem recebe o % e quem fica com a sobra não mudam por aqui.
+                  </Explica>
+                </Bloco>
+
+                <Bloco titulo="Oferta padrão (tráfego com garantia)">
+                  <p className="text-[12px] leading-snug text-texto-suave sm:col-span-2">
+                    O cliente só paga a gestão do tráfego quando o resultado vier. Estes valores aparecem na Proposta para o cliente e servem de aviso interno.
+                  </p>
+                  <CampoMoeda rotulo="Verba de mídia indicada: de" valor={e.ofertaVerbaMinCentavos ?? null} aoMudar={(v) => setE({ ofertaVerbaMinCentavos: v })} />
+                  <CampoMoeda rotulo="até" valor={e.ofertaVerbaMaxCentavos ?? null} aoMudar={(v) => setE({ ofertaVerbaMaxCentavos: v })} />
+                  <CampoMoeda
+                    rotulo="Gestão depois do resultado"
+                    valor={e.ofertaGestaoAposResultadoCentavos ?? null}
+                    aoMudar={(v) => setE({ ofertaGestaoAposResultadoCentavos: v })}
+                  />
+                  <CampoMoeda
+                    rotulo="Social media + tráfego não fecha abaixo de"
+                    valor={e.ofertaMinimoSocialTrafegoCentavos ?? null}
+                    aoMudar={(v) => setE({ ofertaMinimoSocialTrafegoCentavos: v })}
+                  />
+                  <Explica>A verba é paga pelo cliente direto na plataforma e nunca entra no faturamento. Abaixo do mínimo, a Proposta só avisa (sem pedido de exceção).</Explica>
+                </Bloco>
+
+                <Bloco titulo="Leads">
+                  <CampoNumero rotulo="Follow-ups do &quot;vou ver&quot; antes de sugerir perda" valor={e.followUpsMaximo ?? null} aoMudar={(v) => setE({ followUpsMaximo: v })} />
+                  <Explica>Depois desse número de follow-ups sem resposta, a ficha do lead sugere marcar como perdido. Só sugere; vazio = nunca.</Explica>
                 </Bloco>
               </div>
             )}

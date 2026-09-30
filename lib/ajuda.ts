@@ -69,6 +69,12 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
       "Uma linha por cliente: quanto pagou no mês, quantas horas custou (vindas do relógio das tarefas) e quanto isso dá por hora. Clique no cliente para ver o detalhe e, se ficar abaixo do piso, os caminhos: subir o valor, cortar entregas ou os dois. Use no fim de cada mês.",
     termos: ["piso", "valor-por-hora", "escopo"],
   },
+  "/mes#cima": {
+    titulo: "Mês visto de cima",
+    texto:
+      "De cima para baixo: o que entrou no mês, o imposto, os custos, o tráfego próprio da Aden e quanto fica para cada sócio, pela regra que vocês combinaram. Custos pagos do bolso de um sócio aparecem à parte e não saem do caixa. A barra mostra quanto falta para a virada, quando a divisão passa a ser meio a meio.",
+    termos: ["sobra", "ordem-distribuicao"],
+  },
   "/mes#socios": {
     titulo: "Mês · Sócios",
     texto: "Mostra quanto cada sócio já tem para receber no mês, com base nos pagamentos que entraram. Use na hora de fazer o repasse (a transferência para cada sócio).",

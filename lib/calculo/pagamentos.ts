@@ -6,7 +6,14 @@
 // - custo_primeiro: o que entra cobre primeiro os custos do mês; o resto é sobra
 // - proporcional: cada real vai para custos e sobra na mesma proporção do mês completo
 // Imposto em % e taxa de recebimento são descontados de cada pagamento (a tarifa fixa
-// é cobrada por pagamento). Sem ordem escolhida, a distribuição fica bloqueada.
+// é cobrada por pagamento; um pagamento pode ter a taxa real dele, ex.: cartão). Sem ordem
+// escolhida, a distribuição fica bloqueada.
+//
+// Regra da sociedade (29/09/2026): antes da virada (o que entrou no mês do pagamento, somando
+// todos os clientes, abaixo do teto), o sócio do % recebe o % de cada pagamento depois do
+// imposto (pagamento parcial gera o % do parcial). O resto paga a taxa e os custos; o que
+// sobra vai para o tráfego próprio (pelo % escolhido) e para o outro sócio. Depois da virada,
+// vale a ordem escolhida e o % padrão de cada sócio.
 
 import { escopoDoCliente } from "./mes";
 import { calcularComReceita, prepararMes } from "./motor";
@@ -14,6 +21,7 @@ import { novoCenario } from "./novo";
 import type { Alerta, ClienteBase, Configuracao, Id } from "./tipos";
 
 const EPS = 0.5;
+const v0 = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? 0 : v);
 
 export interface Pagamento {
   id: Id;
@@ -26,6 +34,8 @@ export interface Pagamento {
   observacao?: string | null;
   autor?: string | null;
   criadoEm?: string | null;
+  /** taxa real deste pagamento (ex.: cartão). null = usa a taxa padrão da configuração */
+  taxaCentavos?: number | null;
 }
 
 export interface Baldes {
@@ -34,6 +44,8 @@ export interface Baldes {
   /** custos do projeto + parte do custo fixo (inclui imposto fixo) */
   custosCentavos: number;
   reinvestimentoCentavos: number;
+  /** antes da virada: parte da sobra que vai para o tráfego próprio da Aden */
+  trafegoProprioCentavos: number;
   socios: Record<Id, number>;
 }
 
@@ -63,7 +75,7 @@ export interface DistribuicaoCliente {
 }
 
 function zerado(): Baldes {
-  return { impostoCentavos: 0, taxaCentavos: 0, custosCentavos: 0, reinvestimentoCentavos: 0, socios: {} };
+  return { impostoCentavos: 0, taxaCentavos: 0, custosCentavos: 0, reinvestimentoCentavos: 0, trafegoProprioCentavos: 0, socios: {} };
 }
 
 function somar(a: Baldes, b: Baldes) {
@@ -71,6 +83,7 @@ function somar(a: Baldes, b: Baldes) {
   a.taxaCentavos += b.taxaCentavos;
   a.custosCentavos += b.custosCentavos;
   a.reinvestimentoCentavos += b.reinvestimentoCentavos;
+  a.trafegoProprioCentavos += b.trafegoProprioCentavos;
   for (const [id, v] of Object.entries(b.socios)) a.socios[id] = (a.socios[id] ?? 0) + v;
 }
 
@@ -158,26 +171,59 @@ export function distribuirPagamentos(
     taxaCentavos: plano.taxasCentavos,
     custosCentavos: custosPlano,
     reinvestimentoCentavos: plano.reinvestimentoCentavos,
+    trafegoProprioCentavos: 0,
     socios: Object.fromEntries(plano.pessoas.filter((p) => p.valorCentavos != null).map((p) => [p.id, p.valorCentavos!])),
   };
+
+  // antes da virada, a parte planejada de quem fica com a sobra se divide com o tráfego próprio
+  if (plano.divisao.tipo === "percentual" && prep.sociedade) {
+    const sobraId = prep.sociedade.sobraId ?? prep.socios.find((s) => s.pessoa.id !== prep.sociedade!.socioId)?.pessoa.id;
+    if (sobraId && planejado.socios[sobraId] != null) {
+      const t = Math.max(0, planejado.socios[sobraId]) * (v0(config.empresa.sociedadeSobraTrafegoPct) / 100);
+      planejado.socios[sobraId] -= t;
+      planejado.trafegoProprioCentavos = t;
+    }
+  }
 
   // parte do líquido que é custo, no modo proporcional
   const fracaoCusto = custosPlano + Math.max(0, sobraPlano) > 0 ? custosPlano / (custosPlano + Math.max(0, sobraPlano)) : 1;
 
   const totais = zerado();
   let custosPagos = 0;
+  const e = config.empresa;
+  const soc = prep.sociedade;
+  const entrouNoMes = (data: string) => pagamentos.filter((x) => x.recebidoEm.slice(0, 7) === data.slice(0, 7)).reduce((a, x) => a + x.valorCentavos, 0);
   const partes: PartePagamento[] = doMes.map((p) => {
     const v = p.valorCentavos;
     const imposto = (v * prep.impostoPct) / 100;
-    const taxa = v > 0 ? (v * prep.taxaPct) / 100 + prep.taxaFixa : 0;
-    const liquido = v - imposto - taxa;
-    const faltaCusto = Math.max(0, custosPlano - custosPagos);
-    const custo = liquido <= 0 ? 0 : Math.min(faltaCusto, ordem === "custo_primeiro" ? liquido : liquido * fracaoCusto);
-    custosPagos += custo;
-    const sobra = liquido - custo;
-    const reinv = sobra > 0 ? (sobra * prep.reinvPct) / 100 : 0;
-    const dividir = sobra - reinv;
-    const socios = Object.fromEntries([...pctSocios].map(([id, pct]) => [id, (dividir * pct) / 100]));
+    const taxa = p.taxaCentavos != null ? p.taxaCentavos : v > 0 ? (v * prep.taxaPct) / 100 + prep.taxaFixa : 0;
+    const antesDaVirada = soc != null && entrouNoMes(p.recebidoEm) < soc.teto - EPS;
+    let socios: Record<Id, number>;
+    let custo: number;
+    let reinv: number;
+    let trafego = 0;
+    if (antesDaVirada) {
+      const parteSocio = ((v - imposto) * soc!.pct) / 100;
+      const resto = v - imposto - parteSocio - taxa;
+      custo = resto <= 0 ? 0 : Math.min(Math.max(0, custosPlano - custosPagos), resto);
+      custosPagos += custo;
+      const sobra = resto - custo;
+      reinv = sobra > 0 ? (sobra * prep.reinvPct) / 100 : 0;
+      const livre = sobra - reinv;
+      trafego = livre > 0 ? (livre * v0(e.sociedadeSobraTrafegoPct)) / 100 : 0;
+      const sobraId = soc!.sobraId ?? prep.socios.find((s) => s.pessoa.id !== soc!.socioId)?.pessoa.id ?? null;
+      socios = { [soc!.socioId]: parteSocio };
+      if (sobraId) socios[sobraId] = livre - trafego;
+    } else {
+      const liquido = v - imposto - taxa;
+      const faltaCusto = Math.max(0, custosPlano - custosPagos);
+      custo = liquido <= 0 ? 0 : Math.min(faltaCusto, ordem === "custo_primeiro" ? liquido : liquido * fracaoCusto);
+      custosPagos += custo;
+      const sobra = liquido - custo;
+      reinv = sobra > 0 ? (sobra * prep.reinvPct) / 100 : 0;
+      const dividir = sobra - reinv;
+      socios = Object.fromEntries([...pctSocios].map(([id, pct]) => [id, (dividir * pct) / 100]));
+    }
     const parte: PartePagamento = {
       pagamentoId: p.id,
       valorCentavos: v,
@@ -187,6 +233,7 @@ export function distribuirPagamentos(
       taxaCentavos: taxa,
       custosCentavos: custo,
       reinvestimentoCentavos: reinv,
+      trafegoProprioCentavos: trafego,
       socios,
     };
     somar(totais, parte);

@@ -311,6 +311,7 @@ export function Selecao({
   rotulo,
   className,
   ariaLabel,
+  disabled,
 }: {
   valor: string | null;
   aoMudar: (v: string | null) => void;
@@ -319,6 +320,8 @@ export function Selecao({
   rotulo?: ReactNode;
   className?: string;
   ariaLabel?: string;
+  /** travado (ex.: escolha que não muda depois de feita) */
+  disabled?: boolean;
 }) {
   const id = useId();
   const grupos = [...new Set(opcoes.map((o) => o.grupo))];
@@ -330,7 +333,8 @@ export function Selecao({
         <select
           id={id}
           aria-label={ariaLabel}
-          className={cx(campoBase, "cursor-pointer appearance-none pr-8")}
+          disabled={disabled}
+          className={cx(campoBase, "cursor-pointer appearance-none pr-8 disabled:cursor-not-allowed disabled:opacity-70")}
           value={valor ?? ""}
           onChange={(e) => aoMudar(e.target.value === "" ? null : e.target.value)}
         >

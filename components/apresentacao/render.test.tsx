@@ -10,6 +10,8 @@ import type { Configuracao } from "@/lib/calculo/tipos";
 import { PropostaDoc } from "../impressao/Proposta";
 import { VistaCliente } from "./VistaCliente";
 import { VistaPacoteCliente } from "./VistaPacote";
+import { BlocoGarantia } from "./Garantia";
+import { garantiaParaCliente } from "@/lib/calculo/apresentacao";
 import { vistaPacote } from "@/lib/calculo/apresentacao";
 import { pacoteParaCenario } from "@/lib/calculo/pacotes";
 
@@ -54,6 +56,21 @@ describe("tela do cliente e PDF", () => {
       expect(texto).toContain("Post simples");
       expect(texto).toContain("Investimento mensal");
     }
+  });
+
+  it("tráfego com garantia: o cliente lê a oferta, nunca número interno", () => {
+    const c = config();
+    c.empresa.ofertaVerbaMinCentavos = 100000;
+    c.empresa.ofertaVerbaMaxCentavos = 200000;
+    c.empresa.ofertaGestaoAposResultadoCentavos = 300000;
+    const cen = novoCenario("x");
+    cen.trafego.modelo = "garantia";
+    const g = garantiaParaCliente(c, cen)!;
+    const texto = renderToStaticMarkup(<BlocoGarantia g={g} />).replace(/<[^>]+>/g, " ");
+    expect(texto).not.toMatch(PROIBIDO);
+    expect(texto).toContain("só paga a gestão do tráfego quando o resultado vier");
+    expect(texto).toMatch(/1\.000,00.*2\.000,00/);
+    expect(garantiaParaCliente(c, novoCenario("y"))).toBeNull();
   });
 
   it("o sinal discreto muda de cor sem texto", () => {

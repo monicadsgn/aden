@@ -22,7 +22,8 @@ import { Modal } from "@/components/Modal";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Card, CampoMoeda, CampoNumero, EtiquetaOrigem, Vazio, cx } from "@/components/ui";
 import { calcularCalibragem, type CalibragemTipo, type Medicao } from "@/lib/calculo/calibragem";
-import { calcularSaudeCliente, horasDasTarefas, rotuloOrigemHoras, type RegistroMesCliente, type SaudeCliente } from "@/lib/calculo/mes";
+import { calcularSaudeCliente, escopoDoCliente, horasDasTarefas, rotuloOrigemHoras, type RegistroMesCliente, type SaudeCliente } from "@/lib/calculo/mes";
+import { ehServicoTrafego, prepararMes } from "@/lib/calculo/motor";
 import { configVazia } from "@/lib/calculo/novo";
 import { somaPagamentos, type Pagamento } from "@/lib/calculo/pagamentos";
 import { calcularSolucoes, type SolucoesSaude } from "@/lib/calculo/solucoes";
@@ -40,6 +41,15 @@ const ORIGEM_VALOR = {
   manual: "lançado à mão",
   contrato: "valor do contrato",
 } as const;
+
+/**
+ * Tráfego com garantia (sugestão aprovada em 29/09): horas do tráfego previstas no escopo de um
+ * cliente que ainda não paga a gestão. É trabalho investido, sem receita, até o resultado vir.
+ */
+function horasSemCobranca(config: Configuracao, c: ClienteBase): number {
+  if (c.escopo?.trafego.modelo !== "garantia") return 0;
+  return prepararMes(config, escopoDoCliente(c), { semRateio: true }).servicos.filter((s) => ehServicoTrafego(s.nome)).reduce((a, s) => a + s.horas, 0);
+}
 
 /** O sinal de cada cliente no mês (a mesma etiqueta na linha e no detalhe). */
 function sinalDoCliente(s: SaudeCliente) {
@@ -504,6 +514,7 @@ export default function Saude() {
                     const contrato = s.valorContratoCentavos;
                     const origens = new Set(s.socios.filter((x) => x.horasReais > 0).map((x) => x.origemHoras.tipo));
                     const deOnde = origens.has("manual") ? "corrigidas" : origens.has("tarefas") ? "das tarefas" : "previstas";
+                    const investidas = horasSemCobranca(config, c);
                     return (
                       <tr key={c.id} onClick={() => setAberto(c.id)} className="cursor-pointer hover:bg-superficie-2/60">
                         <td className="border-t border-linha px-4 py-3 font-semibold">
@@ -524,6 +535,9 @@ export default function Saude() {
                           <Badge tom={sinal.tom} icone={sinal.icone}>
                             {sinal.texto}
                           </Badge>
+                          {investidas > 0 && (
+                            <span className="mt-1 block text-[11px] text-info">garantia: {formatarHoras(investidas)} de tráfego por mês sem cobrança</span>
+                          )}
                         </td>
                       </tr>
                     );

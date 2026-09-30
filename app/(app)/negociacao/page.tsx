@@ -3,13 +3,15 @@
 import { Eye, FileDown, HandCoins, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { BlocoGarantia } from "@/components/apresentacao/Garantia";
 import { VistaCliente } from "@/components/apresentacao/VistaCliente";
 import { EscolherPacote, VistaPacoteCliente } from "@/components/apresentacao/VistaPacote";
 import { Marca } from "@/components/Marca";
-import { Botao, CampoMoeda, CampoTexto, Selecao, cx } from "@/components/ui";
-import { alternarServico, pacoteQueCabe, vistaApresentacao, vistaPacote, type EstadoApresentacao } from "@/lib/calculo/apresentacao";
+import { Botao, CampoMoeda, CampoTexto, Interruptor, Selecao, cx } from "@/components/ui";
+import { alternarServico, garantiaParaCliente, pacoteQueCabe, vistaApresentacao, vistaPacote, type EstadoApresentacao } from "@/lib/calculo/apresentacao";
+import type { Lead } from "@/lib/calculo/crm";
 import { frasesParaCliente, pacoteParaCenario, precoDoPacote } from "@/lib/calculo/pacotes";
-import { ajustarQuantidade, calcularCenario } from "@/lib/calculo/motor";
+import { abaixoDoMinimoSocialTrafego, ajustarQuantidade, calcularCenario, temEntregaDeTrafego } from "@/lib/calculo/motor";
 import { configVazia, duplicarCenario, novoCenario, novoId } from "@/lib/calculo/novo";
 import type { Configuracao, Id } from "@/lib/calculo/tipos";
 import { assinaturaProposta } from "@/lib/dados/acoes";
@@ -44,6 +46,8 @@ export default function Negociacao() {
   // vindo da ficha do cliente ("Personalizar escopo"): guarda o escopo e volta para a ficha
   const [volta, setVolta] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  // vindo do lead (CRM): para lembrar de conferir o comercial antes de oferecer a garantia
+  const [lead, setLead] = useState<Lead | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -52,8 +56,11 @@ export default function Negociacao() {
         setConfig(c);
         setPedidos(await repo.listarPedidos().catch(() => []));
         const recebido = receberCenario();
-        const v = new URLSearchParams(window.location.search).get("volta");
+        const q = new URLSearchParams(window.location.search);
+        const v = q.get("volta");
         if (v?.startsWith("/")) setVolta(v);
+        const leadId = q.get("lead");
+        if (leadId) setLead((await repo.listarLeads().catch(() => [])).find((x) => x.id === leadId) ?? null);
         if (recebido?.cenarios[0]) {
           const cen = recebido.cenarios[0];
           setEstado({ cenario: cen, desligados: {} });
@@ -74,6 +81,8 @@ export default function Negociacao() {
 
   const vista = useMemo(() => vistaApresentacao(config, estado), [config, estado]);
   const cen = estado.cenario;
+  const garantia = garantiaParaCliente(config, cen);
+  const temTrafego = temEntregaDeTrafego(config, cen);
   const pacotesAtivos = (config.pacotes ?? []).filter((p) => p.ativo);
   const vPacote = useMemo(() => {
     const p = (config.pacotes ?? []).find((x) => x.ativo && x.id === estado.cenario.pacoteId);
@@ -131,8 +140,20 @@ export default function Negociacao() {
   const liberado = abaixo.length === 0 || excecoes.some((p) => p.status === "aplicado");
   const pendente = excecoes.some((p) => p.status === "pendente");
 
+  // avisos internos (nunca na tela do cliente): perguntados na hora de exportar
+  const avisosInternos = () => {
+    const out: string[] = [];
+    const min = abaixoDoMinimoSocialTrafego(config, cen, valor);
+    if (min != null) out.push(`Social media + tráfego está abaixo do mínimo combinado de ${formatarMoeda(min)} por mês.`);
+    if (cen.trafego.modelo === "garantia" && lead?.comercialEstruturado !== true)
+      out.push(lead ? `${lead.nome} ainda não tem o comercial marcado como estruturado: a garantia pode não trazer venda.` : "Confirme se o comercial do cliente está estruturado antes de oferecer a garantia.");
+    return out;
+  };
+
   const exportar = async () => {
     if (valor == null) return;
+    const avisos = avisosInternos();
+    if (avisos.length && !confirm(`${avisos.join("\n")}\n\nExportar mesmo assim?`)) return;
     if (!liberado) {
       if (pendente) return setAviso("Esta versão está esperando aprovação interna.");
       if (!confirm("Esta versão precisa de aprovação interna antes de exportar. Pedir agora?")) return;
@@ -240,7 +261,16 @@ export default function Negociacao() {
           </>
         )}
 
+        {garantia && <BlocoGarantia g={garantia} />}
+
         <section className="flex flex-col gap-3 rounded-card border border-linha bg-superficie p-5 shadow-card">
+          {temTrafego && (
+            <Interruptor
+              ligado={cen.trafego.modelo === "garantia"}
+              rotulo="Tráfego com garantia (a gestão só é cobrada depois do resultado)"
+              aoMudar={(v) => setEstado({ ...estado, cenario: { ...cen, trafego: { ...cen.trafego, modelo: v ? "garantia" : null } } })}
+            />
+          )}
           <div className="flex flex-wrap items-end gap-3">
             <CampoMoeda className="w-full sm:w-56" rotulo="Só tenho" valor={soTenho} aoMudar={setSoTenho} />
             <Botao icone={HandCoins} disabled={!soTenho} onClick={montarPeloValor}>

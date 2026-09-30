@@ -28,6 +28,23 @@ export function vencimentoNoMes(diaPagamento: number, competencia: string): stri
   return `${competencia}-${String(d).padStart(2, "0")}`;
 }
 
+/**
+ * Último dia útil do mês (segunda a sexta). Feriados não entram: o sistema não tem
+ * calendário de feriados, então num mês que termina em feriado o cliente pode pagar depois.
+ */
+export function ultimoDiaUtil(competencia: string): string {
+  const [a, m] = competencia.split("-").map(Number);
+  let d = ultimoDia(a, m - 1);
+  while ([0, 6].includes(new Date(Date.UTC(a, m - 1, d)).getUTCDay())) d--;
+  return `${competencia}-${String(d).padStart(2, "0")}`;
+}
+
+/** Vencimento do contrato no mês: último dia útil ou o dia do pagamento. null = não combinado. */
+export function vencimentoDoContrato(k: DadosContrato, competencia: string): string | null {
+  if (k.venceUltimoDiaUtil) return ultimoDiaUtil(competencia);
+  return k.diaPagamento != null ? vencimentoNoMes(k.diaPagamento, competencia) : null;
+}
+
 /** Fim da fidelidade: início + prazo mínimo (em meses). */
 export function fimDaFidelidade(k: DadosContrato): string | null {
   if (!k.inicio || !k.prazoMinimoMeses) return null;
@@ -60,8 +77,8 @@ export function lembretesDeContrato(clientes: ClienteBase[], recebidoNoMes: (cli
   for (const c of clientes.filter((x) => x.ativo && !x.interno)) {
     const k = c.contrato;
     if (!k) continue;
-    if (k.diaPagamento != null) {
-      const venc = vencimentoNoMes(k.diaPagamento, competencia);
+    const venc = vencimentoDoContrato(k, competencia);
+    if (venc != null) {
       const falta = c.valorMensalCentavos != null && recebidoNoMes(c.id) < c.valorMensalCentavos;
       if (venc === hoje && falta) out.push({ clienteId: c.id, cliente: c.nome, texto: "pagamento vence hoje", data: venc });
     }

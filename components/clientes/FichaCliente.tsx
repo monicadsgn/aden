@@ -14,7 +14,7 @@ import { DetalheTarefa } from "../tarefas/DetalheTarefa";
 import { LinhaTarefa } from "../tarefas/LinhaTarefa";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
 import { Badge, Botao, CampoMoeda, CampoNumero, Interruptor, Segmentado, Selecao } from "../ui";
-import { contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio, vencimentoNoMes } from "@/lib/calculo/clientes";
+import { contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio, vencimentoDoContrato } from "@/lib/calculo/clientes";
 import { rotuloEtapa, TIPOS_INTERACAO, type InteracaoLead, type Lead } from "@/lib/calculo/crm";
 import { hojeISO } from "@/lib/calculo/dia";
 import { novoCenario, novoId } from "@/lib/calculo/novo";
@@ -124,6 +124,7 @@ export function FichaCliente({
   const fidelidade = fimDaFidelidade(k);
   const aviso = prazoDoAvisoPrevio(k);
   const hoje = hojeISO();
+  const entrouNoMes = pags.filter((p) => p.competencia === hoje.slice(0, 7)).reduce((a, p) => a + p.valorCentavos, 0);
 
   const escopoDoPacote = async (pacoteId: string | null) => {
     const p = (config.pacotes ?? []).find((x) => x.id === pacoteId);
@@ -221,7 +222,13 @@ export function FichaCliente({
           <div className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-3">
               <CampoMoeda rotulo="Valor mensal" valor={c.valorMensalCentavos} aoMudar={(v) => set({ valorMensalCentavos: v })} />
-              <CampoNumero rotulo="Dia do pagamento" valor={k.diaPagamento} aoMudar={(v) => setK({ diaPagamento: v == null ? null : Math.min(31, Math.max(1, Math.round(v))) })} />
+              {k.venceUltimoDiaUtil ? (
+                <Rot rotulo="Vencimento">
+                  <p className="flex h-10 items-center text-sm text-texto-suave">último dia útil do mês</p>
+                </Rot>
+              ) : (
+                <CampoNumero rotulo="Dia do pagamento" valor={k.diaPagamento} aoMudar={(v) => setK({ diaPagamento: v == null ? null : Math.min(31, Math.max(1, Math.round(v))) })} />
+              )}
               <Rot rotulo="Início da cobrança">
                 <Texto valor={k.inicioCobranca} aoSalvar={(v) => setK({ inicioCobranca: v })} placeholder="ex.: na assinatura" />
               </Rot>
@@ -236,9 +243,32 @@ export function FichaCliente({
               <CampoNumero rotulo="Rodadas de alteração por peça" valor={k.limiteRodadas} aoMudar={(v) => setK({ limiteRodadas: v })} />
               <CampoNumero rotulo="Prazo para o cliente aprovar" sufixo="dias" valor={k.prazoAprovacaoDias} aoMudar={(v) => setK({ prazoAprovacaoDias: v })} />
               <CampoNumero rotulo="Prazo de entrega" sufixo="dias" valor={k.prazoEntregaDias} aoMudar={(v) => setK({ prazoEntregaDias: v })} />
+              <CampoNumero rotulo="Máximo de reuniões por mês" valor={k.limiteReunioesMes ?? null} aoMudar={(v) => setK({ limiteReunioesMes: v })} />
+              <div className="flex items-end pb-2 sm:col-span-2">
+                <Interruptor ligado={!!k.venceUltimoDiaUtil} rotulo="Vence no último dia útil do mês" aoMudar={(v) => setK({ venceUltimoDiaUtil: v })} />
+              </div>
             </div>
+            {c.escopo?.trafego.modelo === "garantia" || k.garantiaResultado || k.garantiaAte ? (
+              <div className="grid gap-3 rounded-bloco border border-linha p-3 sm:grid-cols-[1fr_12rem]">
+                <p className="text-sm font-bold sm:col-span-2">Tráfego com garantia</p>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
+                  O que conta como resultado
+                  <textarea
+                    key={`${c.id}-g`}
+                    className="min-h-14 rounded-campo border border-linha bg-superficie px-3 py-2 text-sm font-normal text-texto focus:border-marca focus:outline-none"
+                    defaultValue={k.garantiaResultado ?? ""}
+                    placeholder="O número combinado com o cliente (ex.: quantas vendas ou contatos)"
+                    onBlur={(e) => e.target.value !== (k.garantiaResultado ?? "") && setK({ garantiaResultado: e.target.value })}
+                  />
+                </label>
+                <Rot rotulo="A garantia vale até">
+                  <input type="date" className={campo} value={k.garantiaAte ?? ""} onChange={(e) => setK({ garantiaAte: e.target.value || null })} />
+                </Rot>
+                <p className="text-[11px] text-texto-suave sm:col-span-2">Enquanto o resultado não vem, a gestão do tráfego não é cobrada. Escreva o que foi combinado para ninguém discutir depois.</p>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2 text-xs">
-              {k.diaPagamento != null && <Badge>próximo pagamento: {dataBr(vencimentoNoMes(k.diaPagamento, hoje.slice(0, 7)))}</Badge>}
+              {vencimentoDoContrato(k, hoje.slice(0, 7)) && <Badge>vence este mês: {dataBr(vencimentoDoContrato(k, hoje.slice(0, 7))!)}</Badge>}
               {fidelidade && <Badge tom={fidelidade > hoje ? "info" : "neutro"}>fidelidade até {dataBr(fidelidade)}</Badge>}
               {aviso && <Badge tom={aviso >= hoje ? "aviso" : "neutro"}>avisar se não renovar até {dataBr(aviso)}</Badge>}
             </div>
@@ -345,6 +375,23 @@ export function FichaCliente({
                 Ver a saúde deste cliente
               </Link>
             </div>
+            {c.valorMensalCentavos != null && (
+              <div className="rounded-bloco bg-superficie-2/70 px-3 py-2 text-[13px]">
+                <p>
+                  Este mês entrou <strong className="numero">{formatarMoeda(entrouNoMes)}</strong> de <strong className="numero">{formatarMoeda(c.valorMensalCentavos)}</strong>
+                  {entrouNoMes < c.valorMensalCentavos ? (
+                    <>
+                      {" "}
+                      · falta <strong className="numero text-aviso">{formatarMoeda(c.valorMensalCentavos - entrouNoMes)}</strong>
+                    </>
+                  ) : (
+                    " · mês pago"
+                  )}
+                  .
+                </p>
+                <p className="text-[11px] text-texto-suave">Conta os pagamentos com referência a este mês, mesmo que tenham caído em partes.</p>
+              </div>
+            )}
             {pags.length === 0 ? (
               <p className="text-xs text-texto-suave">Nenhum pagamento registrado ainda.</p>
             ) : (

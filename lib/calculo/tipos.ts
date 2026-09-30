@@ -119,6 +119,14 @@ export interface CustoFixo {
   nome: string;
   valorMensalCentavos: Centavos;
   ativo: boolean;
+  /**
+   * Sócio que paga este custo do próprio bolso (registro, sem reembolso). Conta no preço
+   * (calculadora) como qualquer custo; no mês visto de cima aparece em "bancado por" e
+   * não sai do caixa da Aden. null = a Aden paga.
+   */
+  pagoPorPessoaId?: Id | null;
+  /** custo guardado para quando o caixa permitir (fica desligado; avisa quando a sobra cobre) */
+  planejado?: boolean;
 }
 
 /** Cliente ativo usado como base do rateio de custo fixo. */
@@ -163,6 +171,14 @@ export interface DadosContrato {
   /** quando começa a cobrança (texto livre: "na assinatura", "após o onboarding"…) */
   inicioCobranca: string;
   observacoes: string;
+  /** vence no último dia útil do mês (no lugar do dia do pagamento) */
+  venceUltimoDiaUtil?: boolean;
+  /** máximo de reuniões por mês combinado no contrato (condição, não quantidade do pacote) */
+  limiteReunioesMes?: number | null;
+  /** tráfego com garantia: o que conta como resultado (texto combinado com o cliente) */
+  garantiaResultado?: string;
+  /** tráfego com garantia: até quando vale ("AAAA-MM-DD") */
+  garantiaAte?: string | null;
 }
 
 export type RegraRateio = "igual" | "proporcional";
@@ -204,6 +220,33 @@ export interface ConfigEmpresa {
   diferencaSugerirPct?: Pct;
   /** lead parado na mesma etapa há este número de dias acende o aviso no CRM; vazio = nunca */
   diasLeadParado?: number | null;
+  /** depois de quantos follow-ups sem resposta o sistema sugere marcar o lead como perdido; vazio = nunca */
+  followUpsMaximo?: number | null;
+
+  // ─── Divisão entre os sócios (decidida em 29/09/2026; os números são protegidos) ───
+  /** sócio que recebe um % do que entra enquanto o faturamento não chega ao teto da virada */
+  socioPercentualId?: Id | null;
+  /** % do que entra (depois do imposto em %) que vai para esse sócio */
+  sociedadePctSocio?: Pct;
+  /** o que entrou no mês a partir do qual a divisão vira igual (percentual padrão de cada sócio) */
+  sociedadeTetoViradaCentavos?: Centavos;
+  /** parte do sócio acima deste valor aparece destacada como "bônus" */
+  sociedadeAvisoBonusCentavos?: Centavos;
+  /** sócio que fica com a sobra (e cobre o que faltar) antes da virada */
+  socioSobraId?: Id | null;
+  /** % da sobra desse sócio que vai para o tráfego próprio da Aden (ele mesmo controla) */
+  sociedadeSobraTrafegoPct?: Pct;
+  /** mínimo por mês para o tráfego próprio da Aden */
+  trafegoProprioMinimoCentavos?: Centavos;
+
+  // ─── Oferta padrão (proposta e negociação) ───
+  /** verba de mídia indicada ao cliente, de… até… (paga por ele direto na plataforma) */
+  ofertaVerbaMinCentavos?: Centavos;
+  ofertaVerbaMaxCentavos?: Centavos;
+  /** valor da gestão de tráfego depois que o resultado vem (tráfego com garantia) */
+  ofertaGestaoAposResultadoCentavos?: Centavos;
+  /** social media + tráfego abaixo deste valor mostra um aviso na Proposta (só aviso) */
+  ofertaMinimoSocialTrafegoCentavos?: Centavos;
 }
 
 export interface Configuracao {
@@ -251,7 +294,9 @@ export type ModeloTrafego =
   | "por_campanha"
   | "percentual_verba"
   | "incluido"
-  | "sem_trafego";
+  | "sem_trafego"
+  /** tráfego com garantia: a gestão só é cobrada depois do resultado (até lá, horas sem receita) */
+  | "garantia";
 
 export interface CobrancaTrafego {
   modelo: ModeloTrafego | null;
@@ -370,6 +415,8 @@ export interface ResultadoPessoa {
   consumoCapacidadePct: number | null;
   /** recebe parte da sobra sem ter horas neste cliente (a regra é dos sócios; aqui só fica visível) */
   recebeSemHoras: boolean;
+  /** de onde vem a parte dele: "30% do que entra" ou "o que sobra" (regra da sociedade) */
+  regraParte?: string | null;
 }
 
 export interface ResultadoServico {
@@ -423,8 +470,19 @@ export interface ResultadoMes {
   /** sobra ÷ horas (informativo) */
   sobraHoraCentavos: number | null;
   percentuaisValidos: boolean;
+  /** qual divisão entre os sócios valeu nesta conta */
+  divisao: DivisaoDoMes;
   alertas: Alerta[];
 }
+
+/**
+ * Divisão entre os sócios usada na conta:
+ * - percentual: antes da virada, um sócio recebe um % do que entra (depois do imposto em %) e o outro fica com o resto
+ * - sobra: a sobra dividida pelo percentual padrão de cada sócio (depois da virada, ou sem a regra configurada)
+ */
+export type DivisaoDoMes =
+  | { tipo: "percentual"; socioId: Id; pct: number; faturamentoMesCentavos: number; tetoViradaCentavos: number }
+  | { tipo: "sobra"; faturamentoMesCentavos: number | null; tetoViradaCentavos: number | null };
 
 export interface ResultadoMinimo {
   possivel: boolean;

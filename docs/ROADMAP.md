@@ -113,7 +113,9 @@ migração. Meta: tudo pronto até o fim de outubro.
 - **Fase 1 · Simplificar:** feita em 29/09. Calculadora de volta no menu (Vendas, com destaque); só fica na frente o
   que se usa com 2 a 5 clientes, o resto escondido sem apagar (`COM_VOLUME` em `lib/recursos.ts`); graves 5, 6 e 7 da
   auditoria feitos; comparação com sistemas de agência em `docs/AUDITORIA.md`.
-- **Fase 2 · Dados e regras da reunião:** seção 0 acima (sociedade, sócios, clientes, entregas, dinheiro, "mês visto de
+- **Fase 2 · Dados e regras da reunião:** código feito em 30/09 (regra da sociedade, mês visto de cima, garantia,
+  contrato, follow-up, custo bancado por sócio, taxa por pagamento, teto do MEI; migration 0019). Falta: backup,
+  aplicar a 0019 no banco, publicar e cadastrar os dados reais. Seção 0 acima (sociedade, sócios, clientes, entregas, dinheiro, "mês visto de
   cima" no lugar da aba Sócios dentro de Mês, oferta padrão) e as sugestões aprovadas.
 - **Fase 3 · Migração da área da agência:** tarefas, peças, aprovações e painel da Olinda e da StadiumPlay; porta
   genérica para a Moni ver e mexer nas tarefas dela de fora.

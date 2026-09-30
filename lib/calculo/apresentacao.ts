@@ -33,6 +33,21 @@ export interface VistaApresentacao {
   incluiTrafego: boolean;
   verbaMidiaCentavos: number | null;
   sinal: Sinal;
+  /** tráfego com garantia: o que o cliente lê (nunca dado interno) */
+  garantia: GarantiaCliente | null;
+}
+
+/** Oferta do tráfego com garantia, como o cliente lê: verba indicada e a gestão depois do resultado. */
+export interface GarantiaCliente {
+  verbaDeCentavos: number | null;
+  verbaAteCentavos: number | null;
+  gestaoDepoisCentavos: number | null;
+}
+
+export function garantiaParaCliente(config: Configuracao, cenario: Cenario): GarantiaCliente | null {
+  if (cenario.trafego.modelo !== "garantia") return null;
+  const e = config.empresa;
+  return { verbaDeCentavos: e.ofertaVerbaMinCentavos ?? null, verbaAteCentavos: e.ofertaVerbaMaxCentavos ?? null, gestaoDepoisCentavos: e.ofertaGestaoAposResultadoCentavos ?? null };
 }
 
 /** Sinal para o operador: atenção quando algum sócio fica abaixo do piso, passa das horas do mês ou a sobra fica negativa. */
@@ -79,6 +94,7 @@ export function vistaApresentacao(config: Configuracao, estado: EstadoApresentac
     incluiTrafego: !!r.proposta?.incluiTrafego,
     verbaMidiaCentavos: r.proposta?.verbaMidiaCentavos ?? null,
     sinal: sinalDoCenario(config, cenario),
+    garantia: garantiaParaCliente(config, cenario),
   };
 }
 

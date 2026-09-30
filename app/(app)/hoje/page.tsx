@@ -51,6 +51,7 @@ import type { AvisoSocio, Pedido, ResumoSimulacao } from "@/lib/dados/repositori
 import { formatarMoeda, formatarPct, primeiraMaiuscula } from "@/lib/formato";
 import { linkConfig } from "@/lib/navegacao";
 import { COM_VOLUME } from "@/lib/recursos";
+import { mesQueEstouraOTeto } from "@/lib/calculo/sociedade";
 import { passosParaComecar, type PassoComecar } from "@/lib/regras/pendencias";
 
 type Chave = "hoje" | "atrasadas" | "semana" | "aprovacao" | "concluidas";
@@ -198,6 +199,8 @@ export default function VisaoDoDia() {
   const trilha = useMemo(() => calcularTrilha(cfg, visaoMes), [cfg, visaoMes]);
   const padrao = pacotePadrao(cfg);
   const espaco = useMemo(() => (padrao ? espacoPraVender(cfg, padrao, visaoMes) : null), [cfg, padrao, visaoMes]);
+
+  const estouroTeto = useMemo(() => mesQueEstouraOTeto(cfg, pagamentos, hoje), [cfg, pagamentos, hoje]);
 
   const financeiro = useMemo(() => {
     const clientes = cfg.clientes.filter((c) => c.ativo && !c.interno);
@@ -555,7 +558,7 @@ export default function VisaoDoDia() {
             )}
 
             {socio && (
-            <Bloco titulo="Financeiro do mês" icone={Wallet} acao={<LinkPequeno href="/pagamentos">Pagamentos</LinkPequeno>}>
+            <Bloco titulo="Financeiro do mês" icone={Wallet} acao={<LinkPequeno href="/mes?aba=cima">Mês visto de cima</LinkPequeno>}>
               <p className="text-[11px] text-texto-suave">Recebido este mês</p>
               <p className="numero text-xl font-extrabold">
                 {formatarMoeda(financeiro.recebido)}
@@ -583,6 +586,13 @@ export default function VisaoDoDia() {
                     </Link>
                   ))}
                 </div>
+              )}
+              {estouroTeto && (
+                <Link href="/mes?aba=cima" className="mt-3 flex items-start gap-1.5 rounded-bloco bg-aviso-suave px-3 py-2 text-xs text-aviso hover:opacity-90">
+                  <Clock size={13} className="mt-px shrink-0" />
+                  No ritmo de hoje, o faturamento do ano passa do teto do MEI em{" "}
+                  {new Date(`${estouroTeto}-15T12:00:00`).toLocaleDateString("pt-BR", { month: "long" })}. Vale falar com o contador antes.
+                </Link>
               )}
               {financeiro.atrasados.length > 0 && (
                 <p className="mt-3 flex items-start gap-1.5 rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro">

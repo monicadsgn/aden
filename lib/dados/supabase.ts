@@ -159,6 +159,18 @@ export class RepositorioSupabase implements Repositorio {
         avisoTetoPct: num(e?.aviso_teto_pct),
         ociosidadePct: num(e?.ociosidade_pct),
         arredondamentoPropostaCentavos: num(e?.arredondamento_proposta_centavos),
+        followUpsMaximo: num(e?.follow_ups_maximo),
+        socioPercentualId: (e?.socio_percentual_id as string) ?? null,
+        sociedadePctSocio: num(e?.sociedade_pct_socio),
+        sociedadeTetoViradaCentavos: num(e?.sociedade_teto_virada_centavos),
+        sociedadeAvisoBonusCentavos: num(e?.sociedade_aviso_bonus_centavos),
+        socioSobraId: (e?.socio_sobra_id as string) ?? null,
+        sociedadeSobraTrafegoPct: num(e?.sociedade_sobra_trafego_pct),
+        trafegoProprioMinimoCentavos: num(e?.trafego_proprio_minimo_centavos),
+        ofertaVerbaMinCentavos: num(e?.oferta_verba_min_centavos),
+        ofertaVerbaMaxCentavos: num(e?.oferta_verba_max_centavos),
+        ofertaGestaoAposResultadoCentavos: num(e?.oferta_gestao_apos_resultado_centavos),
+        ofertaMinimoSocialTrafegoCentavos: num(e?.oferta_minimo_social_trafego_centavos),
       },
       pessoas: ((pes.data ?? []) as Linha[]).map((p) => ({
         id: p.id as string,
@@ -194,6 +206,8 @@ export class RepositorioSupabase implements Repositorio {
         nome: c.nome as string,
         valorMensalCentavos: num(c.valor_mensal_centavos),
         ativo: c.ativo as boolean,
+        pagoPorPessoaId: (c.pago_por_pessoa_id as string) ?? null,
+        planejado: (c.planejado as boolean) ?? false,
       })),
       clientes: ((cli.data ?? []) as Linha[]).map((c) => {
         const contrato = contratos.find((k) => k.cliente_id === c.id);
@@ -225,6 +239,10 @@ export class RepositorioSupabase implements Repositorio {
                 prazoEntregaDias: num(contrato.prazo_entrega_dias),
                 inicioCobranca: (contrato.inicio_cobranca as string) ?? "",
                 observacoes: (contrato.observacoes as string) ?? "",
+                venceUltimoDiaUtil: (contrato.vence_ultimo_dia_util as boolean) ?? false,
+                limiteReunioesMes: num(contrato.limite_reunioes_mes),
+                garantiaResultado: (contrato.garantia_resultado as string) ?? "",
+                garantiaAte: (contrato.garantia_ate as string) ?? null,
               }
             : null,
         };
@@ -271,7 +289,7 @@ export class RepositorioSupabase implements Repositorio {
     if (sep.itens.length) {
       const { data, error } = await this.sb.rpc("propor_alteracao", {
         p_org: org_id,
-        p_itens: sep.itens.map(itemParaBanco),
+        p_itens: sep.itens.map((i) => itemParaBanco(i, org_id)),
         p_impacto: null,
         p_descricao: sep.itens.map((i) => i.descricao).join(", "),
       });
@@ -313,6 +331,18 @@ export class RepositorioSupabase implements Repositorio {
         aviso_teto_pct: a.empresa.avisoTetoPct ?? null,
         ociosidade_pct: a.empresa.ociosidadePct ?? null,
         arredondamento_proposta_centavos: a.empresa.arredondamentoPropostaCentavos ?? null,
+        follow_ups_maximo: a.empresa.followUpsMaximo ?? null,
+        socio_percentual_id: a.empresa.socioPercentualId ?? null,
+        sociedade_pct_socio: a.empresa.sociedadePctSocio ?? null,
+        sociedade_teto_virada_centavos: a.empresa.sociedadeTetoViradaCentavos ?? null,
+        sociedade_aviso_bonus_centavos: a.empresa.sociedadeAvisoBonusCentavos ?? null,
+        socio_sobra_id: a.empresa.socioSobraId ?? null,
+        sociedade_sobra_trafego_pct: a.empresa.sociedadeSobraTrafegoPct ?? null,
+        trafego_proprio_minimo_centavos: a.empresa.trafegoProprioMinimoCentavos ?? null,
+        oferta_verba_min_centavos: a.empresa.ofertaVerbaMinCentavos ?? null,
+        oferta_verba_max_centavos: a.empresa.ofertaVerbaMaxCentavos ?? null,
+        oferta_gestao_apos_resultado_centavos: a.empresa.ofertaGestaoAposResultadoCentavos ?? null,
+        oferta_minimo_social_trafego_centavos: a.empresa.ofertaMinimoSocialTrafegoCentavos ?? null,
       });
       erro(error);
     }
@@ -391,6 +421,8 @@ export class RepositorioSupabase implements Repositorio {
         nome: c.nome,
         valor_mensal_centavos: c.valorMensalCentavos,
         ativo: c.ativo,
+        pago_por_pessoa_id: c.pagoPorPessoaId ?? null,
+        planejado: c.planejado ?? false,
       })),
     );
 
@@ -429,6 +461,10 @@ export class RepositorioSupabase implements Repositorio {
             prazo_entrega_dias: k.prazoEntregaDias,
             inicio_cobranca: k.inicioCobranca || null,
             observacoes: k.observacoes || null,
+            vence_ultimo_dia_util: k.venceUltimoDiaUtil ?? false,
+            limite_reunioes_mes: k.limiteReunioesMes ?? null,
+            garantia_resultado: k.garantiaResultado || null,
+            garantia_ate: k.garantiaAte ?? null,
           }
         : {};
       if (data) {
@@ -1029,6 +1065,7 @@ export class RepositorioSupabase implements Repositorio {
       observacoes: (l.observacoes as string) ?? "",
       motivoPerda: (l.motivo_perda as string) ?? "",
       clienteId: (l.cliente_id as string) ?? null,
+      comercialEstruturado: (l.comercial_estruturado as boolean | null) ?? null,
       criadoEm: l.criado_em as string,
       fechadoEm: (l.fechado_em as string) ?? null,
     }));
@@ -1057,6 +1094,7 @@ export class RepositorioSupabase implements Repositorio {
       observacoes: vazio(l.observacoes),
       motivo_perda: vazio(l.motivoPerda),
       cliente_id: l.clienteId,
+      comercial_estruturado: l.comercialEstruturado ?? null,
       criado_em: l.criadoEm,
       fechado_em: l.fechadoEm,
     });
@@ -1116,6 +1154,7 @@ export class RepositorioSupabase implements Repositorio {
       observacao: (p.observacao as string) ?? null,
       autor: nomes.get(p.criado_por as string) ?? null,
       criadoEm: p.criado_em as string,
+      taxaCentavos: num(p.taxa_centavos),
     }));
   }
 
@@ -1129,6 +1168,7 @@ export class RepositorioSupabase implements Repositorio {
       valor_centavos: p.valorCentavos,
       recebido_em: p.recebidoEm,
       observacao: p.observacao ?? null,
+      taxa_centavos: p.taxaCentavos ?? null,
     });
     erro(error);
   }
@@ -1140,8 +1180,10 @@ export class RepositorioSupabase implements Repositorio {
 
 // ─── Conversões dos pedidos ─────────────────────────────────────────────────
 
-function itemParaBanco(i: ItemProtegido): Linha {
-  return { tabela: i.tabela, registro_id: i.registroId, pessoa_id: i.pessoaId ?? null, campo: i.campo, antes: i.antes, depois: i.depois, descricao: i.descricao };
+function itemParaBanco(i: ItemProtegido, org_id: string): Linha {
+  // os itens da sociedade são da própria configuração da organização: o registro é a organização
+  const registro = i.tabela === "configuracoes_empresa" ? org_id : i.registroId;
+  return { tabela: i.tabela, registro_id: registro, pessoa_id: i.pessoaId ?? null, campo: i.campo, antes: i.antes, depois: i.depois, descricao: i.descricao, org_id };
 }
 
 function itemDoBanco(i: Linha): ItemProtegido {

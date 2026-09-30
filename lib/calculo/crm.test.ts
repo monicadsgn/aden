@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contatosParaHoje, diasNaEtapa, leadParado, moverLead, novoLead, resumoFunil } from "./crm";
+import { contatosParaHoje, diasNaEtapa, leadParado, moverLead, novoLead, resumoFunil, situacaoFollowUp } from "./crm";
 
 const t0 = new Date("2026-09-20T12:00:00Z");
 const depois = (dias: number) => new Date(t0.getTime() + dias * 86400000);
@@ -45,5 +45,17 @@ describe("crm", () => {
       "2026-09-26",
     );
     expect(r).toMatchObject({ abertos: 2, valorEmAbertoCentavos: 100000, semValor: 1, ganhosNoMes: 1, valorGanhoNoMesCentavos: 200000, taxaGanhoPct: 50 });
+  });
+});
+
+describe("follow-up do vou ver", () => {
+  it("conta os follow-ups e sugere perda só quando passa do máximo configurado", () => {
+    const l = novoLead("l1", "Loja", { etapa: "proposta_enviada" });
+    const fu = (id: string) => ({ id, leadId: "l1", tipo: "follow_up" as const, texto: "", em: "2026-10-01", autorNome: null });
+    const nota = { id: "n", leadId: "l1", tipo: "nota" as const, texto: "", em: "2026-10-01", autorNome: null };
+    expect(situacaoFollowUp(l, [fu("1"), nota], 2)).toEqual({ feitos: 1, sugerirPerda: false });
+    expect(situacaoFollowUp(l, [fu("1"), fu("2")], 2)).toEqual({ feitos: 2, sugerirPerda: true });
+    expect(situacaoFollowUp(l, [fu("1"), fu("2")], null).sugerirPerda).toBe(false);
+    expect(situacaoFollowUp({ ...l, etapa: "perdido" }, [fu("1"), fu("2")], 2).sugerirPerda).toBe(false);
   });
 });

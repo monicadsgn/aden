@@ -11,6 +11,15 @@ export function PropostaDoc({ doc }: { doc: DocumentoProposta }) {
       <Capa tipo="Proposta" titulo={doc.cliente} sub={`Referência: ${doc.mesReferencia}`} />
       <NumeroGrande rotulo="Investimento mensal" valor={formatarMoeda(doc.valorMensalCentavos)} destaque />
       <p className="-mt-4 text-sm leading-relaxed text-texto-suave">{doc.observacao}</p>
+      {doc.garantia.length > 0 && (
+        <BlocoDoc titulo="Garantia">
+          {doc.garantia.map((f) => (
+            <p key={f} className="text-sm leading-relaxed">
+              {f}
+            </p>
+          ))}
+        </BlocoDoc>
+      )}
       {doc.blocos.map((b) => (
         <BlocoDoc key={b.servico} titulo={b.servico}>
           {b.itens.map((i) => (

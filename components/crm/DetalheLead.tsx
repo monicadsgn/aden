@@ -26,8 +26,8 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Avatar } from "../Avatar";
 import { Modal } from "../Modal";
-import { Botao, CampoMoeda, cx } from "../ui";
-import { ETAPAS, moverLead, TIPOS_INTERACAO, type InteracaoLead, type Lead, type TipoInteracao } from "@/lib/calculo/crm";
+import { Botao, CampoMoeda, Segmentado, cx } from "../ui";
+import { ETAPAS, moverLead, situacaoFollowUp, TIPOS_INTERACAO, type InteracaoLead, type Lead, type TipoInteracao } from "@/lib/calculo/crm";
 import { novoId } from "@/lib/calculo/novo";
 import { precoDoPacote } from "@/lib/calculo/pacotes";
 import type { Configuracao } from "@/lib/calculo/tipos";
@@ -116,6 +116,7 @@ export function DetalheLead({
   const precoPacote = pacote ? precoDoPacote(config, pacote).mensalCentavos : null;
   const resp = config.pessoas.find((p) => p.id === l.responsavelId);
   const hoje = new Date().toISOString().slice(0, 10);
+  const fu = situacaoFollowUp(l, interacoes, config.empresa.followUpsMaximo);
 
   const registrar = async () => {
     if (!nota.trim()) return;
@@ -213,6 +214,16 @@ export function DetalheLead({
         </div>
       )}
       {l.etapa === "perdido" && l.motivoPerda && <p className="mb-3 text-xs text-erro">Motivo: {l.motivoPerda}</p>}
+      {fu.sugerirPerda && !perdendo && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-bloco bg-aviso-suave px-3 py-2 text-xs font-medium text-aviso">
+          <span className="flex-1">
+            Já foram {fu.feitos} follow-ups do &quot;vou ver&quot;, o máximo que vocês combinaram. Hora de marcar como perdido?
+          </span>
+          <Botao pequeno onClick={() => setPerdendo(true)}>
+            Marcar como perdido
+          </Botao>
+        </div>
+      )}
 
       <div className="grid gap-x-8 md:grid-cols-2">
         <div>
@@ -293,6 +304,22 @@ export function DetalheLead({
         </div>
       </div>
 
+      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-bloco border border-linha p-3">
+        <div className="min-w-0 flex-1 basis-64">
+          <p className="text-[13px] font-semibold">O comercial do cliente está estruturado?</p>
+          <p className="text-[12px] text-texto-suave">Tem alguém que atende e vende os contatos que o tráfego traz? Sem isso, não ofereça a garantia: os leads chegam e ninguém converte.</p>
+        </div>
+        <Segmentado<"sim" | "nao">
+          rotulo="Comercial estruturado"
+          valor={l.comercialEstruturado == null ? null : l.comercialEstruturado ? "sim" : "nao"}
+          aoMudar={(v) => set({ comercialEstruturado: v == null ? null : v === "sim" })}
+          opcoes={[
+            { valor: "sim", rotulo: "Sim" },
+            { valor: "nao", rotulo: "Ainda não" },
+          ]}
+        />
+      </div>
+
       <div className="mt-3 grid items-end gap-3 rounded-bloco bg-marca-tinta p-3 sm:grid-cols-[14rem_1fr]">
         <CampoMoeda rotulo="Valor estimado por mês" valor={l.valorEstimadoCentavos} aoMudar={(v) => set({ valorEstimadoCentavos: v })} />
         <div className="flex flex-wrap items-center gap-3 pb-2 text-xs">
@@ -301,7 +328,7 @@ export function DetalheLead({
               Usar o valor do pacote ({formatarMoeda(precoPacote)})
             </button>
           )}
-          <Link href={`/negociacao?cliente=${encodeURIComponent(l.nome)}`} className="inline-flex items-center gap-1 font-semibold text-marca-forte underline">
+          <Link href={`/negociacao?cliente=${encodeURIComponent(l.nome)}&lead=${l.id}`} className="inline-flex items-center gap-1 font-semibold text-marca-forte underline">
             <Presentation size={13} /> Abrir a negociação
           </Link>
           {l.simulacaoId && (
@@ -326,6 +353,7 @@ export function DetalheLead({
       <div className="mt-4">
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-texto-suave">
           <MessageCircle size={13} /> Histórico da conversa
+          {fu.feitos > 0 && <span className="font-normal">· {fu.feitos} follow-up{fu.feitos === 1 ? "" : "s"}</span>}
         </p>
         <div className="mb-3 flex flex-col gap-2 rounded-bloco border border-linha p-2 sm:flex-row">
           <select className={cx(campo, "sm:w-32")} aria-label="Tipo" value={tipoNota} onChange={(e) => setTipoNota(e.target.value as TipoInteracao)}>

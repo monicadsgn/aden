@@ -13,6 +13,12 @@
 //   − reinvestimento (% da sobra, só quando a sobra é positiva)
 //   = distribuível → dividido entre os sócios pelo % de cada um
 //   valor por hora do sócio = parte dele ÷ horas dos serviços que ele executa
+//
+// Divisão entre os sócios (29/09/2026, regra na configuração): enquanto o faturamento do
+// mês (contratos ativos + este cenário) não chega ao teto da virada, um sócio recebe um %
+// do que entra depois do imposto em %, e o outro fica com o resto do distribuível. Do teto
+// para cima, vale a divisão da sobra pelo % padrão de cada sócio. O tráfego próprio da Aden
+// é da empresa: fica fora da conta de projeto (só no mês visto de cima, lib/calculo/sociedade.ts).
 
 import { formatarMoeda, formatarPct } from "../formato";
 import type {
@@ -20,6 +26,7 @@ import type {
   CategoriaCusto,
   Cenario,
   Configuracao,
+  DivisaoDoMes,
   Terceiro,
   Encaixe,
   EncaixeTipo,
@@ -89,6 +96,10 @@ export interface PreparadoMes {
   /** o cálculo não pode ser feito (ex.: regra de rateio vazia com custo fixo cadastrado) */
   bloqueio: Alerta | null;
   semCapacidade: boolean;
+  /** regra da sociedade configurada (null = divide a sobra pelo % padrão) */
+  sociedade: { socioId: Id; pct: number; teto: number; sobraId: Id | null } | null;
+  /** soma do valor mensal dos outros clientes ativos (para saber se o mês passa da virada) */
+  faturamentoOutros: number;
   alertas: Alerta[];
 }
 
@@ -238,6 +249,28 @@ export function ehServicoTrafego(nome: string | null | undefined): boolean {
 }
 
 /** O cenário tem alguma entrega de um serviço de tráfego (rotina ou pontual diluído)? */
+/** Serviço de social media (pelo nome). */
+export function ehServicoSocial(nome: string | null | undefined): boolean {
+  return !!nome && /social/i.test(nome);
+}
+
+/**
+ * Oferta padrão (29/09/2026): social media + tráfego não fecha abaixo do mínimo configurado.
+ * Devolve o mínimo quando o cenário tem os dois serviços e o valor fica abaixo; senão null. Só aviso.
+ */
+export function abaixoDoMinimoSocialTrafego(config: Configuracao, cenario: Cenario, receitaCentavos: number | null): number | null {
+  const minimo = config.empresa.ofertaMinimoSocialTrafegoCentavos;
+  if (minimo == null || minimo <= 0 || receitaCentavos == null) return null;
+  const servicos = new Set(
+    cenario.entregas
+      .filter((l) => v0(l.quantidade) > 0)
+      .map((l) => config.servicos.find((sv) => sv.id === config.tiposEntrega.find((t) => t.id === l.tipoEntregaId)?.servicoId)?.nome),
+  );
+  const temSocial = [...servicos].some(ehServicoSocial);
+  const temTrafego = [...servicos].some(ehServicoTrafego) || (cenario.trafego.modelo != null && !["sem_trafego"].includes(cenario.trafego.modelo));
+  return temSocial && temTrafego && receitaCentavos < minimo - EPS ? minimo : null;
+}
+
 export function temEntregaDeTrafego(config: Configuracao, cenario: Cenario): boolean {
   const linhas = [...cenario.entregas, ...cenario.pontuais.filter((p) => p.forma === "diluido").flatMap((p) => p.entregas)];
   return linhas.some((l) => {
@@ -465,13 +498,22 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
         // a verba é só a BASE do percentual; o faturamento é a gestão
         receitaTrafego = (v0(t.verbaMensalCentavos) * v0(t.percentualVerba)) / 100;
         break;
+      case "garantia":
+        // tráfego com garantia: a gestão só é cobrada depois do resultado; até lá, horas sem receita
+        alertas.push({
+          nivel: "info",
+          texto: "Tráfego com garantia: a gestão ainda não é cobrada, mas as horas do tráfego entram na conta.",
+          explica:
+            "Na garantia, o cliente só paga a gestão do tráfego quando o resultado vier. Até lá, quem faz o tráfego trabalha sem essa receita. Ex.: 5 horas de gestão no mês entram nas horas, mas nenhum real de gestão entra no faturamento.",
+        });
+        break;
     }
   }
 
   // Rateio do custo fixo
   // imposto fixo mensal (ex.: MEI) é custo da empresa: entra no rateio junto com os custos fixos
   const impostoFixo = v0(config.empresa.impostoFixoMensalCentavos);
-  const totalFixo = config.custosFixos.filter((c) => c.ativo).reduce((a, c) => a + v0(c.valorMensalCentavos), 0) + impostoFixo;
+  const totalFixo = config.custosFixos.filter((c) => c.ativo && !c.planejado).reduce((a, c) => a + v0(c.valorMensalCentavos), 0) + impostoFixo;
   const base = config.clientes.filter((c) => c.ativo && c.participaRateio);
   const outros = base.filter((c) => c.id !== cenario.clienteId);
   const rateioAtivo = !opcoes.semRateio && totalFixo > 0;
@@ -506,6 +548,22 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
 
   const custosProjeto = somaCategorias(custosCat) + custoPontualDiluido;
 
+  // Regra da sociedade: só vale com o sócio, o % e o teto preenchidos
+  const e = config.empresa;
+  const socPct = e.socioPercentualId ? socios.find((s) => s.pessoa.id === e.socioPercentualId) : undefined;
+  const sociedade =
+    socPct && e.sociedadePctSocio != null && positivo(e.sociedadeTetoViradaCentavos)
+      ? {
+          socioId: socPct.pessoa.id,
+          pct: e.sociedadePctSocio,
+          teto: e.sociedadeTetoViradaCentavos!,
+          sobraId: e.socioSobraId && e.socioSobraId !== socPct.pessoa.id && socios.some((s) => s.pessoa.id === e.socioSobraId) ? e.socioSobraId : null,
+        }
+      : null;
+  const faturamentoOutros = config.clientes
+    .filter((c) => c.ativo && !c.interno && c.id !== cenario.clienteId)
+    .reduce((a, c) => a + v0(c.valorMensalCentavos), 0);
+
   return {
     config,
     horasTotais,
@@ -535,6 +593,8 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     },
     bloqueio,
     semCapacidade: !!opcoes.semCapacidade,
+    sociedade,
+    faturamentoOutros,
     alertas,
   };
 }
@@ -581,13 +641,40 @@ export function calcularComReceita(
 
   if (sobra < -EPS) alertas.push({ nivel: "erro", texto: `A sobra é negativa (${formatarMoeda(sobra)}): o valor não cobre os custos.`, explica: "Depois de pagar custos, imposto e taxas, falta dinheiro. Ex.: o cliente paga R$ 1.500 e os custos somam R$ 1.700, então faltam R$ 200 todo mês. Suba o valor ou diminua o escopo." });
 
+  // Qual divisão vale neste mês (ver o topo do arquivo)
+  const soc = prep.sociedade;
+  const faturamentoMes = prep.faturamentoOutros + receita;
+  const divisao: DivisaoDoMes =
+    soc && faturamentoMes < soc.teto - EPS
+      ? { tipo: "percentual", socioId: soc.socioId, pct: soc.pct, faturamentoMesCentavos: faturamentoMes, tetoViradaCentavos: soc.teto }
+      : { tipo: "sobra", faturamentoMesCentavos: soc ? faturamentoMes : null, tetoViradaCentavos: soc?.teto ?? null };
+  const partes = new Map<Id, { valor: number; pct: number | null; regra: string | null }>();
+  if (prep.percentuaisValidos) {
+    if (divisao.tipo === "percentual") {
+      const parteSocio = ((receita - impostos) * divisao.pct) / 100;
+      const resto = distribuivel - parteSocio;
+      partes.set(divisao.socioId, { valor: parteSocio, pct: divisao.pct, regra: `${formatarPct(divisao.pct)} do que entra, depois do imposto` });
+      const outros = prep.socios.filter((s) => s.pessoa.id !== divisao.socioId);
+      const quemFica = soc?.sobraId ? outros.filter((s) => s.pessoa.id === soc.sobraId) : outros;
+      const somaPct = quemFica.reduce((a, s) => a + v0(s.pct), 0);
+      for (const s of outros) {
+        const fica = quemFica.includes(s);
+        const fatia = !fica ? 0 : somaPct > 0 ? v0(s.pct) / somaPct : 1 / quemFica.length;
+        partes.set(s.pessoa.id, { valor: resto * fatia, pct: null, regra: fica ? "o que sobra depois dos custos e da outra parte" : null });
+      }
+    } else {
+      for (const s of prep.socios) if (s.pct != null) partes.set(s.pessoa.id, { valor: (distribuivel * s.pct) / 100, pct: s.pct, regra: null });
+    }
+  }
+
   const pessoas: ResultadoPessoa[] = prep.config.pessoas
     .filter((p) => p.ativo)
     .map((p) => {
       const socio = prep.socios.find((s) => s.pessoa.id === p.id);
       const horas = prep.horasPorPessoa.get(p.id) ?? 0;
-      const pct = socio?.pct ?? null;
-      const valor = socio && prep.percentuaisValidos && pct != null ? (distribuivel * pct) / 100 : null;
+      const parte = socio ? partes.get(p.id) : undefined;
+      const pct = divisao.tipo === "percentual" ? (parte?.pct ?? null) : (socio?.pct ?? null);
+      const valor = parte ? parte.valor : null;
       const valorHora = valor != null && horas > 0 ? valor / horas : null;
       const piso = positivo(p.pisoHoraCentavos) ? p.pisoHoraCentavos : null;
       const abaixoPiso = piso != null && valorHora != null && valorHora < piso - EPS;
@@ -606,6 +693,7 @@ export function calcularComReceita(
         abaixoPiso,
         capacidadeHorasMes: cap,
         consumoCapacidadePct: consumo,
+        regraParte: parte?.regra ?? null,
       };
     });
 
@@ -667,6 +755,7 @@ export function calcularComReceita(
     valorCobradoHoraCentavos: H > 0 ? receita / H : null,
     sobraHoraCentavos: H > 0 ? sobra / H : null,
     percentuaisValidos: prep.percentuaisValidos,
+    divisao,
     alertas,
   };
 }
@@ -745,6 +834,7 @@ export function calcularMinimo(prep: PreparadoMes): ResultadoMinimo {
   });
   if (prep.bloqueio) return vazio(prep.bloqueio.texto);
   if (!prep.percentuaisValidos) return vazio("Corrija os percentuais indicados nos alertas para calcular o valor mínimo.");
+  if (prep.sociedade) return minimoComSociedade(prep, vazio);
   const alvo = sobraAlvo(prep);
   if (!alvo.ok) return vazio(alvo.motivo);
   const R = resolverReceita(prep, alvo.alvo);
@@ -758,6 +848,70 @@ export function calcularMinimo(prep: PreparadoMes): ResultadoMinimo {
     receitaMinimaCentavos: resultado.receitaBrutaCentavos,
     mensalidadeMinimaCentavos: mensalidade,
     limitantePessoaId: alvo.limitante,
+    resultado,
+  };
+}
+
+/** Com esta mensalidade, todo sócio com horas chega ao piso e ninguém fica no negativo? */
+function atendeTodos(prep: PreparadoMes, mensalidade: number): boolean {
+  const r = calcularComReceita(prep, mensalidade);
+  if (r.sobraCentavos < -EPS) return false;
+  return r.pessoas.every((p) => {
+    if (!prep.socios.some((s) => s.pessoa.id === p.id)) return true;
+    const piso = p.horas > 0 && p.pisoHoraCentavos != null ? p.pisoHoraCentavos * p.horas : 0;
+    return p.valorCentavos != null && p.valorCentavos >= piso - EPS;
+  });
+}
+
+/** Menor mensalidade inteira em [lo, hi] que atende todos (supõe que, no intervalo, subir o valor só ajuda). */
+function menorQueAtende(prep: PreparadoMes, lo: number, hi: number): number | null {
+  if (hi < lo || !atendeTodos(prep, hi)) return null;
+  while (lo < hi) {
+    const m = Math.floor((lo + hi) / 2);
+    if (atendeTodos(prep, m)) hi = m;
+    else lo = m + 1;
+  }
+  return lo;
+}
+
+/**
+ * Valor mínimo com a regra da sociedade. A regra muda na virada (teto do faturamento do mês),
+ * então procura primeiro abaixo da virada e, se não der, a partir dela.
+ */
+function minimoComSociedade(prep: PreparadoMes, vazio: (m: string) => ResultadoMinimo): ResultadoMinimo {
+  const LIMITE = 1e11; // R$ 1 bilhão: acima disso, impossível na prática
+  const virada = Math.ceil(prep.sociedade!.teto - prep.faturamentoOutros - prep.receitaTrafego);
+  let m: number | null = null;
+  if (virada > 0) m = menorQueAtende(prep, 0, virada - 1);
+  if (m == null) {
+    let lo = Math.max(0, virada);
+    let hi = Math.max(lo, 100000);
+    while (hi < LIMITE && !atendeTodos(prep, hi)) {
+      lo = hi + 1;
+      hi *= 2;
+    }
+    m = hi < LIMITE ? menorQueAtende(prep, lo, hi) : null;
+  }
+  if (m == null) return vazio("Nenhum valor faz todos os sócios chegarem ao piso (a parte de algum deles não cresce com o valor).");
+  const resultado = calcularComReceita(prep, m);
+  // quem define o mínimo: o sócio mais perto do piso
+  let limitante: Id | null = null;
+  let maior = -1;
+  for (const p of resultado.pessoas) {
+    if (p.horas <= 0 || p.pisoHoraCentavos == null || !p.valorCentavos || p.valorCentavos <= 0) continue;
+    const razao = (p.pisoHoraCentavos * p.horas) / p.valorCentavos;
+    if (razao > maior) {
+      maior = razao;
+      limitante = p.id;
+    }
+  }
+  return {
+    possivel: true,
+    motivo: null,
+    criterio: limitante ? "piso" : "equilibrio",
+    receitaMinimaCentavos: resultado.receitaBrutaCentavos,
+    mensalidadeMinimaCentavos: m,
+    limitantePessoaId: limitante,
     resultado,
   };
 }
@@ -1243,6 +1397,15 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
   if (mes) alertas.push(...mes.alertas);
 
   alertas.push(...verificarAudiovisual(config, cenario));
+  const receitaDaProposta = mes ? (cenario.modo === "escopo" && minimo.possivel ? minimo.receitaMinimaCentavos : mes.receitaBrutaCentavos) : null;
+  const abaixoOferta = abaixoDoMinimoSocialTrafego(config, cenario, receitaDaProposta);
+  if (abaixoOferta)
+    alertas.push({
+      nivel: "aviso",
+      texto: `Social media + tráfego abaixo do mínimo combinado de ${formatarMoeda(abaixoOferta)} por mês.`,
+      explica: `Os sócios combinaram que social media com tráfego não fecha abaixo de ${formatarMoeda(abaixoOferta)}. É só um aviso: dá para seguir, mas vale conversar antes de fechar.`,
+      acao: { rotulo: "Ver a oferta padrão", destino: { tipo: "config", secao: "regras", campo: "oferta" } },
+    });
   const ent = calcularEntrada(config, cenario, prep, mes);
   alertas.push(...ent.alertas);
 

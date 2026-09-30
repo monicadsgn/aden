@@ -2,8 +2,9 @@
    TOKENS DA ADEN — o único lugar para trocar cores e fonte.
    Os componentes só usam estes nomes (bg-marca, text-texto-suave…).
 
-   PROVISÓRIO: pistache/creme e Montserrat são da Mônica Design. Quando a
-   Aden tiver identidade própria:
+   PROVISÓRIO (29/09/2026): o verde (#797c46) e o creme (#fcf9f1) são as cores
+   do SVG da logo da Aden, mas a paleta ainda não está fechada. Os tons de apoio,
+   o acento e a Montserrat continuam provisórios. Quando a identidade fechar:
    1. Fonte: troque o @import abaixo pelo pacote da nova fonte
       (npm install @fontsource-variable/<fonte>) e ajuste --fonte.
       Fontes vêm de pacote local, não do Google Fonts (a política de
@@ -16,7 +17,7 @@
 
 :root {
   /* marca */
-  --marca: #797c46;          /* pistache */
+  --marca: #797c46;          /* verde da logo da Aden (provisório) */
   --marca-forte: #5c5f33;    /* texto/realce sobre fundo claro */
   --marca-suave: #e8e9d6;    /* fundos tingidos, badges */
   --marca-tinta: #f2f2e6;    /* fundos bem leves */
@@ -24,7 +25,7 @@
   --destaque: #c9a86a;       /* acento secundário para formas decorativas */
 
   /* base */
-  --fundo: #fcf9f1;          /* creme */
+  --fundo: #fcf9f1;          /* creme da logo da Aden (provisório) */
   --superficie: #ffffff;
   --superficie-2: #f6f2e6;
   --linha: #e7e1cf;

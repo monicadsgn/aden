@@ -11,7 +11,7 @@ import type { InteracaoLead, Lead } from "../calculo/crm";
 import { aplicarResposta, montarPainel } from "../calculo/painel";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, Configuracao } from "../calculo/tipos";
-import { afetados, aplicarItens, separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
+import { afetados, aplicarItens, CAMPOS_SOCIEDADE, separarProtegidas, type ItemProtegido } from "../regras/aprovacao";
 import { avisosDaMudanca } from "./acoes";
 import type {
   AlteracoesConfig,
@@ -111,6 +111,10 @@ function valorAtual(c: Configuracao, i: ItemProtegido): number | null {
     return (i.campo === "piso_hora_centavos" ? p?.pisoHoraCentavos : p?.percentualPadrao) ?? null;
   }
   if (i.tabela === "servico_divisao") return c.servicos.find((x) => x.id === i.registroId)?.divisaoPadrao[i.pessoaId ?? ""] ?? null;
+  if (i.tabela === "configuracoes_empresa") {
+    const f = CAMPOS_SOCIEDADE.find((x) => x.campo === i.campo);
+    return f ? ((c.empresa[f.chave] as number | null | undefined) ?? null) : null;
+  }
   return c.tiposEntrega.find((x) => x.id === i.registroId)?.horasPorUnidade ?? null;
 }
 

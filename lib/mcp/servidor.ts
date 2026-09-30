@@ -13,9 +13,10 @@ import { calcularSaudeCliente, calcularVisaoMes, horasDasTarefas, rotuloOrigemHo
 import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
+import { calcularMesDeCima, mesQueEstouraOTeto } from "../calculo/sociedade";
 import { calcularSolucoes } from "../calculo/solucoes";
 import { clienteNoMes, contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio } from "../calculo/clientes";
-import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, rotuloEtapa, type Lead } from "../calculo/crm";
+import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, rotuloEtapa, situacaoFollowUp, type Lead } from "../calculo/crm";
 import { PAPEIS } from "../acesso";
 import { hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
@@ -54,11 +55,19 @@ Regras que você deve seguir:
 - Para saber se cabe cliente novo, use ver_visao_do_mes. Para ver cliente dando prejuízo e os caminhos para resolver, ver_saude_clientes.
 - Tempo por entrega é em MINUTOS (minutosPorUnidade). 20 min, 40 min…
 - Proteção dos sócios: ${REGRAS_PROTECAO}
-  Você (o conector) não é sócio: toda mudança sua em piso, % dos sócios, divisão de horas ou tempo por entrega
+  Você (o conector) não é sócio: toda mudança sua em piso, % dos sócios, divisão de horas, tempo por entrega ou números da sociedade
   vira pedido de aprovação para o sócio afetado (exceto campo que estava vazio). Diga isso a quem está conversando.
   Você nunca aprova pedidos; quem aprova é o sócio, no site (Sócios → Pedidos e avisos).
 - Escopo abaixo do piso de um sócio não é gravado direto: vira pedido de exceção para ele aprovar.
-- Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data). ver_pagamentos_do_mes mostra para
+- Sociedade (decidida em 29/09/2026): antes da virada, um sócio recebe um % do que entra (depois do imposto em %)
+  e o outro fica com a sobra, escolhendo quanto dela vai para o tráfego próprio da Aden; da virada para cima, a sobra
+  é dividida pelo % padrão e o tráfego fica com o mínimo. Os números estão em definir_regras_sociedade e são protegidos.
+  "Como está o mês?" → ver_mes_visto_de_cima (entrou, custos, bancado por cada sócio, tráfego próprio, parte de cada um).
+- Custos pagos do bolso de um sócio: salvar_custo_fixo com pagoPor (só registro, sem reembolso).
+- Tráfego com garantia: modelo "garantia" (a gestão só é cobrada depois do resultado). Antes de oferecer, confirme se o
+  comercial do cliente está estruturado (salvar_lead comercialEstruturado). O resultado e o prazo vão no contrato.
+- WhatsApp continua com o nome Alfall (número do Áleff): não troque essas referências para Aden.
+- Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data; taxaReais só quando foi cartão). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
 - Equipe: ver_equipe e convidar_pessoa (cada papel vê só o que é dele; o banco garante).
 - Aprovação de conteúdo pelo cliente: por enquanto é feita fora do Aden (o painel do cliente do Aden está desligado).
@@ -184,9 +193,24 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         ),
         medicoesCalibragem: opt(z.number().int().positive(), "quantas medições de cronômetro calibram cada tipo de entrega"),
         diferencaSugerirPct: opt(z.number(), "sugerir novo tempo quando a média medida diferir mais que este %"),
+        followUpsMaximo: opt(z.number().int().positive(), "depois de quantos follow-ups do \"vou ver\" o sistema sugere marcar o lead como perdido"),
+        ofertaVerbaIndicadaDeReais: opt(z.number(), "oferta padrão: verba de mídia indicada ao cliente, a partir de (reais)"),
+        ofertaVerbaIndicadaAteReais: opt(z.number(), "oferta padrão: verba de mídia indicada, até (reais)"),
+        ofertaGestaoDepoisDoResultadoReais: opt(z.number(), "oferta padrão: valor da gestão de tráfego depois do resultado (reais)"),
+        ofertaMinimoSocialMaisTrafegoReais: opt(z.number(), "oferta padrão: social media + tráfego abaixo disso mostra um aviso na Proposta (reais)"),
       },
     },
-    async ({ impostoFixoMensalReais, taxaRecebimentoFixaReais, tetoFaturamentoAnualReais, arredondamentoPropostaReais, ...p }) =>
+    async ({
+      impostoFixoMensalReais,
+      taxaRecebimentoFixaReais,
+      tetoFaturamentoAnualReais,
+      arredondamentoPropostaReais,
+      ofertaVerbaIndicadaDeReais,
+      ofertaVerbaIndicadaAteReais,
+      ofertaGestaoDepoisDoResultadoReais,
+      ofertaMinimoSocialMaisTrafegoReais,
+      ...p
+    }) =>
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
@@ -197,6 +221,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           taxaRecebimentoFixaCentavos: reais(taxaRecebimentoFixaReais),
           tetoFaturamentoAnualCentavos: reais(tetoFaturamentoAnualReais),
           arredondamentoPropostaCentavos: reais(arredondamentoPropostaReais),
+          ofertaVerbaMinCentavos: reais(ofertaVerbaIndicadaDeReais),
+          ofertaVerbaMaxCentavos: reais(ofertaVerbaIndicadaAteReais),
+          ofertaGestaoAposResultadoCentavos: reais(ofertaGestaoDepoisDoResultadoReais),
+          ofertaMinimoSocialTrafegoCentavos: reais(ofertaMinimoSocialMaisTrafegoReais),
         };
         return salvarDiferenca(repo, antes, { ...antes, empresa: aplicar(antes.empresa, patch) });
       }),
@@ -322,22 +350,66 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   );
 
   server.registerTool(
+    "definir_regras_sociedade",
+    {
+      title: "Definir a regra da sociedade",
+      description:
+        "Divisão entre os sócios: antes da virada, um sócio recebe um % do que entra (depois do imposto em %); o outro fica com a sobra e escolhe quanto dela vai para o tráfego próprio da Aden. A partir do teto da virada (o que entrou no mês), a sobra é dividida pelo % padrão e o tráfego próprio fica com o mínimo. Os números são PROTEGIDOS: campo vazio vale na hora; mudar valor que existe vira pedido de aprovação (o % do tráfego, só de quem fica com a sobra). Quem é quem não muda depois de escolhido. Só grave o que os sócios decidiram.",
+      inputSchema: {
+        socioDoPercentual: z.string().optional().describe("sócio que recebe o % antes da virada (nome ou id)"),
+        percentualDoSocio: opt(z.number().min(0).max(100), "% do que entra (depois do imposto) para esse sócio"),
+        tetoDaViradaReais: opt(z.number(), "o que entrou no mês a partir do qual a divisão vira pelo % padrão (reais)"),
+        avisoDeBonusReais: opt(z.number(), "parte do sócio acima deste valor aparece destacada como bônus (reais)"),
+        socioDaSobra: z.string().optional().describe("sócio que fica com a sobra antes da virada (nome ou id)"),
+        percentualDaSobraParaTrafego: opt(z.number().min(0).max(100), "% da sobra desse sócio que vai para o tráfego próprio"),
+        trafegoProprioMinimoReais: opt(z.number(), "mínimo por mês do tráfego próprio da Aden (reais)"),
+      },
+    },
+    async (e) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const antes = await repo.carregarConfig();
+        const reais = (v: number | null | undefined) => (v === undefined ? undefined : paraCentavos(v));
+        const patch = {
+          socioPercentualId: e.socioDoPercentual ? resolver(antes.pessoas, e.socioDoPercentual, "Sócio").id : undefined,
+          sociedadePctSocio: e.percentualDoSocio,
+          sociedadeTetoViradaCentavos: reais(e.tetoDaViradaReais),
+          sociedadeAvisoBonusCentavos: reais(e.avisoDeBonusReais),
+          socioSobraId: e.socioDaSobra ? resolver(antes.pessoas, e.socioDaSobra, "Sócio").id : undefined,
+          sociedadeSobraTrafegoPct: e.percentualDaSobraParaTrafego,
+          trafegoProprioMinimoCentavos: reais(e.trafegoProprioMinimoReais),
+        };
+        return salvarDiferenca(repo, antes, { ...antes, empresa: aplicar(antes.empresa, patch) });
+      }),
+  );
+
+  server.registerTool(
     "salvar_custo_fixo",
     {
       title: "Criar ou alterar custo fixo da empresa",
-      description: "Custos mensais da empresa (assinaturas, armazenamento, IA…), rateados entre clientes ativos.",
+      description:
+        "Custos mensais da empresa (assinaturas, armazenamento, IA…), rateados entre clientes ativos. pagoPor = sócio que paga do próprio bolso (só registro, sem reembolso: conta no preço, mas no mês visto de cima aparece em \"bancado por\" e não sai do caixa). planejado = custo guardado, desligado, que acende aviso quando a sobra do mês cobre.",
       inputSchema: {
         id: z.string().optional().describe("id ou nome do custo a alterar; vazio = novo"),
         nome: z.string().optional(),
         valorMensalReais: opt(z.number(), "valor mensal em reais"),
         ativo: z.boolean().optional(),
+        pagoPor: z.string().nullable().optional().describe('sócio que paga do bolso (nome ou id); "Aden" ou null = a Aden paga'),
+        planejado: z.boolean().optional().describe("custo planejado (fica desligado até os sócios decidirem ligar)"),
       },
     },
-    async ({ id, valorMensalReais, ...resto }) =>
+    async ({ id, valorMensalReais, pagoPor, ...resto }) =>
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
-        const patch = { ...resto, ...(valorMensalReais !== undefined ? { valorMensalCentavos: paraCentavos(valorMensalReais) } : {}) };
+        const pagoPorPessoaId =
+          pagoPor === undefined ? undefined : !pagoPor || pagoPor.toLowerCase() === "aden" ? null : resolver(antes.pessoas, pagoPor, "Sócio").id;
+        const patch = {
+          ...resto,
+          ...(resto.planejado ? { ativo: false } : {}),
+          ...(pagoPorPessoaId !== undefined ? { pagoPorPessoaId } : {}),
+          ...(valorMensalReais !== undefined ? { valorMensalCentavos: paraCentavos(valorMensalReais) } : {}),
+        };
         let custosFixos;
         if (id) {
           const alvo = resolver(antes.custosFixos, id, "Custo fixo");
@@ -838,6 +910,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         prazoEntregaDias: z.number().int().nonnegative().nullable().optional(),
         inicioCobranca: z.string().optional(),
         condicoes: z.string().optional().describe("outras condições do contrato"),
+        venceUltimoDiaUtil: z.boolean().optional().describe("vence no último dia útil do mês (no lugar do dia do pagamento)"),
+        limiteReunioesMes: z.number().int().nonnegative().nullable().optional().describe("máximo de reuniões por mês combinado no contrato"),
+        garantiaResultado: z.string().optional().describe("tráfego com garantia: o que conta como resultado"),
+        garantiaAte: z.string().nullable().optional().describe("tráfego com garantia: até quando vale, AAAA-MM-DD"),
       },
     },
     async (e) =>
@@ -845,7 +921,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const c = resolver(config.clientes, e.cliente, "Cliente");
-        for (const d of [e.clienteDesde, e.inicioContrato, e.fimContrato]) if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error(`Data inválida: ${d}. Use AAAA-MM-DD.`);
+        for (const d of [e.clienteDesde, e.inicioContrato, e.fimContrato, e.garantiaAte]) if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error(`Data inválida: ${d}. Use AAAA-MM-DD.`);
         const k = c.contrato ?? contratoVazio();
         const def = <T,>(v: T | undefined, atual: T) => (v === undefined ? atual : v);
         const novo = {
@@ -869,6 +945,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
             prazoEntregaDias: def(e.prazoEntregaDias, k.prazoEntregaDias),
             inicioCobranca: def(e.inicioCobranca, k.inicioCobranca),
             observacoes: def(e.condicoes, k.observacoes),
+            venceUltimoDiaUtil: def(e.venceUltimoDiaUtil, k.venceUltimoDiaUtil ?? false),
+            limiteReunioesMes: def(e.limiteReunioesMes, k.limiteReunioesMes ?? null),
+            garantiaResultado: def(e.garantiaResultado, k.garantiaResultado ?? ""),
+            garantiaAte: def(e.garantiaAte, k.garantiaAte ?? null),
           },
         };
         return salvarDiferenca(repo, config, { ...config, clientes: config.clientes.map((x) => (x.id === c.id ? novo : x)) });
@@ -934,6 +1014,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         proximoContato: z.string().nullable().optional(),
         proximaAcao: z.string().optional(),
         observacoes: z.string().optional(),
+        comercialEstruturado: z
+          .boolean()
+          .nullable()
+          .optional()
+          .describe("o comercial do cliente está estruturado (quem atende e vende os leads)? Condição para oferecer tráfego com garantia"),
       },
     },
     async (e) =>
@@ -959,6 +1044,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.proximoContato !== undefined && { proximoContato: e.proximoContato }),
           ...(e.proximaAcao != null && { proximaAcao: e.proximaAcao }),
           ...(e.observacoes != null && { observacoes: e.observacoes }),
+          ...(e.comercialEstruturado !== undefined && { comercialEstruturado: e.comercialEstruturado }),
         };
         await repo.salvarLead(l);
         return { salvo: l.nome, id: l.id, criado: !antes };
@@ -1013,11 +1099,12 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "registrar_conversa_lead",
     {
       title: "Registrar conversa com o lead",
-      description: "Anota no histórico do lead o que foi conversado (nota, whatsapp, ligação, reunião, e-mail ou proposta). Opcional: já marca o próximo contato.",
+      description:
+        "Anota no histórico do lead o que foi conversado (nota, whatsapp, ligação, reunião, e-mail, proposta ou follow_up do \"vou ver\"). Opcional: já marca o próximo contato. Passando do máximo de follow-ups configurado, a resposta sugere marcar como perdido (só sugere).",
       inputSchema: {
         id: z.string().describe("id ou nome do lead"),
         texto: z.string(),
-        tipo: z.enum(["nota", "ligacao", "whatsapp", "reuniao", "email", "proposta"]).optional(),
+        tipo: z.enum(["nota", "ligacao", "whatsapp", "reuniao", "email", "proposta", "follow_up"]).optional(),
         proximoContato: z.string().optional().describe("AAAA-MM-DD"),
         proximaAcao: z.string().optional(),
       },
@@ -1029,7 +1116,13 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         await repo.salvarInteracao({ id: novoId(), leadId: l.id, tipo: tipo ?? "nota", texto, em: new Date().toISOString(), autorNome: "Claude (conector)" });
         if (proximoContato || proximaAcao)
           await repo.salvarLead({ ...l, ...(proximoContato && { proximoContato }), ...(proximaAcao != null && { proximaAcao }) });
-        return { registrado: l.nome };
+        const config = await repo.carregarConfig();
+        const fu = situacaoFollowUp(l, await repo.listarInteracoes(l.id), config.empresa.followUpsMaximo);
+        return {
+          registrado: l.nome,
+          followUpsFeitos: fu.feitos,
+          sugestao: fu.sugerirPerda ? `Já foram ${fu.feitos} follow-ups (o máximo combinado). Pergunte se é hora de marcar ${l.nome} como perdido.` : null,
+        };
       }),
   );
 
@@ -1459,6 +1552,44 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   // ─── Pagamentos ───────────────────────────────────────────────────────────
 
   server.registerTool(
+    "ver_mes_visto_de_cima",
+    {
+      title: "Mês visto de cima",
+      description:
+        "O mês inteiro da Aden: o que entrou (pagamentos que caíram no mês), imposto, taxas, custos do caixa, custos bancados do bolso de cada sócio, tráfego próprio, parte de cada sócio pela regra da sociedade (com bônus e quanto falta para a virada), custos planejados que já cabem e em que mês o teto anual do MEI estoura.",
+      inputSchema: { competencia: zCompetencia },
+    },
+    async ({ competencia }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const mes = competencia ?? competenciaAtual();
+        const [config, pagamentos] = await Promise.all([repo.carregarConfig(), repo.listarPagamentos()]);
+        const m = calcularMesDeCima(config, pagamentos, mes);
+        const r = (v: number | null) => paraReais(v == null ? null : Math.round(v));
+        return {
+          mes,
+          entrou: r(m.entrouCentavos),
+          porCliente: m.porCliente.map((x) => ({ cliente: x.nome, entrou: r(x.centavos) })),
+          imposto: r(m.impostoCentavos),
+          dasDoMei: r(m.impostoFixoCentavos),
+          taxasDeRecebimento: r(m.taxasCentavos),
+          custosFixosDoCaixa: r(m.custosFixosCaixaCentavos),
+          custosDosClientes: r(m.custosClientesCentavos),
+          bancadoPor: m.bancadoPor.map((b) => ({ socio: b.nome, valor: r(b.centavos), itens: b.itens })),
+          divisao: m.divisao === "percentual" ? "antes da virada" : m.divisao === "virada" ? "depois da virada" : "regra da sociedade não preenchida",
+          socios: m.socios.map((x) => ({ socio: x.nome, parte: r(x.parteCentavos), regra: x.regra, bonus: r(x.bonusCentavos) })),
+          trafegoProprio: r(m.trafegoProprioCentavos),
+          trafegoMinimo: r(m.trafegoMinimoCentavos),
+          completaOTrafego: m.completaTrafego ? { socio: m.completaTrafego.nome, valor: r(m.completaTrafego.centavos) } : null,
+          faltaParaAVirada: r(m.faltaParaViradaCentavos),
+          custosPlanejados: m.planejados.map((x) => ({ nome: x.nome, valor: r(x.centavos), jaCabe: x.cabe })),
+          tetoAnualEstouraEm: mesQueEstouraOTeto(config, pagamentos, hojeISO()),
+          avisos: m.alertas.map((a) => a.texto),
+        };
+      }),
+  );
+
+  server.registerTool(
     "registrar_pagamento",
     {
       title: "Registrar pagamento que caiu",
@@ -1474,9 +1605,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           .optional()
           .describe("data em que caiu, AAAA-MM-DD (padrão: hoje)"),
         observacao: z.string().optional(),
+        taxaReais: z.number().nonnegative().optional().describe("taxa real deste pagamento (ex.: cartão), em reais. Ausente = taxa padrão da configuração"),
       },
     },
-    async ({ cliente, valorReais, competencia, recebidoEm, observacao }) =>
+    async ({ cliente, valorReais, competencia, recebidoEm, observacao, taxaReais }) =>
       executar(async () => {
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
@@ -1484,7 +1616,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const mes = competencia ?? competenciaAtual();
         const hoje = new Date().toISOString().slice(0, 10);
         const id = novoId();
-        await repo.salvarPagamento({ id, clienteId: alvo.id, competencia: mes, valorCentavos: paraCentavos(valorReais)!, recebidoEm: recebidoEm ?? hoje, observacao: observacao ?? null });
+        await repo.salvarPagamento({ id, clienteId: alvo.id, competencia: mes, valorCentavos: paraCentavos(valorReais)!, recebidoEm: recebidoEm ?? hoje, observacao: observacao ?? null, taxaCentavos: taxaReais === undefined ? null : paraCentavos(taxaReais) });
         const d = distribuirPagamentos(config, alvo, mes, await repo.listarPagamentos(), hoje);
         const parte = d.partes.find((x) => x.pagamentoId === id);
         const nome = (pid: string) => config.pessoas.find((p) => p.id === pid)?.nome ?? pid;
@@ -1499,6 +1631,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
                 taxa: paraReais(parte.taxaCentavos),
                 custosDoMes: paraReais(parte.custosCentavos),
                 reinvestimento: paraReais(parte.reinvestimentoCentavos),
+                trafegoProprio: paraReais(parte.trafegoProprioCentavos),
                 socios: Object.fromEntries(Object.entries(parte.socios).map(([k, v]) => [nome(k), paraReais(v)])),
                 chegouAtrasado: parte.atrasado,
               }

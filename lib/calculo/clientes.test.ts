@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contratoVazio, fimDaFidelidade, lembretesDeContrato, prazoDoAvisoPrevio, vencimentoNoMes } from "./clientes";
+import { contratoVazio, fimDaFidelidade, lembretesDeContrato, prazoDoAvisoPrevio, ultimoDiaUtil, vencimentoDoContrato, vencimentoNoMes } from "./clientes";
 import type { ClienteBase } from "./tipos";
 
 describe("contrato do cliente", () => {
@@ -37,5 +37,18 @@ describe("cliente no mês", () => {
     expect(clienteNoMes(c, "2026-08")).toBe(false);
     expect(clienteNoMes(c, "2026-09")).toBe(true);
     expect(clienteNoMes({ ...c, clienteDesde: null }, "2020-01")).toBe(true);
+  });
+});
+
+describe("vencimento no último dia útil", () => {
+  it("volta do sábado e do domingo para a sexta", () => {
+    expect(ultimoDiaUtil("2026-10")).toBe("2026-10-30"); // 31/10/2026 é sábado
+    expect(ultimoDiaUtil("2026-05")).toBe("2026-05-29"); // 31/05/2026 é domingo
+    expect(ultimoDiaUtil("2026-09")).toBe("2026-09-30"); // quarta
+  });
+  it("o contrato com último dia útil ignora o dia do pagamento", () => {
+    const k = { ...contratoVazio(), diaPagamento: 20, venceUltimoDiaUtil: true };
+    expect(vencimentoDoContrato(k, "2026-10")).toBe("2026-10-30");
+    expect(vencimentoDoContrato({ ...k, venceUltimoDiaUtil: false }, "2026-10")).toBe("2026-10-20");
   });
 });

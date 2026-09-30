@@ -1,7 +1,7 @@
 // Proteção da remuneração dos sócios. As regras valem igual para os dois.
 //
-// Campos protegidos: piso por hora, % de cada sócio, divisão de horas por serviço e
-// horas por tipo de entrega. Mudar um deles só vale depois que o sócio afetado aprovar;
+// Campos protegidos: piso por hora, % de cada sócio, divisão de horas por serviço,
+// horas por tipo de entrega e os números da regra da sociedade (29/09/2026). Mudar um deles só vale depois que o sócio afetado aprovar;
 // até lá vale o valor antigo. Se quem mudou é o próprio (e único) afetado, vale na hora.
 // Primeiro preenchimento (campo vazio) vale na hora, com aviso. O banco repete essas
 // regras (supabase/migrations/0004 a 0009) — aqui é a mesma conta, para a tela e o modo local.
@@ -11,8 +11,27 @@ import { escopoDoCliente } from "../calculo/mes";
 import type { Cenario, Configuracao, Id, ResultadoCenario } from "../calculo/tipos";
 import type { AlteracoesConfig } from "../dados/repositorio";
 
-export type TabelaProtegida = "pessoas" | "servico_divisao" | "tipos_entrega";
-export type CampoProtegido = "piso_hora_centavos" | "percentual_padrao" | "percentual" | "horas_por_unidade";
+export type TabelaProtegida = "pessoas" | "servico_divisao" | "tipos_entrega" | "configuracoes_empresa";
+export type CampoProtegido =
+  | "piso_hora_centavos"
+  | "percentual_padrao"
+  | "percentual"
+  | "horas_por_unidade"
+  // regra da sociedade (29/09/2026)
+  | "sociedade_pct_socio"
+  | "sociedade_teto_virada_centavos"
+  | "sociedade_aviso_bonus_centavos"
+  | "trafego_proprio_minimo_centavos"
+  | "sociedade_sobra_trafego_pct";
+
+/** Campos protegidos da regra da sociedade: coluna no banco ↔ campo na configuração. */
+export const CAMPOS_SOCIEDADE: { campo: CampoProtegido; chave: keyof Configuracao["empresa"]; rotulo: string }[] = [
+  { campo: "sociedade_pct_socio", chave: "sociedadePctSocio", rotulo: "Percentual do sócio antes da virada" },
+  { campo: "sociedade_teto_virada_centavos", chave: "sociedadeTetoViradaCentavos", rotulo: "Faturamento da virada para a divisão igual" },
+  { campo: "sociedade_aviso_bonus_centavos", chave: "sociedadeAvisoBonusCentavos", rotulo: "Valor a partir do qual a parte vira bônus" },
+  { campo: "trafego_proprio_minimo_centavos", chave: "trafegoProprioMinimoCentavos", rotulo: "Mínimo do tráfego próprio" },
+  { campo: "sociedade_sobra_trafego_pct", chave: "sociedadeSobraTrafegoPct", rotulo: "Parte da sobra que vai para o tráfego" },
+];
 
 export interface ItemProtegido {
   tabela: TabelaProtegida;
@@ -28,7 +47,7 @@ export interface ItemProtegido {
 }
 
 export const REGRAS_PROTECAO =
-  "Piso, percentual de cada sócio, divisão de horas por serviço e tempo por entrega são protegidos: mudar só vale depois que o sócio afetado aprovar. Até lá vale o valor antigo. Se quem mudou é o próprio afetado, vale na hora. Campo vazio pode ser preenchido direto. Todo sócio afetado é avisado de quanto muda no bolso dele, e o histórico não se apaga.";
+  "Piso, percentual de cada sócio, divisão de horas por serviço, tempo por entrega e os números da regra da sociedade são protegidos: mudar só vale depois que o sócio afetado aprovar. Até lá vale o valor antigo. Se quem mudou é o próprio afetado, vale na hora. Campo vazio pode ser preenchido direto. Todo sócio afetado é avisado de quanto muda no bolso dele, e o histórico não se apaga.";
 
 const socio = (c: Configuracao, id: Id) => c.pessoas.find((p) => p.id === id);
 
@@ -48,6 +67,12 @@ export function afetadosDoItem(config: Configuracao, item: ItemProtegido): Id[] 
         .filter(([, v]) => v != null && v > 0)
         .map(([id]) => id);
     }
+    // quanto da sobra vai para o tráfego: só quem fica com a sobra decide
+    case "sociedade_sobra_trafego_pct":
+      return config.empresa.socioSobraId ? [config.empresa.socioSobraId] : config.pessoas.filter((p) => p.ativo && p.socio).map((p) => p.id);
+    // os outros números da sociedade mexem no bolso dos dois
+    default:
+      return config.pessoas.filter((p) => p.ativo && p.socio).map((p) => p.id);
   }
 }
 
@@ -172,6 +197,26 @@ export function separarProtegidas(antes: Configuracao, alt: AlteracoesConfig): S
     return { ...t, horasPorUnidade: a.horasPorUnidade };
   });
 
+  // Regra da sociedade: números protegidos; quem é quem não muda depois de escolhido
+  if (out.empresa) {
+    const ea = antes.empresa;
+    const ed = { ...out.empresa };
+    for (const f of CAMPOS_SOCIEDADE) {
+      const va = ea[f.chave] as number | null | undefined;
+      const vd = ed[f.chave] as number | null | undefined;
+      if (igual(va, vd)) continue;
+      const item: ItemProtegido = { tabela: "configuracoes_empresa", registroId: "empresa", campo: f.campo, antes: va ?? null, depois: vd ?? null, descricao: f.rotulo };
+      if (va == null) primeiros.push(item);
+      else {
+        itens.push(item);
+        (ed as unknown as Record<string, unknown>)[f.chave] = va;
+      }
+    }
+    if (ea.socioPercentualId) ed.socioPercentualId = ea.socioPercentualId;
+    if (ea.socioSobraId) ed.socioSobraId = ea.socioSobraId;
+    out.empresa = ed;
+  }
+
   // linhas que ficaram iguais ao original não precisam ir para o banco
   const mesmo = <T extends { id: string }>(lista: T[], orig: T[]) => lista.filter((x) => JSON.stringify(orig.find((o) => o.id === x.id)) !== JSON.stringify(x));
   out.pessoas.salvar = mesmo(out.pessoas.salvar, antes.pessoas);
@@ -194,6 +239,9 @@ export function aplicarItens(config: Configuracao, itens: ItemProtegido[], valor
     } else if (i.tabela === "servico_divisao") {
       const s = c.servicos.find((x) => x.id === i.registroId);
       if (s && i.pessoaId) s.divisaoPadrao = { ...s.divisaoPadrao, [i.pessoaId]: v };
+    } else if (i.tabela === "configuracoes_empresa") {
+      const f = CAMPOS_SOCIEDADE.find((x) => x.campo === i.campo);
+      if (f) (c.empresa as unknown as Record<string, unknown>)[f.chave] = v;
     } else {
       const t = c.tiposEntrega.find((x) => x.id === i.registroId);
       if (t) t.horasPorUnidade = v;

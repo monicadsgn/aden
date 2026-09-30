@@ -21,12 +21,13 @@ export default function Pagamentos() {
   const [config, setConfig] = useState<Configuracao>(configVazia());
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [competencia, setCompetencia] = useState(competenciaAtual);
-  const [novo, setNovo] = useState<{ clienteId: string | null; competencia: string; valor: number | null; data: string; obs: string }>(() => ({
+  const [novo, setNovo] = useState<{ clienteId: string | null; competencia: string; valor: number | null; data: string; obs: string; taxa: number | null }>(() => ({
     clienteId: null,
     competencia: competenciaAtual(),
     valor: null,
     data: hoje(),
     obs: "",
+    taxa: null,
   }));
   const [carregado, setCarregado] = useState(false);
   const [mensagem, setMensagem] = useState<{ tom: "ok" | "erro"; texto: string } | null>(null);
@@ -51,7 +52,7 @@ export default function Pagamentos() {
   // prévia: para onde vai este pagamento, somado aos que já caíram no mesmo mês
   const previa = useMemo(() => {
     if (!clienteNovo || !novo.valor || novo.valor <= 0) return null;
-    const p: Pagamento = { id: "previa", clienteId: clienteNovo.id, competencia: novo.competencia, valorCentavos: novo.valor, recebidoEm: novo.data, criadoEm: "9999" };
+    const p: Pagamento = { id: "previa", clienteId: clienteNovo.id, competencia: novo.competencia, valorCentavos: novo.valor, recebidoEm: novo.data, criadoEm: "9999", taxaCentavos: novo.taxa };
     const d = distribuirPagamentos(config, clienteNovo, novo.competencia, [...pagamentos, p], hoje());
     return { d, parte: d.partes.find((x) => x.pagamentoId === "previa") ?? null };
   }, [clienteNovo, novo, pagamentos, config]);
@@ -66,9 +67,10 @@ export default function Pagamentos() {
         valorCentavos: novo.valor,
         recebidoEm: novo.data,
         observacao: novo.obs || null,
+        taxaCentavos: novo.taxa,
       });
       await recarregar();
-      setNovo({ ...novo, valor: null, obs: "" });
+      setNovo({ ...novo, valor: null, obs: "", taxa: null });
       setMensagem({ tom: "ok", texto: `Pagamento de ${formatarMoeda(novo.valor)} de ${clienteNovo.nome} registrado. Ficou no histórico.` });
     } catch (e) {
       setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao registrar." });
@@ -122,6 +124,10 @@ export default function Pagamentos() {
               </div>
               <CampoMoeda rotulo="Valor que caiu" valor={novo.valor} aoMudar={(v) => setNovo({ ...novo, valor: v })} />
               <CampoTexto rotulo="Observação (opcional)" valor={novo.obs} aoMudar={(v) => setNovo({ ...novo, obs: v })} />
+              <div className="sm:col-span-2">
+                <CampoMoeda className="sm:max-w-xs" rotulo="Taxa deste pagamento (só se foi cartão)" valor={novo.taxa} aoMudar={(v) => setNovo({ ...novo, taxa: v })} />
+                <p className="mt-1 text-[11px] text-texto-suave">Vazio = taxa padrão das Regras (Pix não cobra). Preencha com o que o banco descontou de verdade; o padrão não muda.</p>
+              </div>
               <div className="sm:col-span-2">
                 <Botao variante="primario" icone={Plus} disabled={!clienteNovo || !novo.valor} onClick={registrar}>
                   Registrar pagamento
@@ -214,6 +220,7 @@ export default function Pagamentos() {
                         <span className="text-texto-suave">em {new Date(`${p.recebidoEm}T12:00:00`).toLocaleDateString("pt-BR")}</span>
                         {parte?.atrasado && <Badge tom="erro">caiu atrasado</Badge>}
                         {p.observacao && <span className="text-[11px] text-texto-suave">· {p.observacao}</span>}
+                        {p.taxaCentavos != null && <span className="text-[11px] text-texto-suave">· taxa {formatarMoeda(p.taxaCentavos)}</span>}
                         <span className="flex-1" />
                         <Botao
                           pequeno

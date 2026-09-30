@@ -8,7 +8,7 @@ import { hojeISO } from "./dia";
 import type { Id } from "./tipos";
 
 export type EtapaLead = "lead_recebido" | "contato_feito" | "proposta_enviada" | "ganho" | "perdido";
-export type TipoInteracao = "nota" | "ligacao" | "whatsapp" | "reuniao" | "email" | "proposta";
+export type TipoInteracao = "nota" | "ligacao" | "whatsapp" | "reuniao" | "email" | "proposta" | "follow_up";
 
 export interface Lead {
   id: Id;
@@ -33,6 +33,8 @@ export interface Lead {
   motivoPerda: string;
   /** cliente criado quando o lead foi ganho */
   clienteId: Id | null;
+  /** o comercial do cliente está estruturado (quem atende e vende os leads)? Condição para oferecer a garantia. null = não perguntado */
+  comercialEstruturado?: boolean | null;
   criadoEm: string;
   fechadoEm: string | null;
 }
@@ -63,6 +65,7 @@ export const TIPOS_INTERACAO: { valor: TipoInteracao; rotulo: string }[] = [
   { valor: "reuniao", rotulo: "Reunião" },
   { valor: "email", rotulo: "E-mail" },
   { valor: "proposta", rotulo: "Proposta" },
+  { valor: "follow_up", rotulo: "Follow-up (\"vou ver\")" },
 ];
 
 export function novoLead(id: Id, nome: string, base: Partial<Lead> = {}, agora = new Date()): Lead {
@@ -138,4 +141,13 @@ export function resumoFunil(leads: Lead[], hoje = hojeISO()): ResumoFunil {
     valorGanhoNoMesCentavos: doMes.reduce((a, l) => a + (l.valorEstimadoCentavos ?? 0), 0),
     taxaGanhoPct: ganhos.length + perdidos.length ? (ganhos.length / (ganhos.length + perdidos.length)) * 100 : null,
   };
+}
+
+/**
+ * Follow-ups do "vou ver": quantos já foram feitos e se já passou do máximo que os sócios
+ * configuraram (vazio = nunca sugere). Só sugere: marcar como perdido é decisão de quem atende.
+ */
+export function situacaoFollowUp(lead: Lead, interacoes: InteracaoLead[], maximo: number | null | undefined): { feitos: number; sugerirPerda: boolean } {
+  const feitos = interacoes.filter((i) => i.leadId === lead.id && i.tipo === "follow_up").length;
+  return { feitos, sugerirPerda: maximo != null && maximo > 0 && etapaAberta(lead.etapa) && feitos >= maximo };
 }

@@ -22,6 +22,7 @@ export function Destinos({ b, config }: { b: Baldes; config: Configuracao }) {
     ["Taxa de recebimento", b.taxaCentavos],
     ["Custos do mês (do projeto + parte do custo fixo e do imposto fixo)", b.custosCentavos],
     ["Reinvestimento (fica na empresa)", b.reinvestimentoCentavos],
+    ["Tráfego próprio da Aden", b.trafegoProprioCentavos],
     ...config.pessoas.filter((p) => p.socio && p.ativo).map((p) => [`Vai para ${p.nome}`, b.socios[p.id] ?? 0] as [string, number]),
   ];
   return (

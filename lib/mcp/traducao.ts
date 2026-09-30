@@ -70,7 +70,7 @@ export const zCenarioConversa = z.object({
   custos: z.array(zCusto).optional().describe("Custos da rotina mensal"),
   trafego: z
     .object({
-      modelo: z.enum(["fixo", "por_campanha", "percentual_verba", "incluido", "sem_trafego"]).nullable().optional(),
+      modelo: z.enum(["fixo", "por_campanha", "percentual_verba", "incluido", "sem_trafego", "garantia"]).nullable().optional(),
       valorFixoReais: z.number().nullable().optional(),
       valorPorCampanhaReais: z.number().nullable().optional(),
       campanhas: z.number().nullable().optional(),
@@ -305,6 +305,22 @@ export function configParaConversa(c: Configuracao) {
       avisoTetoPct: e.avisoTetoPct ?? null,
       ociosidadePct: e.ociosidadePct ?? null,
       arredondamentoPropostaReais: paraReais(e.arredondamentoPropostaCentavos),
+      followUpsMaximo: e.followUpsMaximo ?? null,
+      sociedade: {
+        socioDoPercentual: nomeDe(c.pessoas, e.socioPercentualId ?? null) ?? null,
+        percentualDoSocio: e.sociedadePctSocio ?? null,
+        tetoDaViradaReais: paraReais(e.sociedadeTetoViradaCentavos),
+        avisoDeBonusReais: paraReais(e.sociedadeAvisoBonusCentavos),
+        socioDaSobra: nomeDe(c.pessoas, e.socioSobraId ?? null) ?? null,
+        percentualDaSobraParaTrafego: e.sociedadeSobraTrafegoPct ?? null,
+        trafegoProprioMinimoReais: paraReais(e.trafegoProprioMinimoCentavos),
+      },
+      ofertaPadrao: {
+        verbaIndicadaDeReais: paraReais(e.ofertaVerbaMinCentavos),
+        verbaIndicadaAteReais: paraReais(e.ofertaVerbaMaxCentavos),
+        gestaoDepoisDoResultadoReais: paraReais(e.ofertaGestaoAposResultadoCentavos),
+        minimoSocialMaisTrafegoReais: paraReais(e.ofertaMinimoSocialTrafegoCentavos),
+      },
     },
     socios: c.pessoas
       .filter((p) => p.socio)
@@ -335,7 +351,14 @@ export function configParaConversa(c: Configuracao) {
       audiovisual: !!t.audiovisual,
       ativo: t.ativo,
     })),
-    custosFixos: c.custosFixos.map((f) => ({ id: f.id, nome: f.nome, valorMensalReais: paraReais(f.valorMensalCentavos), ativo: f.ativo })),
+    custosFixos: c.custosFixos.map((f) => ({
+      id: f.id,
+      nome: f.nome,
+      valorMensalReais: paraReais(f.valorMensalCentavos),
+      ativo: f.ativo,
+      pagoPor: f.pagoPorPessoaId ? (nomeDe(c.pessoas, f.pagoPorPessoaId) ?? null) : "Aden",
+      planejado: !!f.planejado,
+    })),
     clientes: c.clientes.map((k) => ({
       id: k.id,
       nome: k.nome,

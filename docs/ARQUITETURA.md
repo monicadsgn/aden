@@ -43,6 +43,44 @@ e o Financeiro diz quanto falta entrar no mês.
 - Nomes: a tarefa em status `revisao` aparece como **Com o cliente** (esperando a aprovação dele); "aprovação"
   sozinha fica só para os pedidos entre sócios.
 
+## Fase 2 · regras da reunião de 29/09/2026
+
+- **Divisão entre os sócios** (campos protegidos em `configuracoes_empresa`, migration 0019; regra em
+  `lib/regras/aprovacao.ts` → `CAMPOS_SOCIEDADE`): `socioPercentualId` recebe `sociedadePctSocio` % do que entra,
+  depois do imposto em %, enquanto o faturamento do mês fica abaixo de `sociedadeTetoViradaCentavos`; `socioSobraId`
+  fica com o resto e escolhe `sociedadeSobraTrafegoPct` (% da sobra para o tráfego próprio; só ele aprova mudança).
+  Da virada para cima, a sobra é dividida pelo % padrão e o tráfego próprio fica com `trafegoProprioMinimoCentavos`.
+  Quem é quem trava depois de escolhido.
+  - **Calculadora** (`motor.ts`): o faturamento do mês = contratos ativos (sem internos) + o cenário; abaixo da virada,
+    `divisao.tipo = "percentual"`. O tráfego próprio fica fora da conta de projeto. Valor mínimo com a regra: busca
+    binária da menor mensalidade em que todo sócio com horas chega ao piso (e ninguém fica no negativo), primeiro
+    abaixo da virada, depois a partir dela.
+  - **Pagamentos** (`pagamentos.ts`): antes da virada (o que entrou no mês do pagamento, todos os clientes), o sócio do
+    % recebe o % de cada pagamento depois do imposto (parcial gera o % do parcial); o resto paga taxa e custos; a
+    sobra vai para o tráfego próprio (pelo %) e para o outro sócio. Cada pagamento pode ter a taxa real
+    (`pagamentos.taxa_centavos`, ex.: cartão); vazio = padrão.
+  - **Mês visto de cima** (`lib/calculo/sociedade.ts` → `calcularMesDeCima`; aba "Visto de cima" da tela Mês, que
+    substituiu a aba Sócios; o repasse por cliente continua em `?aba=socios`): pagamentos pelo mês em que caíram;
+    imposto; DAS; taxas; custos do caixa; custos dos clientes (escopo); **bancado por** (custo com
+    `pago_por_pessoa_id`: conta no preço, não sai do caixa); tráfego próprio (quem completa o mínimo); parte de cada
+    sócio; **bônus** (parte acima de `sociedadeAvisoBonusCentavos`); quanto falta para a virada; custos **planejados**
+    (`custos_fixos.planejado`, desligados) acendem aviso quando a sobra cobre o valor e ainda deixa o tráfego no mínimo.
+  - **Teto do MEI**: `mesQueEstouraOTeto` soma o que entrou no ano e projeta os contratos; aviso no Mês e na Visão do dia.
+- **Tráfego com garantia**: modelo de cobrança `"garantia"` (gestão sem receita até o resultado; horas contam). A
+  Proposta e o PDF mostram a oferta (`ofertaVerbaMin/Max`, `ofertaGestaoAposResultado`); abaixo de
+  `ofertaMinimoSocialTrafego` com social media + tráfego, só aviso (calculadora e confirmação ao exportar). O contrato
+  guarda o que conta como resultado e até quando (`garantia_resultado`, `garantia_ate`). O lead tem
+  `comercial_estruturado`; sem ele, a Proposta pergunta antes de exportar com garantia. Cada cliente mostra as horas de
+  tráfego investidas sem cobrança.
+- **Contrato**: `vence_ultimo_dia_util` (segunda a sexta, sem feriados) e `limite_reunioes_mes` (condição, não
+  quantidade do pacote).
+- **Leads**: interação `follow_up`; `followUpsMaximo` na configuração; passou do número, a ficha sugere perda.
+- **Conector**: `definir_regras_sociedade`, `ver_mes_visto_de_cima`; campos novos em `definir_percentuais_empresa`
+  (oferta, follow-ups), `salvar_custo_fixo` (`pagoPor`, `planejado`), `registrar_pagamento` (`taxaReais`),
+  `salvar_ficha_cliente` (vencimento, reuniões, garantia), `salvar_lead` (`comercialEstruturado`) e
+  `registrar_conversa_lead` (`follow_up`).
+- **Cores**: os tokens de `app/tokens.css` já são o verde (#797c46) e o creme (#fcf9f1) do SVG da logo; provisórios.
+
 ## Áreas do sistema
 
 | Área | Conteúdo | Fase |

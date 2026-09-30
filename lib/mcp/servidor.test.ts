@@ -95,6 +95,9 @@ class BancoFalso {
   async salvarInteracao(i: import("../calculo/crm").InteracaoLead) {
     this.interacoes.push(i);
   }
+  async listarInteracoes(leadId: string) {
+    return this.interacoes.filter((i) => i.leadId === leadId);
+  }
   async gerarLinkPainel(clienteId: string) {
     const c = this.config.clientes.find((x) => x.id === clienteId)!;
     c.painelToken = "t".repeat(48);
@@ -358,6 +361,42 @@ describe("conector: CRM", () => {
     expect(banco.config.clientes.map((c) => c.nome)).toContain("Loja Aurora");
     expect(banco.leads[0]).toMatchObject({ etapa: "ganho", clienteId: g.clienteId });
     expect((await chamar("listar_leads")).leads).toHaveLength(0);
+  });
+});
+
+describe("conector: decisões de 29/09", () => {
+  it("regra da sociedade, custo bancado por sócio, follow-up e mês visto de cima", async () => {
+    await chamar("salvar_socio", { nome: "Mônica", percentualPadrao: 50 });
+    await chamar("salvar_socio", { nome: "Áleff", percentualPadrao: 50 });
+    await chamar("definir_regras_sociedade", {
+      socioDoPercentual: "Mônica",
+      percentualDoSocio: 30,
+      tetoDaViradaReais: 15000,
+      avisoDeBonusReais: 3400,
+      socioDaSobra: "Áleff",
+      percentualDaSobraParaTrafego: 100,
+      trafegoProprioMinimoReais: 1500,
+    });
+    expect(banco.config.empresa).toMatchObject({ sociedadePctSocio: 30, sociedadeTetoViradaCentavos: 1500000, trafegoProprioMinimoCentavos: 150000 });
+    await chamar("salvar_custo_fixo", { nome: "Contador", valorMensalReais: 300, pagoPor: "Áleff" });
+    await chamar("salvar_custo_fixo", { nome: "Plano grande", valorMensalReais: 550, planejado: true });
+    const cfg = await chamar("ver_configuracao");
+    expect(cfg.custosFixos.find((c: { nome: string }) => c.nome === "Contador").pagoPor).toBe("Áleff");
+    expect(cfg.custosFixos.find((c: { nome: string }) => c.nome === "Plano grande")).toMatchObject({ planejado: true, ativo: false });
+    await chamar("salvar_cliente", { nome: "Loja", valorMensalReais: 3000 });
+    await chamar("registrar_pagamento", { cliente: "Loja", valorReais: 500, competencia: "2026-10", recebidoEm: "2026-10-05", taxaReais: 20 });
+    const m = await chamar("ver_mes_visto_de_cima", { competencia: "2026-10" });
+    expect(m.entrou).toBe(500);
+    expect(m.taxasDeRecebimento).toBe(20);
+    expect(m.socios.find((x: { socio: string }) => x.socio === "Mônica").parte).toBe(150);
+    expect(m.bancadoPor).toEqual([{ socio: "Áleff", valor: 300, itens: ["Contador"] }]);
+    await chamar("definir_percentuais_empresa", { followUpsMaximo: 2 });
+    await chamar("salvar_lead", { nome: "Padaria", comercialEstruturado: false });
+    await chamar("registrar_conversa_lead", { id: "Padaria", texto: "vou ver", tipo: "follow_up" });
+    const r = await chamar("registrar_conversa_lead", { id: "Padaria", texto: "vou ver de novo", tipo: "follow_up" });
+    expect(r.followUpsFeitos).toBe(2);
+    expect(r.sugestao).toMatch(/perdido/);
+    expect(banco.leads.find((l) => l.nome === "Padaria")!.comercialEstruturado).toBe(false);
   });
 });
 

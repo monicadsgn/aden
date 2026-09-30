@@ -60,6 +60,7 @@ const MODELOS_TRAFEGO: { valor: ModeloTrafego; rotulo: string }[] = [
   { valor: "por_campanha", rotulo: "Por campanha" },
   { valor: "percentual_verba", rotulo: "Percentual da verba" },
   { valor: "incluido", rotulo: "Incluído na mensalidade" },
+  { valor: "garantia", rotulo: "Com garantia: paga a gestão depois do resultado" },
   { valor: "sem_trafego", rotulo: "Não há tráfego nesta versão" },
 ];
 
