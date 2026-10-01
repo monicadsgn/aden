@@ -48,7 +48,7 @@ import { useDados } from "@/lib/dados/contexto";
 import type { AvisoSocio, Pedido } from "@/lib/dados/repositorio";
 import { formatarMoeda, formatarPct, primeiraMaiuscula } from "@/lib/formato";
 import { linkConfig } from "@/lib/navegacao";
-import { mesQueEstouraOTeto } from "@/lib/calculo/sociedade";
+import { calcularMesDeCima, mesQueEstouraOTeto } from "@/lib/calculo/sociedade";
 import { passosParaComecar, type PassoComecar } from "@/lib/regras/pendencias";
 
 type Chave = "hoje" | "atrasadas" | "semana" | "aprovacao" | "concluidas";
@@ -205,6 +205,8 @@ export default function VisaoDoDia() {
       .map((c) => distribuirPagamentos(cfg, c, anterior, pagamentos, hoje))
       .filter((d) => d.situacao === "atrasado");
     return {
+      // M8 (01/10/2026): o caixa conta pelo dia em que o dinheiro caiu; o mês de referência só mostra quem deve
+      entrou: calcularMesDeCima(cfg, pagamentos, mes).entrouCentavos,
       recebidoPor: new Map(doMes.map((d) => [d.clienteId, d.recebidoCentavos])),
       recebido: doMes.reduce((s, d) => s + d.recebidoCentavos, 0),
       contratado: clientes.filter((c) => clienteNoMes(c, mes)).reduce((s, c) => s + (c.valorMensalCentavos ?? 0), 0),
@@ -529,20 +531,20 @@ export default function VisaoDoDia() {
                 <div className="flex flex-col divide-y divide-linha">
                   <Link href="/mes?aba=cima" className="flex min-h-11 flex-col justify-center gap-1 py-2 hover:opacity-80">
                     <span className="flex items-baseline gap-2 text-[13px]">
-                      <span className="flex-1 font-semibold">Dinheiro</span>
+                      <span className="flex-1 font-semibold">Entrou este mês</span>
                       <span className="numero font-bold">
-                        {formatarMoeda(financeiro.recebido)} <span className="text-[12px] font-normal text-texto-suave">de {formatarMoeda(financeiro.contratado)}</span>
+                        {formatarMoeda(financeiro.entrou)} <span className="text-[12px] font-normal text-texto-suave">de {formatarMoeda(financeiro.contratado)}</span>
                       </span>
                     </span>
                     {financeiro.contratado > 0 && (
                       <span className="block h-1.5 overflow-hidden rounded-full bg-superficie-2">
-                        <span className="block h-full rounded-full bg-ok" style={{ width: `${Math.min(100, (financeiro.recebido / financeiro.contratado) * 100)}%` }} />
+                        <span className="block h-full rounded-full bg-ok" style={{ width: `${Math.min(100, (financeiro.entrou / financeiro.contratado) * 100)}%` }} />
                       </span>
                     )}
                     <span className="text-[12px] text-texto-suave">
                       {financeiro.contratado > financeiro.recebido
-                        ? `Falta entrar ${formatarMoeda(financeiro.contratado - financeiro.recebido)} este mês.`
-                        : "O que foi contratado para o mês já entrou."}
+                        ? `Os clientes ainda devem ${formatarMoeda(financeiro.contratado - financeiro.recebido)} deste mês. A divisão dos sócios conta o que entrou.`
+                        : "Os clientes já pagaram o mês. A divisão dos sócios conta o que entrou."}
                     </span>
                   </Link>
                   <Link href="/crm" className="flex min-h-11 items-center gap-2 py-2 text-[13px] hover:opacity-80">

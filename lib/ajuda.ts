@@ -94,8 +94,8 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/pagamentos": {
     titulo: "Pagamentos",
     texto:
-      "Anote aqui cada pagamento que cai, com o mês a que ele se refere. O sistema mostra quanto de cada pagamento vai para custos, empresa e cada sócio, e quem está atrasado. Use sempre que entrar dinheiro de cliente.",
-    termos: ["ordem-distribuicao"],
+      "Anote aqui cada pagamento que cai, com o dia em que caiu e o mês que ele paga. A divisão dos sócios e o caixa contam pelo dia em que o dinheiro entrou; o mês que ele paga só serve para mostrar quem ainda deve. Use sempre que entrar dinheiro de cliente.",
+    termos: ["sobra"],
   },
   "/pdfs": {
     titulo: "Relatórios",

@@ -2462,8 +2462,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   server.registerTool(
     "ver_pagamentos_do_mes",
     {
-      title: "Pagamentos e repasse do mês",
-      description: "Por cliente: contrato, quanto entrou, quanto falta, se está em atraso e para onde foi o dinheiro. Por sócio: quanto já recebeu no mês e quanto falta.",
+      title: "Quem está devendo no mês",
+      description:
+        "Pelo mês de referência (o mês que o cliente está pagando): por cliente, contrato, quanto entrou, quanto falta e se está em atraso. Serve para saber QUEM DEVE. A divisão dos sócios e o caixa contam pelo mês em que o dinheiro entrou: para isso use ver_mes_visto_de_cima (regra de 01/10/2026). Os campos de repasse por sócio daqui são a conta antiga e não valem para a divisão.",
       inputSchema: { competencia: zCompetencia },
     },
     async ({ competencia }) =>

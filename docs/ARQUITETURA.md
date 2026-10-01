@@ -55,6 +55,23 @@
   (`prazo_dias`). No contrato sai "1 projeto, com entrega em até N dias" (sem prazo, falta preencher). Conector:
   `salvar_tipo_entrega` com `projeto`, `horasDoProjeto`, `prazoDias`. Logo e Estrutura visual marcados como projeto.
 
+- **Mês que vale (M8, 01/10/2026):** para a divisão dos sócios e o caixa vale o mês em que o dinheiro ENTROU
+  (`calcularMesDeCima`, pela data do pagamento). O mês de referência serve só para mostrar quem está devendo. Pagamentos:
+  a prévia mostra a parte de cada sócio antes → depois no mês da data; a lista virou "Quem está devendo" (sem a divisão
+  antiga por pagamento). Visão do dia: "Entrou este mês" pela data; "os clientes ainda devem" pela referência. Relatório
+  do sócio em PDF: parte no mês, o que entrou e de cada cliente, pela data. `distribuirPagamentos` continua só para
+  saber quem deve (e na aba escondida "Repasse por cliente"); no conector, `ver_pagamentos_do_mes` = quem deve e
+  `ver_mes_visto_de_cima` = divisão.
+- **Tarefas como na referência (M6):** filtros Abertas · Concluídas · Todas, cliente, pessoa, área (= serviço do tipo de
+  entrega) e calendário; visões Lista · Quadro · Calendário (a grade do Calendário dentro de Tarefas); etiqueta colorida
+  por cliente (6 tons em `tokens.css`, `cliente-1..6`, contraste ≥ 5,8:1; `coresDosClientes` em `lib/calculo/cores.ts`);
+  "sem prazo" e selo de prioridade em toda tarefa.
+- **Menu (M7):** grupo **Comercial** (Leads → Proposta → Calculadora de projeto, sempre aberto, calculadora em destaque);
+  Clientes ficou só com Clientes e contratos.
+- **Palavras (M1, M2):** na tela, calendário (não "lote"), entregas do contrato (não "escopo"), divisão dos custos fixos
+  (não "rateio"); onboarding, kickoff, briefing e follow-up ficam em inglês dentro do sistema; o cliente nunca vê
+  "briefing" nem "kickoff" (teste em `components/apresentacao/render.test.tsx`).
+
 ## Stack
 
 Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + Tailwind v4 + Vercel.
