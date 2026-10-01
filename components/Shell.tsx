@@ -46,9 +46,9 @@ interface Item {
   destaque?: boolean;
 }
 
-// Áreas do sistema (reorganizadas na auditoria de 26/09/2026: 5 grupos, uma tela por assunto).
+// Áreas do sistema (reorganizadas na auditoria de 26/09/2026: 5 grupos, uma tela por assunto; grupo Comercial em 01/10/2026).
 // O dia a dia vem primeiro e fica sempre aberto: é por onde cada um começa o dia.
-// Fase 1 (29/09/2026): a calculadora voltou ao menu, em destaque no grupo Vendas (sempre aberto);
+// Fase 1 (29/09/2026): a calculadora voltou ao menu, em destaque no grupo Vendas (hoje Comercial, sempre aberto);
 // Relatórios virou botão dentro da tela Mês.
 // Configurações fica sozinha no fim; o glossário e o tour ficam no rodapé.
 const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
@@ -63,17 +63,17 @@ const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
   },
   {
     titulo: "Clientes",
-    itens: [
-      { href: "/clientes", rotulo: "Clientes e contratos", icone: FileSignature, area: "clientes" },
-      { href: "/crm", rotulo: "Leads", icone: MessagesSquare, area: "crm" },
-    ],
+    itens: [{ href: "/clientes", rotulo: "Clientes e contratos", icone: FileSignature, area: "clientes" }],
   },
+  // M7 da auditoria (01/10/2026): o comercial num lugar só, separado do operacional, na ordem da jornada:
+  // lead → proposta → (conta interna na calculadora). Fica sempre aberto, com a calculadora em destaque.
   {
-    titulo: "Vendas",
+    titulo: "Comercial",
     fixo: true,
     itens: [
-      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora", destaque: true },
+      { href: "/crm", rotulo: "Leads", icone: MessagesSquare, area: "crm" },
       { href: "/negociacao", rotulo: "Proposta", icone: Presentation, area: "negociacao" },
+      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora", destaque: true },
     ],
   },
   {
@@ -147,7 +147,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
         const temAtivo = g.titulo === doCaminho;
         return (
           <div key={g.titulo} className={cx(g.titulo === "Ajustes" && "mt-2 border-t border-linha pt-3")}>
-            {g.fixo && g.titulo === "Vendas" && (
+            {g.fixo && g.titulo === "Comercial" && (
               <p className={cx("px-3 py-2 text-[12px] font-bold tracking-[0.08em] uppercase", temAtivo ? "text-marca-forte" : "text-texto-suave")}>{g.titulo}</p>
             )}
             {!g.fixo && (

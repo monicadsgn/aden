@@ -112,7 +112,7 @@ describe("rateio", () => {
     const cfg = config();
     cfg.empresa.regraRateio = null;
     const r = calcularComReceita(prepararMes(cfg, cenario()), 300000);
-    expect(r.alertas.some((a) => a.texto.includes("regra de rateio"))).toBe(true);
+    expect(r.alertas.some((a) => a.texto.includes("regra da divisão dos custos fixos"))).toBe(true);
     expect(r.rateio.quotaCentavos).toBe(0);
   });
 });

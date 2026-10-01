@@ -66,6 +66,14 @@
   --vidro-desfoque: 24px;
   --veu: rgb(43 46 26 / 0.18);         /* o que escurece a tela atrás da janela */
 
+  /* etiqueta por cliente (M6, 01/10/2026): 6 tons de apoio, texto ≥ 4,5:1 sobre o fundo da etiqueta */
+  --cliente-1: #4f5229; --cliente-1-fundo: #e6e8d6;
+  --cliente-2: #8a3f24; --cliente-2-fundo: #f6e3da;
+  --cliente-3: #2f5a66; --cliente-3-fundo: #dfeef1;
+  --cliente-4: #74550c; --cliente-4-fundo: #f5ecd3;
+  --cliente-5: #6b3a5c; --cliente-5-fundo: #f0e1ea;
+  --cliente-6: #3b4f86; --cliente-6-fundo: #e2e7f4;
+
   color-scheme: light;
 }
 
@@ -95,6 +103,12 @@
     --vidro: rgb(31 32 22 / 0.8);
     --vidro-borda: rgb(255 255 255 / 0.1);
     --veu: rgb(0 0 0 / 0.45);
+    --cliente-1: #c8cb8e; --cliente-1-fundo: #34361f;
+    --cliente-2: #eba48a; --cliente-2-fundo: #3d2219;
+    --cliente-3: #9fd0db; --cliente-3-fundo: #17323a;
+    --cliente-4: #e3c27a; --cliente-4-fundo: #3a2e12;
+    --cliente-5: #d9a6c9; --cliente-5-fundo: #3a2033;
+    --cliente-6: #aab9ea; --cliente-6-fundo: #222c4a;
     color-scheme: dark;
   }
 }
@@ -122,5 +136,11 @@
   --vidro: rgb(31 32 22 / 0.8);
   --vidro-borda: rgb(255 255 255 / 0.1);
   --veu: rgb(0 0 0 / 0.45);
+  --cliente-1: #c8cb8e; --cliente-1-fundo: #34361f;
+  --cliente-2: #eba48a; --cliente-2-fundo: #3d2219;
+  --cliente-3: #9fd0db; --cliente-3-fundo: #17323a;
+  --cliente-4: #e3c27a; --cliente-4-fundo: #3a2e12;
+  --cliente-5: #d9a6c9; --cliente-5-fundo: #3a2033;
+  --cliente-6: #aab9ea; --cliente-6-fundo: #222c4a;
   color-scheme: dark;
 }

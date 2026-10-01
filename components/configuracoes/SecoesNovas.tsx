@@ -32,7 +32,7 @@ export function SecaoTerceiros({ rascunho, set }: Props) {
       <p className="text-[12px] text-texto-suave">
         Serviço terceirizado cobrado <strong>por saída</strong> (ex.: audiovisual: a pessoa vai ao cliente, grava, edita e entrega). O custo de cada cliente é
         saídas por mês × (valor por saída + deslocamento). É custo só do cliente que recebe a gravação, nunca dividido entre todos. Mudou o valor aqui, todos os pacotes
-        e escopos recalculam. Ligue o terceiro a um tipo de entrega em <strong>Tipos de entrega</strong>.
+        e entregas dos contratos recalculam. Ligue o terceiro a um tipo de entrega em <strong>Tipos de entrega</strong>.
       </p>
       {lista.length === 0 && (
         <Vazio icone={Truck} titulo="Nenhum terceiro cadastrado">
@@ -138,7 +138,7 @@ function PrecoCalculado({ config, pacote }: { config: Configuracao; pacote: Paco
         </p>
       </div>
       <p className="text-[12px] text-texto-suave sm:col-span-2">
-        Ninguém digita preço: sai do tempo de cada entrega, do piso de cada sócio, dos custos (terceiros inclusos) e do rateio. Mudou a configuração, o preço muda junto.
+        Ninguém digita preço: sai do tempo de cada entrega, do piso de cada sócio, dos custos (terceiros inclusos) e da divisão dos custos fixos. Mudou a configuração, o preço muda junto.
       </p>
     </div>
   );
@@ -150,7 +150,7 @@ export function SecaoPacotes({ rascunho, set }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[12px] text-texto-suave">
-        Pacotes fechados para a negociação. O cliente vê só o nome, as frases do que está incluso e o valor; nunca quantidades nem horas. As quantidades ficam aqui, para
+        Pacotes fechados para a Proposta. O cliente vê só o nome, as frases do que está incluso e o valor; nunca quantidades nem horas. As quantidades ficam aqui, para
         o sistema calcular.
       </p>
       {lista.length === 0 && (
@@ -216,7 +216,7 @@ export function SecaoPacotes({ rascunho, set }: Props) {
               rotulo="Pacote padrão (a tela Mês conta quantos deste ainda cabem)"
               aoMudar={(v) => setLista(lista.map((x) => (x.id === p.id ? { ...x, padrao: v } : v ? { ...x, padrao: false } : x)))}
             />
-            <Interruptor ligado={p.ativo} rotulo="Aparece na negociação" aoMudar={(v) => setLista(atualizar(lista, p.id, { ativo: v }))} />
+            <Interruptor ligado={p.ativo} rotulo="Aparece na Proposta" aoMudar={(v) => setLista(atualizar(lista, p.id, { ativo: v }))} />
           </div>
         </div>
       ))}

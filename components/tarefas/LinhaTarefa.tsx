@@ -8,6 +8,7 @@ import { Avatar } from "../Avatar";
 import { cx } from "../ui";
 import { STATUS, type Tarefa } from "@/lib/calculo/tarefas";
 import { agruparPorCalendario, prontasDoCalendario } from "@/lib/calculo/lotes";
+import { coresDosClientes } from "@/lib/calculo/cores";
 import { BotaoRelogio, COR_STATUS } from "./DetalheTarefa";
 import type { AcoesTarefas } from "./useTarefas";
 
@@ -21,7 +22,14 @@ const dataCurta = (iso: string) => {
 };
 
 export function Prazo({ t }: { t: Tarefa }) {
-  if (!t.vencimento) return null;
+  // data em toda tarefa (M6): sem vencimento diz "sem prazo"
+  if (!t.vencimento)
+    return t.status === "concluida" ? null : (
+      <span className="inline-flex items-center gap-1 text-[11px] text-texto-suave">
+        <CalendarDays size={12} aria-hidden />
+        sem prazo
+      </span>
+    );
   const atrasada = t.status !== "concluida" && t.vencimento < hojeISO();
   return (
     <span className={cx("inline-flex items-center gap-1 text-[11px] tabular-nums", atrasada ? "font-semibold text-erro" : "text-texto-suave")}>
@@ -37,20 +45,28 @@ export function MetaTarefa({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
   const feitas = t.etapas.filter((e) => e.feita).length;
   return (
     <>
-      {cliente && <span className="max-w-32 truncate rounded-botao bg-marca-suave px-2 py-0.5 text-[10px] font-semibold text-marca-forte">{cliente.nome}</span>}
+      {cliente && <span className={cx("max-w-32 truncate rounded-botao px-2 py-0.5 text-[10px] font-semibold", `cliente-${coresDosClientes(a.config.clientes).get(cliente.id) ?? 1}`)}>{cliente.nome}</span>}
       {t.pedidaPorNome && (
         <span className="max-w-48 truncate rounded-botao bg-info-suave px-2 py-0.5 text-[10px] font-semibold text-info" title="Quem pediu esta tarefa">
           pedida por {t.pedidaPorNome}
         </span>
       )}
-      {t.lote && <span className="max-w-40 truncate rounded-botao border border-linha px-2 py-0.5 text-[10px] font-semibold text-texto-suave" title="Lote do planejamento">{t.lote}</span>}
+      {t.lote && <span className="max-w-40 truncate rounded-botao border border-linha px-2 py-0.5 text-[10px] font-semibold text-texto-suave" title="Calendário do planejamento">{t.lote}</span>}
       {t.etapas.length > 0 && (
         <span className="inline-flex items-center gap-1 text-[11px] text-texto-suave tabular-nums">
           <ListChecks size={12} aria-hidden /> {feitas}/{t.etapas.length}
         </span>
       )}
-      {(t.prioridade === "urgente" || t.prioridade === "alta") && (
-        <Flag size={12} className={t.prioridade === "urgente" ? "text-erro" : "text-aviso"} aria-label={`Prioridade ${t.prioridade}`} />
+      {t.prioridade && (
+        <span
+          className={cx(
+            "inline-flex items-center gap-1 text-[11px] font-semibold",
+            t.prioridade === "urgente" ? "text-erro" : t.prioridade === "alta" ? "text-aviso" : "text-texto-suave",
+          )}
+          title="Prioridade"
+        >
+          <Flag size={12} aria-hidden /> {t.prioridade}
+        </span>
       )}
       <Prazo t={t} />
       {resp && <Avatar nome={resp.nome} foto={resp.fotoUrl} tamanho="sm" />}
@@ -127,7 +143,7 @@ function CardCalendario({ nome, pecas, a, abrir }: { nome: string; pecas: Tarefa
         <span className="numero rounded-botao bg-marca-tinta px-2 py-0.5 text-[11px] font-bold text-marca-forte">
           {prontas}/{total} prontas
         </span>
-        {cliente && <span className="max-w-32 truncate rounded-botao bg-marca-suave px-2 py-0.5 text-[10px] font-semibold text-marca-forte">{cliente.nome}</span>}
+        {cliente && <span className={cx("max-w-32 truncate rounded-botao px-2 py-0.5 text-[10px] font-semibold", `cliente-${coresDosClientes(a.config.clientes).get(cliente.id) ?? 1}`)}>{cliente.nome}</span>}
         {proxima && <Prazo t={{ ...pecas.find((t) => t.vencimento === proxima)! }} />}
         <ChevronDown size={15} className={cx("shrink-0 text-texto-suave transition-transform", aberto && "rotate-180")} aria-hidden />
       </button>

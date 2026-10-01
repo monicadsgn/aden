@@ -180,7 +180,7 @@ export function DetalheLead({
       {erro && <p className="mb-3 rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro">{erro}</p>}
       {confirmarGanho && !l.clienteId && (
         <p className="mb-3 rounded-bloco bg-ok-suave px-3 py-2 text-[13px] text-ok">
-          Fechou? Confirme no botão <strong>Fechou! Virar cliente</strong>, lá embaixo: ele cria o cliente, guarda o escopo e abre o checklist de fechamento.
+          Fechou? Confirme no botão <strong>Fechou! Virar cliente</strong>, lá embaixo: ele cria o cliente, guarda as entregas do contrato e abre o checklist de fechamento.
         </p>
       )}
 
@@ -339,7 +339,7 @@ export function DetalheLead({
             </button>
           )}
           <Link href={`/negociacao?cliente=${encodeURIComponent(l.nome)}&lead=${l.id}`} className="inline-flex items-center gap-1 font-semibold text-marca-forte underline">
-            <Presentation size={13} /> Abrir a negociação
+            <Presentation size={13} /> Abrir a Proposta
           </Link>
           {l.simulacaoId && (
             <Link href={`/calculadora?sim=${l.simulacaoId}`} className="inline-flex items-center gap-1 font-semibold text-marca-forte underline">

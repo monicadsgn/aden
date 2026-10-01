@@ -183,7 +183,7 @@ export function montarContrato(
 
   // Objeto
   const objeto = objetoDoContrato(config, c);
-  if (!objeto.length) faltando.push("Escopo do cliente (ficha → Personalizar escopo)");
+  if (!objeto.length) faltando.push("Entregas do contrato do cliente (ficha → Personalizar entregas)");
   for (const e of c.escopo?.entregas ?? []) {
     const t = config.tiposEntrega.find((x) => x.id === e.tipoEntregaId);
     if ((e.quantidade ?? 0) > 0 && t?.projeto && !t.prazoDias) faltando.push(`Prazo em dias do projeto ${t.nome} (Configurações → Tipos de entrega)`);

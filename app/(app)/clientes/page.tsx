@@ -108,7 +108,7 @@ export default function Clientes() {
         <div className="flex flex-wrap items-center gap-2 text-[11px]">
           {c.valorMensalCentavos != null && <span className="numero font-bold">{formatarMoeda(c.valorMensalCentavos)}/mês</span>}
           {s && s !== "sem_contrato" && <Badge tom={SITUACAO_PAGAMENTO[s].tom}>{SITUACAO_PAGAMENTO[s].rotulo}</Badge>}
-          {!c.escopo && !c.interno && <Badge tom="aviso">sem escopo</Badge>}
+          {!c.escopo && !c.interno && <Badge tom="aviso">sem entregas do contrato</Badge>}
           {abertas > 0 && (
             <span className="inline-flex items-center gap-1 text-texto-suave">
               <ClipboardList size={11} /> {abertas} tarefa{abertas === 1 ? "" : "s"}
@@ -125,7 +125,7 @@ export default function Clientes() {
         icone={FileSignature}
         selo="Clientes"
         titulo="Clientes e contratos"
-        descricao="A ficha de cada cliente: contato, contrato, escopo, tarefas, pagamentos e a conversa de antes de fechar."
+        descricao="A ficha de cada cliente: contato, contrato, entregas do contrato, tarefas, pagamentos e a conversa de antes de fechar."
       />
       <div className="mx-auto flex max-w-[1300px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
         {erro && <p className="rounded-card bg-erro-suave px-4 py-3 text-sm text-erro">{erro}</p>}

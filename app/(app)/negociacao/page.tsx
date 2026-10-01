@@ -168,7 +168,7 @@ export default function Negociacao() {
         clienteId: cen.clienteId,
         afetados: abaixo.map((a) => a.pessoaId),
         assinatura,
-        descricao: `Proposta de ${formatarMoeda(valor)} para ${nomeCliente || "cliente novo"} (negociação) abaixo do piso de ${abaixo.map((a) => a.nome).join(" e ")}`,
+        descricao: `Proposta de ${formatarMoeda(valor)} para ${nomeCliente || "cliente novo"} (tela Proposta) abaixo do piso de ${abaixo.map((a) => a.nome).join(" e ")}`,
         dados: { aplicar: "proposta", cenario: cen, valorCentavos: valor, perdas: abaixo },
       });
       setPedidos(await repo.listarPedidos());
@@ -184,13 +184,13 @@ export default function Negociacao() {
     try {
       const r = await guardarEscopo(repo, config, cen.clienteId, cen);
       if (!r.gravado) {
-        setAviso(`Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: o escopo espera aprovação em Sócios → Pedidos e avisos.`);
+        setAviso(`Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: as entregas do contrato esperam aprovação em Sócios → Pedidos e avisos.`);
         return;
       }
       if (volta) router.push(volta);
-      else setAviso("Escopo guardado na ficha do cliente.");
+      else setAviso("Entregas do contrato guardadas na ficha do cliente.");
     } catch (e) {
-      setAviso(e instanceof Error ? e.message : "Não deu para guardar o escopo.");
+      setAviso(e instanceof Error ? e.message : "Não deu para guardar as entregas do contrato.");
     } finally {
       setGuardando(false);
     }
@@ -297,7 +297,7 @@ export default function Negociacao() {
             <span className="flex-1" />
             {volta && cen.clienteId ? (
               <Botao icone={Save} disabled={guardando} onClick={guardarComoEscopo}>
-                Guardar no escopo de {config.clientes.find((c) => c.id === cen.clienteId)?.nome ?? "cliente"}
+                Guardar nas entregas do contrato de {config.clientes.find((c) => c.id === cen.clienteId)?.nome ?? "cliente"}
               </Botao>
             ) : (
               <Botao icone={Save} onClick={salvarVersao}>

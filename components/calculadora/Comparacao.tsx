@@ -62,7 +62,7 @@ export function Comparacao({
       : []),
     { rotulo: "Impostos e taxas", valores: resultados.map((r, i) => moeda(r.mes ? r.mes.impostosCentavos + r.mes.taxasCentavos : null, i)) },
     { rotulo: "Custos do projeto", valores: resultados.map((r, i) => moeda(r.mes?.custosProjetoCentavos, i)) },
-    { rotulo: "Custo fixo rateado", valores: resultados.map((r, i) => moeda(r.mes?.rateio.quotaCentavos, i)) },
+    { rotulo: "Custo fixo dividido entre os clientes", valores: resultados.map((r, i) => moeda(r.mes?.rateio.quotaCentavos, i)) },
     {
       rotulo: "Sobra depois dos custos",
       forte: true,

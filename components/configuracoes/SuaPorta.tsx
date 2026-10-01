@@ -52,7 +52,7 @@ export function SuaPorta() {
   return (
     <div className="rounded-bloco border border-linha p-3">
       <p className="mb-1 flex items-center gap-1.5 text-sm font-bold">
-        <KeyRound size={15} /> Sua porta de acesso
+        <KeyRound size={15} /> Acesso para outro sistema
       </p>
       <p className="mb-3 text-[12px] text-texto-suave">
         Um código só seu, para outro sistema ver e mexer nas suas tarefas (as que têm você como responsável) sem entrar no Aden. Tudo o que chegar por ele fica no

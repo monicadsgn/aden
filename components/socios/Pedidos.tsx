@@ -119,7 +119,7 @@ export default function Aprovacoes() {
               <div className="rounded-item bg-superficie-2/70 px-3 py-2 text-[12px]">
                 <p>
                   Valor: <strong className="numero">{formatarMoeda(p.dados.valorCentavos)}</strong>
-                  {p.dados.aplicar === "escopo" ? " · ao aprovar, vira o escopo contratado do cliente" : " · ao aprovar, libera a proposta"}
+                  {p.dados.aplicar === "escopo" ? " · ao aprovar, vira as entregas do contrato do cliente" : " · ao aprovar, libera a proposta"}
                 </p>
                 {p.dados.perdas.map((x) => (
                   <p key={x.pessoaId} className="text-erro">
@@ -195,7 +195,7 @@ export default function Aprovacoes() {
       <CabecalhoPagina
         icone={ShieldCheck}
         selo="Sócios"
-        titulo="Aprovações"
+        titulo="Pedidos entre sócios"
         descricao="Mudanças no que protege a remuneração dos sócios e exceções abaixo do piso. Só valem depois que o sócio afetado aprova. Nada aqui se apaga."
       />
       <div className="mx-auto flex max-w-[1000px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">

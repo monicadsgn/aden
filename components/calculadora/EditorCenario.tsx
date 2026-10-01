@@ -319,7 +319,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
           detalhes={<DetalhesComoCalcular />}
           descricao={
             cenario.modo === "escopo"
-              ? "Você monta o escopo e o sistema calcula o valor mínimo que ele precisa custar."
+              ? "Você monta as entregas e o sistema calcula o valor mínimo que elas precisam custar."
               : "Você informa o valor e o sistema mostra o que cabe dentro dele."
           }
         />

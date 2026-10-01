@@ -68,6 +68,14 @@ body {
   backdrop-filter: blur(6px);
 }
 
+/* etiqueta colorida por cliente (corDoCliente em lib/calculo/cores.ts dá o número) */
+.cliente-1 { color: var(--cliente-1); background: var(--cliente-1-fundo); }
+.cliente-2 { color: var(--cliente-2); background: var(--cliente-2-fundo); }
+.cliente-3 { color: var(--cliente-3); background: var(--cliente-3-fundo); }
+.cliente-4 { color: var(--cliente-4); background: var(--cliente-4-fundo); }
+.cliente-5 { color: var(--cliente-5); background: var(--cliente-5-fundo); }
+.cliente-6 { color: var(--cliente-6); background: var(--cliente-6-fundo); }
+
 .numero {
   font-family: var(--fonte-numeros);
   font-variant-numeric: tabular-nums;

@@ -27,7 +27,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/clientes": {
     titulo: "Clientes e contratos",
     texto:
-      "A ficha de cada cliente é o único lugar dos dados dele: contato, contrato, escopo, tarefas, pagamentos e a conversa de antes de fechar. Preencha o dia do pagamento e as datas do contrato: o que vence aparece na sua Visão do dia. Para mudar o que ele recebe, use \"Personalizar escopo\" na aba Contrato.",
+      "A ficha de cada cliente é o único lugar dos dados dele: contato, contrato, entregas do contrato, tarefas, pagamentos e a conversa de antes de fechar. Preencha o dia do pagamento e as datas do contrato: o que vence aparece na sua Visão do dia. Para mudar o que ele recebe, use \"Personalizar entregas\" na aba Contrato.",
     termos: ["escopo", "rateio"],
   },
   "/calendario": {
@@ -81,7 +81,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
     termos: ["sobra", "ordem-distribuicao"],
   },
   "/mes#socios": {
-    titulo: "Mês · Sócios",
+    titulo: "Mês · Repasse por cliente",
     texto: "Mostra quanto cada sócio já tem para receber no mês, com base nos pagamentos que entraram. Use na hora de fazer o repasse (a transferência para cada sócio).",
     termos: ["sobra", "reinvestimento", "ordem-distribuicao"],
   },
@@ -156,8 +156,8 @@ export const GLOSSARIO: Termo[] = [
   },
   {
     id: "rateio",
-    termo: "Rateio",
-    frase: "A divisão dos custos fixos da empresa (ferramentas, imposto do MEI) entre os clientes. Vai embutido na mensalidade.",
+    termo: "Divisão dos custos fixos",
+    frase: "Os custos fixos da empresa (ferramentas, imposto do MEI) divididos entre os clientes. Vão embutidos na mensalidade.",
     exemplo: "R$ 800 de custos fixos divididos igualmente por 4 clientes dão R$ 200 para cada.",
   },
   {
@@ -174,7 +174,7 @@ export const GLOSSARIO: Termo[] = [
   },
   {
     id: "escopo",
-    termo: "Escopo",
+    termo: "Entregas do contrato",
     frase: "A lista do que vai ser entregue ao cliente por mês.",
     exemplo: "12 posts, 4 carrosséis e 1 reunião mensal.",
   },
@@ -217,7 +217,7 @@ export const GLOSSARIO: Termo[] = [
   {
     id: "excecao",
     termo: "Exceção",
-    frase: "Quando um escopo ou proposta fica abaixo do piso de um sócio, só vale se ele aprovar.",
+    frase: "Quando as entregas do contrato ou a proposta ficam abaixo do piso de um sócio, só valem se ele aprovar.",
     exemplo: "Um cliente estratégico que paga R$ 40/h quando o piso é R$ 50/h: o sócio afetado precisa dizer sim.",
   },
 ];
@@ -249,7 +249,7 @@ export const TOUR: PassoTour[] = [
   {
     titulo: "Clientes e vendas",
     texto:
-      "Em Leads fica quem se interessou; ao fechar, vira cliente com ficha e contrato. Em Vendas, a Calculadora mostra (só para os sócios) se o preço paga os custos e as horas de todo mundo, e a Proposta é a tela para mostrar os pacotes ao cliente e personalizar na hora.",
+      "Em Leads fica quem se interessou; ao fechar, vira cliente com ficha e contrato. No Comercial, a Calculadora mostra (só para os sócios) se o preço paga os custos e as horas de todo mundo, e a Proposta é a tela para mostrar os pacotes ao cliente e personalizar na hora.",
   },
   {
     titulo: "Dinheiro e mês",

@@ -148,7 +148,7 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
           {(
             [
               ["rede", "Rede (interno)", "ex.: instagram"],
-              ["lote", "Lote do planejamento (interno)", "ex.: Calendário Outubro — Olinda"],
+              ["lote", "Calendário do planejamento (interno)", "ex.: Calendário Outubro — Olinda"],
             ] as const
           ).map(([k, rotulo, dica]) => (
             <label key={k} className="flex min-w-40 flex-1 flex-col gap-1 text-xs font-semibold text-texto-suave">

@@ -135,15 +135,15 @@ export function FichaCliente({
   const escopoDoPacote = async (pacoteId: string | null) => {
     const p = (config.pacotes ?? []).find((x) => x.id === pacoteId);
     if (!p) return;
-    if (c.escopo && !confirm(`Trocar o escopo de ${c.nome} pelo pacote ${p.nome}?`)) return;
+    if (c.escopo && !confirm(`Trocar as entregas do contrato de ${c.nome} pelas do pacote ${p.nome}?`)) return;
     try {
       const base = pacoteParaCenario(p);
       const cen = c.valorMensalCentavos != null ? { ...base, modo: "valor" as const, mensalidadeCentavos: c.valorMensalCentavos } : base;
       const r = await guardarEscopo(repo, config, c.id, cen);
       await aoRecarregar();
-      setMsg(r.gravado ? `Escopo do pacote ${p.nome} guardado.` : `Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: espera aprovação em Sócios → Pedidos e avisos.`);
+      setMsg(r.gravado ? `Entregas do pacote ${p.nome} guardadas no contrato.` : `Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: espera aprovação em Sócios → Pedidos e avisos.`);
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Não deu para guardar o escopo.");
+      setMsg(e instanceof Error ? e.message : "Não deu para guardar as entregas do contrato.");
     }
   };
 
@@ -224,7 +224,7 @@ export function FichaCliente({
               />
               {c.interno && (
                 <p className="text-[12px] text-texto-suave">
-                  Sem mensalidade: fica fora do faturamento, do rateio, da divisão entre sócios e do teto do MEI, e não pede exceção de piso. Tarefas e cronômetro funcionam igual; as horas
+                  Sem mensalidade: fica fora do faturamento, da divisão dos custos fixos, da divisão entre sócios e do teto do MEI, e não pede exceção de piso. Tarefas e cronômetro funcionam igual; as horas
                   aparecem no Mês como investidas na Aden.
                 </p>
               )}
@@ -351,7 +351,7 @@ export function FichaCliente({
 
             <div className="rounded-bloco border border-linha p-3">
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <p className="flex-1 text-sm font-bold">Escopo contratado</p>
+                <p className="flex-1 text-sm font-bold">Entregas do contrato</p>
                 <Botao
                   pequeno
                   variante="primario"
@@ -359,20 +359,20 @@ export function FichaCliente({
                   onClick={() => {
                     // abre com o valor do contrato travado: mexer nas entregas não muda o preço assinado,
                     // a não ser que a pessoa escolha "o valor segue o pacote" na Proposta
-                    const base = c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Escopo · ${c.nome}`), clienteId: c.id };
+                    const base = c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Entregas do contrato · ${c.nome}`), clienteId: c.id };
                     const cen = c.valorMensalCentavos != null ? { ...base, modo: "valor" as const, mensalidadeCentavos: c.valorMensalCentavos } : base;
-                    enviarCenario({ origem: "ficha", nome: `Escopo · ${c.nome}`, cenarios: [cen] });
+                    enviarCenario({ origem: "ficha", nome: `Entregas do contrato · ${c.nome}`, cenarios: [cen] });
                     router.push(`/negociacao?volta=${encodeURIComponent(`/clientes?cliente=${c.id}&aba=contrato`)}`);
                   }}
                 >
-                  Personalizar escopo
+                  Personalizar entregas
                 </Botao>
                 <Botao
                   pequeno
                   icone={Calculator}
                   title="Números internos: piso, horas e divisão"
                   onClick={() => {
-                    enviarCenario({ origem: "saude", nome: `Escopo · ${c.nome}`, cenarios: [c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Escopo · ${c.nome}`), clienteId: c.id }] });
+                    enviarCenario({ origem: "saude", nome: `Entregas do contrato · ${c.nome}`, cenarios: [c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Entregas do contrato · ${c.nome}`), clienteId: c.id }] });
                     router.push("/calculadora");
                   }}
                 >
@@ -389,16 +389,16 @@ export function FichaCliente({
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-texto-suave">Sem escopo guardado: as horas deste cliente não entram na tela Mês.</p>
+                <p className="text-xs text-texto-suave">Sem entregas do contrato guardadas: as horas deste cliente não entram na tela Mês.</p>
               )}
               {(config.pacotes ?? []).some((p) => p.ativo) && (
                 <div className="mt-3 flex items-center gap-2">
                   <Package size={14} className="text-texto-suave" />
                   <Selecao
                     className="flex-1"
-                    ariaLabel="Usar um pacote como escopo"
+                    ariaLabel="Usar um pacote como entregas do contrato"
                     valor={null}
-                    vazio="Usar um pacote como escopo…"
+                    vazio="Usar as entregas de um pacote…"
                     opcoes={(config.pacotes ?? []).filter((p) => p.ativo).map((p) => ({ valor: p.id, rotulo: p.nome }))}
                     aoMudar={(v) => void escopoDoPacote(v)}
                   />

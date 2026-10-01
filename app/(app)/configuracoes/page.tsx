@@ -76,7 +76,7 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "tipos", rotulo: "Tipos de entrega", icone: Shapes, frase: "Quanto tempo leva cada entrega (post, carrossel, roteiro…). É a base de todas as horas." },
   { id: "custos", rotulo: "Custos fixos", icone: Building2, frase: "O que a empresa paga todo mês, tenha cliente ou não. É dividido entre os clientes." },
   { id: "terceiros", rotulo: "Terceiros", icone: Truck, frase: "Serviços terceirizados cobrados por saída (ex.: audiovisual). Custo só do cliente que recebe." },
-  { id: "pacotes", rotulo: "Pacotes", icone: Package, frase: "Pacotes fechados para a negociação. O preço sai do cálculo, nunca digitado." },
+  { id: "pacotes", rotulo: "Pacotes", icone: Package, frase: "Pacotes fechados para a Proposta. O preço sai do cálculo, nunca digitado." },
   { id: "briefing", rotulo: "Briefing", icone: FileQuestion, frase: "As perguntas do briefing que o Áleff e a Moni respondem na ficha de cada cliente." },
   { id: "onboarding", rotulo: "Onboarding", icone: Handshake, frase: "O texto que o cliente recebe ao fechar: boas-vindas, como funciona cada serviço, próximos passos e contato." },
   { id: "contrato", rotulo: "Contrato", icone: FileSignature, frase: "O que é igual em todo contrato da Aden: dados da contratada, quem assina e o texto das obrigações e disposições." },
@@ -796,7 +796,7 @@ export default function Configuracoes() {
                 <Bloco titulo="Como dividir o custo fixo entre os clientes">
                   <Alvo campo="regraRateio" className="sm:col-span-2">
                     <Segmentado
-                      rotulo="Regra de rateio"
+                      rotulo="Regra da divisão dos custos fixos"
                       valor={e.regraRateio}
                       aoMudar={(v) => setE({ regraRateio: v })}
                       opcoes={[

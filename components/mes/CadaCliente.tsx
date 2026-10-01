@@ -116,7 +116,7 @@ function Solucoes({
           <p className="flex items-center gap-2">
             <Scissors size={15} className="shrink-0 text-marca-forte" />
             <span>
-              <strong>Cortar escopo:</strong> mantendo o valor de {formatarMoeda(cliente.valorMensalCentavos)}, cabe no piso tirando:
+              <strong>Cortar entregas:</strong> mantendo o valor de {formatarMoeda(cliente.valorMensalCentavos)}, cabe no piso tirando:
             </span>
           </p>
           {sol.cortar.map((c) => (
@@ -218,7 +218,7 @@ function CartaoCliente({
   return (
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          {!s.temEscopo && <Badge tom="aviso">sem escopo contratado</Badge>}
+          {!s.temEscopo && <Badge tom="aviso">sem entregas do contrato</Badge>}
           <Badge tom={status.tom} icone={status.icone}>
             {status.texto}
           </Badge>
@@ -244,7 +244,7 @@ function CartaoCliente({
           <p className="flex items-start gap-2 rounded-bloco bg-aviso-suave px-3 py-2 text-xs font-medium text-aviso">
             <AlertOctagon size={15} className="mt-px shrink-0" />
             Mesmo trabalhando só as horas previstas, este contrato paga menos que o piso de {s.socios.filter((x) => x.abaixoPisoPrevisto).map((x) => x.nome).join(" e ")}. O problema
-            está no valor ou no escopo combinado.
+            está no valor ou nas entregas do contrato.
           </p>
         )}
 
@@ -499,7 +499,7 @@ export default function Saude() {
 
         {ativos.length === 0 && (
           <Vazio icone={HeartPulse} titulo="Nenhum cliente ativo">
-            Cadastre os clientes em Clientes e contratos e guarde o escopo contratado de cada um pela ficha.
+            Cadastre os clientes em Clientes e contratos e guarde as entregas do contrato de cada um pela ficha.
           </Vazio>
         )}
 

@@ -58,7 +58,7 @@ export default function ImprimirSocio() {
           />
         ))}
       </BlocoDoc>
-      <p className="text-xs text-texto-suave">Horas: lançadas no mês quando houver; senão, a previsão do escopo (ou a média medida pelo cronômetro).</p>
+      <p className="text-xs text-texto-suave">Horas: lançadas no mês quando houver; senão, a previsão das entregas do contrato (ou a média medida pelo cronômetro).</p>
     </Documento>
   );
 }

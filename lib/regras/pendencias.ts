@@ -40,7 +40,7 @@ export function camposFaltando(c: Configuracao): Faltando {
   if (e.regime == null) out.regras.push("regime da empresa");
   if (e.regime === "mei" && e.impostoFixoMensalCentavos == null) out.regras.push("imposto fixo por mês");
   if (e.regime === "outro" && e.impostoPct == null) out.regras.push("imposto em %");
-  if (e.regraRateio == null) out.regras.push("regra de rateio");
+  if (e.regraRateio == null) out.regras.push("regra da divisão dos custos fixos");
   if (e.reinvestimentoPct == null) out.regras.push("reinvestimento");
   if (e.taxaRecebimentoPct == null && e.taxaRecebimentoFixaCentavos == null) out.regras.push("taxa de recebimento");
   if (e.ordemDistribuicao == null) out.regras.push("ordem de distribuição dos pagamentos");
@@ -52,7 +52,7 @@ export function camposFaltando(c: Configuracao): Faltando {
 
   for (const k of c.clientes.filter((x) => x.ativo)) {
     if (k.valorMensalCentavos == null && !k.interno) out.clientes.push(`valor de ${k.nome || "cliente sem nome"}`);
-    if (!k.escopo) out.clientes.push(`escopo de ${k.nome || "cliente sem nome"}`);
+    if (!k.escopo) out.clientes.push(`entregas do contrato de ${k.nome || "cliente sem nome"}`);
   }
   return out;
 }
@@ -75,7 +75,7 @@ const ORDEM_COMECAR: { secao: SecaoConfig; rotulo: string }[] = [
   { secao: "tipos", rotulo: "Tipos de entrega: quanto tempo leva cada um" },
   { secao: "terceiros", rotulo: "Terceiros: valor por saída" },
   { secao: "pacotes", rotulo: "Pacotes: confirmar as quantidades" },
-  { secao: "clientes", rotulo: "Clientes: valor e escopo de cada um" },
+  { secao: "clientes", rotulo: "Clientes: valor e entregas do contrato de cada um" },
 ];
 
 /** Card "Para começar" da Visão do dia: os passos, na ordem, com o que falta em cada um. */

@@ -103,7 +103,7 @@ export function calcularSolucoes(config: Configuracao, cliente: ClienteBase, sau
   const base: "real" | "previsto" = saude.prejuizoSilencioso ? "real" : "previsto";
   const faltando: string[] = [];
   if (saude.bloqueio) faltando.push(saude.bloqueio.texto);
-  if (!cliente.escopo) faltando.push("o escopo contratado do cliente (guarde pela calculadora)");
+  if (!cliente.escopo) faltando.push("as entregas do contrato do cliente (guarde pela calculadora)");
   if (cliente.valorMensalCentavos == null) faltando.push("o valor mensal do contrato");
   for (const s of saude.socios)
     if (s.piso == null && (s.horasReais > 0 || s.horasPrevistas > 0)) faltando.push(`o piso por hora de ${s.nome} (sem ele não dá para saber se ${s.nome} perde)`);

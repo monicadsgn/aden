@@ -170,7 +170,7 @@ function Cascata({ m, taxaFixa }: { m: ResultadoMes; taxaFixa: number | null }) 
       {(c.outro ?? 0) > 0 && <LinhaCascata rotulo="Outros custos do caso (diária, deslocamento…)" valor={c.outro} sinal="-" />}
       {m.custoPontualDiluidoCentavos > 0 && <LinhaCascata rotulo="Pontual diluído (custos)" valor={m.custoPontualDiluidoCentavos} sinal="-" />}
       <LinhaCascata
-        rotulo="Custo fixo da empresa (rateio)"
+        rotulo="Custo fixo da empresa (dividido entre os clientes)"
         valor={m.rateio.quotaCentavos}
         sinal="-"
         sub={
@@ -252,7 +252,7 @@ function CartaoSocio({ p, grande, foto }: { p: ResultadoPessoa; grande?: boolean
       <div className="relative mt-3">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-texto-suave">
           <span className="inline-flex items-center gap-1.5">
-            {formatarHoras(p.horas)} no projeto <EtiquetaOrigem texto="previsto no escopo" previsao />
+            {formatarHoras(p.horas)} no projeto <EtiquetaOrigem texto="previsto nas entregas do contrato" previsao />
           </span>
           {p.consumoCapacidadePct != null ? <span>{formatarPct(p.consumoCapacidadePct)} do mês</span> : <span>capacidade não configurada</span>}
         </div>
@@ -428,15 +428,15 @@ function BlocoProposta({
             (cliente ? (
               jaEEscopo ? (
                 <Badge tom="ok" icone={CheckCircle2}>
-                  é o escopo contratado de {cliente}
+                  são as entregas do contrato de {cliente}
                 </Badge>
               ) : (
                 <Botao pequeno variante="primario" icone={ClipboardCheck} onClick={aoGuardarEscopo}>
-                  Guardar como escopo contratado de {cliente}
+                  Guardar como entregas do contrato de {cliente}
                 </Botao>
               )
             ) : (
-              <span className="self-center text-[11px] text-texto-suave">Para guardar como escopo contratado, escolha o cliente em “Como calcular”.</span>
+              <span className="self-center text-[11px] text-texto-suave">Para guardar como entregas do contrato, escolha o cliente em “Como calcular”.</span>
             ))}
         </div>
       </div>
@@ -584,7 +584,7 @@ export function PainelResultado({
         sub={
           r.minimo.possivel && dif != null ? (
             <span className="inline-flex flex-wrap items-center gap-1.5">
-              Valor mínimo para este escopo: <strong className="numero">{formatarMoeda(r.minimo.mensalidadeMinimaCentavos)}</strong>
+              Valor mínimo para estas entregas: <strong className="numero">{formatarMoeda(r.minimo.mensalidadeMinimaCentavos)}</strong>
               <span className="inline-flex items-center gap-1 rounded-botao bg-sobre-marca/20 px-2 py-0.5 font-bold">
                 {dif >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                 {dif >= 0 ? `${formatarMoeda(dif)} acima` : `${formatarMoeda(-dif)} abaixo`}
@@ -770,7 +770,7 @@ export function PainelResultado({
             <div className="grid grid-cols-2 gap-2 px-5 pb-5">
               <Indicador icone={Clock3} rotulo="Horas no mês" valor={formatarHoras(m.horasTotais)} dica="Soma das entregas × horas por entrega." />
               <Indicador icone={Coins} rotulo="Valor cobrado por hora" valor={formatarMoeda(m.valorCobradoHoraCentavos)} dica="Receita bruta ÷ horas." />
-              <Indicador icone={ArrowDown} rotulo="Custo por hora" valor={formatarMoeda(m.custoHoraCentavos)} dica="(Custos do projeto + rateio) ÷ horas." />
+              <Indicador icone={ArrowDown} rotulo="Custo por hora" valor={formatarMoeda(m.custoHoraCentavos)} dica="(Custos do projeto + parte dos custos fixos) ÷ horas." />
               <Indicador icone={Sparkles} rotulo="Sobra por hora" valor={formatarMoeda(m.sobraHoraCentavos)} dica="Sobra ÷ horas. Informativo." />
             </div>
           </Card>
@@ -791,7 +791,7 @@ export function PainelResultado({
 
       {r.pontuaisFora.map((pf) => (
         <Card key={pf.id}>
-          <TituloCard icone={Gem} titulo={pf.nome} descricao="Projeto pontual cobrado fora da mensalidade (sem rateio de custo fixo)." />
+          <TituloCard icone={Gem} titulo={pf.nome} descricao="Projeto pontual cobrado fora da mensalidade (sem divisão dos custos fixos)." />
           <div className="grid grid-cols-2 gap-3 px-5 pb-5 text-[13px]">
             <div>
               <p className="text-[11px] font-semibold text-texto-suave">Horas do projeto</p>

@@ -29,6 +29,8 @@ function config(): Configuracao {
 }
 
 const PROIBIDO = /piso|preju[ií]zo|hora|\bh\b|mônica|áleff|reinvest|rateio|custo fixo|divis[ãa]o|percentual|%/i;
+// palavras internas (01/10/2026): para o cliente, briefing é "conversa inicial" e kickoff não aparece
+const SO_INTERNO = /briefing|kickoff/i;
 
 describe("tela do cliente e PDF", () => {
   it("pacote fechado: só nome, frases e valor; nunca o valor do terceiro, horas ou quantidades", () => {
@@ -39,6 +41,7 @@ describe("tela do cliente e PDF", () => {
     const html = renderToStaticMarkup(<VistaPacoteCliente vista={vistaPacote(c, pk, { cenario: pacoteParaCenario(pk), desligados: {} })} aoPersonalizar={() => {}} />);
     const texto = html.replace(/<[^>]+>/g, " ");
     expect(texto).not.toMatch(PROIBIDO);
+    expect(texto).not.toMatch(SO_INTERNO);
     expect(texto).not.toMatch(/317|360,00|43,00|Post simples|\b8\b/);
     expect(texto).toContain("gravação e edição mensal inclusa");
     expect(texto).toContain("Social media padrão");
@@ -53,6 +56,7 @@ describe("tela do cliente e PDF", () => {
       const html = renderToStaticMarkup(<VistaCliente vista={vistaApresentacao(c, e)} aoMudarQuantidade={() => {}} aoAlternarServico={() => {}} />);
       const texto = html.replace(/<[^>]+>/g, " ");
       expect(texto).not.toMatch(PROIBIDO);
+      expect(texto).not.toMatch(SO_INTERNO);
       expect(texto).toContain("Post simples");
       expect(texto).toContain("Investimento mensal");
     }
@@ -68,6 +72,7 @@ describe("tela do cliente e PDF", () => {
     const g = garantiaParaCliente(c, cen)!;
     const texto = renderToStaticMarkup(<BlocoGarantia g={g} />).replace(/<[^>]+>/g, " ");
     expect(texto).not.toMatch(PROIBIDO);
+    expect(texto).not.toMatch(SO_INTERNO);
     expect(texto).toContain("só paga a gestão do tráfego quando o resultado vier");
     expect(texto).toMatch(/1\.000,00.*2\.000,00/);
     expect(garantiaParaCliente(c, novoCenario("y"))).toBeNull();
@@ -90,6 +95,7 @@ describe("tela do cliente e PDF", () => {
     const doc = documentoProposta(c, cen, r.proposta!.valorCentavos, { cliente: "Cliente", competencia: "2026-09", incluiTrafego: false, verbaMidiaCentavos: null });
     const texto = renderToStaticMarkup(<PropostaDoc doc={doc} />).replace(/<[^>]+>/g, " ");
     expect(texto).not.toMatch(PROIBIDO);
+    expect(texto).not.toMatch(SO_INTERNO);
     expect(texto).toContain("8 por mês");
   });
 });
@@ -117,6 +123,7 @@ describe("PDF do onboarding", () => {
     // o PDF (lib/documentos/onboarding-visual.ts) só recebe este documento
     const texto = JSON.stringify(doc);
     expect(texto).not.toMatch(/piso|preju[ií]zo|\bh\b|mônica|áleff|reinvest|rateio|custo|divis[ãa]o|percentual|%|1\.500|45,00|35,00/i);
+    expect(texto).not.toMatch(SO_INTERNO);
     expect(texto).toContain("planejamos o mês.");
     expect(texto).toContain("8 por mês");
   });
