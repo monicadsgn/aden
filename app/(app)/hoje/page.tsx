@@ -428,7 +428,7 @@ export default function VisaoDoDia() {
                   <ListaTarefas tarefas={v.atrasadas} a={a} abrir={setTarefaAberta} />
                   {v.hoje.length > 0 && <p className="px-2 pt-2 text-[11px] font-bold tracking-wide text-texto-suave uppercase">Hoje</p>}
                   <ListaTarefas tarefas={v.hoje} a={a} abrir={setTarefaAberta} />
-                  {emAndamento.length > 0 && <p className="px-2 pt-2 text-[11px] font-bold tracking-wide text-texto-suave uppercase">Em produção, sem prazo</p>}
+                  {emAndamento.length > 0 && <p className="px-2 pt-2 text-[11px] font-bold tracking-wide text-texto-suave uppercase">Sem prazo</p>}
                   <ListaTarefas tarefas={emAndamento} a={a} abrir={setTarefaAberta} />
                 </div>
               )}

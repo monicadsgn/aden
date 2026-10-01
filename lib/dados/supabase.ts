@@ -986,6 +986,7 @@ export class RepositorioSupabase implements Repositorio {
       agendadaEm: (t.agendada_em as string) ?? null,
       rede: (t.rede as string) ?? null,
       lote: (t.lote as string) ?? null,
+      pedidaPorNome: (t.pedida_por_nome as string) ?? null,
     }));
   }
 

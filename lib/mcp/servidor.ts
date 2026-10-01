@@ -2008,7 +2008,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Visão do dia",
       description:
-        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, com o cliente e concluídas hoje; o que vai ao ar hoje e peças que o cliente não aprovou no prazo; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
+        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, sem prazo (em produção ou pedidas por outro sócio, com pedidaPor), com o cliente e concluídas hoje; o que vai ao ar hoje e peças que o cliente não aprovou no prazo; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
       inputSchema: { socio: z.string().optional().describe("sócio (nome ou id); vazio = todo mundo") },
     },
     async ({ socio }) =>
@@ -2019,13 +2019,14 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const [tarefas, pedidos] = await Promise.all([repo.listarTarefas(), repo.listarPedidos()]);
         const v = montarVisaoDoDia(tarefas, pessoaId, hojeISO());
         const cli = (id: string | null) => (id ? (config.clientes.find((c) => c.id === id)?.nome ?? null) : null);
-        const resumo = (l: typeof tarefas) => l.map((t) => ({ id: t.id, titulo: t.titulo, cliente: cli(t.clienteId), vencimento: t.vencimento, status: rotuloStatus(t.status) }));
+        const resumo = (l: typeof tarefas) =>
+          l.map((t) => ({ id: t.id, titulo: t.titulo, cliente: cli(t.clienteId), vencimento: t.vencimento, status: rotuloStatus(t.status), ...(t.pedidaPorNome ? { pedidaPor: t.pedidaPorNome } : {}) }));
         return {
           hoje: resumo(v.hoje),
           atrasadas: resumo(v.atrasadas),
           proximos7Dias: resumo(v.semana),
           emAprovacao: resumo(v.emAprovacao),
-          emProducaoSemPrazo: resumo(v.emAndamento),
+          semPrazo: resumo(v.emAndamento),
           semResponsavel: resumo(v.semResponsavel),
           concluidasHoje: v.concluidasHoje.length,
           publicacao: (() => {
@@ -2085,6 +2086,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               checklist: t.etapas.map((e) => `${e.feita ? "[x]" : "[ ]"} ${e.titulo}`),
               ...(t.rede && { rede: t.rede }),
               ...(t.lote && { lote: t.lote }),
+              ...(t.pedidaPorNome && { pedidaPor: t.pedidaPorNome }),
               estimativaMin: est == null ? null : Math.round(est * 60),
               tempoMedidoMin: m ? Math.round(segundosDaMedicao(m) / 60) : 0,
               relogio: m?.estado ?? "nunca ligado",

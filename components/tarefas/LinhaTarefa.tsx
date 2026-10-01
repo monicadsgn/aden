@@ -38,6 +38,11 @@ export function MetaTarefa({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
   return (
     <>
       {cliente && <span className="max-w-32 truncate rounded-botao bg-marca-suave px-2 py-0.5 text-[10px] font-semibold text-marca-forte">{cliente.nome}</span>}
+      {t.pedidaPorNome && (
+        <span className="max-w-48 truncate rounded-botao bg-info-suave px-2 py-0.5 text-[10px] font-semibold text-info" title="Quem pediu esta tarefa">
+          pedida por {t.pedidaPorNome}
+        </span>
+      )}
       {t.lote && <span className="max-w-40 truncate rounded-botao border border-linha px-2 py-0.5 text-[10px] font-semibold text-texto-suave" title="Lote do planejamento">{t.lote}</span>}
       {t.etapas.length > 0 && (
         <span className="inline-flex items-center gap-1 text-[11px] text-texto-suave tabular-nums">

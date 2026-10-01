@@ -22,6 +22,14 @@ describe("visão do dia", () => {
     expect(v.concluidasHoje.map((t) => t.id)).toEqual(["6"]);
     expect(v.semResponsavel).toHaveLength(0);
   });
+  it("pedido de outro sócio sem prazo aparece em 'sem prazo' (G4); tarefa minha a fazer sem prazo, não", () => {
+    const ts = [
+      { ...novaTarefa("p", "pedido do Áleff", { responsavelId: "m" }), pedidaPorNome: "Áleff (pelo Claude)" },
+      novaTarefa("q", "ideia solta", { responsavelId: "m" }),
+      novaTarefa("r", "em produção", { responsavelId: "m", status: "em_producao" }),
+    ];
+    expect(montarVisaoDoDia(ts, "m", hoje).emAndamento.map((t) => t.id).sort()).toEqual(["p", "r"]);
+  });
   it("do outro sócio, e de todos (com as sem dono)", () => {
     expect(montarVisaoDoDia(tarefas, "a", hoje).semana.map((t) => t.id)).toEqual(["3"]);
     const todos = montarVisaoDoDia(tarefas, null, hoje);

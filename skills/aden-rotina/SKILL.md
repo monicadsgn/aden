@@ -41,14 +41,16 @@ Não existe bot de WhatsApp: pedido entre os sócios vira tarefa no Aden.
   - `cliente` quando for de um cliente (ou **Aden** quando for da própria agência);
   - `vencimento` (AAAA-MM-DD) e `prioridade` só se a pessoa disse;
   - `descricao` com o pedido em uma ou duas frases e quem pediu.
-- Confirme em uma linha: "tarefa criada para [sócio]: …, até [data]".
+- O Aden grava sozinho quem pediu ("[você] (pelo Claude)") e avisa o outro sócio na Visão do dia dele (Depende de
+  mim) e em Pedidos e avisos. Sem prazo, a tarefa aparece em "Sem prazo" na Visão do dia dele, com quem pediu.
+- Confirme em uma linha: "tarefa criada para [sócio]: …, até [data]; ele foi avisado".
 - Se o pedido também for uma decisão, anote no contexto (item 2).
 
 ## 4. "O que eu tenho pra fazer?"
 
 - `ver_visao_do_dia` com o nome de quem está conversando (de `quem_sou_eu`).
-- Responda curto e em ordem: atrasadas, hoje, o que vai ao ar hoje, o que depende do cliente, aprovações pendentes
-  e os próximos 7 dias. No fim, a pendência anotada no contexto da Aden que for dessa pessoa, se houver.
+- Responda curto e em ordem: atrasadas, hoje, o que vai ao ar hoje, o que depende do cliente, aprovações pendentes,
+  o que está sem prazo (diga quem pediu, quando vier `pedidaPor`) e os próximos 7 dias. No fim, a pendência anotada no contexto da Aden que for dessa pessoa, se houver.
 - "E o [outro sócio]?" → a mesma coisa com o nome dele. "E todo mundo?" → sem nome.
 - Terminou uma tarefa: `mudar_status_tarefa` para `concluida`.
 
