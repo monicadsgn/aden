@@ -49,7 +49,6 @@ export function camposFaltando(c: Configuracao): Faltando {
   if (e.avisoTetoPct == null) out.limites.push("aviso do teto");
   if (e.ociosidadePct == null) out.limites.push("folga sobrando");
   if (e.arredondamentoPropostaCentavos == null) out.limites.push("arredondamento da proposta");
-  if (e.medicoesCalibragem == null) out.limites.push("medições para calibrar");
 
   for (const k of c.clientes.filter((x) => x.ativo)) {
     if (k.valorMensalCentavos == null && !k.interno) out.clientes.push(`valor de ${k.nome || "cliente sem nome"}`);

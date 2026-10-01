@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { guardarEscopo } from "../dados/acoes";
 import type { Repositorio } from "../dados/repositorio";
-import type { Medicao } from "./calibragem";
+import type { Tarefa } from "./tarefas";
 import { calcularVisaoMes, horasInvestidasNaAden } from "./mes";
 import { calcularCenario, calcularTeto } from "./motor";
 import { configVazia, novoCenario } from "./novo";
@@ -61,23 +61,30 @@ describe("a própria Aden como cliente interno", () => {
     expect(mesQueEstouraOTeto(cfg, soAden, "2026-02-01")).toBeNull();
   });
 
-  it("as horas do cronômetro nela aparecem separadas, por sócio, como investidas na Aden", () => {
+  it("as horas investidas na Aden saem das tarefas concluídas no mês × tempo cadastrado, por responsável", () => {
     const cfg = config();
-    const med = (id: string, clienteId: string, pessoaId: string, seg: number): Medicao => ({
-      id,
-      clienteId,
-      pessoaId,
-      tipoEntregaId: "t",
-      estado: "concluido",
-      acumuladoSegundos: seg,
-      retomadoEm: null,
-      fim: "2026-10-05T12:00:00Z",
-      criadoEm: "2026-10-05T10:00:00Z",
+    cfg.tiposEntrega = [{ id: "t", nome: "Post", servicoId: null, horasPorUnidade: 0.5, audiovisual: false, ativo: true } as Configuracao["tiposEntrega"][number],
+      { id: "logo", nome: "Logo", servicoId: null, horasPorUnidade: null, audiovisual: false, ativo: true } as Configuracao["tiposEntrega"][number]];
+    const tf = (id: string, clienteId: string, responsavelId: string, tipo: string, quantidade: number, concluidaEm: string | null): Tarefa => ({
+      id, titulo: id, clienteId, tipoEntregaId: tipo, quantidade, status: concluidaEm ? "concluida" : "a_fazer", prioridade: null, responsavelId,
+      inicio: null, vencimento: null, descricao: "", etapas: [], criadoEm: "2026-10-01T10:00:00Z", concluidaEm,
     });
-    const inv = horasInvestidasNaAden(cfg, [med("1", "aden", "m", 7200), med("2", "aden", "m", 1800), med("3", "c1", "m", 3600), med("4", "aden", "a", 3600)], "2026-10");
-    expect(inv.find((x) => x.pessoaId === "m")).toMatchObject({ horas: 2.5, medicoes: 2 });
-    expect(inv.find((x) => x.pessoaId === "a")).toMatchObject({ horas: 1, medicoes: 1 });
+    const inv = horasInvestidasNaAden(
+      cfg,
+      [
+        tf("1", "aden", "m", "t", 4, "2026-10-05T12:00:00Z"), // 2 h
+        tf("2", "aden", "m", "logo", 1, "2026-10-06T12:00:00Z"), // sem tempo cadastrado
+        tf("3", "aden", "m", "t", 2, null), // aberta: não conta
+        tf("4", "c1", "m", "t", 2, "2026-10-05T12:00:00Z"), // cliente pagante: não conta
+        tf("5", "aden", "a", "t", 2, "2026-10-07T12:00:00Z"), // 1 h
+        tf("6", "aden", "a", "t", 2, "2026-09-30T12:00:00Z"), // outro mês
+      ],
+      "2026-10",
+    );
+    expect(inv.find((x) => x.pessoaId === "m")).toMatchObject({ horas: 2, tarefas: 2, semTempo: 1 });
+    expect(inv.find((x) => x.pessoaId === "a")).toMatchObject({ horas: 1, tarefas: 1, semTempo: 0 });
   });
+
 
   it("guardar o escopo dela nunca vira pedido de exceção de piso", async () => {
     const cfg = config();

@@ -396,7 +396,7 @@ describe("conector MCP da Aden", () => {
     await chamar("definir_percentuais_empresa", { medicoesCalibragem: 2 });
     await chamar("registrar_medicao", { entrega: "Carrossel", minutos: 55 });
     const m = await chamar("registrar_medicao", { entrega: "Carrossel", minutos: 55 });
-    expect(m.situacao).toBe("calibrado");
+    expect(m.situacao).toBe("medido");
     expect(m.sugestao).toMatch(/55 min, não 40 min/);
   });
 

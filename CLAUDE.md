@@ -16,8 +16,10 @@
 - Motor de cálculo em `lib/calculo/` é puro e testado (`npm test`). Mudou fórmula → atualiza teste e `docs/ARQUITETURA.md`.
 - Next.js 16: ler `node_modules/next/dist/docs/` antes de usar APIs novas (`middleware` virou `proxy`, APIs de request são assíncronas).
 - Conector MCP (`lib/mcp/`): toda área nova ganha ferramentas no conector, para o Claude do claude.ai operar o sistema como um sócio. Cada sócio usa o próprio código (Fase 4, `x-aden-conector`): o banco assina em nome dele "pelo Claude"; o conector nunca aprova pedido. Contexto do cliente (`contexto_cliente`) não se apaga, só se resolve.
-- Campos protegidos (piso, % dos sócios, divisão de horas, tempo por entrega) só mudam por `propor_alteracao` (aprovação do sócio afetado); o banco bloqueia update direto. Regra em `lib/regras/aprovacao.ts`, espelhada nas migrations 0004–0009. Escopo/proposta abaixo do piso = pedido de exceção.
+- Campos protegidos (piso, % dos sócios, divisão de horas, tempo por entrega) só mudam por `propor_alteracao` (aprovação do sócio afetado); o banco bloqueia update direto e também apagar (sócio, serviço com divisão de horas, tipo de entrega com tempo: só desativar; migration 0034). Regra em `lib/regras/aprovacao.ts`, espelhada nas migrations 0004–0009. Escopo/proposta abaixo do piso = pedido de exceção.
 - Tempo por entrega na tela é em minutos (`CampoMinutos`); por dentro, horas.
+- **Cronômetro opcional (01/10/2026):** vale o tempo médio cadastrado em cada tipo de entrega. O cronômetro nunca liga sozinho, o sistema não pede medições e a média medida nunca entra sozinha nas contas: só vira tempo cadastrado se alguém aceitar a sugestão da Calibragem (com a aprovação do sócio afetado). Horas do Mês = corrigidas à mão ou entregas do contrato × tempo cadastrado. Serve só para quando não se sabe quanto uma entrega leva.
+- **Projetos de marca** (logo, identidade visual, branding) levam dias ou semanas (estudo, pesquisa, rascunho, teste) e o prazo do contrato é em dias: não se medem em minutos. Forma de medir/precificar em decisão (`docs/ROADMAP.md`); até lá, não criar tempo em minutos para eles.
 - Todo aviso tem `acao` (botão para o campo que resolve). Campo opcional vazio é `lembrete`, não erro.
 - Tela do cliente (apresentação, PDF de proposta) só recebe `VistaApresentacao`/`DocumentoProposta`: nada interno. Há teste de render travando isso.
 - Terceiro cobrado por saída: custo = saídas × (valor + deslocamento), só do cliente, nunca rateado; o cliente nunca vê o valor.
@@ -31,8 +33,9 @@
 - Imposto: DAS do MEI (fixo, como custo) **ou** % sobre o faturamento, nunca os dois juntos.
 - Limite de reuniões por mês é condição do contrato, não quantidade do pacote. Audiovisual é extra (só se o cliente pedir), fora do pacote padrão.
 - WhatsApp continua com o nome Alfall (número do Áleff) até existir um número só da empresa: não trocar essas referências para Aden.
-- A própria Aden é cliente interno (`interno=true`): tarefas, peças e cronômetro iguais aos outros; sem mensalidade, fora do faturamento, rateio, sociedade, teto do MEI e "falta entrar"; nunca pede exceção de piso; horas aparecem no Mês como "investido na Aden".
-- Acessos: sócio (admin) vê tudo; equipe/freelancer só tarefas (RLS da migration 0018, nomes via `equipe_nomes`). Tabela nova com dado sensível: leitura só `eh_membro` (sócio), nunca liberar para a equipe sem pensar.
+- A própria Aden é cliente interno (`interno=true`): tarefas e peças iguais às dos outros; sem mensalidade, fora do faturamento, rateio, sociedade, teto do MEI e "falta entrar"; nunca pede exceção de piso; horas (tarefas concluídas no mês × tempo cadastrado) aparecem no Mês como "investido na Aden".
+- Acessos: sócio (admin) vê tudo; equipe/freelancer só tarefas (RLS da migration 0018, nomes via `equipe_nomes`). Tabela nova com dado sensível: leitura só `eh_membro` (sócio), nunca liberar para a equipe sem pensar. Contador lê só o financeiro pela função `contador_config` (0034). Respostas do cliente nas tarefas só as funções do painel escrevem (trigger da 0034).
+- Palavras (01/10/2026): dentro do sistema ficam em inglês onboarding, kickoff, briefing e follow-up; para o cliente (painel e PDFs) briefing é "conversa inicial". Calendário (não "lote"), Entregas do contrato (não "escopo"), Divisão dos custos fixos (não "rateio").
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -132,7 +132,7 @@ export default function Tarefas() {
         icone={ListChecks}
         selo="Dia a dia"
         titulo="Tarefas"
-        descricao="O que está em produção. Abra a tarefa e aperte Começar ao iniciar: o tempo medido calibra quanto cada entrega leva de verdade."
+        descricao="O que está em produção, por prazo. As horas saem do tempo cadastrado de cada entrega; medir o tempo é opcional, dentro da tarefa."
         acoes={
           podeCriar ? (
             <Botao variante="primario" icone={Plus} onClick={() => void criar("Nova tarefa", true)}>

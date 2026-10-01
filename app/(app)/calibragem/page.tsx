@@ -81,7 +81,7 @@ export default function Calibragem() {
         icone={Gauge}
         selo="Configurações"
         titulo="Calibragem das horas"
-        descricao="Quanto cada entrega leva de verdade (média do tempo medido nas tarefas) contra o tempo cadastrado. Quando a média fica diferente, o sistema sugere atualizar o tempo."
+        descricao="Vale o tempo cadastrado em cada entrega. O cronômetro é opcional: quando alguém mede uma entrega que não sabia quanto levava, a média aparece aqui e vocês decidem se atualizam o tempo."
         acoes={
           <Link href="/tarefas" className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-marca px-4 text-sm font-semibold text-sobre-marca">
             <Timer size={16} /> Ir para as tarefas
@@ -92,19 +92,11 @@ export default function Calibragem() {
         {mensagem && (
           <p className={cx("px-1 text-xs font-semibold", mensagem.tom === "erro" ? "text-erro" : mensagem.tom === "aviso" ? "text-aviso" : "text-ok")}>{mensagem.texto}</p>
         )}
-        {config.empresa.medicoesCalibragem == null && (
-          <p className="rounded-card bg-aviso-suave px-4 py-3 text-xs text-aviso">
-            Falta dizer quantas medições calibram cada entrega.{" "}
-            <Link href="/configuracoes?secao=limites&campo=medicoesCalibragem" className="font-bold underline">
-              Preencher
-            </Link>
-          </p>
-        )}
         <Card>
           <TituloCard
             icone={Gauge}
             titulo="Cada tipo de entrega"
-            descricao="Calibrado = já tem as medições pedidas. A partir daí a média medida estima as horas reais na tela Mês (aba Cada cliente); o tempo cadastrado só muda se vocês aprovarem."
+            descricao="A média medida nunca entra sozinha nas contas: o Mês e a calculadora usam o tempo cadastrado. Ele só muda se vocês aceitarem a sugestão (e o sócio afetado aprovar)."
           />
           <div className="divide-y divide-linha px-5 pb-3">
             {lista.length === 0 && (
@@ -116,16 +108,7 @@ export default function Calibragem() {
               <div key={c.tipoEntregaId} className="flex flex-col gap-2 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="min-w-0 flex-1 text-sm font-semibold">{c.nome}</p>
-                  {c.situacao === "calibrado" ? (
-                    <Badge tom="ok">calibrado</Badge>
-                  ) : c.situacao === "calibrando" ? (
-                    <Badge tom="aviso">
-                      calibrando: {c.medicoes}
-                      {c.alvo != null && ` de ${c.alvo}`}
-                    </Badge>
-                  ) : (
-                    <Badge>sem medição</Badge>
-                  )}
+                  {c.situacao === "medido" ? <Badge tom="info">{c.medicoes === 1 ? "1 entrega medida" : `${c.medicoes} entregas medidas`}</Badge> : <Badge>sem medição</Badge>}
                   {c.medicoes > 0 && (
                     <Botao pequeno variante="fantasma" icone={RefreshCw} onClick={() => recalibrar(c)}>
                       Recalibrar

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { BlocoDoc, Capa, Documento, LinhaDoc, NumeroGrande } from "@/components/impressao/Documento";
 import { useParametro } from "@/components/ui";
-import { calcularCalibragem } from "@/lib/calculo/calibragem";
 import { documentoSocio, type DocumentoSocio } from "@/lib/calculo/documentos";
 import { calcularSaudeCliente } from "@/lib/calculo/mes";
 import { distribuirPagamentos, somaPagamentos } from "@/lib/calculo/pagamentos";
@@ -22,14 +21,13 @@ export default function ImprimirSocio() {
   useEffect(() => {
     if (!mes || !pessoa) return;
     (async () => {
-      const [config, pagamentos, registros, medicoes] = await Promise.all([repo.carregarConfig(), repo.listarPagamentos(), repo.carregarMes(mes), repo.listarMedicoes()]);
+      const [config, pagamentos, registros] = await Promise.all([repo.carregarConfig(), repo.listarPagamentos(), repo.carregarMes(mes)]);
       const hoje = new Date().toISOString().slice(0, 10);
       const clientes = config.clientes.filter((c) => c.ativo && !c.interno);
       const dist = clientes.map((c) => distribuirPagamentos(config, c, mes, pagamentos, hoje));
-      const cal = calcularCalibragem(config, medicoes);
       const horas = Object.fromEntries(
         clientes.map((c) => {
-          const s = calcularSaudeCliente(config, c, registros[c.id] ?? null, { calibragem: cal, pagamentosCentavos: somaPagamentos(pagamentos, c.id, mes), mesFechado: mes < competenciaAtual() });
+          const s = calcularSaudeCliente(config, c, registros[c.id] ?? null, { pagamentosCentavos: somaPagamentos(pagamentos, c.id, mes), mesFechado: mes < competenciaAtual() });
           return [c.id, s.socios.find((x) => x.id === pessoa)?.horasReais ?? null];
         }),
       );

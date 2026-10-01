@@ -64,7 +64,7 @@ import { descreverItem } from "@/lib/dados/acoes";
 import { useDados } from "@/lib/dados/contexto";
 import { diferenca, temAlteracoes, type AlteracoesConfig, type Membro, type Pedido } from "@/lib/dados/repositorio";
 import { formatarMoeda, formatarPct } from "@/lib/formato";
-import { REGRAS_PROTECAO, type ItemProtegido } from "@/lib/regras/aprovacao";
+import { motivoNaoApagar, REGRAS_PROTECAO, type ItemProtegido } from "@/lib/regras/aprovacao";
 import { camposFaltando } from "@/lib/regras/pendencias";
 import { COM_VOLUME } from "@/lib/recursos";
 
@@ -265,7 +265,7 @@ export default function Configuracoes() {
     metas: COM_VOLUME.secaoMetas || (rascunho.metas ?? []).length > 0,
     limites:
       COM_VOLUME.secaoLimites ||
-      [e0.tetoFaturamentoAnualCentavos, e0.avisoTetoPct, e0.ociosidadePct, e0.arredondamentoPropostaCentavos, e0.medicoesCalibragem, e0.diferencaSugerirPct, e0.diasLeadParado].some(
+      [e0.tetoFaturamentoAnualCentavos, e0.avisoTetoPct, e0.ociosidadePct, e0.arredondamentoPropostaCentavos, e0.diferencaSugerirPct, e0.diasLeadParado].some(
         (v) => v != null,
       ),
   };
@@ -403,7 +403,12 @@ export default function Configuracoes() {
                         <Alvo campo="capacidadeHorasMes">
                           <CampoNumero rotulo="Horas no mês" sufixo="h" valor={p.capacidadeHorasMes} aoMudar={(v) => set({ pessoas: atualizar(rascunho.pessoas, p.id, { capacidadeHorasMes: v }) })} />
                         </Alvo>
-                        <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label={`Remover ${p.nome}`} onClick={() => set({ pessoas: rascunho.pessoas.filter((x) => x.id !== p.id) })} />
+                        {/* sócio já salvo não se apaga (G8): muda a divisão e só se decide com os dois */}
+                        {!orig ? (
+                          <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label={`Remover ${p.nome}`} onClick={() => set({ pessoas: rascunho.pessoas.filter((x) => x.id !== p.id) })} />
+                        ) : (
+                          <span />
+                        )}
                       </div>
                       <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr]">
                         <Selecao
@@ -473,7 +478,13 @@ export default function Configuracoes() {
                     <div key={s.id} className="rounded-bloco bg-superficie-2/60 p-3">
                       <div className="flex items-end gap-2">
                         <CampoTexto className="flex-1" rotulo="Serviço" valor={s.nome} aoMudar={(v) => set({ servicos: atualizar(rascunho.servicos, s.id, { nome: v }) })} />
-                        <Botao variante="perigo" icone={Trash2} aria-label="Remover serviço" onClick={() => set({ servicos: rascunho.servicos.filter((x) => x.id !== s.id) })} />
+                        {motivoNaoApagar(original, "servico", s.id) ? (
+                          <Botao variante="secundario" title={motivoNaoApagar(original, "servico", s.id) ?? ""} onClick={() => set({ servicos: atualizar(rascunho.servicos, s.id, { ativo: !s.ativo }) })}>
+                            {s.ativo ? "Desativar" : "Reativar"}
+                          </Botao>
+                        ) : (
+                          <Botao variante="perigo" icone={Trash2} aria-label="Remover serviço" onClick={() => set({ servicos: rascunho.servicos.filter((x) => x.id !== s.id) })} />
+                        )}
                       </div>
                       {socios.length > 0 && (
                         <Alvo campo="divisao" className="mt-2 flex flex-wrap items-end gap-2">
@@ -571,7 +582,13 @@ export default function Configuracoes() {
                         <Protegido pendente={itemPendente("horas_por_unidade", t.id)} />
                       </Alvo>
                     )}
-                    <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label="Remover tipo" onClick={() => set({ tiposEntrega: rascunho.tiposEntrega.filter((x) => x.id !== t.id) })} />
+                    {motivoNaoApagar(original, "tipo_entrega", t.id) ? (
+                      <Botao className="mt-5" variante="secundario" title={motivoNaoApagar(original, "tipo_entrega", t.id) ?? ""} onClick={() => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { ativo: !t.ativo }) })}>
+                        {t.ativo ? "Desativar" : "Reativar"}
+                      </Botao>
+                    ) : (
+                      <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label="Remover tipo" onClick={() => set({ tiposEntrega: rascunho.tiposEntrega.filter((x) => x.id !== t.id) })} />
+                    )}
                     <CampoTexto
                       className="col-span-full sm:max-w-sm"
                       rotulo="Como o cliente vê (opcional)"
@@ -871,10 +888,6 @@ export default function Configuracoes() {
                 <Explica>Se os clientes usarem menos que isso das horas de um sócio, a tela Mês mostra que ele tem espaço sobrando.</Explica>
                 <CampoMoeda rotulo="Arredondar a proposta para cima, de" valor={e.arredondamentoPropostaCentavos ?? null} aoMudar={(v) => setE({ arredondamentoPropostaCentavos: v })} />
                 <Explica>O valor que vai para o cliente sobe até o próximo múltiplo deste valor, para sair um número redondo.</Explica>
-                <Alvo campo="medicoesCalibragem">
-                  <CampoNumero rotulo="Medições para calibrar cada entrega" valor={e.medicoesCalibragem ?? null} aoMudar={(v) => setE({ medicoesCalibragem: v })} />
-                </Alvo>
-                <Explica>O cronômetro pede para medir as primeiras entregas de cada tipo. Depois desse número, para de pedir e passa a usar a média medida.</Explica>
                 <CampoPct rotulo="Sugerir novo tempo quando a média diferir mais de" valor={e.diferencaSugerirPct ?? null} aoMudar={(v) => setE({ diferencaSugerirPct: v })} />
                 <Explica>Vazio = qualquer diferença de 1 minuto ou mais já vira sugestão de atualizar o tempo cadastrado.</Explica>
                 <CampoNumero rotulo="Lead parado na etapa depois de" sufixo="dias" valor={e.diasLeadParado ?? null} aoMudar={(v) => setE({ diasLeadParado: v })} />

@@ -10,7 +10,7 @@
 //
 // Funções puras, reaproveitando o motor da calculadora.
 
-import { configComMediaMedida, segundosDaMedicao, type CalibragemTipo, type Medicao } from "./calibragem";
+import type { Tarefa } from "./tarefas";
 import { calcularComReceita, calcularTeto, prepararMes, type PreparadoMes } from "./motor";
 import { novoCenario } from "./novo";
 import type { Alerta, Cenario, ClienteBase, Configuracao, Id, ProjecaoTeto, ResultadoMes } from "./tipos";
@@ -128,21 +128,17 @@ export interface RegistroMesCliente {
 /**
  * De onde vem o número de horas (nesta ordem de preferência):
  * - manual: corrigido à mão no mês
- * - tarefas: tempo do cronômetro nas tarefas do cliente no mês (N medições)
- * - medida: escopo × média medida pelo cronômetro (N medições)
- * - previsto: escopo × padrão cadastrado
+ * - previsto: entregas do contrato × tempo cadastrado
+ * Cronômetro opcional (01/10/2026): o tempo medido nunca entra sozinho na conta; só vira o tempo cadastrado
+ * se alguém aceitar a sugestão da Calibragem (e o sócio afetado aprovar).
  */
 export type OrigemHoras =
   | { tipo: "manual" }
-  | { tipo: "tarefas"; medicoes: number }
-  | { tipo: "medida"; medicoes: number; parcial: boolean }
   | { tipo: "previsto" };
 
 export function rotuloOrigemHoras(o: OrigemHoras): string {
   if (o.tipo === "manual") return "corrigido à mão";
-  if (o.tipo === "tarefas") return `das tarefas (${o.medicoes} ${o.medicoes === 1 ? "medição" : "medições"})`;
-  if (o.tipo === "medida") return `${o.parcial ? "parte " : ""}média medida (${o.medicoes} ${o.medicoes === 1 ? "medição" : "medições"})`;
-  return "previsto no escopo";
+  return "tempo cadastrado × entregas do contrato";
 }
 
 /** De onde vem o valor do mês usado no realizado. */
@@ -198,68 +194,47 @@ export interface SaudeCliente {
 }
 
 export interface OpcoesSaude {
-  /** calibragem do cronômetro: tipos calibrados estimam as horas pela média medida */
-  calibragem?: CalibragemTipo[];
   /** soma dos pagamentos registrados para o mês */
   pagamentosCentavos?: number | null;
   /** mês já terminou? Com o mês aberto, pagamento parcial não conta como valor do mês */
   mesFechado?: boolean;
-  /** horas medidas nas tarefas deste cliente no mês, por sócio (ver horasDasTarefas) */
-  horasTarefas?: Map<Id, HorasDeTarefas>;
-}
-
-export interface HorasDeTarefas {
-  horas: number;
-  medicoes: number;
-}
-
-/**
- * Horas de cada sócio num cliente e mês, somando o cronômetro das tarefas (grave 6 da auditoria).
- * A medição conta no mês em que terminou (ou, se ainda está aberta, no mês em que foi retomada/criada).
- * Medição sem pessoa não conta para ninguém.
- */
-export function horasDasTarefas(medicoes: Medicao[], clienteId: Id, competencia: string, agora: Date = new Date()): Map<Id, HorasDeTarefas> {
-  const out = new Map<Id, HorasDeTarefas>();
-  for (const m of medicoes) {
-    if (m.clienteId !== clienteId || !m.pessoaId) continue;
-    const quando = m.fim ?? m.retomadoEm ?? m.criadoEm;
-    if (!quando || quando.slice(0, 7) !== competencia) continue;
-    const seg = segundosDaMedicao(m, agora);
-    if (seg <= 0) continue;
-    const atual = out.get(m.pessoaId) ?? { horas: 0, medicoes: 0 };
-    out.set(m.pessoaId, { horas: atual.horas + seg / 3600, medicoes: atual.medicoes + 1 });
-  }
-  return out;
 }
 
 export interface InvestidoNaAden {
   pessoaId: Id;
   nome: string;
+  /** tempo cadastrado × quantidade das tarefas concluídas no mês */
   horas: number;
-  medicoes: number;
+  tarefas: number;
+  /** tarefas concluídas sem tempo cadastrado (não somam horas) */
+  semTempo: number;
 }
 
 /**
- * Horas de cada sócio investidas na própria Aden no mês (clientes internos), pelo cronômetro das tarefas.
+ * Horas de cada sócio investidas na própria Aden no mês (clientes internos): tarefas concluídas no mês,
+ * pelo responsável, com o tempo cadastrado do tipo × quantidade. Cronômetro não entra (é opcional).
  * Ficam separadas das horas de cliente pagante: não têm piso, valor por hora nem exceção.
  */
-export function horasInvestidasNaAden(config: Configuracao, medicoes: Medicao[], competencia: string, agora: Date = new Date()): InvestidoNaAden[] {
-  const internos = config.clientes.filter((c) => c.ativo && c.interno);
+export function horasInvestidasNaAden(config: Configuracao, tarefas: Tarefa[], competencia: string): InvestidoNaAden[] {
+  const internos = new Set(config.clientes.filter((c) => c.ativo && c.interno).map((c) => c.id));
   return config.pessoas
     .filter((p) => p.ativo && p.socio)
     .map((p) => {
       let horas = 0;
       let n = 0;
-      for (const c of internos) {
-        const h = horasDasTarefas(medicoes, c.id, competencia, agora).get(p.id);
-        if (h) {
-          horas += h.horas;
-          n += h.medicoes;
-        }
+      let semTempo = 0;
+      for (const t of tarefas) {
+        if (!t.clienteId || !internos.has(t.clienteId) || t.responsavelId !== p.id) continue;
+        if (t.status !== "concluida" || !t.concluidaEm || t.concluidaEm.slice(0, 7) !== competencia) continue;
+        n++;
+        const tipo = config.tiposEntrega.find((x) => x.id === t.tipoEntregaId);
+        if (!tipo || tipo.audiovisual || tipo.horasPorUnidade == null) semTempo++;
+        else horas += tipo.horasPorUnidade * Math.max(1, t.quantidade);
       }
-      return { pessoaId: p.id, nome: p.nome, horas, medicoes: n };
+      return { pessoaId: p.id, nome: p.nome, horas, tarefas: n, semTempo };
     });
 }
+
 
 /** Mesmo preparo do mês, mas com outras horas por pessoa. */
 export function comHoras(prep: PreparadoMes, horas: Map<Id, number>): PreparadoMes {
@@ -273,31 +248,6 @@ export function comHoras(prep: PreparadoMes, horas: Map<Id, number>): PreparadoM
   return { ...prep, horasPorPessoa: mapa, horasTotais: total };
 }
 
-/** Horas estimadas por sócio (média medida onde calibrado) e a origem de cada uma. */
-function horasEstimadas(config: Configuracao, cliente: ClienteBase, calibragem: CalibragemTipo[]) {
-  const escopo = escopoDoCliente(cliente);
-  const prepMedido = prepararMes(configComMediaMedida(config, calibragem), escopo);
-  const calibrados = new Map(calibragem.filter((c) => c.situacao === "calibrado").map((c) => [c.tipoEntregaId, c.medicoes]));
-  const origem = new Map<Id, OrigemHoras>();
-  for (const p of config.pessoas.filter((x) => x.ativo && x.socio)) {
-    // tipos do escopo que dão horas a este sócio
-    const tipos = new Set<Id>();
-    for (const l of escopo.entregas) {
-      const t = config.tiposEntrega.find((x) => x.id === l.tipoEntregaId);
-      const serv = config.servicos.find((x) => x.id === t?.servicoId);
-      if (t && !t.audiovisual && v0(l.quantidade) > 0 && v0(serv?.divisaoPadrao[p.id]) > 0) tipos.add(t.id);
-    }
-    const medidos = [...tipos].filter((id) => calibrados.has(id));
-    origem.set(
-      p.id,
-      medidos.length
-        ? { tipo: "medida", medicoes: medidos.reduce((a, id) => a + calibrados.get(id)!, 0), parcial: medidos.length < tipos.size }
-        : { tipo: "previsto" },
-    );
-  }
-  return { horas: prepMedido.horasPorPessoa, origem };
-}
-
 export function calcularSaudeCliente(
   config: Configuracao,
   cliente: ClienteBase,
@@ -308,8 +258,7 @@ export function calcularSaudeCliente(
   const contrato = cliente.valorMensalCentavos;
   const pagos = opcoes.pagamentosCentavos ?? null;
   const manualValor = registro?.valorRecebidoCentavos ?? null;
-  const horasLancadas =
-    (!!registro && Object.values(registro.horas).some((h) => h != null)) || [...(opcoes.horasTarefas?.values() ?? [])].some((h) => h.medicoes > 0);
+  const horasLancadas = !!registro && Object.values(registro.horas).some((h) => h != null);
 
   // valor do realizado: pagamentos (mês fechado, ou já cobriu o contrato) > lançamento à mão > contrato
   let origemValor: OrigemValor = "contrato";
@@ -324,22 +273,17 @@ export function calcularSaudeCliente(
 
   const bloqueio = prep.bloqueio;
   const temEscopo = !!cliente.escopo;
-  const est = horasEstimadas(config, cliente, opcoes.calibragem ?? []);
   const socios0 = config.pessoas.filter((p) => p.ativo && p.socio);
   const horasUsadas = new Map<Id, number>();
   const origens = new Map<Id, OrigemHoras>();
   for (const p of socios0) {
     const manual = registro?.horas[p.id];
-    const tarefas = opcoes.horasTarefas?.get(p.id);
     if (manual != null) {
       horasUsadas.set(p.id, manual);
       origens.set(p.id, { tipo: "manual" });
-    } else if (tarefas && tarefas.medicoes > 0) {
-      horasUsadas.set(p.id, tarefas.horas);
-      origens.set(p.id, { tipo: "tarefas", medicoes: tarefas.medicoes });
     } else {
-      horasUsadas.set(p.id, est.horas.get(p.id) ?? 0);
-      origens.set(p.id, est.origem.get(p.id) ?? { tipo: "previsto" });
+      horasUsadas.set(p.id, prep.horasPorPessoa.get(p.id) ?? 0);
+      origens.set(p.id, { tipo: "previsto" });
     }
   }
 
@@ -359,7 +303,7 @@ export function calcularSaudeCliente(
       horasPrevistas: prep.horasPorPessoa.get(p.id) ?? 0,
       horasReais,
       origemHoras: origem,
-      semRegistro: origem.tipo !== "manual" && origem.tipo !== "tarefas",
+      semRegistro: origem.tipo !== "manual",
       valorPrevisto: pv?.valorCentavos ?? null,
       valorReal: rl?.valorCentavos ?? null,
       valorHoraPrevisto: pv?.valorHoraCentavos ?? null,

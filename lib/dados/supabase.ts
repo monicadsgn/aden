@@ -205,6 +205,7 @@ export class RepositorioSupabase implements Repositorio {
   async carregarConfig(): Promise<Configuracao> {
     const org = await this.org();
     if (this.usuario && (this.usuario.papel === "colaborador" || this.usuario.papel === "freelancer")) return this.configDaEquipe(org);
+    if (this.usuario?.papel === "contador") return this.configDoContador(org);
     const [emp, pes, ser, div, tip, cus, cli, con, ter, pac, met] = await Promise.all([
       this.sb.from("configuracoes_empresa").select("*").eq("org_id", org).maybeSingle(),
       this.sb.from("pessoas").select("*").eq("org_id", org).order("ordem"),
@@ -1280,6 +1281,44 @@ export class RepositorioSupabase implements Repositorio {
   }
 
   /** O que a equipe (não sócia) precisa para as tarefas: nomes, tipos de entrega e serviços. Nada de valores. */
+  /** Contador: só o financeiro (G9 da auditoria, migration 0034). Nada de link do painel, documento, % da sociedade ou oferta. */
+  private async configDoContador(org: string): Promise<Configuracao> {
+    const [dados, cus] = await Promise.all([
+      this.sb.rpc("contador_config", { org }),
+      this.sb.from("custos_fixos").select("*").eq("org_id", org).order("nome"),
+    ]);
+    for (const r of [dados, cus]) erro(r.error);
+    const d = (dados.data ?? {}) as { empresa: Linha | null; clientes: Linha[] };
+    const e = d.empresa;
+    const c = configVazia();
+    c.empresa = {
+      ...c.empresa,
+      regime: (e?.regime as Configuracao["empresa"]["regime"]) ?? null,
+      impostoPct: num(e?.imposto_pct),
+      impostoFixoMensalCentavos: num(e?.imposto_fixo_mensal_centavos),
+      taxaRecebimentoPct: num(e?.taxa_recebimento_pct),
+      taxaRecebimentoFixaCentavos: num(e?.taxa_recebimento_fixa_centavos),
+      tetoFaturamentoAnualCentavos: num(e?.teto_faturamento_anual_centavos),
+      avisoTetoPct: num(e?.aviso_teto_pct),
+    };
+    c.clientes = (d.clientes ?? []).map((k) => ({
+      id: k.id as string,
+      nome: k.nome as string,
+      interno: (k.interno as boolean) ?? false,
+      ativo: (k.ativo as boolean) ?? false,
+      participaRateio: false,
+      valorMensalCentavos: num(k.valor_mensal_centavos),
+    }));
+    c.custosFixos = ((cus.data ?? []) as Linha[]).map((f) => ({
+      id: f.id as string,
+      nome: f.nome as string,
+      valorMensalCentavos: num(f.valor_mensal_centavos),
+      ativo: f.ativo as boolean,
+      planejado: (f.planejado as boolean) ?? false,
+    }));
+    return c;
+  }
+
   private async configDaEquipe(org: string): Promise<Configuracao> {
     const [nomes, tip, ser] = await Promise.all([
       this.sb.rpc("equipe_nomes", { org }),

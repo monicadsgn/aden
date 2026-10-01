@@ -49,7 +49,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/tarefas": {
     titulo: "Tarefas",
     texto:
-      "Tudo o que está em produção, com o relógio dentro de cada tarefa. Ao começar uma entrega, aperte Começar; ao terminar, marque como concluída. O tempo medido ensina o sistema quanto cada entrega leva de verdade.",
+      "Tudo o que está em produção, agrupado por prazo. As horas de cada entrega saem do tempo cadastrado em Configurações → Tipos de entrega. Se não souber quanto uma entrega leva, abra a tarefa e use \"Medir o tempo\" (opcional): ele nunca liga sozinho.",
     termos: ["tempo-por-entrega", "calibragem"],
   },
   "/mes#resumo": {
@@ -83,7 +83,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/calibragem": {
     titulo: "Calibragem das horas",
     texto:
-      "Compara o tempo cadastrado de cada entrega com o tempo medido nas tarefas. Quando a média real fica diferente, o sistema sugere atualizar. Olhe de vez em quando, principalmente depois de medir as primeiras entregas de cada tipo.",
+      "Vale o tempo cadastrado. Quando alguém mede uma entrega pelo cronômetro (opcional), a média aparece aqui ao lado do tempo cadastrado; se ficar diferente, o sistema sugere atualizar, e vocês decidem.",
     termos: ["calibragem", "tempo-por-entrega"],
   },
   "/pagamentos": {
@@ -200,8 +200,8 @@ export const GLOSSARIO: Termo[] = [
   {
     id: "calibragem",
     termo: "Calibragem",
-    frase: "Medir o tempo real das primeiras entregas de cada tipo para descobrir se o tempo cadastrado está certo.",
-    exemplo: "O carrossel estava cadastrado com 40 min, mas as 5 medições deram média de 55 min: o sistema sugere atualizar.",
+    frase: "Comparar o tempo cadastrado com o tempo medido, quando alguém usou o cronômetro (opcional) numa entrega que não sabia quanto levava.",
+    exemplo: "O carrossel estava cadastrado com 40 min, mas as medições deram média de 55 min: o sistema sugere atualizar, e vocês decidem.",
   },
   {
     id: "entrada",
@@ -239,7 +239,7 @@ export const TOUR: PassoTour[] = [
   {
     titulo: "Tarefas e calendário",
     texto:
-      "Tudo o que está em produção vira tarefa, com responsável, prazo e checklist. Dentro de cada tarefa tem o botão Começar para medir o tempo. O calendário mostra tudo no mês, para ninguém perder o fio da meada.",
+      "Tudo o que está em produção vira tarefa, com responsável, prazo e checklist. Dentro de cada tarefa dá para medir o tempo, se quiser (opcional). O calendário mostra tudo no mês, para ninguém perder o fio da meada.",
   },
   {
     titulo: "Clientes e vendas",

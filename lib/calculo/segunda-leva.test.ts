@@ -6,7 +6,7 @@ import { camposFaltando } from "../regras/pendencias";
 import { diferenca, type AlteracoesConfig } from "../dados/repositorio";
 import { minutosParaHoras, horasParaMinutos, formatarDuracao } from "../formato";
 import { alternarServico, pacoteQueCabe, sinalDoCenario, vistaApresentacao } from "./apresentacao";
-import { calcularCalibragem, configComMediaMedida, iniciarMedicao, pararMedicao, pausarMedicao, retomarMedicao, segundosDaMedicao, type Medicao } from "./calibragem";
+import { calcularCalibragem, iniciarMedicao, pararMedicao, pausarMedicao, retomarMedicao, segundosDaMedicao, type Medicao } from "./calibragem";
 import { documentoContador, documentoProposta, nomeArquivo } from "./documentos";
 import { calcularSaudeCliente, calcularVisaoMes, rotuloOrigemHoras } from "./mes";
 import { ajustarQuantidade, calcularCenario, calcularComReceita, calcularEncaixe, prepararMes, verificarImpostoEmDobro } from "./motor";
@@ -240,7 +240,7 @@ describe("origem das horas", () => {
     const m = s.socios.find((x) => x.id === "m")!;
     expect(m.semRegistro).toBe(true);
     expect(m.origemHoras).toEqual({ tipo: "previsto" });
-    expect(rotuloOrigemHoras(m.origemHoras)).toBe("previsto no escopo");
+    expect(rotuloOrigemHoras(m.origemHoras)).toBe("tempo cadastrado × entregas do contrato");
     expect(m.horasReais).toBeCloseTo(3);
     expect(s.realizado).not.toBeNull();
     expect(s.prejuizoSilencioso).toBe(false); // previsão não vira prejuízo silencioso
@@ -253,15 +253,13 @@ describe("origem das horas", () => {
     expect(rotuloOrigemHoras(s.socios.find((x) => x.id === "m")!.origemHoras)).toBe("corrigido à mão");
   });
 
-  it("tipo calibrado aparece como média medida (N medições)", () => {
+  it("cronômetro opcional (01/10/2026): o tempo medido nunca entra sozinho, vale o tempo cadastrado", () => {
     const c = config();
-    c.empresa.medicoesCalibragem = 5;
     const cli = cliente("x", 150000, cenario([["post", 9]]));
-    const cal = calcularCalibragem(c, medicoes("post", [30, 30, 30, 30, 30]));
-    const s = calcularSaudeCliente(c, cli, null, { calibragem: cal });
+    const s = calcularSaudeCliente(c, cli, null);
     const m = s.socios.find((x) => x.id === "m")!;
-    expect(rotuloOrigemHoras(m.origemHoras)).toBe("média medida (5 medições)");
-    expect(m.horasReais).toBeCloseTo(4.5);
+    expect(m.origemHoras).toEqual({ tipo: "previsto" });
+    expect(m.horasReais).toBeCloseTo(3); // 9 posts × 20 min cadastrados, mesmo com medições de 30 min
   });
 });
 
@@ -279,25 +277,20 @@ describe("cronômetro e calibragem", () => {
     expect(m.acumuladoSegundos).toBe(55 * 60);
   });
 
-  it("depois de 5 medições fica calibrado e sugere atualizar o padrão", () => {
+  it("com medição já mostra a média e sugere atualizar; o tempo cadastrado não muda sozinho", () => {
     const c = config();
-    c.empresa.medicoesCalibragem = 5;
-    const quatro = calcularCalibragem(c, medicoes("carr", [50, 55, 60, 55])).find((x) => x.tipoEntregaId === "carr")!;
-    expect(quatro.situacao).toBe("calibrando");
-    expect(quatro.sugerirAtualizar).toBe(false);
-    const cinco = calcularCalibragem(c, medicoes("carr", [50, 55, 60, 55, 55])).find((x) => x.tipoEntregaId === "carr")!;
-    expect(cinco.situacao).toBe("calibrado");
-    expect(cinco.mediaMinutos).toBe(55);
-    expect(cinco.sugestao).toBe("Carrossel está levando em média 55 min, não 40 min. Atualizar o padrão?");
-    // a média medida só entra na estimativa, o padrão cadastrado não muda
-    const cal = calcularCalibragem(c, medicoes("carr", [50, 55, 60, 55, 55]));
-    expect(configComMediaMedida(c, cal).tiposEntrega.find((t) => t.id === "carr")!.horasPorUnidade).toBeCloseTo(55 / 60);
+    const um = calcularCalibragem(c, medicoes("carr", [55])).find((x) => x.tipoEntregaId === "carr")!;
+    expect(um.situacao).toBe("medido");
+    expect(um.mediaMinutos).toBe(55);
+    expect(um.sugestao).toBe("Carrossel está levando em média 55 min, não 40 min. Atualizar o padrão?");
     expect(c.tiposEntrega.find((t) => t.id === "carr")!.horasPorUnidade).toBeCloseTo(40 / 60);
+    const nenhum = calcularCalibragem(c, []).find((x) => x.tipoEntregaId === "carr")!;
+    expect(nenhum.situacao).toBe("sem_medicao");
+    expect(nenhum.sugerirAtualizar).toBe(false);
   });
 
   it("limiar de diferença configurado: diferença pequena não vira sugestão", () => {
     const c = config();
-    c.empresa.medicoesCalibragem = 5;
     c.empresa.diferencaSugerirPct = 50;
     const x = calcularCalibragem(c, medicoes("carr", [50, 50, 50, 50, 50])).find((t) => t.tipoEntregaId === "carr")!;
     expect(x.sugerirAtualizar).toBe(false); // 25% de diferença < 50%
@@ -305,17 +298,12 @@ describe("cronômetro e calibragem", () => {
 
   it("recalibrar descarta as medições antigas", () => {
     const c = config();
-    c.empresa.medicoesCalibragem = 5;
     c.tiposEntrega = c.tiposEntrega.map((t) => (t.id === "carr" ? { ...t, calibrarDesde: "2026-10-01T00:00:00Z" } : t));
     const x = calcularCalibragem(c, medicoes("carr", [50, 55, 60, 55, 55])).find((t) => t.tipoEntregaId === "carr")!;
     expect(x.medicoes).toBe(0);
     expect(x.situacao).toBe("sem_medicao");
   });
 
-  it("sem número de medições configurado, nenhum tipo pede cronômetro", () => {
-    const x = calcularCalibragem(config(), medicoes("carr", [50]));
-    expect(x.find((t) => t.tipoEntregaId === "carr")!.alvo).toBeNull();
-  });
 });
 
 // ─── Item 9: soluções da Saúde ──────────────────────────────────────────────
@@ -536,7 +524,7 @@ describe("falta preencher", () => {
     const f = camposFaltando(config());
     expect(f.socios).toContain("piso de Áleff");
     expect(f.regras).toContain("ordem de distribuição dos pagamentos");
-    expect(f.limites).toContain("medições para calibrar");
+    expect(f.limites).not.toContain("medições para calibrar"); // o sistema não pede mais medições
   });
 });
 

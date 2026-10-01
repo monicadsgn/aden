@@ -14,6 +14,19 @@ Plano guardado. **Nada daqui é para construir sem a Moni pedir.** Atualizado em
 - 30/09/2026: auditoria geral depois das Fases 1 a 6 (inventário, diagnóstico e relatório numerado G1–G10,
   M1–M18, D1–D11) em `docs/AUDITORIA.md`. Nada corrigido: a Moni aprova por número.
 
+## Em decisão: como medir ou precificar projetos de marca (01/10/2026)
+
+Logo, identidade visual e branding levam dias ou semanas (estudo, pesquisa, rascunho, teste) e o prazo do contrato é em
+dias: não cabem em "minutos por entrega". Proposta levada à Moni (nada construído):
+- **A (recomendada): horas totais estimadas do projeto + prazo em dias.** O tipo de entrega ganha a unidade "projeto"
+  com o tempo digitado em **horas** (não minutos) e o prazo em dias úteis, que vai para o contrato. O preço sai do cálculo,
+  como os pacotes (horas × piso de quem faz + custos, dividido por 1 − imposto − taxa), e o cliente vê um valor fechado.
+  Já existe "Projeto pontual" na calculadora (fora da mensalidade ou diluído), então é reaproveitar, não criar.
+- B: preço fixo digitado por pacote de marca. Simples, mas fere a regra "pacote não tem preço digitado" e perde a
+  conferência do piso.
+- C: medir em dias de trabalho. Precisa de mais um número (horas por dia) e não muda o resultado da A.
+O cronômetro (opcional) pode ser usado nos primeiros projetos para ajustar as horas totais.
+
 ## Pendências da Moni (fora do código)
 
 - Supabase → Authentication: deixar ligado o cadastro de novos usuários (senão o "Primeiro acesso" dá erro), conferir a

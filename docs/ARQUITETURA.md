@@ -1,5 +1,26 @@
 # Arquitetura: Aden · Gestão
 
+## Princípios (Moni, 01/10/2026)
+
+- Menu sanfona e uma coisa por tela.
+- Modo negociação sem dado interno e flexível pra contraproposta.
+- Todo número de hora mostra de onde veio.
+- Tempo por entrega vem da média cadastrada; o cronômetro é opcional, nunca liga sozinho e só se usa quando não se
+  sabe quanto tempo algo leva.
+- Projetos de marca (logo, identidade, branding) não se medem em minutos.
+- Voz da Aden direta, sem achismo, e neutra.
+
+## Segurança das travas (auditoria, 01/10/2026, migration 0034)
+
+- Apagar também é mudar: sócio não se apaga nem sai de sócio/ativo por update; serviço com divisão de horas, divisão
+  preenchida, tipo com tempo e a configuração da empresa não se apagam (`impedir_apagar_protegido`, `proteger_socio`).
+  Na tela e no conector: "Desativar" no lugar da lixeira (`motivoNaoApagar` em `lib/regras/aprovacao.ts`).
+- Contador: sem leitura direta de `clientes` e `configuracoes_empresa`; lê só o financeiro por `contador_config(org)`
+  (regime, imposto, taxa, teto; clientes com nome, interno, ativo e valor mensal). No site, `configDoContador`.
+- Respostas do cliente nas tarefas (aprovou, ajuste, rodadas, histórico): pelo site e pela API (papéis
+  authenticated/anon) ninguém escreve; só as funções do painel (security definer). Reenviar pode zerar o "aprovou"
+  (`proteger_respostas_cliente`).
+
 ## Stack
 
 Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + Tailwind v4 + Vercel.
@@ -168,9 +189,11 @@ A decidir com a Moni (não inventar):
   qualquer tela enquanto roda. Lista (agrupada por prazo) e Quadro (arrastar muda o status), janela da tarefa com
   status, datas, estimativa (tempo por entrega × quantidade), responsável, prioridade, cliente, tipo e checklist.
   Status: a fazer, em produção, em aprovação, concluída. Padrões de UX tirados do SoftMoni (janela, criação rápida).
-- **Cronômetro (regra da calibragem):** iniciar, pausar, parar por entrega. Modo calibragem pede N medições por tipo (N configurável; a Moni
-  pediu 5). Calibrado → a média medida estima as horas reais na Saúde. Sugestão de atualizar o tempo quando a média
-  difere (limiar opcional); a atualização passa pela aprovação. Recalibrar descarta as medições anteriores.
+- **Cronômetro opcional (regra de 01/10/2026, substitui o modo calibragem):** vale o tempo médio cadastrado. O relógio
+  ("Medir o tempo" dentro da tarefa) só roda quando alguém liga; na lista só aparece se já foi ligado; o sistema não pede
+  medições (o campo `medicoes_calibragem` ficou sem uso). Com uma medição já existe média (`situacao: "medido"`); a
+  Calibragem sugere atualizar o tempo quando a média difere (limiar opcional) e a atualização passa pela aprovação. A
+  média medida nunca entra sozinha em conta nenhuma. Recalibrar descarta as medições anteriores da média.
 - **Proteção da remuneração:** piso, % dos sócios, divisão de horas por serviço e tempo por entrega só mudam com a
   aprovação do sócio afetado (piso: o próprio; %: todos os sócios; divisão: quem teve o % mudado; tempo: quem executa o
   serviço). Se quem mudou é o único afetado, vale na hora. Campo vazio pode ser preenchido direto. Escopo ou proposta
@@ -276,8 +299,9 @@ cliente, mas:
   Pagamentos e do "falta entrar";
 - não divide nem recebe custo fixo (`prepararMes`: base do rateio sem internos; escopo dela com rateio desligado);
 - escopo livre, guardado direto, nunca vira pedido de exceção de piso (`guardarEscopo`);
-- as horas do cronômetro nela aparecem no Mês → Cada cliente no card "Investido na Aden", por sócio
-  (`horasInvestidasNaAden`), fora da tabela de clientes pagantes; no conector, `ver_saude_clientes.investidoNaAden`.
+- as horas dela aparecem no Mês → Cada cliente no card "Investido na Aden", por sócio responsável: tarefas concluídas no
+  mês × tempo cadastrado do tipo (tarefa sem tempo cadastrado conta à parte, sem horas) (`horasInvestidasNaAden`), fora
+  da tabela de clientes pagantes; no conector, `ver_saude_clientes.investidoNaAden`.
 
 Testes em `lib/calculo/interno.test.ts`.
 
@@ -369,9 +393,9 @@ mensal). Soma por sócio × capacidade → horas livres, "afogado" (acima da cap
 configurado). Clientes sem escopo aparecem em aviso e não entram na soma.
 
 **Saúde do cliente:** previsto = escopo contratado com o valor do contrato. Realizado = mesmos custos e rateio, mas com as
-horas reais do mês e o valor recebido (vazio = valor do contrato). Horas de cada sócio, nesta ordem (grave 6, 29/09/2026):
-corrigidas à mão no mês → **cronômetro das tarefas do cliente no mês** (`horasDasTarefas`: soma das medições com o
-cliente e o sócio, contadas no mês em que terminaram) → escopo × média medida (calibragem) → escopo × tempo cadastrado.
+horas do mês e o valor recebido (vazio = valor do contrato). Horas de cada sócio (regra de 01/10/2026, cronômetro
+opcional): corrigidas à mão no mês → senão, entregas do contrato × tempo cadastrado. O cronômetro e a média medida não
+entram (antes entravam: grave 6 de 29/09/2026).
 Na tela (Mês → Cada cliente) é uma linha por cliente (pagou, horas, paga por hora, sinal); o detalhe abre numa janela. Mostra valor por hora real de cada sócio, marca
 "prejuízo silencioso" quando fica abaixo do piso e "contratado abaixo do piso" quando o próprio previsto já fica.
 

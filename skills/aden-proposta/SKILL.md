@@ -16,6 +16,10 @@ O preço sai do cálculo do Aden, nunca da sua cabeça. Esta skill conduz a conv
 - Ferramentas e estrutura já estão embutidas na mensalidade: um valor só, nunca assinatura à parte.
 - Verba de anúncio é do cliente, paga direto na plataforma, e nunca entra no faturamento da Aden.
 - Audiovisual é extra, só se o cliente pedir.
+- Horas saem do **tempo cadastrado** de cada tipo de entrega. O cronômetro é opcional, nunca liga sozinho e o
+  sistema não pede medições: só se usa quando ninguém sabe quanto uma entrega leva.
+- **Projetos de marca** (logo, identidade visual, branding) levam dias ou semanas e não se medem em minutos: nunca
+  proponha nem grave um tempo em minutos para eles; o jeito de medir ou precificar ainda está em decisão. Pergunte.
 - Abaixo do piso de um sócio: não esconda. Mostre o que dá para fazer (pacote que cabe) ou diga que vira pedido de
   exceção, que o sócio afetado aprova no site.
 
