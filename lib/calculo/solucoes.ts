@@ -9,7 +9,6 @@
 
 import { escopoDoCliente, type SaudeCliente } from "./mes";
 import { ajustarQuantidade, calcularComReceita, calcularEncaixe, calcularMinimo, prepararMes } from "./motor";
-import { configComMediaMedida, type CalibragemTipo } from "./calibragem";
 import { novoId } from "./novo";
 import type { Cenario, ClienteBase, Configuracao, Id } from "./tipos";
 
@@ -64,11 +63,11 @@ function vazio(temProblema: boolean, faltando: string[], base: "real" | "previst
 /**
  * Escopo do cliente em modo valor, no valor do contrato, com as horas por entrega
  * ajustadas para reproduzir as horas reais de cada sócio (fator do sócio, ponderado
- * pela divisão do serviço). Sem horas reais, usa a média medida onde houver.
+ * pela divisão do serviço). Sem horas corrigidas, usa o tempo cadastrado.
  */
-export function cenarioRealista(config: Configuracao, cliente: ClienteBase, saude: SaudeCliente, calibragem: CalibragemTipo[] = []): Cenario {
+export function cenarioRealista(config: Configuracao, cliente: ClienteBase, saude: SaudeCliente): Cenario {
   const base = escopoDoCliente(cliente);
-  const medido = configComMediaMedida(config, calibragem);
+  const medido = config;
   const prepEst = prepararMes(medido, base);
   const fator = new Map<Id, number>();
   for (const s of saude.socios) {
@@ -99,12 +98,12 @@ export function cenarioRealista(config: Configuracao, cliente: ClienteBase, saud
   };
 }
 
-export function calcularSolucoes(config: Configuracao, cliente: ClienteBase, saude: SaudeCliente, calibragem: CalibragemTipo[] = []): SolucoesSaude {
+export function calcularSolucoes(config: Configuracao, cliente: ClienteBase, saude: SaudeCliente): SolucoesSaude {
   const temProblema = saude.prejuizoSilencioso || saude.contratadoAbaixoDoPiso;
   const base: "real" | "previsto" = saude.prejuizoSilencioso ? "real" : "previsto";
   const faltando: string[] = [];
   if (saude.bloqueio) faltando.push(saude.bloqueio.texto);
-  if (!cliente.escopo) faltando.push("o escopo contratado do cliente (guarde pela calculadora)");
+  if (!cliente.escopo) faltando.push("as entregas do contrato do cliente (guarde pela calculadora)");
   if (cliente.valorMensalCentavos == null) faltando.push("o valor mensal do contrato");
   for (const s of saude.socios)
     if (s.piso == null && (s.horasReais > 0 || s.horasPrevistas > 0)) faltando.push(`o piso por hora de ${s.nome} (sem ele não dá para saber se ${s.nome} perde)`);
@@ -114,7 +113,7 @@ export function calcularSolucoes(config: Configuracao, cliente: ClienteBase, sau
   const contrato = cliente.valorMensalCentavos;
   const cen =
     base === "real"
-      ? cenarioRealista(config, cliente, saude, calibragem)
+      ? cenarioRealista(config, cliente, saude)
       : { ...escopoDoCliente(cliente), id: novoId(), nome: `${cliente.nome}: contrato atual`, modo: "valor" as const, mensalidadeCentavos: contrato };
 
   // a) subir o valor

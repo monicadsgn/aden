@@ -25,7 +25,7 @@ function Numero({ icone: Ic, rotulo, valor, sub }: { icone: LucideIcon; rotulo: 
         <Ic size={13} /> {rotulo}
       </p>
       <p className="numero text-xl font-extrabold">{valor}</p>
-      {sub && <p className="text-[10px] text-texto-suave">{sub}</p>}
+      {sub && <p className="text-[12px] text-texto-suave">{sub}</p>}
     </div>
   );
 }
@@ -38,6 +38,7 @@ export default function Crm() {
   const [carregado, setCarregado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState<string | null>(null);
+  const [confirmarGanho, setConfirmarGanho] = useState(false);
   const [rapido, setRapido] = useState("");
   const [sobre, setSobre] = useState<EtapaLead | null>(null);
   const [verPerdidos, setVerPerdidos] = useState(false);
@@ -87,7 +88,7 @@ export default function Crm() {
     setConfig(c);
     setLeads(ls);
     if (r.escopo && !r.escopo.gravado)
-      setErro(`${l.nome} virou cliente. O escopo ficou abaixo do piso de ${r.escopo.abaixo.map((a) => a.nome).join(" e ")}: espera a aprovação em Sócios → Pedidos e avisos.`);
+      setErro(`${l.nome} virou cliente. As entregas do contrato ficaram abaixo do piso de ${r.escopo.abaixo.map((a) => a.nome).join(" e ")}: espera a aprovação em Sócios → Pedidos e avisos.`);
   };
 
   if (!carregado) return null;
@@ -100,7 +101,7 @@ export default function Crm() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={MessagesSquare}
-        selo="Clientes"
+        selo="Comercial"
         titulo="Leads"
         descricao="Cada pessoa interessada na Aden, da primeira mensagem até fechar. Arraste o card para mudar de etapa; clique para ver a ficha."
       />
@@ -131,7 +132,8 @@ export default function Crm() {
           />
         </div>
 
-        <div className="-mx-1 grid gap-3 overflow-x-auto px-1 pb-2" style={{ gridTemplateColumns: `repeat(${colunas.length}, minmax(15rem, 1fr))` }}>
+        {/* D5: no celular as colunas encaixam uma por vez ao deslizar (como o painel do cliente) */}
+        <div className="-mx-1 grid snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 sm:snap-none" style={{ gridTemplateColumns: `repeat(${colunas.length}, minmax(min(15rem, 85vw), 1fr))` }}>
           {colunas.map((c) => {
             const itens = leads.filter((l) => l.etapa === c.valor);
             const soma = itens.reduce((a, l) => a + (l.valorEstimadoCentavos ?? 0), 0);
@@ -148,10 +150,15 @@ export default function Crm() {
                   setSobre(null);
                   const l = leads.find((x) => x.id === e.dataTransfer.getData("text/plain"));
                   if (!l || l.etapa === c.valor) return;
-                  if (c.valor === "ganho") setAberto(l.id);
+                  // ganho de verdade cria o cliente: abre o lead para confirmar no "Fechou! Virar cliente" (G7)
+                  if (c.valor === "ganho" && !l.clienteId) {
+                    setAberto(l.id);
+                    setConfirmarGanho(true);
+                    return;
+                  }
                   void salvar(moverLead(l, c.valor));
                 }}
-                className={cx("flex min-h-48 flex-col gap-2 rounded-bloco bg-superficie-2/60 p-2 transition-colors", sobre === c.valor && "bg-marca-suave")}
+                className={cx("flex min-h-48 snap-start flex-col gap-2 rounded-bloco bg-superficie-2/60 p-2 transition-colors", sobre === c.valor && "bg-marca-suave")}
               >
                 <div className="flex items-center gap-2 px-1 pt-1">
                   <span className={cx("size-2.5 rounded-full", COR_ETAPA[c.valor])} aria-hidden />
@@ -229,12 +236,16 @@ export default function Crm() {
         config={config}
         simulacoes={sims}
         aoSalvar={salvar}
+        confirmarGanho={confirmarGanho}
         aoRemover={async (l) => {
           setLeads((ls) => ls.filter((x) => x.id !== l.id));
           await repo.removerLead(l.id);
         }}
         aoGanhar={ganhar}
-        aoFechar={() => setAberto(null)}
+        aoFechar={() => {
+          setAberto(null);
+          setConfirmarGanho(false);
+        }}
       />
     </div>
   );

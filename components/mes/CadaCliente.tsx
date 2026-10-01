@@ -22,8 +22,8 @@ import { BotaoAcao, FaixaRepetida, OQueQuerDizer, avisosRepetidos } from "@/comp
 import { Modal } from "@/components/Modal";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Card, CampoMoeda, CampoNumero, EtiquetaOrigem, TituloCard, Vazio, cx } from "@/components/ui";
-import { calcularCalibragem, type CalibragemTipo, type Medicao } from "@/lib/calculo/calibragem";
-import { calcularSaudeCliente, escopoDoCliente, horasDasTarefas, horasInvestidasNaAden, rotuloOrigemHoras, type RegistroMesCliente, type SaudeCliente } from "@/lib/calculo/mes";
+import type { Tarefa } from "@/lib/calculo/tarefas";
+import { calcularSaudeCliente, escopoDoCliente, horasInvestidasNaAden, rotuloOrigemHoras, type RegistroMesCliente, type SaudeCliente } from "@/lib/calculo/mes";
 import { ehServicoTrafego, prepararMes } from "@/lib/calculo/motor";
 import { configVazia } from "@/lib/calculo/novo";
 import { somaPagamentos, type Pagamento } from "@/lib/calculo/pagamentos";
@@ -55,9 +55,9 @@ function horasSemCobranca(config: Configuracao, c: ClienteBase): number {
 /** O sinal de cada cliente no mês (a mesma etiqueta na linha e no detalhe). */
 function sinalDoCliente(s: SaudeCliente) {
   return s.bloqueio
-    ? { tom: "erro" as const, icone: AlertOctagon, texto: "cálculo bloqueado" }
+    ? { tom: "erro" as const, icone: AlertOctagon, texto: "falta um número" }
     : s.prejuizoSilencioso
-      ? { tom: "erro" as const, icone: TrendingDown, texto: "prejuízo silencioso" }
+      ? { tom: "erro" as const, icone: TrendingDown, texto: "abaixo do piso: veja os caminhos" }
       : s.contratadoAbaixoDoPiso
         ? { tom: "aviso" as const, icone: TrendingDown, texto: "contratado abaixo do piso" }
         : !s.horasLancadas
@@ -67,7 +67,7 @@ function sinalDoCliente(s: SaudeCliente) {
 
 function Abrir({ c, nome, aoAbrir }: { c: Cenario; nome: string; aoAbrir: (c: Cenario, nome: string) => void }) {
   return (
-    <button type="button" onClick={() => aoAbrir(c, nome)} className="inline-flex shrink-0 items-center gap-1 rounded-botao bg-marca px-2.5 py-1 text-[11px] font-bold text-sobre-marca hover:bg-marca-forte">
+    <button type="button" onClick={() => aoAbrir(c, nome)} className="inline-flex shrink-0 items-center gap-1 rounded-botao bg-marca-cheio px-2.5 py-1 text-[11px] font-bold text-sobre-marca hover:bg-marca-cheio-hover">
       Abrir na calculadora <ArrowRight size={12} />
     </button>
   );
@@ -116,7 +116,7 @@ function Solucoes({
           <p className="flex items-center gap-2">
             <Scissors size={15} className="shrink-0 text-marca-forte" />
             <span>
-              <strong>Cortar escopo:</strong> mantendo o valor de {formatarMoeda(cliente.valorMensalCentavos)}, cabe no piso tirando:
+              <strong>Cortar entregas:</strong> mantendo o valor de {formatarMoeda(cliente.valorMensalCentavos)}, cabe no piso tirando:
             </span>
           </p>
           {sol.cortar.map((c) => (
@@ -218,7 +218,7 @@ function CartaoCliente({
   return (
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          {!s.temEscopo && <Badge tom="aviso">sem escopo contratado</Badge>}
+          {!s.temEscopo && <Badge tom="aviso">sem entregas do contrato</Badge>}
           <Badge tom={status.tom} icone={status.icone}>
             {status.texto}
           </Badge>
@@ -235,8 +235,8 @@ function CartaoCliente({
         {s.prejuizoSilencioso && (
           <p className="flex items-start gap-2 rounded-bloco bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
             <AlertOctagon size={15} className="mt-px shrink-0" />
-            Este cliente pagou menos que o piso por hora de {s.socios.filter((x) => x.abaixoPisoReal).map((x) => x.nome).join(" e ")} neste mês. Ele está custando mais horas do
-            que paga.
+            Este cliente pagou menos que o piso por hora de {s.socios.filter((x) => x.abaixoPisoReal).map((x) => x.nome).join(" e ")} neste mês. Ele pede mais horas do que paga:
+            veja os caminhos abaixo.
           </p>
         )}
 
@@ -244,7 +244,7 @@ function CartaoCliente({
           <p className="flex items-start gap-2 rounded-bloco bg-aviso-suave px-3 py-2 text-xs font-medium text-aviso">
             <AlertOctagon size={15} className="mt-px shrink-0" />
             Mesmo trabalhando só as horas previstas, este contrato paga menos que o piso de {s.socios.filter((x) => x.abaixoPisoPrevisto).map((x) => x.nome).join(" e ")}. O problema
-            está no valor ou no escopo combinado.
+            está no valor ou nas entregas do contrato.
           </p>
         )}
 
@@ -278,7 +278,7 @@ function CartaoCliente({
                   sufixo="h"
                   placeholder={
                     x
-                      ? `${x.origemHoras.tipo === "tarefas" ? "das tarefas" : "sem registro"}: ${formatarNumero(Math.round(x.horasReais * 10) / 10)}${x.origemHoras.tipo === "tarefas" ? "" : " previstas"}`
+                      ? `pelo tempo cadastrado: ${formatarNumero(Math.round(x.horasReais * 10) / 10)}`
                       : "horas"
                   }
                   valor={reg.horas[p.id] ?? null}
@@ -318,7 +318,7 @@ function CartaoCliente({
               <tr>
                 <td className="border-t border-linha py-1.5 pr-3 text-texto-suave">
                   O que ele paga por hora
-                  <span className="block text-[10px]">valor do mês ÷ horas que ele deu</span>
+                  <span className="block text-[12px]">valor do mês ÷ horas que ele deu</span>
                 </td>
                 <td className="numero border-t border-linha px-3 py-1.5 text-right">{formatarMoeda(s.valorCobradoHoraPrevisto)}</td>
                 <td className="numero border-t border-linha px-3 py-1.5 text-right font-bold">{formatarMoeda(s.valorCobradoHoraReal)}</td>
@@ -327,7 +327,7 @@ function CartaoCliente({
                 <tr key={x.id} className={cx(x.abaixoPisoReal && "bg-erro-suave/50")}>
                   <td className="border-t border-linha py-1.5 pr-3">
                     <span className="font-semibold">{x.nome}</span> por hora
-                    <span className="block text-[10px] text-texto-suave">
+                    <span className="block text-[12px] text-texto-suave">
                       piso: {formatarMoeda(x.piso)} · recebe {formatarMoeda(x.valorReal)} · {formatarHoras(x.horasReais)}
                     </span>
                     <span className="mt-0.5 flex flex-wrap gap-1">
@@ -335,7 +335,7 @@ function CartaoCliente({
                       <EtiquetaOrigem texto={rotuloOrigemHoras(x.origemHoras)} previsao={x.origemHoras.tipo === "previsto"} />
                     </span>
                     {x.recebeSemHoras && (
-                      <span className="mt-1 block text-[11px] font-semibold text-info">
+                      <span className="mt-1 block text-[12px] font-semibold text-info">
                         {x.nome} recebe {formatarMoeda(x.valorReal ?? x.valorPrevisto)} sem horas neste cliente.
                       </span>
                     )}
@@ -384,8 +384,7 @@ export default function Saude() {
   const [competencia, setCompetencia] = useState(competenciaAtual);
   const [registros, setRegistros] = useState<Record<string, RegistroMesCliente>>({});
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
-  const [calibragem, setCalibragem] = useState<CalibragemTipo[]>([]);
-  const [medicoes, setMedicoes] = useState<Medicao[]>([]);
+  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [aberto, setAberto] = useState<string | null>(null);
   const abriuDoLink = useRef(false);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -401,9 +400,7 @@ export default function Saude() {
         setConfig(cfg);
         await carregarMes(competencia);
         setPagamentos(await repo.listarPagamentos().catch(() => []));
-        const meds = await repo.listarMedicoes().catch(() => []);
-        setMedicoes(meds);
-        setCalibragem(calcularCalibragem(cfg, meds));
+        setTarefas(await repo.listarTarefas().catch(() => []));
         setPedidos(await repo.listarPedidos().catch(() => []));
         // vindo da ficha do cliente (?cliente=): abre o detalhe dele
         const id = new URLSearchParams(window.location.search).get("cliente");
@@ -420,20 +417,18 @@ export default function Saude() {
   // a própria Aden (interno) não tem piso nem valor por hora: fica fora da tabela, no card "Investido na Aden"
   const ativos = config.clientes.filter((c) => c.ativo && !c.interno);
   const internos = config.clientes.filter((c) => c.ativo && c.interno);
-  const investido = horasInvestidasNaAden(config, medicoes, competencia);
+  const investido = horasInvestidasNaAden(config, tarefas, competencia);
   const mesFechado = competencia < competenciaAtual();
   const saudes = useMemo(
     () =>
       ativos.map((c) => {
         const s = calcularSaudeCliente(config, c, registros[c.id] ?? null, {
-          calibragem,
           pagamentosCentavos: somaPagamentos(pagamentos, c.id, competencia),
           mesFechado,
-          horasTarefas: horasDasTarefas(medicoes, c.id, competencia),
         });
-        return { c, s, sol: calcularSolucoes(config, c, s, calibragem) };
+        return { c, s, sol: calcularSolucoes(config, c, s) };
       }),
-    [ativos, config, registros, calibragem, pagamentos, competencia, mesFechado, medicoes],
+    [ativos, config, registros, pagamentos, competencia, mesFechado],
   );
   const comProblema = saudes.filter((x) => x.s.prejuizoSilencioso);
   const comuns = avisosRepetidos(saudes.map((x) => x.s.bloqueio));
@@ -504,7 +499,7 @@ export default function Saude() {
 
         {ativos.length === 0 && (
           <Vazio icone={HeartPulse} titulo="Nenhum cliente ativo">
-            Cadastre os clientes em Clientes e contratos e guarde o escopo contratado de cada um pela ficha.
+            Cadastre os clientes em Clientes e contratos e guarde as entregas do contrato de cada um pela ficha.
           </Vazio>
         )}
 
@@ -527,7 +522,7 @@ export default function Saude() {
                     const pago = s.pagamentosCentavos ?? 0;
                     const contrato = s.valorContratoCentavos;
                     const origens = new Set(s.socios.filter((x) => x.horasReais > 0).map((x) => x.origemHoras.tipo));
-                    const deOnde = origens.has("manual") ? "corrigidas" : origens.has("tarefas") ? "das tarefas" : "previstas";
+                    const deOnde = origens.has("manual") ? "corrigidas" : "pelo tempo cadastrado";
                     const investidas = horasSemCobranca(config, c);
                     return (
                       <tr key={c.id} onClick={() => setAberto(c.id)} className="cursor-pointer hover:bg-superficie-2/60">
@@ -550,7 +545,7 @@ export default function Saude() {
                             {sinal.texto}
                           </Badge>
                           {investidas > 0 && (
-                            <span className="mt-1 block text-[11px] text-info">garantia: {formatarHoras(investidas)} de tráfego por mês sem cobrança</span>
+                            <span className="mt-1 block text-[12px] text-info">garantia: {formatarHoras(investidas)} de tráfego por mês sem cobrança</span>
                           )}
                         </td>
                       </tr>
@@ -570,14 +565,16 @@ export default function Saude() {
             <TituloCard
               icone={Sprout}
               titulo="Investido na Aden"
-              descricao="Horas que cada sócio pôs na própria Aden neste mês (posts, criativos, reestruturação), pelo cronômetro das tarefas. Não é cliente pagante: fica fora do faturamento, do piso e da divisão."
+              descricao="Horas que cada sócio pôs na própria Aden neste mês (posts, criativos, reestruturação), pelas tarefas concluídas no mês × o tempo cadastrado de cada entrega. Não é cliente pagante: fica fora do faturamento, do piso e da divisão."
             />
             <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2">
               {investido.map((x) => (
                 <div key={x.pessoaId} className="rounded-bloco bg-superficie-2/70 px-3 py-2">
                   <p className="text-[12px] font-semibold text-texto-suave">{x.nome}</p>
                   <p className="numero text-xl font-extrabold">{formatarHoras(x.horas)}</p>
-                  <p className="text-[12px] text-texto-suave">{x.medicoes ? `${x.medicoes} ${x.medicoes === 1 ? "medição" : "medições"} no cronômetro` : "nenhuma tarefa medida ainda"}</p>
+                  <p className="text-[12px] text-texto-suave">{x.tarefas
+                      ? `${x.tarefas} ${x.tarefas === 1 ? "tarefa concluída" : "tarefas concluídas"}${x.semTempo ? ` · ${x.semTempo} sem tempo cadastrado` : ""}`
+                      : "nenhuma tarefa concluída no mês"}</p>
                 </div>
               ))}
             </div>

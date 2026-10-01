@@ -21,12 +21,10 @@ import {
   Layers,
   type LucideIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Avatar } from "../Avatar";
 import { Modal } from "../Modal";
 import { Botao, cx, Passo } from "../ui";
-import { calcularCalibragem, formatarMinutos } from "@/lib/calculo/calibragem";
 import { novoId } from "@/lib/calculo/novo";
 import {
   estimativaHoras,
@@ -82,6 +80,8 @@ export function BotaoRelogio({ t, a, pequeno }: { t: Tarefa; a: AcoesTarefas; pe
   const rodando = m?.estado === "rodando";
   const agora = useAgora(rodando);
   if (!temCronometro(t, a.config)) return null;
+  // cronômetro opcional (01/10/2026): na lista só aparece se alguém já ligou; para ligar, abre a tarefa
+  if (pequeno && !m) return null;
   const seg = tempoGasto(m, agora);
   return (
     <button
@@ -93,13 +93,13 @@ export function BotaoRelogio({ t, a, pequeno }: { t: Tarefa; a: AcoesTarefas; pe
       className={cx(
         "inline-flex items-center gap-1.5 rounded-botao font-semibold tabular-nums transition-colors",
         pequeno ? "h-7 px-2 text-[11px]" : "h-8 px-3 text-xs",
-        rodando ? "bg-marca text-sobre-marca" : "bg-superficie-2 text-texto hover:bg-linha",
+        rodando ? "bg-marca-cheio text-sobre-marca" : "bg-superficie-2 text-texto hover:bg-linha",
       )}
       aria-label={rodando ? `Pausar o tempo de ${t.titulo}` : `Começar a contar o tempo de ${t.titulo}`}
-      title={rodando ? "Pausar" : "Começar a contar o tempo"}
+      title={rodando ? "Pausar" : "Opcional: só se não souber quanto esta entrega leva"}
     >
       {rodando ? <Pause size={pequeno ? 12 : 13} /> : <Play size={pequeno ? 12 : 13} />}
-      {seg > 0 ? relogio(seg) : "Começar"}
+      {seg > 0 ? relogio(seg) : "Medir o tempo"}
     </button>
   );
 }
@@ -128,7 +128,6 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
   const est = estimativaHoras(t, cfg);
   const seg = tempoGasto(m, agora);
   const tipo = cfg.tiposEntrega.find((x) => x.id === t.tipoEntregaId);
-  const cal = tipo ? calcularCalibragem(cfg, a.medicoes).find((c) => c.tipoEntregaId === tipo.id) : undefined;
   const socios = cfg.pessoas.filter((p) => p.ativo);
   const resp = cfg.pessoas.find((p) => p.id === t.responsavelId);
   const feitas = t.etapas.filter((e) => e.feita).length;
@@ -217,7 +216,7 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
               {est != null ? formatarDuracao(est) : tipo?.audiovisual ? "feito por terceiro: sem horas dos sócios" : tipo ? "tipo sem tempo cadastrado" : "escolha o tipo de entrega"}
             </span>
           </Linha>
-          <Linha icone={Timer} rotulo="Rastrear tempo">
+          <Linha icone={Timer} rotulo="Medir o tempo (opcional)">
             {temCronometro(t, cfg) ? (
               <div className="flex flex-wrap items-center gap-2">
                 <BotaoRelogio t={t} a={a} />
@@ -239,7 +238,7 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
                     )}
                   </>
                 )}
-                {m?.estado === "concluido" && <span className="text-[11px] text-ok">contou na calibragem</span>}
+                {m?.estado === "concluido" && <span className="text-[12px] text-ok">guardado na Calibragem</span>}
               </div>
             ) : (
               <span className="px-2 text-texto-suave">{tipo?.audiovisual ? "vídeo é de terceiro: não conta horas" : "escolha o tipo de entrega"}</span>
@@ -314,17 +313,6 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
           </Linha>
         </div>
       </div>
-
-      {cal && cal.alvo != null && (
-        <p className="mt-2 rounded-bloco bg-marca-tinta px-3 py-2 text-[12px] text-texto-suave">
-          {cal.situacao === "calibrado"
-            ? `${tipo?.nome} já está calibrado (média ${formatarMinutos(cal.mediaMinutos)} por entrega). O tempo continua contando para acompanhar.`
-            : `Calibragem de ${tipo?.nome}: ${cal.medicoes} de ${cal.alvo} entregas medidas. Aperte Começar ao iniciar e conclua a tarefa ao terminar.`}{" "}
-          <Link href="/calibragem" className="font-semibold text-marca-forte underline">
-            Ver calibragem
-          </Link>
-        </p>
-      )}
 
       {t.clienteId && <ParaCliente t={t} a={a} />}
 

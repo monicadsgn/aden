@@ -1,10 +1,9 @@
 // Cronômetro e calibragem das horas.
 //
-// Ninguém sabe de cabeça quanto leva cada entrega. O cronômetro mede as primeiras
-// entregas de cada tipo (quantas, vem da configuração). Depois disso o tipo fica
-// "calibrado" e a média medida passa a ser usada para estimar as horas reais do mês.
-// O padrão cadastrado (que é campo protegido) só muda se alguém aceitar a sugestão
-// e o sócio afetado aprovar.
+// Regra de 01/10/2026: vale o tempo médio cadastrado em cada tipo de entrega. O cronômetro é opcional:
+// nunca liga sozinho e o sistema não pede medições. Serve para quando não se sabe quanto uma entrega leva:
+// com medição, a Calibragem mostra a média e sugere atualizar o tempo cadastrado (campo protegido: só muda
+// se alguém aceitar a sugestão e o sócio afetado aprovar). A média medida nunca entra sozinha nas contas.
 
 import { formatarDuracao } from "../formato";
 import type { Configuracao, Id, TipoEntrega } from "./tipos";
@@ -59,15 +58,14 @@ export function pararMedicao(m: Medicao, agora: Date): Medicao {
   return { ...m, estado: "concluido", acumuladoSegundos: segundosDaMedicao(m, agora), retomadoEm: null, fim: agora.toISOString() };
 }
 
-export type SituacaoCalibragem = "sem_medicao" | "calibrando" | "calibrado";
+/** Cronômetro opcional (01/10/2026): não há mais número de medições pedido. Com uma medição já existe média. */
+export type SituacaoCalibragem = "sem_medicao" | "medido";
 
 export interface CalibragemTipo {
   tipoEntregaId: Id;
   nome: string;
   /** entregas medidas que contam (depois de "calibrar desde"); uma tarefa de 12 posts conta 12 */
   medicoes: number;
-  /** quantas são pedidas para calibrar; null = não configurado */
-  alvo: number | null;
   situacao: SituacaoCalibragem;
   mediaMinutos: number | null;
   padraoMinutos: number | null;
@@ -92,7 +90,6 @@ export function medicoesQueContam(tipo: TipoEntrega, medicoes: Medicao[]): Medic
 }
 
 export function calcularCalibragem(config: Configuracao, medicoes: Medicao[]): CalibragemTipo[] {
-  const alvo = config.empresa.medicoesCalibragem != null && config.empresa.medicoesCalibragem > 0 ? config.empresa.medicoesCalibragem : null;
   const limiar = config.empresa.diferencaSugerirPct ?? null;
   return config.tiposEntrega
     .filter((t) => t.ativo && !t.audiovisual)
@@ -101,17 +98,16 @@ export function calcularCalibragem(config: Configuracao, medicoes: Medicao[]): C
       const n = ms.reduce((a, m) => a + unidadesDe(m), 0);
       const media = n ? ms.reduce((a, m) => a + m.acumuladoSegundos, 0) / n / 60 : null;
       const padrao = minutos(t.horasPorUnidade);
-      const situacao: SituacaoCalibragem = n === 0 ? "sem_medicao" : alvo != null && n >= alvo ? "calibrado" : "calibrando";
+      const situacao: SituacaoCalibragem = n === 0 ? "sem_medicao" : "medido";
       const dif = media != null && padrao != null && padrao > 0 ? ((media - padrao) / padrao) * 100 : null;
       // diferença de menos de 1 minuto é arredondamento, nunca vira sugestão
       const diferente = media != null && (padrao == null || Math.abs(media - padrao) >= 1);
       const passaLimiar = limiar == null || dif == null || Math.abs(dif) >= limiar;
-      const sugerir = situacao === "calibrado" && diferente && passaLimiar;
+      const sugerir = situacao === "medido" && diferente && passaLimiar;
       return {
         tipoEntregaId: t.id,
         nome: t.nome,
         medicoes: n,
-        alvo,
         situacao,
         mediaMinutos: media,
         padraoMinutos: padrao,
@@ -124,25 +120,4 @@ export function calcularCalibragem(config: Configuracao, medicoes: Medicao[]): C
           : null,
       };
     });
-}
-
-/** Tipos que ainda pedem cronômetro (modo calibragem). Sem alvo configurado, nenhum pede. */
-export function pedeCronometro(c: CalibragemTipo): boolean {
-  return c.alvo != null && c.medicoes < c.alvo;
-}
-
-/**
- * Configuração com a média medida no lugar do padrão, só para os tipos calibrados.
- * Serve para estimar as horas reais do mês; a calculadora continua usando o padrão.
- */
-export function configComMediaMedida(config: Configuracao, calibragem: CalibragemTipo[]): Configuracao {
-  const medidos = new Map(calibragem.filter((c) => c.situacao === "calibrado" && c.mediaMinutos != null).map((c) => [c.tipoEntregaId, c]));
-  if (!medidos.size) return config;
-  return {
-    ...config,
-    tiposEntrega: config.tiposEntrega.map((t) => {
-      const c = medidos.get(t.id);
-      return c ? { ...t, horasPorUnidade: c.mediaMinutos! / 60 } : t;
-    }),
-  };
 }

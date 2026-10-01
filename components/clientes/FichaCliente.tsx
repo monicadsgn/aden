@@ -51,8 +51,18 @@ function Rot({ rotulo, children, dica }: { rotulo: string; children: ReactNode; 
     <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
       {rotulo}
       {children}
-      {dica && <span className="text-[10px] font-normal">{dica}</span>}
+      {dica && <span className="text-[12px] leading-snug font-normal">{dica}</span>}
     </label>
+  );
+}
+
+/** Campo numérico com a frase do que ele significa embaixo. */
+function ComDica({ dica, children }: { dica: string; children: ReactNode }) {
+  return (
+    <div>
+      {children}
+      <p className="mt-1 text-[12px] leading-snug text-texto-suave">{dica}</p>
+    </div>
   );
 }
 
@@ -135,15 +145,15 @@ export function FichaCliente({
   const escopoDoPacote = async (pacoteId: string | null) => {
     const p = (config.pacotes ?? []).find((x) => x.id === pacoteId);
     if (!p) return;
-    if (c.escopo && !confirm(`Trocar o escopo de ${c.nome} pelo pacote ${p.nome}?`)) return;
+    if (c.escopo && !confirm(`Trocar as entregas do contrato de ${c.nome} pelas do pacote ${p.nome}?`)) return;
     try {
       const base = pacoteParaCenario(p);
       const cen = c.valorMensalCentavos != null ? { ...base, modo: "valor" as const, mensalidadeCentavos: c.valorMensalCentavos } : base;
       const r = await guardarEscopo(repo, config, c.id, cen);
       await aoRecarregar();
-      setMsg(r.gravado ? `Escopo do pacote ${p.nome} guardado.` : `Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: espera aprovação em Sócios → Pedidos e avisos.`);
+      setMsg(r.gravado ? `Entregas do pacote ${p.nome} guardadas no contrato.` : `Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: espera aprovação em Sócios → Pedidos e avisos.`);
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Não deu para guardar o escopo.");
+      setMsg(e instanceof Error ? e.message : "Não deu para guardar as entregas do contrato.");
     }
   };
 
@@ -224,7 +234,7 @@ export function FichaCliente({
               />
               {c.interno && (
                 <p className="text-[12px] text-texto-suave">
-                  Sem mensalidade: fica fora do faturamento, do rateio, da divisão entre sócios e do teto do MEI, e não pede exceção de piso. Tarefas e cronômetro funcionam igual; as horas
+                  Sem mensalidade: fica fora do faturamento, da divisão dos custos fixos, da divisão entre sócios e do teto do MEI, e não pede exceção de piso. Tarefas e cronômetro funcionam igual; as horas
                   aparecem no Mês como investidas na Aden.
                 </p>
               )}
@@ -233,7 +243,9 @@ export function FichaCliente({
               {PAINEL_CLIENTE_ATIVO && !c.interno && <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />}
             </div>
             {PAINEL_CLIENTE_ATIVO && !c.interno && c.painelToken && (
-              <div className="grid gap-3 rounded-bloco border border-linha p-3 sm:col-span-2 sm:grid-cols-2">
+              <div className="grid gap-3 rounded-bloco border border-marca/40 bg-marca-tinta/40 p-3 sm:col-span-2 sm:grid-cols-2">
+                {/* D1: o que muda todo mês fica separado do cadastro (que se preenche uma vez) */}
+                <p className="text-[11px] font-bold tracking-wide text-marca-forte uppercase sm:col-span-2">Muda todo mês</p>
                 <p className="text-[12px] text-texto-suave sm:col-span-2">
                   <strong className="text-texto">Atalhos do painel.</strong> O que o cliente abre direto no painel, sem pedir por fora. Links completos, começando com https://. Vazio = não
                   aparece. Todo mês, troque o planejamento.
@@ -288,13 +300,17 @@ export function FichaCliente({
         {aba === "contrato" && (
           <div className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-3">
-              <CampoMoeda rotulo="Valor mensal" valor={c.valorMensalCentavos} aoMudar={(v) => set({ valorMensalCentavos: v })} />
+              <ComDica dica="Quanto o cliente paga por mês. Ex.: R$ 1.500.">
+                <CampoMoeda rotulo="Valor mensal" valor={c.valorMensalCentavos} aoMudar={(v) => set({ valorMensalCentavos: v })} />
+              </ComDica>
               {k.venceUltimoDiaUtil ? (
                 <Rot rotulo="Vencimento">
                   <p className="flex h-10 items-center text-sm text-texto-suave">último dia útil do mês</p>
                 </Rot>
               ) : (
+                <ComDica dica="Dia do mês em que a mensalidade vence. Ex.: 10.">
                 <CampoNumero rotulo="Dia do pagamento" valor={k.diaPagamento} aoMudar={(v) => setK({ diaPagamento: v == null ? null : Math.min(31, Math.max(1, Math.round(v))) })} />
+              </ComDica>
               )}
               <Rot rotulo="Início da cobrança">
                 <Texto valor={k.inicioCobranca} aoSalvar={(v) => setK({ inicioCobranca: v })} placeholder="ex.: na assinatura" />
@@ -305,12 +321,24 @@ export function FichaCliente({
               <Rot rotulo="Fim do contrato">
                 <input type="date" className={campo} value={k.fim ?? ""} onChange={(e) => setK({ fim: e.target.value || null })} />
               </Rot>
-              <CampoNumero rotulo="Prazo mínimo" sufixo="meses" valor={k.prazoMinimoMeses} aoMudar={(v) => setK({ prazoMinimoMeses: v })} />
-              <CampoNumero rotulo="Aviso prévio" sufixo="dias" valor={k.avisoPrevioDias} aoMudar={(v) => setK({ avisoPrevioDias: v })} />
-              <CampoNumero rotulo="Rodadas de alteração por peça" valor={k.limiteRodadas} aoMudar={(v) => setK({ limiteRodadas: v })} />
-              <CampoNumero rotulo="Prazo para o cliente aprovar" sufixo="dias" valor={k.prazoAprovacaoDias} aoMudar={(v) => setK({ prazoAprovacaoDias: v })} />
-              <CampoNumero rotulo="Prazo de entrega" sufixo="dias" valor={k.prazoEntregaDias} aoMudar={(v) => setK({ prazoEntregaDias: v })} />
-              <CampoNumero rotulo="Máximo de reuniões por mês" valor={k.limiteReunioesMes ?? null} aoMudar={(v) => setK({ limiteReunioesMes: v })} />
+              <ComDica dica="Tempo mínimo de contrato (fidelidade). Ex.: 6 meses.">
+                <CampoNumero rotulo="Prazo mínimo" sufixo="meses" valor={k.prazoMinimoMeses} aoMudar={(v) => setK({ prazoMinimoMeses: v })} />
+              </ComDica>
+              <ComDica dica="Quantos dias antes o cliente avisa se não for renovar. Ex.: 30 dias.">
+                <CampoNumero rotulo="Aviso prévio" sufixo="dias" valor={k.avisoPrevioDias} aoMudar={(v) => setK({ avisoPrevioDias: v })} />
+              </ComDica>
+              <ComDica dica="Quantas vezes o cliente pode pedir ajuste na mesma peça. Ex.: 2 rodadas.">
+                <CampoNumero rotulo="Rodadas de alteração por peça" valor={k.limiteRodadas} aoMudar={(v) => setK({ limiteRodadas: v })} />
+              </ComDica>
+              <ComDica dica="Dias que o cliente tem para aprovar uma peça. Ex.: 2 dias.">
+                <CampoNumero rotulo="Prazo para o cliente aprovar" sufixo="dias" valor={k.prazoAprovacaoDias} aoMudar={(v) => setK({ prazoAprovacaoDias: v })} />
+              </ComDica>
+              <ComDica dica="Dias para a Aden entregar depois do pedido. Ex.: 5 dias.">
+                <CampoNumero rotulo="Prazo de entrega" sufixo="dias" valor={k.prazoEntregaDias} aoMudar={(v) => setK({ prazoEntregaDias: v })} />
+              </ComDica>
+              <ComDica dica="Condição do contrato: quantas reuniões cabem no mês. Ex.: 2 reuniões.">
+                <CampoNumero rotulo="Máximo de reuniões por mês" valor={k.limiteReunioesMes ?? null} aoMudar={(v) => setK({ limiteReunioesMes: v })} />
+              </ComDica>
               <div className="flex items-end pb-2 sm:col-span-2">
                 <Interruptor ligado={!!k.venceUltimoDiaUtil} rotulo="Vence no último dia útil do mês" aoMudar={(v) => setK({ venceUltimoDiaUtil: v })} />
               </div>
@@ -347,11 +375,12 @@ export function FichaCliente({
                 defaultValue={k.observacoes}
                 onBlur={(e) => e.target.value !== k.observacoes && setK({ observacoes: e.target.value })}
               />
+              <span className="text-[12px] leading-snug font-normal">Vai para o contrato que o cliente assina, como cláusula de observações.</span>
             </label>
 
             <div className="rounded-bloco border border-linha p-3">
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <p className="flex-1 text-sm font-bold">Escopo contratado</p>
+                <p className="flex-1 text-sm font-bold">Entregas do contrato</p>
                 <Botao
                   pequeno
                   variante="primario"
@@ -359,20 +388,20 @@ export function FichaCliente({
                   onClick={() => {
                     // abre com o valor do contrato travado: mexer nas entregas não muda o preço assinado,
                     // a não ser que a pessoa escolha "o valor segue o pacote" na Proposta
-                    const base = c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Escopo · ${c.nome}`), clienteId: c.id };
+                    const base = c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Entregas do contrato · ${c.nome}`), clienteId: c.id };
                     const cen = c.valorMensalCentavos != null ? { ...base, modo: "valor" as const, mensalidadeCentavos: c.valorMensalCentavos } : base;
-                    enviarCenario({ origem: "ficha", nome: `Escopo · ${c.nome}`, cenarios: [cen] });
+                    enviarCenario({ origem: "ficha", nome: `Entregas do contrato · ${c.nome}`, cenarios: [cen] });
                     router.push(`/negociacao?volta=${encodeURIComponent(`/clientes?cliente=${c.id}&aba=contrato`)}`);
                   }}
                 >
-                  Personalizar escopo
+                  Personalizar entregas
                 </Botao>
                 <Botao
                   pequeno
                   icone={Calculator}
                   title="Números internos: piso, horas e divisão"
                   onClick={() => {
-                    enviarCenario({ origem: "saude", nome: `Escopo · ${c.nome}`, cenarios: [c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Escopo · ${c.nome}`), clienteId: c.id }] });
+                    enviarCenario({ origem: "saude", nome: `Entregas do contrato · ${c.nome}`, cenarios: [c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Entregas do contrato · ${c.nome}`), clienteId: c.id }] });
                     router.push("/calculadora");
                   }}
                 >
@@ -389,16 +418,16 @@ export function FichaCliente({
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-texto-suave">Sem escopo guardado: as horas deste cliente não entram na tela Mês.</p>
+                <p className="text-xs text-texto-suave">Sem entregas do contrato guardadas: as horas deste cliente não entram na tela Mês.</p>
               )}
               {(config.pacotes ?? []).some((p) => p.ativo) && (
                 <div className="mt-3 flex items-center gap-2">
                   <Package size={14} className="text-texto-suave" />
                   <Selecao
                     className="flex-1"
-                    ariaLabel="Usar um pacote como escopo"
+                    ariaLabel="Usar um pacote como entregas do contrato"
                     valor={null}
-                    vazio="Usar um pacote como escopo…"
+                    vazio="Usar as entregas de um pacote…"
                     opcoes={(config.pacotes ?? []).filter((p) => p.ativo).map((p) => ({ valor: p.id, rotulo: p.nome }))}
                     aoMudar={(v) => void escopoDoPacote(v)}
                   />
@@ -439,7 +468,7 @@ export function FichaCliente({
         {aba === "financeiro" && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
-              <Link href={`/pagamentos?cliente=${c.id}`} className="inline-flex items-center gap-1.5 rounded-botao bg-marca px-3 py-1.5 text-xs font-semibold text-sobre-marca">
+              <Link href={`/pagamentos?cliente=${c.id}`} className="inline-flex items-center gap-1.5 rounded-botao bg-marca-cheio px-3 py-1.5 text-xs font-semibold text-sobre-marca">
                 <Wallet size={13} /> Registrar pagamento
               </Link>
               <Link href={`/mes?aba=clientes&cliente=${c.id}`} className="inline-flex items-center gap-1.5 rounded-botao border border-linha px-3 py-1.5 text-xs font-semibold">
@@ -489,6 +518,7 @@ export function FichaCliente({
                 a={a}
                 mensalidadeNoOnboarding={config.empresa.mensalidadeNoOnboarding}
                 aoAbrir={() => set({ fechamentoIniciadoEm: new Date().toISOString() })}
+                irPara={setAba}
               />
             )}
             {!c.interno && <ContratoCliente config={config} clienteId={c.id} />}

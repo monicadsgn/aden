@@ -6,7 +6,8 @@
 // - relatório do sócio (interno): o que ele recebeu, de quais clientes, e as horas.
 // As telas de impressão usam só os tokens de app/tokens.css.
 
-import type { DistribuicaoCliente, Pagamento } from "./pagamentos";
+import type { MesDeCima } from "./sociedade";
+import type { Pagamento } from "./pagamentos";
 import type { Cenario, Configuracao, Id } from "./tipos";
 import { formatarMoeda } from "../formato";
 import { garantiaParaCliente, type GarantiaCliente } from "./apresentacao";
@@ -147,39 +148,33 @@ export interface DocumentoSocio {
   arquivo: string;
   socio: string;
   mesReferencia: string;
-  recebidoCentavos: number;
-  planejadoCentavos: number;
-  faltaCentavos: number;
-  clientes: { cliente: string; recebidoCentavos: number; planejadoCentavos: number; horas: number | null }[];
+  /** parte do sócio no mês pela regra da sociedade, pelo que ENTROU no mês (M8, 01/10/2026) */
+  parteCentavos: number;
+  /** quanto entrou na Aden no mês (todos os clientes pagantes) */
+  entrouCentavos: number;
+  /** de onde vem a parte (frase da regra) */
+  regra: string;
+  bonusCentavos: number | null;
+  clientes: { cliente: string; entrouCentavos: number; horas: number | null }[];
   horasTotais: number;
 }
 
-export function documentoSocio(
-  config: Configuracao,
-  pessoaId: Id,
-  competencia: string,
-  distribuicoes: DistribuicaoCliente[],
-  horasPorCliente: Record<Id, number | null>,
-): DocumentoSocio {
+/** Relatório do sócio pelo mês em que o dinheiro entrou (é o que vale para a divisão e o caixa). */
+export function documentoSocio(config: Configuracao, pessoaId: Id, mes: string, deCima: MesDeCima, horasPorCliente: Record<Id, number | null>): DocumentoSocio {
   const socio = config.pessoas.find((p) => p.id === pessoaId);
-  const clientes = distribuicoes
-    .filter((d) => !d.bloqueio)
-    .map((d) => ({
-      cliente: d.nome,
-      recebidoCentavos: d.totais.socios[pessoaId] ?? 0,
-      planejadoCentavos: d.planejado?.socios[pessoaId] ?? 0,
-      horas: horasPorCliente[d.clienteId] ?? null,
-    }));
-  const recebido = clientes.reduce((a, c) => a + c.recebidoCentavos, 0);
-  const planejado = clientes.reduce((a, c) => a + c.planejadoCentavos, 0);
+  const parte = deCima.socios.find((s) => s.pessoaId === pessoaId);
+  const clientes = config.clientes
+    .filter((c) => c.ativo && !c.interno)
+    .map((c) => ({ cliente: c.nome, entrouCentavos: deCima.porCliente.find((x) => x.clienteId === c.id)?.centavos ?? 0, horas: horasPorCliente[c.id] ?? null }));
   return {
     tipo: "socio",
-    arquivo: nomeArquivo("relatorio-socio", socio?.nome ?? "socio", competencia),
+    arquivo: nomeArquivo("relatorio-socio", socio?.nome ?? "socio", mes),
     socio: socio?.nome ?? "",
-    mesReferencia: mesPorExtenso(competencia),
-    recebidoCentavos: recebido,
-    planejadoCentavos: planejado,
-    faltaCentavos: Math.max(0, planejado - recebido),
+    mesReferencia: mesPorExtenso(mes),
+    parteCentavos: parte?.parteCentavos ?? 0,
+    entrouCentavos: deCima.entrouCentavos,
+    regra: parte?.regra ?? "",
+    bonusCentavos: parte?.bonusCentavos ?? null,
     clientes,
     horasTotais: clientes.reduce((a, c) => a + v0(c.horas), 0),
   };

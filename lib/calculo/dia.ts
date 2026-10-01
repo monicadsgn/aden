@@ -22,6 +22,7 @@ export interface VisaoDoDia {
   /** vencem nos próximos 7 dias (sem contar hoje) */
   semana: Tarefa[];
   /** em produção agora, sem prazo */
+  /** sem prazo: em produção, ou pedidas por outra pessoa (G4: o pedido sem data não some do dia de quem recebeu) */
   emAndamento: Tarefa[];
   /** paradas em "com o cliente" (esperando a aprovação dele) */
   emAprovacao: Tarefa[];
@@ -40,8 +41,9 @@ export function montarVisaoDoDia(tarefas: Tarefa[], pessoaId: Id | null, hoje: s
     hoje: abertas.filter((t) => t.vencimento === hoje),
     atrasadas: abertas.filter((t) => t.vencimento != null && t.vencimento < hoje).sort(porPrazo),
     semana: abertas.filter((t) => t.vencimento != null && t.vencimento > hoje && t.vencimento <= fimSemana).sort(porPrazo),
-    emAndamento: abertas.filter((t) => !t.vencimento && t.status === "em_producao"),
-    emAprovacao: abertas.filter((t) => t.status === "revisao"),
+    emAndamento: abertas.filter((t) => !t.vencimento && (t.status === "em_producao" || (t.status === "a_fazer" && !!t.pedidaPorNome))),
+    // aprovada pelo cliente já não espera ninguém (M12): sai de "com o cliente" e aparece em "o cliente respondeu"
+    emAprovacao: abertas.filter((t) => t.status === "revisao" && !t.clienteAprovouEm),
     semResponsavel: pessoaId ? [] : tarefas.filter((t) => t.status !== "concluida" && !t.responsavelId),
     concluidasHoje: minhas.filter((t) => t.status === "concluida" && t.concluidaEm != null && hojeISO(new Date(t.concluidaEm)) === hoje),
   };

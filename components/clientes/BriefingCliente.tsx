@@ -66,7 +66,7 @@ export function BriefingCliente({ clienteId, config }: { clienteId: string; conf
           {s.itens.map(({ pergunta: p, resposta: r }) => (
             <label key={p.id} className="flex flex-col gap-1 text-[13px] font-semibold">
               {p.pergunta}
-              {p.ajuda && <span className="text-[11px] font-normal text-texto-suave">{p.ajuda}</span>}
+              {p.ajuda && <span className="text-[12px] font-normal text-texto-suave">{p.ajuda}</span>}
               <textarea
                 key={`${p.id}-${r?.resposta ?? ""}`}
                 className="min-h-16 rounded-campo border border-linha bg-superficie px-3 py-2 text-sm font-normal text-texto focus:border-marca focus:outline-none"
@@ -74,7 +74,7 @@ export function BriefingCliente({ clienteId, config }: { clienteId: string; conf
                 onBlur={(e) => e.target.value.trim() !== (r?.resposta ?? "") && void responder(p.id, e.target.value)}
               />
               {r?.respondidoEm && r.resposta && (
-                <span className="text-[11px] font-normal text-texto-suave">
+                <span className="text-[12px] font-normal text-texto-suave">
                   {r.respondidoPorNome ?? "?"} · {quando(r.respondidoEm)}
                   {r.perguntaTexto && r.perguntaTexto !== p.pergunta && ` · respondida quando a pergunta era: “${r.perguntaTexto}”`}
                 </span>

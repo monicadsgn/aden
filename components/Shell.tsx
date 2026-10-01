@@ -46,9 +46,9 @@ interface Item {
   destaque?: boolean;
 }
 
-// Áreas do sistema (reorganizadas na auditoria de 26/09/2026: 5 grupos, uma tela por assunto).
+// Áreas do sistema (reorganizadas na auditoria de 26/09/2026: 5 grupos, uma tela por assunto; grupo Comercial em 01/10/2026).
 // O dia a dia vem primeiro e fica sempre aberto: é por onde cada um começa o dia.
-// Fase 1 (29/09/2026): a calculadora voltou ao menu, em destaque no grupo Vendas (sempre aberto);
+// Fase 1 (29/09/2026): a calculadora voltou ao menu, em destaque no grupo Vendas (hoje Comercial, sempre aberto);
 // Relatórios virou botão dentro da tela Mês.
 // Configurações fica sozinha no fim; o glossário e o tour ficam no rodapé.
 const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
@@ -63,17 +63,17 @@ const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
   },
   {
     titulo: "Clientes",
-    itens: [
-      { href: "/clientes", rotulo: "Clientes e contratos", icone: FileSignature, area: "clientes" },
-      { href: "/crm", rotulo: "Leads", icone: MessagesSquare, area: "crm" },
-    ],
+    itens: [{ href: "/clientes", rotulo: "Clientes e contratos", icone: FileSignature, area: "clientes" }],
   },
+  // M7 da auditoria (01/10/2026): o comercial num lugar só, separado do operacional, na ordem da jornada:
+  // lead → proposta → (conta interna na calculadora). Fica sempre aberto, com a calculadora em destaque.
   {
-    titulo: "Vendas",
+    titulo: "Comercial",
     fixo: true,
     itens: [
-      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora", destaque: true },
+      { href: "/crm", rotulo: "Leads", icone: MessagesSquare, area: "crm" },
       { href: "/negociacao", rotulo: "Proposta", icone: Presentation, area: "negociacao" },
+      { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora", destaque: true },
     ],
   },
   {
@@ -147,7 +147,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
         const temAtivo = g.titulo === doCaminho;
         return (
           <div key={g.titulo} className={cx(g.titulo === "Ajustes" && "mt-2 border-t border-linha pt-3")}>
-            {g.fixo && g.titulo === "Vendas" && (
+            {g.fixo && g.titulo === "Comercial" && (
               <p className={cx("px-3 py-2 text-[12px] font-bold tracking-[0.08em] uppercase", temAtivo ? "text-marca-forte" : "text-texto-suave")}>{g.titulo}</p>
             )}
             {!g.fixo && (
@@ -156,7 +156,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
               aria-expanded={aberto}
               onClick={() => alternar(g.titulo)}
               className={cx(
-                "flex w-full items-center gap-2 rounded-item px-3 py-2 text-left text-[12px] font-bold tracking-[0.08em] uppercase transition-colors",
+                "flex min-h-10 w-full items-center gap-2 rounded-item px-3 py-2 text-left text-[12px] font-bold tracking-[0.08em] uppercase transition-colors pointer-coarse:min-h-11",
                 temAtivo ? "text-marca-forte" : "text-texto-suave hover:text-texto",
               )}
             >
@@ -177,8 +177,8 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
                         href={i.href}
                         onClick={aoNavegar}
                         className={cx(
-                          "flex items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-semibold transition-colors",
-                          ativo ? "bg-marca text-sobre-marca shadow-card" : i.destaque ? "bg-marca-suave text-marca-forte hover:bg-marca-suave/70" : "text-texto hover:bg-marca-suave/60",
+                          "flex min-h-10 items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-semibold transition-colors pointer-coarse:min-h-11",
+                          ativo ? "bg-marca-cheio text-sobre-marca shadow-card" : i.destaque ? "bg-marca-suave text-marca-forte hover:bg-marca-suave/70" : "text-texto hover:bg-marca-suave/60",
                         )}
                       >
                         <Ic size={17} strokeWidth={2} />
@@ -221,7 +221,7 @@ function AlternarTema() {
     } catch {}
   };
   return (
-    <button type="button" onClick={trocar} aria-label="Alternar tema claro/escuro" className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto">
+    <button type="button" onClick={trocar} aria-label="Alternar tema claro/escuro" className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11">
       {escuro ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
@@ -276,7 +276,7 @@ export function Shell({ children }: { children: ReactNode }) {
         type="button"
         aria-label="Rever o tour do sistema"
         title="Rever o tour do sistema"
-        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11"
         onClick={abrirTour}
       >
         <HelpCircle size={17} />
@@ -285,7 +285,7 @@ export function Shell({ children }: { children: ReactNode }) {
         href="/glossario"
         aria-label="Glossário: o que quer dizer cada palavra"
         title="Glossário: o que quer dizer cada palavra"
-        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11"
       >
         <BookOpen size={17} />
       </Link>
@@ -294,7 +294,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <button
           type="button"
           aria-label="Sair"
-          className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+          className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11"
           onClick={async () => {
             await repo.sair();
             await atualizarUsuario();
@@ -323,17 +323,17 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="nao-imprimir sticky top-0 z-30 flex items-center justify-between border-b border-linha bg-fundo/90 px-4 py-3 backdrop-blur lg:hidden">
           <Marca compacta />
-          <button type="button" aria-label="Abrir menu" onClick={() => setMenuAberto(true)} className="flex size-10 items-center justify-center rounded-item hover:bg-superficie-2">
+          <button type="button" aria-label="Abrir menu" onClick={() => setMenuAberto(true)} className="flex size-11 items-center justify-center rounded-item hover:bg-superficie-2">
             <Menu size={20} />
           </button>
         </header>
         {menuAberto && (
           <div className="fixed inset-0 z-40 lg:hidden">
-            <button aria-label="Fechar menu" className="absolute inset-0 bg-texto/30" onClick={() => setMenuAberto(false)} />
-            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto bg-superficie px-3 py-5 shadow-forte">
+            <button aria-label="Fechar menu" className="veu absolute inset-0" onClick={() => setMenuAberto(false)} />
+            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto border-r bg-superficie px-3 py-5 shadow-forte vidro">
               <div className="flex items-center justify-between px-2">
                 <Marca />
-                <button aria-label="Fechar menu" onClick={() => setMenuAberto(false)} className="flex size-9 items-center justify-center rounded-item hover:bg-superficie-2">
+                <button aria-label="Fechar menu" onClick={() => setMenuAberto(false)} className="flex size-11 items-center justify-center rounded-item hover:bg-superficie-2">
                   <X size={18} />
                 </button>
               </div>
@@ -389,7 +389,7 @@ export function CabecalhoPagina({
       <span className="pointer-events-none absolute right-48 -bottom-10 size-24 rounded-full bg-destaque/15" aria-hidden />
       {/* no celular: ícone, título e "?" numa linha; a frase e as ações ocupam a largura inteira embaixo */}
       <div className="relative mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-bloco bg-marca text-sobre-marca shadow-card sm:size-12">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-bloco bg-marca-cheio text-sobre-marca shadow-card sm:size-12">
           <Icone size={20} />
         </span>
         <div className="min-w-0 flex-1 basis-40">

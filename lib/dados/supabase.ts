@@ -205,6 +205,7 @@ export class RepositorioSupabase implements Repositorio {
   async carregarConfig(): Promise<Configuracao> {
     const org = await this.org();
     if (this.usuario && (this.usuario.papel === "colaborador" || this.usuario.papel === "freelancer")) return this.configDaEquipe(org);
+    if (this.usuario?.papel === "contador") return this.configDoContador(org);
     const [emp, pes, ser, div, tip, cus, cli, con, ter, pac, met] = await Promise.all([
       this.sb.from("configuracoes_empresa").select("*").eq("org_id", org).maybeSingle(),
       this.sb.from("pessoas").select("*").eq("org_id", org).order("ordem"),
@@ -232,6 +233,7 @@ export class RepositorioSupabase implements Repositorio {
         medicoesCalibragem: num(e?.medicoes_calibragem),
         diferencaSugerirPct: num(e?.diferenca_sugerir_pct),
         diasLeadParado: num(e?.dias_lead_parado),
+        prazoMinimoPedidoDiasUteis: num(e?.prazo_minimo_pedido_dias_uteis),
         reinvestimentoPct: num(e?.reinvestimento_pct),
         impostoPct: num(e?.imposto_pct),
         taxaRecebimentoPct: num(e?.taxa_recebimento_pct),
@@ -284,6 +286,8 @@ export class RepositorioSupabase implements Repositorio {
         calibrarDesde: (t.calibrar_desde as string) ?? null,
         terceiroId: (t.terceiro_id as string) ?? null,
         nomeCliente: (t.nome_cliente as string) ?? null,
+        projeto: (t.projeto as boolean) ?? false,
+        prazoDias: num(t.prazo_dias),
       })),
       custosFixos: ((cus.data ?? []) as Linha[]).map((c) => ({
         id: c.id as string,
@@ -417,6 +421,7 @@ export class RepositorioSupabase implements Repositorio {
         medicoes_calibragem: a.empresa.medicoesCalibragem ?? null,
         diferenca_sugerir_pct: a.empresa.diferencaSugerirPct ?? null,
         dias_lead_parado: a.empresa.diasLeadParado ?? null,
+        prazo_minimo_pedido_dias_uteis: a.empresa.prazoMinimoPedidoDiasUteis ?? null,
         reinvestimento_pct: a.empresa.reinvestimentoPct,
         imposto_pct: a.empresa.impostoPct,
         taxa_recebimento_pct: a.empresa.taxaRecebimentoPct,
@@ -506,6 +511,8 @@ export class RepositorioSupabase implements Repositorio {
         calibrar_desde: t.calibrarDesde ?? null,
         terceiro_id: t.terceiroId ?? null,
         nome_cliente: t.nomeCliente?.trim() || null,
+        projeto: t.projeto ?? false,
+        prazo_dias: t.projeto ? (t.prazoDias ?? null) : null,
         ordem: i,
       })),
     );
@@ -985,6 +992,7 @@ export class RepositorioSupabase implements Repositorio {
       agendadaEm: (t.agendada_em as string) ?? null,
       rede: (t.rede as string) ?? null,
       lote: (t.lote as string) ?? null,
+      pedidaPorNome: (t.pedida_por_nome as string) ?? null,
     }));
   }
 
@@ -1280,6 +1288,44 @@ export class RepositorioSupabase implements Repositorio {
   }
 
   /** O que a equipe (não sócia) precisa para as tarefas: nomes, tipos de entrega e serviços. Nada de valores. */
+  /** Contador: só o financeiro (G9 da auditoria, migration 0034). Nada de link do painel, documento, % da sociedade ou oferta. */
+  private async configDoContador(org: string): Promise<Configuracao> {
+    const [dados, cus] = await Promise.all([
+      this.sb.rpc("contador_config", { org }),
+      this.sb.from("custos_fixos").select("*").eq("org_id", org).order("nome"),
+    ]);
+    for (const r of [dados, cus]) erro(r.error);
+    const d = (dados.data ?? {}) as { empresa: Linha | null; clientes: Linha[] };
+    const e = d.empresa;
+    const c = configVazia();
+    c.empresa = {
+      ...c.empresa,
+      regime: (e?.regime as Configuracao["empresa"]["regime"]) ?? null,
+      impostoPct: num(e?.imposto_pct),
+      impostoFixoMensalCentavos: num(e?.imposto_fixo_mensal_centavos),
+      taxaRecebimentoPct: num(e?.taxa_recebimento_pct),
+      taxaRecebimentoFixaCentavos: num(e?.taxa_recebimento_fixa_centavos),
+      tetoFaturamentoAnualCentavos: num(e?.teto_faturamento_anual_centavos),
+      avisoTetoPct: num(e?.aviso_teto_pct),
+    };
+    c.clientes = (d.clientes ?? []).map((k) => ({
+      id: k.id as string,
+      nome: k.nome as string,
+      interno: (k.interno as boolean) ?? false,
+      ativo: (k.ativo as boolean) ?? false,
+      participaRateio: false,
+      valorMensalCentavos: num(k.valor_mensal_centavos),
+    }));
+    c.custosFixos = ((cus.data ?? []) as Linha[]).map((f) => ({
+      id: f.id as string,
+      nome: f.nome as string,
+      valorMensalCentavos: num(f.valor_mensal_centavos),
+      ativo: f.ativo as boolean,
+      planejado: (f.planejado as boolean) ?? false,
+    }));
+    return c;
+  }
+
   private async configDaEquipe(org: string): Promise<Configuracao> {
     const [nomes, tip, ser] = await Promise.all([
       this.sb.rpc("equipe_nomes", { org }),
@@ -1302,6 +1348,8 @@ export class RepositorioSupabase implements Repositorio {
       calibrarDesde: (t.calibrar_desde as string) ?? null,
       terceiroId: (t.terceiro_id as string) ?? null,
       nomeCliente: (t.nome_cliente as string) ?? null,
+      projeto: (t.projeto as boolean) ?? false,
+      prazoDias: num(t.prazo_dias),
     }));
     return c;
   }

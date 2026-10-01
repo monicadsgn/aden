@@ -1,5 +1,112 @@
 # Arquitetura: Aden · Gestão
 
+## Princípios (Moni, 01/10/2026)
+
+- Menu sanfona e uma coisa por tela.
+- Modo negociação sem dado interno e flexível pra contraproposta.
+- Todo número de hora mostra de onde veio.
+- Tempo por entrega vem da média cadastrada; o cronômetro é opcional, nunca liga sozinho e só se usa quando não se
+  sabe quanto tempo algo leva.
+- Projetos de marca (logo, identidade, branding) não se medem em minutos.
+- Pedido ao outro sócio tem prazo mínimo em dias úteis; menor só como urgência.
+- Vidro só no que fica por cima da tela (janelas, menus que abrem por cima, avisos), nunca no fundo nem nos cartões.
+- Voz da Aden direta, sem achismo, e neutra.
+
+## Segurança das travas (auditoria, 01/10/2026, migration 0034)
+
+- Apagar também é mudar: sócio não se apaga nem sai de sócio/ativo por update; serviço com divisão de horas, divisão
+  preenchida, tipo com tempo e a configuração da empresa não se apagam (`impedir_apagar_protegido`, `proteger_socio`).
+  Na tela e no conector: "Desativar" no lugar da lixeira (`motivoNaoApagar` em `lib/regras/aprovacao.ts`).
+- Contador: sem leitura direta de `clientes` e `configuracoes_empresa`; lê só o financeiro por `contador_config(org)`
+  (regime, imposto, taxa, teto; clientes com nome, interno, ativo e valor mensal). No site, `configDoContador`.
+- Respostas do cliente nas tarefas (aprovou, ajuste, rodadas, histórico): pelo site e pela API (papéis
+  authenticated/anon) ninguém escreve; só as funções do painel (security definer). Reenviar pode zerar o "aprovou"
+  (`proteger_respostas_cliente`).
+
+## Execução da auditoria, bloco 2 (01/10/2026)
+
+- **Visão do dia só com o de hoje (G1):** "Para começar" virou uma linha com o próximo passo (a lista inteira fica em
+  Configurações); saiu o contador "Próximos 7 dias"; o bloco Próximos 7 dias vem recolhido; Metas, Comercial e
+  Financeiro viraram o "Resumo do mês" (uma linha cada, com link) e os avisos que pedem ação hoje (mês passado em
+  aberto, contrato, teto do MEI) ficam embaixo dele, em amarelo. Colunas com `min-w-0` (no celular nada estica além
+  da tela).
+- **Peças do mesmo calendário juntas (G2):** `ListaTarefas` (`components/tarefas/LinhaTarefa.tsx`) junta as tarefas
+  do mesmo lote e cliente num card "N/M prontas" que abre as peças (`lib/calculo/lotes.ts`, testado; pronta =
+  concluída, publicada ou aprovada pelo cliente; conta o calendário inteiro). Usada na Visão do dia e na Lista de
+  Tarefas. Só tela: status e relógio não mudam.
+- **Checklist de fechamento (G6):** cada passo com o botão do lugar que resolve (Dados e Contrato no passo do contrato,
+  "Abrir o briefing", "Criar o link" do painel); "Ver o cliente" do lead abre direto na aba Comercial; fechamento em
+  andamento aparece na Visão do dia ("Fechamento de cliente", com o próximo passo).
+- **Lead ganho (G7):** arrastar para Ganho abre o lead pedindo o "Fechou! Virar cliente" (só ele cria o cliente);
+  o botão some em lead perdido; proposta salva na Proposta aberta pelo lead já fica ligada a ele.
+
+- **Prazo mínimo de pedido (migration 0037, `lib/regras/prazoPedido.ts`):** pedido ao outro sócio tem prazo mínimo
+  de `configuracoes_empresa.prazo_minimo_pedido_dias_uteis` dias úteis (seg. a sex., sem feriados) a partir do pedido.
+  Vale ao criar, ao passar a tarefa para outro sócio e quando quem pediu muda o prazo. Sem prazo, entra o mínimo; menor
+  só com prioridade `urgente` (a tela pergunta em `useTarefas.salvar`, o conector recusa e explica em `salvar_tarefa`,
+  o banco barra em `tarefa_quem_pediu`). O aviso ao sócio diz "Tarefa urgente para você" quando for o caso.
+- **Vidro (aprovado 01/10/2026):** classes `.vidro` (painel) e `.veu` (fundo atrás) em `app/globals.css`, tokens
+  `--vidro*` e `--veu`. Usado em `Modal`, menu do celular, barra de salvar das Configurações, relógio rodando e aviso
+  do painel do cliente. Quem pede menos transparência (ou navegador sem desfoque) vê o sólido de sempre.
+- **Pedido de tarefa entre sócios (G4, migration 0035):** substitui o bot de WhatsApp. Tarefa criada (ou passada) para
+  outra pessoa grava quem pediu (`tarefas.pedida_por_id`, `pedida_por_nome`, preenchidos pelo banco via `quem_age`:
+  "Mônica (pelo Claude)") e manda um aviso ao sócio que recebeu (`avisos_socios`, aparece em Depende de mim). Sem
+  prazo, entra em "Sem prazo" na Visão do dia dele (`montarVisaoDoDia.emAndamento`), com o selo "pedida por". No
+  conector: `pedidaPor` em `listar_tarefas` e `ver_visao_do_dia.semPrazo`.
+- **Configurações em dois grupos (G5):** "Configurações do sistema" (1 Sócios, 2 Custos fixos, 3 Regras da empresa,
+  4 Equipe e acessos; Metas e Limites opcionais) e "Configurações comerciais" (1 Serviços, 2 Tipos de entrega,
+  3 Terceiros, 4 Pacotes, 5 Contrato, 6 Onboarding, 7 Briefing). O número na aba é a ordem de preenchimento (a mesma
+  do "Para começar", `ORDEM_COMECAR`). A explicação da proteção dos sócios só aparece, recolhida, nas abas com
+  cadeado. Datas comemorativas viraram a aba "Datas comemorativas" do Calendário (`/calendario?aba=datas`, só sócio;
+  `?secao=datas` redireciona). Calendário agora é tela com abas (`components/calendario/`).
+
+- **Projetos de marca (opção A, migration 0036):** tipo de entrega com "Como mede" = Projeto: horas totais estimadas
+  (no mesmo campo protegido `horas_por_unidade`, 1 unidade = 1 projeto, digitado em horas) e prazo em dias
+  (`prazo_dias`). No contrato sai "1 projeto, com entrega em até N dias" (sem prazo, falta preencher). Conector:
+  `salvar_tipo_entrega` com `projeto`, `horasDoProjeto`, `prazoDias`. Logo e Estrutura visual marcados como projeto.
+
+- **Mês que vale (M8, 01/10/2026):** para a divisão dos sócios e o caixa vale o mês em que o dinheiro ENTROU
+  (`calcularMesDeCima`, pela data do pagamento). O mês de referência serve só para mostrar quem está devendo. Pagamentos:
+  a prévia mostra a parte de cada sócio antes → depois no mês da data; a lista virou "Quem está devendo" (sem a divisão
+  antiga por pagamento). Visão do dia: "Entrou este mês" pela data; "os clientes ainda devem" pela referência. Relatório
+  do sócio em PDF: parte no mês, o que entrou e de cada cliente, pela data. `distribuirPagamentos` continua só para
+  saber quem deve (e na aba escondida "Repasse por cliente"); no conector, `ver_pagamentos_do_mes` = quem deve e
+  `ver_mes_visto_de_cima` = divisão.
+- **Tarefas como na referência (M6):** filtros Abertas · Concluídas · Todas, cliente, pessoa, área (= serviço do tipo de
+  entrega) e calendário; visões Lista · Quadro · Calendário (a grade do Calendário dentro de Tarefas); etiqueta colorida
+  por cliente (6 tons em `tokens.css`, `cliente-1..6`, contraste ≥ 5,8:1; `coresDosClientes` em `lib/calculo/cores.ts`);
+  "sem prazo" e selo de prioridade em toda tarefa.
+- **Menu (M7):** grupo **Comercial** (Leads → Proposta → Calculadora de projeto, sempre aberto, calculadora em destaque);
+  Clientes ficou só com Clientes e contratos.
+- **Palavras (M1, M2):** na tela, calendário (não "lote"), entregas do contrato (não "escopo"), divisão dos custos fixos
+  (não "rateio"); onboarding, kickoff, briefing e follow-up ficam em inglês dentro do sistema; o cliente nunca vê
+  "briefing" nem "kickoff" (teste em `components/apresentacao/render.test.tsx`).
+
+- **Toque e contraste (M9, M10):** no toque (`pointer: coarse`) todo botão, aba, chave, seletor e link-botão tem no
+  mínimo 44 px (regra em `globals.css` + `pointer-coarse:` nos componentes de base); no computador, botão normal e campo
+  com 44 px, botão pequeno com 36 px, menu e abas com 40 px. Botão cheio, menu e aba ativos usam `--marca-cheio`
+  (#5c5f33 no claro: branco em cima a 6,8:1; no escuro, o verde claro de sempre). Nos PDFs, os textos pequenos da capa
+  passaram a branco (de 3,1:1 para 4,4:1), sem mudar o verde da capa.
+
+- **Textos (M3, M4, M5, M11, M18):** campos com número têm frase e exemplo; "falta preencher" separa obrigatório (sem
+  ele a conta não sai: selo na aba e "Para começar") de opcional (vazio = o que vale, em linha discreta), em
+  `lib/regras/pendencias.ts` (`pendencias`, `SEM_O_OBRIGATORIO`); Limites, reinvestimento, taxa e deslocamento são
+  opcionais. Mês → Cada cliente fala em caminhos ("abaixo do piso: veja os caminhos", "falta um número"), travado em
+  `lib/ajuda-tom.test.ts`. Frases de explicação com 12 px. "Outras condições" avisa que vai para o contrato; teste do
+  contrato confere que nada interno aparece.
+- **Peça (M12):** agendar ou publicar sem a aprovação do painel pede confirmação; aprovada sai de "Com o cliente" e
+  ganha o selo "aprovada"; concluir pelo quadradinho pergunta quando o relógio roda ou a peça tem data e não foi ao
+  ar; tarefa de um calendário já abre com o bloco da peça.
+- **Conector (M14, M15, M16):** versão das ferramentas e novidades em `lib/mcp/novidades.ts` (`quem_sou_eu` devolve;
+  a Visão do dia avisa cada sócio até ele marcar "Já atualizei"); nomes aceitam apelido quando só um bate ("Moni",
+  "Olinda"); `ver_avisos`; `listar_tarefas` com descrição, legenda, texto da arte e as últimas respostas do cliente;
+  `ver_cliente` com a conversa inicial; `ver_historico` sem link do painel nem CPF crus; `salvar_lead` liga a proposta
+  salva (`simulacao`); `ganhar_lead` recusa lead sem proposta, pacote nem valor.
+- **Aviso ao cliente (M13, parte 1):** "Avisar no WhatsApp" na peça que espera o cliente (mensagem pronta com o link
+  do painel, `lib/calculo/avisoCliente.ts`).
+- **Detalhes:** D4 Histórico com busca e filtro por assunto; D5 colunas de Leads encaixam ao deslizar no celular; D7
+  teste trava as cores dos PDFs iguais a `tokens.css`; D8 sombras no escuro; D9 `.env.example` completo.
+
 ## Stack
 
 Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + Tailwind v4 + Vercel.
@@ -168,9 +275,11 @@ A decidir com a Moni (não inventar):
   qualquer tela enquanto roda. Lista (agrupada por prazo) e Quadro (arrastar muda o status), janela da tarefa com
   status, datas, estimativa (tempo por entrega × quantidade), responsável, prioridade, cliente, tipo e checklist.
   Status: a fazer, em produção, em aprovação, concluída. Padrões de UX tirados do SoftMoni (janela, criação rápida).
-- **Cronômetro (regra da calibragem):** iniciar, pausar, parar por entrega. Modo calibragem pede N medições por tipo (N configurável; a Moni
-  pediu 5). Calibrado → a média medida estima as horas reais na Saúde. Sugestão de atualizar o tempo quando a média
-  difere (limiar opcional); a atualização passa pela aprovação. Recalibrar descarta as medições anteriores.
+- **Cronômetro opcional (regra de 01/10/2026, substitui o modo calibragem):** vale o tempo médio cadastrado. O relógio
+  ("Medir o tempo" dentro da tarefa) só roda quando alguém liga; na lista só aparece se já foi ligado; o sistema não pede
+  medições (o campo `medicoes_calibragem` ficou sem uso). Com uma medição já existe média (`situacao: "medido"`); a
+  Calibragem sugere atualizar o tempo quando a média difere (limiar opcional) e a atualização passa pela aprovação. A
+  média medida nunca entra sozinha em conta nenhuma. Recalibrar descarta as medições anteriores da média.
 - **Proteção da remuneração:** piso, % dos sócios, divisão de horas por serviço e tempo por entrega só mudam com a
   aprovação do sócio afetado (piso: o próprio; %: todos os sócios; divisão: quem teve o % mudado; tempo: quem executa o
   serviço). Se quem mudou é o único afetado, vale na hora. Campo vazio pode ser preenchido direto. Escopo ou proposta
@@ -276,8 +385,9 @@ cliente, mas:
   Pagamentos e do "falta entrar";
 - não divide nem recebe custo fixo (`prepararMes`: base do rateio sem internos; escopo dela com rateio desligado);
 - escopo livre, guardado direto, nunca vira pedido de exceção de piso (`guardarEscopo`);
-- as horas do cronômetro nela aparecem no Mês → Cada cliente no card "Investido na Aden", por sócio
-  (`horasInvestidasNaAden`), fora da tabela de clientes pagantes; no conector, `ver_saude_clientes.investidoNaAden`.
+- as horas dela aparecem no Mês → Cada cliente no card "Investido na Aden", por sócio responsável: tarefas concluídas no
+  mês × tempo cadastrado do tipo (tarefa sem tempo cadastrado conta à parte, sem horas) (`horasInvestidasNaAden`), fora
+  da tabela de clientes pagantes; no conector, `ver_saude_clientes.investidoNaAden`.
 
 Testes em `lib/calculo/interno.test.ts`.
 
@@ -369,9 +479,9 @@ mensal). Soma por sócio × capacidade → horas livres, "afogado" (acima da cap
 configurado). Clientes sem escopo aparecem em aviso e não entram na soma.
 
 **Saúde do cliente:** previsto = escopo contratado com o valor do contrato. Realizado = mesmos custos e rateio, mas com as
-horas reais do mês e o valor recebido (vazio = valor do contrato). Horas de cada sócio, nesta ordem (grave 6, 29/09/2026):
-corrigidas à mão no mês → **cronômetro das tarefas do cliente no mês** (`horasDasTarefas`: soma das medições com o
-cliente e o sócio, contadas no mês em que terminaram) → escopo × média medida (calibragem) → escopo × tempo cadastrado.
+horas do mês e o valor recebido (vazio = valor do contrato). Horas de cada sócio (regra de 01/10/2026, cronômetro
+opcional): corrigidas à mão no mês → senão, entregas do contrato × tempo cadastrado. O cronômetro e a média medida não
+entram (antes entravam: grave 6 de 29/09/2026).
 Na tela (Mês → Cada cliente) é uma linha por cliente (pagou, horas, paga por hora, sinal); o detalhe abre numa janela. Mostra valor por hora real de cada sócio, marca
 "prejuízo silencioso" quando fica abaixo do piso e "contratado abaixo do piso" quando o próprio previsto já fica.
 

@@ -2,14 +2,15 @@
 
 import { AlertOctagon, CheckCircle2, Clock, Plus, Trash2, Wallet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BotaoAcao, FaixaRepetida, OQueQuerDizer, avisosRepetidos } from "@/components/Alertas";
 import { CabecalhoPagina } from "@/components/Shell";
 import { Badge, Botao, Card, CampoMoeda, CampoTexto, Rotulo, Selecao, TituloCard, Vazio, cx } from "@/components/ui";
 import { configVazia, novoId } from "@/lib/calculo/novo";
 import { distribuirPagamentos, type Pagamento } from "@/lib/calculo/pagamentos";
 import { clienteNoMes } from "@/lib/calculo/clientes";
 import type { Configuracao } from "@/lib/calculo/tipos";
-import { Destinos, SITUACAO } from "@/components/financeiro";
+import { SITUACAO } from "@/components/financeiro";
+import { calcularMesDeCima } from "@/lib/calculo/sociedade";
+import Link from "next/link";
 import { useDados } from "@/lib/dados/contexto";
 import { competenciaAtual } from "@/lib/dados/repositorio";
 import { formatarMoeda } from "@/lib/formato";
@@ -58,13 +59,24 @@ export default function Pagamentos() {
   const ativos = useMemo(() => config.clientes.filter((c) => c.ativo && !c.interno), [config]);
   const clienteNovo = config.clientes.find((c) => c.id === novo.clienteId);
 
-  // prévia: para onde vai este pagamento, somado aos que já caíram no mesmo mês
+  // prévia (M8, 01/10/2026): a divisão e o caixa contam pelo mês em que o dinheiro ENTRA (a data), pela regra da
+  // sociedade; mostra quanto muda a parte de cada sócio com este pagamento
   const previa = useMemo(() => {
     if (!clienteNovo || !novo.valor || novo.valor <= 0) return null;
     const p: Pagamento = { id: "previa", clienteId: clienteNovo.id, competencia: novo.competencia, valorCentavos: novo.valor, recebidoEm: novo.data, criadoEm: "9999", taxaCentavos: novo.taxa };
-    const d = distribuirPagamentos(config, clienteNovo, novo.competencia, [...pagamentos, p], hoje());
-    return { d, parte: d.partes.find((x) => x.pagamentoId === "previa") ?? null };
+    const mes = novo.data.slice(0, 7);
+    const antes = calcularMesDeCima(config, pagamentos, mes);
+    const depois = calcularMesDeCima(config, [...pagamentos, p], mes);
+    return {
+      mes,
+      entrou: depois.entrouCentavos,
+      socios: depois.socios.map((s) => ({ ...s, antes: antes.socios.find((x) => x.pessoaId === s.pessoaId)?.parteCentavos ?? 0 })),
+      trafego: { antes: antes.trafegoProprioCentavos, depois: depois.trafegoProprioCentavos },
+      semRegra: depois.divisao === "sem_regra",
+      atrasado: novo.data.slice(0, 7) > novo.competencia,
+    };
   }, [clienteNovo, novo, pagamentos, config]);
+  const nomeMes = (m: string) => new Date(`${m}-15T12:00:00`).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
   const registrar = async () => {
     if (!clienteNovo || !novo.valor || novo.valor <= 0) return;
@@ -88,8 +100,6 @@ export default function Pagamentos() {
 
   const distribuicoes = useMemo(() => ativos.filter((c) => clienteNoMes(c, competencia)).map((c) => distribuirPagamentos(config, c, competencia, pagamentos, hoje())), [ativos, config, competencia, pagamentos]);
 
-  const comuns = useMemo(() => avisosRepetidos(distribuicoes.map((d) => d.bloqueio)), [distribuicoes]);
-
   if (!carregado) return null;
 
   return (
@@ -98,7 +108,7 @@ export default function Pagamentos() {
         icone={Wallet}
         selo="Dinheiro e mês"
         titulo="Pagamentos"
-        descricao="Cada pagamento que cai, mesmo atrasado ou em pedaços. O sistema mostra na hora para onde vai cada real: custos, imposto, reinvestimento e cada sócio."
+        descricao="Cada pagamento que cai, mesmo atrasado ou em pedaços. A divisão dos sócios e o caixa contam pelo mês em que o dinheiro entra; o mês que ele paga mostra quem ainda deve."
       />
       <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
         {mensagem && <p className={cx("px-1 text-xs font-semibold", mensagem.tom === "erro" ? "text-erro" : "text-ok")}>{mensagem.texto}</p>}
@@ -155,25 +165,40 @@ export default function Pagamentos() {
               <div className="rounded-bloco bg-marca-tinta/60 p-4">
                 <p className="mb-2 text-xs font-bold">Para onde vai este pagamento</p>
                 {!previa && <p className="text-[12px] text-texto-suave">Escolha o cliente e digite o valor para ver a divisão.</p>}
-                {previa?.d.bloqueio && (
-                  <div className="flex flex-col gap-2 rounded-item bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
-                    <span>{previa.d.bloqueio.texto}</span>
-                    <div>
-                      <BotaoAcao a={previa.d.bloqueio} />
-                    </div>
-                    <OQueQuerDizer explica={previa.d.bloqueio.explica} />
-                  </div>
-                )}
-                {previa?.parte && (
-                  <>
-                    <Destinos b={previa.parte} config={config} />
-                    <p className="mt-2 text-[12px] text-texto-suave">
-                      {config.empresa.ordemDistribuicao === "custo_primeiro"
-                        ? "Custo primeiro: enquanto os custos do mês não estão cobertos, o dinheiro vai para eles."
-                        : "Proporcional: cada real vai para custos e sócios na mesma proporção do mês inteiro."}
-                      {previa.parte.atrasado && " Este pagamento chegou depois do mês de referência: fica marcado como atrasado."}
+                {previa && !soLeitura && (
+                  <div className="flex flex-col gap-2 text-[13px]">
+                    <p className="text-[12px] text-texto-suave">
+                      Entra na divisão de <strong>{nomeMes(previa.mes)}</strong>, o mês em que o dinheiro caiu. Com ele, entrou {formatarMoeda(previa.entrou)} no mês.
+                      {previa.atrasado && " Ele paga um mês anterior: isso só tira o cliente da lista de quem deve."}
                     </p>
-                  </>
+                    {previa.semRegra ? (
+                      <p className="rounded-item bg-aviso-suave px-3 py-2 text-[12px] text-aviso">
+                        A regra da sociedade ainda não está preenchida (Configurações → Regras da empresa): sem ela não dá para dividir.
+                      </p>
+                    ) : (
+                      <>
+                        {previa.socios.map((s) => (
+                          <div key={s.pessoaId} className="flex flex-wrap items-baseline gap-2">
+                            <span className="flex-1 font-semibold">{s.nome}</span>
+                            <span className="numero">
+                              {formatarMoeda(s.antes)} → <strong>{formatarMoeda(s.parteCentavos)}</strong>
+                            </span>
+                          </div>
+                        ))}
+                        {previa.trafego.depois !== previa.trafego.antes && (
+                          <div className="flex flex-wrap items-baseline gap-2">
+                            <span className="flex-1">Tráfego da Aden</span>
+                            <span className="numero">
+                              {formatarMoeda(previa.trafego.antes)} → <strong>{formatarMoeda(previa.trafego.depois)}</strong>
+                            </span>
+                          </div>
+                        )}
+                        <Link href="/mes?aba=cima" className="text-[12px] font-semibold text-marca-forte underline">
+                          Ver a divisão do mês inteiro
+                        </Link>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -181,7 +206,16 @@ export default function Pagamentos() {
         )}
 
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="flex-1 text-base font-bold">Pagamentos do mês</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-bold">Quem está devendo</h2>
+            <p className="text-[12px] text-texto-suave">
+              Pelo mês de referência (o mês que o cliente está pagando). A divisão dos sócios e o caixa contam pelo mês em que o dinheiro entrou:{" "}
+              <Link href="/mes?aba=cima" className="font-semibold text-marca-forte underline">
+                Mês → Visto de cima
+              </Link>
+              .
+            </p>
+          </div>
           <input
             type="month"
             aria-label="Mês de referência"
@@ -191,7 +225,6 @@ export default function Pagamentos() {
           />
         </div>
 
-        {!soLeitura && <FaixaRepetida alertas={comuns.repetidos} />}
 
         {ativos.length === 0 && (
           <Vazio icone={Wallet} titulo="Nenhum cliente ativo">
@@ -225,13 +258,6 @@ export default function Pagamentos() {
                     <p className={cx("numero font-bold", d.situacao === "atrasado" && "text-erro")}>{formatarMoeda(d.faltaReceberCentavos)}</p>
                   </div>
                 </div>
-                {!soLeitura && comuns.soDele(d.bloqueio) && (
-                  <div className="flex flex-wrap items-center gap-2 rounded-item bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
-                    <span className="flex-1">{d.bloqueio!.texto}</span>
-                    <BotaoAcao a={d.bloqueio!} />
-                    <OQueQuerDizer explica={d.bloqueio!.explica} />
-                  </div>
-                )}
                 {doCliente.map((p) => {
                   const parte = d.partes.find((x) => x.pagamentoId === p.id);
                   return (
@@ -258,22 +284,9 @@ export default function Pagamentos() {
                           />
                         )}
                       </summary>
-                      {parte && !soLeitura && (
-                        <div className="mt-2">
-                          <Destinos b={parte} config={config} />
-                        </div>
-                      )}
                     </details>
                   );
                 })}
-                {!d.bloqueio && !soLeitura && d.recebidoCentavos > 0 && (
-                  <details className="text-[12px]">
-                    <summary className="cursor-pointer font-semibold text-texto-suave">Total do mês até agora, por destino</summary>
-                    <div className="mt-2">
-                      <Destinos b={d.totais} config={config} />
-                    </div>
-                  </details>
-                )}
               </div>
             </Card>
           );

@@ -23,7 +23,7 @@ export function VistaPacoteCliente({
   const dif = vista.diferencaMensalCentavos;
   return (
     <div className="flex flex-col gap-4">
-      <section className="relative overflow-hidden rounded-card bg-marca p-6 text-sobre-marca shadow-forte">
+      <section className="relative overflow-hidden rounded-card bg-marca-cheio p-6 text-sobre-marca shadow-forte">
         <span className="absolute top-4 right-4">
           <SinalDiscreto sinal={vista.sinal} />
         </span>
@@ -59,7 +59,7 @@ export function VistaPacoteCliente({
               onClick={aoPersonalizar}
               className={cx(
                 "inline-flex items-center gap-1.5 rounded-botao px-4 py-2 text-sm font-semibold transition-colors",
-                personalizando ? "bg-marca text-sobre-marca" : "border border-linha bg-superficie hover:bg-superficie-2",
+                personalizando ? "bg-marca-cheio text-sobre-marca" : "border border-linha bg-superficie hover:bg-superficie-2",
               )}
             >
               <SlidersHorizontal size={15} /> {personalizando ? "Pronto" : "Personalizar"}
@@ -95,7 +95,7 @@ export function VistaPacoteCliente({
                   type="button"
                   aria-label={`Mais ${i.nome}`}
                   onClick={() => aoMudarQuantidade?.(i.tipoEntregaId, 1)}
-                  className="flex size-11 items-center justify-center rounded-full bg-marca text-sobre-marca hover:bg-marca-forte"
+                  className="flex size-11 items-center justify-center rounded-full bg-marca-cheio text-sobre-marca hover:bg-marca-cheio-hover"
                 >
                   <Plus size={20} />
                 </button>

@@ -525,9 +525,9 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     // sem regra, o custo fixo sumiria da conta e tudo sairia inflado: bloqueia
     bloqueio = {
       nivel: "erro",
-      texto: `Há ${formatarMoeda(totalFixo)} de custo fixo por mês, mas a regra de rateio não foi escolhida. Sem ela o custo fixo sumiria da conta e o resultado sairia maior do que é, então nada é calculado.`,
-      explica: "Os custos fixos da empresa (ferramentas, imposto) são divididos entre os clientes, e isso se chama rateio. Ex.: R$ 860 por mês divididos igualmente por 4 clientes dá R$ 215 para cada. Sem escolher a regra, esse custo sumiria da conta, então o sistema prefere não mostrar um resultado errado.",
-      acao: { rotulo: "Escolher a regra de rateio", destino: regras("regraRateio") },
+      texto: `Há ${formatarMoeda(totalFixo)} de custo fixo por mês, mas a regra da divisão dos custos fixos não foi escolhida. Sem ela o custo fixo sumiria da conta e o resultado sairia maior do que é, então nada é calculado.`,
+      explica: "Os custos fixos da empresa (ferramentas, imposto) são divididos entre os clientes, e isso se chama divisão dos custos fixos. Ex.: R$ 860 por mês divididos igualmente por 4 clientes dá R$ 215 para cada. Sem escolher a regra, esse custo sumiria da conta, então o sistema prefere não mostrar um resultado errado.",
+      acao: { rotulo: "Escolher a regra da divisão dos custos fixos", destino: regras("regraRateio") },
     };
     alertas.push(bloqueio);
   }
@@ -536,8 +536,8 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
     if (semValor.length)
       alertas.push({
         nivel: "aviso",
-        texto: `Clientes sem valor mensal na base de rateio (contados como R$ 0): ${semValor.map((c) => c.nome).join(", ")}.`,
-        explica: "Na regra de rateio proporcional, quem paga mais leva uma parte maior dos custos fixos. Um cliente sem valor mensal conta como R$ 0 e não leva nenhuma parte. Preencha o valor de cada cliente.",
+        texto: `Clientes sem valor mensal na divisão dos custos fixos (contados como R$ 0): ${semValor.map((c) => c.nome).join(", ")}.`,
+        explica: "Na divisão proporcional dos custos fixos, quem paga mais leva uma parte maior dos custos fixos. Um cliente sem valor mensal conta como R$ 0 e não leva nenhuma parte. Preencha o valor de cada cliente.",
         acao: { rotulo: "Preencher os valores", destino: { tipo: "config", secao: "clientes", ...(semValor.length === 1 ? { clienteId: semValor[0].id } : {}) } },
       });
   }
@@ -604,9 +604,9 @@ export function prepararMes(config: Configuracao, cenario: Cenario, opcoes: Opco
 /** Uma frase dizendo como o custo fixo foi dividido neste cálculo. */
 export function explicarRateio(r: PreparadoMes["rateio"], quota: number, receita: number): string {
   if (r.total <= 0) return "A empresa não tem custo fixo cadastrado.";
-  if (!r.ativo) return "Sem regra de rateio escolhida.";
+  if (!r.ativo) return "Sem regra da divisão dos custos fixos escolhida.";
   const outros = r.clientesNaBase - 1;
-  const conta = outros === 0 ? "Não há outros clientes ativos no rateio, então este cliente conta como o único" : `Este cliente conta como mais 1, junto com ${outros} cliente(s) ativo(s)`;
+  const conta = outros === 0 ? "Não há outros clientes ativos na divisão dos custos fixos, então este cliente conta como o único" : `Este cliente conta como mais 1, junto com ${outros} cliente(s) ativo(s)`;
   if (r.regra === "igual")
     return `${conta}: ${formatarMoeda(r.total)} ÷ ${r.clientesNaBase} = ${formatarMoeda(quota)} para este cliente.`;
   if (outros === 0 || r.somaOutros <= 0) return `${conta} e fica com todo o custo fixo (${formatarMoeda(r.total)}).`;
@@ -641,7 +641,7 @@ export function calcularComReceita(
   const reinvestimento = sobra > 0 ? (sobra * prep.reinvPct) / 100 : 0;
   const distribuivel = sobra - reinvestimento;
 
-  if (sobra < -EPS) alertas.push({ nivel: "erro", texto: `A sobra é negativa (${formatarMoeda(sobra)}): o valor não cobre os custos.`, explica: "Depois de pagar custos, imposto e taxas, falta dinheiro. Ex.: o cliente paga R$ 1.500 e os custos somam R$ 1.700, então faltam R$ 200 todo mês. Suba o valor ou diminua o escopo." });
+  if (sobra < -EPS) alertas.push({ nivel: "erro", texto: `A sobra é negativa (${formatarMoeda(sobra)}): o valor não cobre os custos.`, explica: "Depois de pagar custos, imposto e taxas, falta dinheiro. Ex.: o cliente paga R$ 1.500 e os custos somam R$ 1.700, então faltam R$ 200 todo mês. Suba o valor ou diminua as entregas." });
 
   // Qual divisão vale neste mês (ver o topo do arquivo)
   const soc = prep.sociedade;

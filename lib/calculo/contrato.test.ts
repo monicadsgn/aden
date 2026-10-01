@@ -125,6 +125,24 @@ describe("contrato do cliente", () => {
     expect(valor.itens[1].texto).toBe("O pagamento vence no último dia útil de cada mês.");
   });
 
+  it("\"Outras condições\" da ficha vira a cláusula Observações, e nada interno (piso, horas, divisão entre sócios) entra no contrato", () => {
+    const c = config();
+    c.pessoas = [{ id: "p", nome: "Fulana", socio: true, ativo: true, percentualPadrao: 37, pisoHoraCentavos: 4321, capacidadeHorasMes: 77 }];
+    c.servicos[0].divisaoPadrao = { p: 100 };
+    c.empresa.regraRateio = "igual";
+    c.empresa.reinvestimentoPct = 13;
+    c.clientes[0].contrato = { ...c.clientes[0].contrato!, observacoes: "Reuniões por vídeo.\nFotos enviadas pelo cliente." };
+    const m: ModeloContrato = { ...modelo, signatariosAden: [{ nome: "Beltrana", email: "beltrana@aden.com" }] };
+    const d = montarContrato(c, "c", m, opcoes);
+    const obs = d.clausulas.find((x) => x.titulo.endsWith("Observações"))!;
+    expect(obs.itens.map((i) => i.texto)).toEqual(["Reuniões por vídeo.", "Fotos enviadas pelo cliente."]);
+    // fora as cláusulas que vêm do texto do modelo (escrito pelos sócios), nada interno aparece
+    const doModelo = new Set([m.obrigacoes, m.disposicoes].flatMap((t) => itensDoTexto(t ?? "", 0).map((i) => i.texto)));
+    const proprio = { ...d, clausulas: d.clausulas.map((cl) => ({ ...cl, itens: cl.itens.filter((i) => !doModelo.has(i.texto)) })) };
+    const texto = JSON.stringify(proprio).toLowerCase();
+    for (const interno of ["piso", "por hora", "sócio", "socio", "percentual", "rateio", "reinvest", "43,21", "Fulana".toLowerCase()]) expect(texto, interno).not.toContain(interno);
+  });
+
   it("texto dos sócios: uma cláusula por linha, número escrito é trocado", () => {
     expect(itensDoTexto("1. Primeira\n\n2) Segunda\nc) sub", 7)).toEqual([
       { marcador: "7.1", texto: "Primeira" },
@@ -154,5 +172,17 @@ describe("situação da assinatura", () => {
 
   it("recusado se alguém recusou", () => {
     expect(situacaoDoContrato([a(null, { recusadoEm: "2026-10-02" })]).situacao).toBe("recusado");
+  });
+});
+
+describe("projeto de marca no contrato (opção A, 01/10/2026)", () => {
+  it("sai como entrega única com prazo em dias; sem prazo, falta preencher", () => {
+    const c = config();
+    c.tiposEntrega.push({ id: "logo", nome: "Logo", servicoId: "s", horasPorUnidade: 30, ativo: true, projeto: true, prazoDias: 15 });
+    c.clientes[0].escopo!.entregas.push({ id: "e3", tipoEntregaId: "logo", quantidade: 1, horasPorUnidade: null });
+    const texto = JSON.stringify(montarContrato(c, "c", MODELO_VAZIO, opcoes));
+    expect(texto).toContain("1 projeto, com entrega em até 15 dias úteis");
+    c.tiposEntrega = c.tiposEntrega.map((t) => (t.id === "logo" ? { ...t, prazoDias: null } : t));
+    expect(montarContrato(c, "c", MODELO_VAZIO, opcoes).faltando.join(" ")).toContain("Prazo em dias úteis do projeto Logo");
   });
 });

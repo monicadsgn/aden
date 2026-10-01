@@ -30,9 +30,15 @@ const normalizar = (s: string) =>
     .trim()
     .toLowerCase();
 
-/** Acha um item por id ou nome (sem diferenciar maiúsculas e acentos). Erro claro se não achar. */
+/** Acha um item por id ou nome (sem diferenciar maiúsculas e acentos; aceita apelido quando só um bate). Erro claro se não achar. */
 export function resolver<T extends { id: string; nome: string }>(lista: T[], ref: string, oque: string): T {
-  const achado = lista.find((x) => x.id === ref) ?? lista.find((x) => normalizar(x.nome) === normalizar(ref));
+  const r = normalizar(ref);
+  let achado = lista.find((x) => x.id === ref) ?? lista.find((x) => normalizar(x.nome) === r);
+  // apelido ou começo do nome ("Moni" → Mônica, "Olinda" → Olinda Máquinas), só quando um único nome bate (M14)
+  if (!achado && r.length >= 3) {
+    const comeca = lista.filter((x) => normalizar(x.nome).startsWith(r) || normalizar(x.nome).split(/\s+/).some((p) => p.startsWith(r)));
+    if (comeca.length === 1) achado = comeca[0];
+  }
   if (!achado) {
     const opcoes = lista.map((x) => x.nome).join(", ") || "nenhum cadastrado";
     throw new Error(`${oque} "${ref}" não encontrado. Opções: ${opcoes}.`);
@@ -306,6 +312,7 @@ export function configParaConversa(c: Configuracao) {
       ociosidadePct: e.ociosidadePct ?? null,
       arredondamentoPropostaReais: paraReais(e.arredondamentoPropostaCentavos),
       followUpsMaximo: e.followUpsMaximo ?? null,
+      prazoMinimoPedidoDiasUteis: e.prazoMinimoPedidoDiasUteis ?? null,
       sociedade: {
         socioDoPercentual: nomeDe(c.pessoas, e.socioPercentualId ?? null) ?? null,
         percentualDoSocio: e.sociedadePctSocio ?? null,
@@ -347,7 +354,9 @@ export function configParaConversa(c: Configuracao) {
       id: t.id,
       nome: t.nome,
       servico: nomeDe(c.servicos, t.servicoId),
-      minutosPorUnidade: t.horasPorUnidade == null ? null : Math.round(t.horasPorUnidade * 60 * 100) / 100,
+      ...(t.projeto
+        ? { projeto: true, horasDoProjeto: t.horasPorUnidade, prazoDias: t.prazoDias ?? null }
+        : { minutosPorUnidade: t.horasPorUnidade == null ? null : Math.round(t.horasPorUnidade * 60 * 100) / 100 }),
       audiovisual: !!t.audiovisual,
       ...(t.nomeCliente ? { nomeCliente: t.nomeCliente } : {}),
       ativo: t.ativo,

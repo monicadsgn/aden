@@ -13,7 +13,7 @@ import { useDados } from "@/lib/dados/contexto";
 import { formatarHoras, formatarMoeda, formatarPct } from "@/lib/formato";
 
 const SITUACAO: Record<SituacaoSocio, { tom: Tom; icone: LucideIcon; rotulo: string }> = {
-  afogado: { tom: "erro", icone: AlertOctagon, rotulo: "passou das horas" },
+  afogado: { tom: "erro", icone: AlertOctagon, rotulo: "acima das horas do mês" },
   folga_sobrando: { tom: "info", icone: Waves, rotulo: "folga sobrando" },
   ok: { tom: "ok", icone: CheckCircle2, rotulo: "dentro da capacidade" },
   sem_capacidade: { tom: "neutro", icone: Info, rotulo: "capacidade não configurada" },
@@ -73,7 +73,7 @@ export default function Capacidade() {
           <div className="flex flex-wrap items-center gap-2 rounded-card border border-aviso/30 bg-aviso-suave px-4 py-3 text-sm text-aviso">
             <Info size={17} />
             <span className="flex-1">
-              <strong>Sem escopo contratado:</strong> {v.semEscopo.join(", ")}. As horas desses clientes <strong>não entram</strong> na soma abaixo, então a
+              <strong>Sem entregas do contrato:</strong> {v.semEscopo.join(", ")}. As horas desses clientes <strong>não entram</strong> na soma abaixo, então a
               folga pode ser menor do que parece.
             </span>
             <Link href="/calculadora" className="rounded-botao bg-aviso px-3 py-1 text-xs font-bold text-superficie">
@@ -111,7 +111,7 @@ export default function Capacidade() {
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <p className="text-[11px] font-semibold text-texto-suave">Clientes usam</p>
-                      <EtiquetaOrigem texto="previsto no escopo" previsao />
+                      <EtiquetaOrigem texto="previsto nas entregas do contrato" previsao />
                       <p className="numero text-xl font-extrabold">{formatarHoras(s.horasUsadas)}</p>
                     </div>
                     <div>
@@ -143,13 +143,13 @@ export default function Capacidade() {
           <TituloCard
             icone={CalendarRange}
             titulo="Horas por cliente"
-            descricao="Quanto cada cliente ativo pede de cada sócio por mês, pelo escopo contratado."
-            acao={<EtiquetaOrigem texto="previsto no escopo" previsao />}
+            descricao="Quanto cada cliente ativo pede de cada sócio por mês, pelas entregas do contrato."
+            acao={<EtiquetaOrigem texto="previsto nas entregas do contrato" previsao />}
           />
           <div className="overflow-x-auto px-2 pb-4 sm:px-5">
             {v.clientes.length === 0 ? (
               <Vazio icone={CalendarRange} titulo="Nenhum cliente ativo">
-                Cadastre os clientes em Configurações e guarde o escopo contratado de cada um pela calculadora.
+                Cadastre os clientes em Configurações e guarde as entregas do contrato de cada um pela calculadora.
               </Vazio>
             ) : (
               <table className="w-full min-w-[480px] border-separate border-spacing-0 text-[13px]">
@@ -171,7 +171,7 @@ export default function Capacidade() {
                       <td className="border-t border-linha py-2 pr-3 font-semibold">
                         {c.nome}
                         {c.interno && <span className="ml-1.5"><Badge>interno</Badge></span>}
-                        {!c.temEscopo && <span className="ml-1.5"><Badge tom="aviso">sem escopo</Badge></span>}
+                        {!c.temEscopo && <span className="ml-1.5"><Badge tom="aviso">sem entregas do contrato</Badge></span>}
                       </td>
                       {socios.map((p) => (
                         <td key={p.id} className="numero border-t border-linha px-3 py-2 text-right">

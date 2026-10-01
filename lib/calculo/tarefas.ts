@@ -61,6 +61,9 @@ export interface Tarefa {
   rede?: string | null;
   /** calendário que agrupa as peças ("Calendário Outubro — Olinda") */
   lote?: string | null;
+  // ─── pedido entre sócios (G4, migration 0035): só o banco escreve ───
+  /** quem pediu, quando a tarefa foi criada (ou passada) para outra pessoa: "Mônica (pelo Claude)" */
+  pedidaPorNome?: string | null;
 }
 
 export interface ArquivoPeca {

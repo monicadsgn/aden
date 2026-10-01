@@ -116,7 +116,7 @@ export function montarOnboarding(config: Configuracao, clienteId: Id, modelo: Mo
     const blocos = vazio(s.texto) ? [] : blocosDoTexto(troca(s.texto));
     if (s.chave === "incluso") {
       const itens = objetoDoContrato(config, c);
-      if (!itens.length) faltando.push("Escopo do cliente (ficha → Personalizar escopo)");
+      if (!itens.length) faltando.push("Entregas do contrato do cliente (ficha → Personalizar entregas)");
       blocos.unshift({ tipo: "lista", itens: itens.map((i) => ({ destaque: null, texto: `${i.rotulo}: ${i.valor}` })) });
     }
     if (s.chave === "servicos") {

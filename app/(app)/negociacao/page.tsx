@@ -119,7 +119,13 @@ export default function Negociacao() {
       const nomeSim = `Proposta · ${nomeCliente || "cliente novo"}`;
       const cens = lista.map((x) => x.estado.cenario);
       await repo.salvarSimulacao({ id: simId, nome: nomeSim, cenarios: cens }, cens.map((x) => calcularCenario(config, x)), config);
-      setAviso(`${v.nome} guardada.`);
+      // aberta pelo lead (G7 da auditoria): a proposta já fica ligada a ele, sem escolher depois
+      if (lead && lead.simulacaoId !== simId) {
+        const ligado = { ...lead, simulacaoId: simId };
+        await repo.salvarLead(ligado);
+        setLead(ligado);
+      }
+      setAviso(lead ? `${v.nome} guardada e ligada ao lead ${lead.nome}.` : `${v.nome} guardada.`);
     } catch (e) {
       setAviso(e instanceof Error ? e.message : "Erro ao guardar a versão.");
     }
@@ -162,7 +168,7 @@ export default function Negociacao() {
         clienteId: cen.clienteId,
         afetados: abaixo.map((a) => a.pessoaId),
         assinatura,
-        descricao: `Proposta de ${formatarMoeda(valor)} para ${nomeCliente || "cliente novo"} (negociação) abaixo do piso de ${abaixo.map((a) => a.nome).join(" e ")}`,
+        descricao: `Proposta de ${formatarMoeda(valor)} para ${nomeCliente || "cliente novo"} (tela Proposta) abaixo do piso de ${abaixo.map((a) => a.nome).join(" e ")}`,
         dados: { aplicar: "proposta", cenario: cen, valorCentavos: valor, perdas: abaixo },
       });
       setPedidos(await repo.listarPedidos());
@@ -178,13 +184,13 @@ export default function Negociacao() {
     try {
       const r = await guardarEscopo(repo, config, cen.clienteId, cen);
       if (!r.gravado) {
-        setAviso(`Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: o escopo espera aprovação em Sócios → Pedidos e avisos.`);
+        setAviso(`Ficou abaixo do piso de ${r.abaixo.map((x) => x.nome).join(" e ")}: as entregas do contrato esperam aprovação em Sócios → Pedidos e avisos.`);
         return;
       }
       if (volta) router.push(volta);
-      else setAviso("Escopo guardado na ficha do cliente.");
+      else setAviso("Entregas do contrato guardadas na ficha do cliente.");
     } catch (e) {
-      setAviso(e instanceof Error ? e.message : "Não deu para guardar o escopo.");
+      setAviso(e instanceof Error ? e.message : "Não deu para guardar as entregas do contrato.");
     } finally {
       setGuardando(false);
     }
@@ -291,7 +297,7 @@ export default function Negociacao() {
             <span className="flex-1" />
             {volta && cen.clienteId ? (
               <Botao icone={Save} disabled={guardando} onClick={guardarComoEscopo}>
-                Guardar no escopo de {config.clientes.find((c) => c.id === cen.clienteId)?.nome ?? "cliente"}
+                Guardar nas entregas do contrato de {config.clientes.find((c) => c.id === cen.clienteId)?.nome ?? "cliente"}
               </Botao>
             ) : (
               <Botao icone={Save} onClick={salvarVersao}>
@@ -302,6 +308,7 @@ export default function Negociacao() {
               {liberado ? "Exportar PDF" : pendente ? "Esperando aprovação" : "Exportar PDF (precisa de aprovação)"}
             </Botao>
           </div>
+          <p className="-mt-1 text-[12px] leading-snug text-texto-suave">Só tenho: quanto o cliente diz que pode pagar por mês; o sistema monta o pacote que cabe nesse valor. Ex.: R$ 1.200.</p>
           {aviso && <p className="text-xs font-semibold text-texto-suave">{aviso}</p>}
           {versoes.length > 0 && (
             <div className="flex flex-col gap-2">

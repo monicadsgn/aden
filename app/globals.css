@@ -8,6 +8,8 @@
   --color-marca-suave: var(--marca-suave);
   --color-marca-tinta: var(--marca-tinta);
   --color-sobre-marca: var(--sobre-marca);
+  --color-marca-cheio: var(--marca-cheio);
+  --color-marca-cheio-hover: var(--marca-cheio-hover);
   --color-destaque: var(--destaque);
   --color-creme: var(--creme);
   --color-verde-aden: var(--verde-aden);
@@ -45,6 +47,50 @@ body {
   font-family: var(--fonte);
   font-feature-settings: "tnum" 0;
 }
+
+/* vidro: só por esta classe (nada de cor solta nos componentes); só no que fica por cima da tela */
+.vidro {
+  background: var(--vidro);
+  border-color: var(--vidro-borda);
+  -webkit-backdrop-filter: blur(var(--vidro-desfoque)) saturate(1.2);
+  backdrop-filter: blur(var(--vidro-desfoque)) saturate(1.2);
+}
+/* quem pede menos transparência no aparelho (ou navegador sem desfoque) vê o cartão sólido de sempre */
+@media (prefers-reduced-transparency: reduce) {
+  .vidro { background: var(--superficie); -webkit-backdrop-filter: none; backdrop-filter: none; border-color: var(--linha); }
+  .veu { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vidro { background: var(--superficie); border-color: var(--linha); }
+}
+/* véu atrás das janelas: escurece pouco e desfoca a tela, para a janela parecer uma camada por cima */
+.veu {
+  background: var(--veu);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* M9 (01/10/2026): no toque (celular, tablet), tudo que se aperta tem no mínimo 44 px de altura */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="radio"],
+  [role="switch"],
+  summary,
+  a.inline-flex,
+  select {
+    min-height: 44px;
+  }
+}
+
+/* etiqueta colorida por cliente (corDoCliente em lib/calculo/cores.ts dá o número) */
+.cliente-1 { color: var(--cliente-1); background: var(--cliente-1-fundo); }
+.cliente-2 { color: var(--cliente-2); background: var(--cliente-2-fundo); }
+.cliente-3 { color: var(--cliente-3); background: var(--cliente-3-fundo); }
+.cliente-4 { color: var(--cliente-4); background: var(--cliente-4-fundo); }
+.cliente-5 { color: var(--cliente-5); background: var(--cliente-5-fundo); }
+.cliente-6 { color: var(--cliente-6); background: var(--cliente-6-fundo); }
 
 .numero {
   font-family: var(--fonte-numeros);

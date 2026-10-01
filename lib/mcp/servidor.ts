@@ -9,7 +9,7 @@ import { z } from "zod";
 import { pacoteQueCabe } from "../calculo/apresentacao";
 import { calcularCalibragem, segundosDaMedicao, type Medicao } from "../calculo/calibragem";
 import { documentoContador } from "../calculo/documentos";
-import { calcularSaudeCliente, calcularVisaoMes, horasDasTarefas, horasInvestidasNaAden, rotuloOrigemHoras } from "../calculo/mes";
+import { calcularSaudeCliente, calcularVisaoMes, horasInvestidasNaAden, rotuloOrigemHoras } from "../calculo/mes";
 import { calcularCenario } from "../calculo/motor";
 import { novoId } from "../calculo/novo";
 import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calculo/pagamentos";
@@ -33,7 +33,9 @@ import { formatarDocumento } from "../formato";
 import { chaveAutentique } from "../contrato/autentique";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
-import { REGRAS_PROTECAO } from "../regras/aprovacao";
+import { motivoNaoApagar, REGRAS_PROTECAO } from "../regras/aprovacao";
+import { conferirPrazoDoPedido } from "../regras/prazoPedido";
+import { COMO_ATUALIZAR, NOVIDADES, VERSAO_FERRAMENTAS } from "./novidades";
 import { PAINEL_CLIENTE_ATIVO } from "../recursos";
 import type { RepositorioSupabase } from "../dados/supabase";
 import {
@@ -83,14 +85,19 @@ Regras que você deve seguir:
 - Pagamentos: registrar_pagamento (cada um que cai, com mês de referência e data; taxaReais só quando foi cartão). ver_pagamentos_do_mes mostra para
   onde foi cada real e quanto cada sócio já recebeu. Se a ordem de distribuição estiver vazia, a distribuição fica bloqueada.
 - Equipe: ver_equipe e convidar_pessoa (cada papel vê só o que é dele; o banco garante).
-- Aprovação de conteúdo pelo cliente: por enquanto é feita fora do Aden (o painel do cliente do Aden está desligado).
-  Tarefa em status revisao = "com o cliente", esperando a aprovação dele.
+- Aprovação de conteúdo pelo cliente: pelo painel do cliente do Aden (link criado na ficha; só quem tem link vê peças).
+  enviar_para_cliente_aprovar manda a peça; tarefa em status revisao = "com o cliente", esperando a aprovação dele.
 - Clientes: ver_cliente (ficha completa) e salvar_ficha_cliente (contato e condições do contrato).
 - Leads: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
 - O Aden é a central da agência (tarefas, calendário, comercial, financeiro, metas). "O que tenho pra hoje?" → ver_visao_do_dia.
 - Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist)
-  e mudar_status_tarefa. O cronômetro fica DENTRO da tarefa (botão Começar no site); você não liga relógio, mas pode
-  registrar um tempo que a pessoa disse com registrar_medicao. ver_calibragem mostra a média medida.
+  e mudar_status_tarefa. As horas vêm do TEMPO CADASTRADO de cada tipo de entrega. O cronômetro é OPCIONAL
+  (botão "Medir o tempo" dentro da tarefa no site), nunca liga sozinho e o sistema não pede medições: serve só para
+  quando ninguém sabe quanto uma entrega leva. Você não liga relógio; pode registrar um tempo que a pessoa disse com
+  registrar_medicao. ver_calibragem mostra a média medida, que nunca entra sozinha nas contas.
+  Tarefa pedida ao outro sócio tem prazo mínimo em dias úteis (configuração): sem prazo, entra sozinho; menor só como urgência (pergunte, e se for, prioridade "urgente").
+- Projetos de marca (logo, identidade visual, branding) levam dias ou semanas e não se medem em minutos: nunca invente
+  um tempo em minutos para eles; pergunte aos sócios.
 - Peças de conteúdo são tarefas: legenda e publicarEm (salvar_tarefa) dão a etapa planejado → produção → esperando
   aprovação → aprovada → agendada → publicada (marcar_publicada, que conclui a tarefa).
 - Pacotes: ver_pacotes mostra os preços CALCULADOS (nunca digitados). salvar_pacote só guarda o que é entregue.
@@ -192,7 +199,7 @@ function notaParaConector(n: NotaContexto) {
 }
 
 export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, origem = ""): McpServer {
-  const server = new McpServer({ name: "aden", version: "1.0.0" }, { instructions: INSTRUCOES });
+  const server = new McpServer({ name: "aden", version: VERSAO_FERRAMENTAS }, { instructions: INSTRUCOES });
 
   // ─── Leitura ──────────────────────────────────────────────────────────────
 
@@ -217,7 +224,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     async ({ limite }) =>
       executar(async () => {
         const regs = await (await obterRepo()).listarAuditoria(limite ?? 30);
-        return regs.map((r) => ({ quando: r.em, quem: r.autor, acao: r.acao, onde: r.tabela, registro: r.registroId, antes: r.antes, depois: r.depois }));
+        // M15: o link do painel e o CPF/CNPJ nunca saem crus
+        const SENSIVEIS = new Set(["painel_token", "documento", "endereco", "hash", "codigo_hash"]);
+        const limpar = (o: unknown) =>
+          o && typeof o === "object" ? Object.fromEntries(Object.entries(o as Record<string, unknown>).map(([k, v]) => [k, SENSIVEIS.has(k) && v ? "(guardado)" : v])) : o;
+        return regs.map((r) => ({ quando: r.em, quem: r.autor, acao: r.acao, onde: r.tabela, registro: r.registroId, antes: limpar(r.antes), depois: limpar(r.depois) }));
       }),
   );
 
@@ -245,9 +256,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           z.enum(["custo_primeiro", "proporcional"]),
           "como cada pagamento é distribuído: custo_primeiro (paga os custos do mês antes dos sócios) ou proporcional. Só grave o que os sócios decidirem",
         ),
-        medicoesCalibragem: opt(z.number().int().positive(), "quantas medições de cronômetro calibram cada tipo de entrega"),
         diferencaSugerirPct: opt(z.number(), "sugerir novo tempo quando a média medida diferir mais que este %"),
         followUpsMaximo: opt(z.number().int().positive(), "depois de quantos follow-ups do \"vou ver\" o sistema sugere marcar o lead como perdido"),
+        prazoMinimoPedidoDiasUteis: opt(z.number().int().positive(), "prazo mínimo, em dias úteis, de tarefa pedida ao outro sócio (sem prazo entra sozinho; menor só como urgência)"),
         ofertaVerbaIndicadaDeReais: opt(z.number(), "oferta padrão: verba de mídia indicada ao cliente, a partir de (reais)"),
         ofertaVerbaIndicadaAteReais: opt(z.number(), "oferta padrão: verba de mídia indicada, até (reais)"),
         ofertaGestaoDepoisDoResultadoReais: opt(z.number(), "oferta padrão: valor da gestão de tráfego depois do resultado (reais)"),
@@ -362,7 +373,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou alterar tipo de entrega",
       description:
-        "Unidade de esforço da calculadora (ex.: post simples, carrossel, roteiro). Quem faz: os sócios (padrão, com tempo) ou um terceiro cadastrado (terceiro=nome): aí não conta horas dos sócios e vira custo do cliente pelo valor do terceiro. terceiro=null volta para os sócios.",
+        "Unidade de esforço da calculadora (ex.: post simples, carrossel, roteiro). Projeto de marca (logo, identidade visual, branding, estrutura visual): projeto=true, com horasDoProjeto (horas totais estimadas, nunca minutos) e prazoDias (dias úteis, vai para o contrato); só grave horas que os sócios disseram. Quem faz: os sócios (padrão, com tempo) ou um terceiro cadastrado (terceiro=nome): aí não conta horas dos sócios e vira custo do cliente pelo valor do terceiro. terceiro=null volta para os sócios.",
       inputSchema: {
         id: z.string().optional().describe("id ou nome do tipo a alterar; vazio = novo"),
         nome: z.string().optional(),
@@ -372,16 +383,20 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         audiovisual: z.boolean().optional().describe("não use: é definido por 'terceiro'"),
         terceiro: opt(z.string(), "quem faz: terceiro cadastrado (nome ou id), cada unidade = 1 saída; null = os sócios"),
         nomeCliente: opt(z.string(), "como aparece no painel do cliente (ex.: Post, Carrossel); null = o próprio nome"),
+        projeto: z.boolean().optional().describe("true = projeto de marca: mede em horas totais do projeto e prazo em dias, não em minutos"),
+        horasDoProjeto: opt(z.number().positive(), "horas totais estimadas do projeto (só para projeto; campo protegido)"),
+        prazoDias: opt(z.number().int().positive(), "prazo de entrega do projeto em dias úteis (só para projeto; vai para o contrato)"),
         ativo: z.boolean().optional(),
       },
     },
-    async ({ id, servico, minutosPorUnidade, terceiro, ...resto }) =>
+    async ({ id, servico, minutosPorUnidade, terceiro, horasDoProjeto, ...resto }) =>
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
         const patch = {
           ...resto,
           ...(minutosPorUnidade !== undefined ? { horasPorUnidade: minutosPorUnidade == null ? null : minutosPorUnidade / 60 } : {}),
+          ...(horasDoProjeto !== undefined ? { horasPorUnidade: horasDoProjeto } : {}),
           ...(servico !== undefined ? { servicoId: servico == null ? null : resolver(antes.servicos, servico, "Serviço").id } : {}),
           // "quem faz": terceiro escolhido = sem horas dos sócios; null = volta para os sócios
           ...(terceiro !== undefined
@@ -482,7 +497,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "salvar_cliente",
     {
       title: "Criar ou alterar cliente (base do rateio)",
-      description: "Cliente ativo e valor mensal do contrato vigente. interno=true para a própria Aden: sem mensalidade, fora do faturamento, do rateio, da sociedade e do teto do MEI, sem pedido de exceção de piso; tarefas e cronômetro iguais aos outros, horas contadas como investidas na Aden.",
+      description: "Cliente ativo e valor mensal do contrato vigente. interno=true para a própria Aden: sem mensalidade, fora do faturamento, do rateio, da sociedade e do teto do MEI, sem pedido de exceção de piso; tarefas iguais às dos outros; horas (tempo cadastrado das tarefas concluídas) contadas como investidas na Aden.",
       inputSchema: {
         id: z.string().optional().describe("id ou nome do cliente a alterar; vazio = novo"),
         nome: z.string().optional(),
@@ -521,7 +536,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "remover_da_configuracao",
     {
       title: "Remover item da configuração",
-      description: "Remove um sócio, serviço, tipo de entrega, custo fixo ou cliente. Confirme antes com quem está conversando.",
+      description:
+        "Remove um serviço, tipo de entrega, custo fixo ou cliente. Confirme antes com quem está conversando. Sócio não se apaga; serviço com divisão de horas e tipo de entrega com tempo cadastrado também não (protegidos): para esses, desative com salvar_servico/salvar_tipo_entrega (ativo=false).",
       inputSchema: {
         tipo: z.enum(["socio", "servico", "tipo_entrega", "custo_fixo", "cliente"]),
         id: z.string().describe("id ou nome do item"),
@@ -534,12 +550,18 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const depois = { ...antes };
         if (tipo === "socio") {
           const a = resolver(antes.pessoas.filter((p) => p.socio), id, "Sócio");
+          const motivo = motivoNaoApagar(antes, "socio", a.id);
+          if (motivo) throw new Error(motivo);
           depois.pessoas = antes.pessoas.filter((p) => p.id !== a.id);
         } else if (tipo === "servico") {
           const a = resolver(antes.servicos, id, "Serviço");
+          const motivo = motivoNaoApagar(antes, "servico", a.id);
+          if (motivo) throw new Error(motivo);
           depois.servicos = antes.servicos.filter((p) => p.id !== a.id);
         } else if (tipo === "tipo_entrega") {
           const a = resolver(antes.tiposEntrega, id, "Tipo de entrega");
+          const motivo = motivoNaoApagar(antes, "tipo_entrega", a.id);
+          if (motivo) throw new Error(motivo);
           depois.tiposEntrega = antes.tiposEntrega.filter((p) => p.id !== a.id);
         } else if (tipo === "custo_fixo") {
           const a = resolver(antes.custosFixos, id, "Custo fixo");
@@ -653,30 +675,27 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Mês: cada cliente (saúde)",
       description:
-        "Para cada cliente pagante ativo: previsto (escopo + contrato) × realizado (horas corrigidas à mão, ou o cronômetro das tarefas do cliente no mês, ou média medida, ou previsão; valor dos pagamentos), valor por hora de cada sócio contra o piso, de onde vem cada número de horas e, quando há problema, os caminhos calculados: subir o valor, cortar escopo, misto, ou aceitar a exceção (quanto cada sócio perde por mês). A própria Aden (cliente interno) fica fora da lista: suas horas vêm em investidoNaAden.",
+        "Para cada cliente pagante ativo: previsto (escopo + contrato) × realizado (horas corrigidas à mão ou, sem correção, entregas do contrato × tempo cadastrado; o cronômetro é opcional e não entra na conta; valor dos pagamentos), valor por hora de cada sócio contra o piso, de onde vem cada número de horas e, quando há problema, os caminhos calculados: subir o valor, cortar escopo, misto, ou aceitar a exceção (quanto cada sócio perde por mês). A própria Aden (cliente interno) fica fora da lista: suas horas vêm em investidoNaAden.",
       inputSchema: { competencia: zCompetencia },
     },
     async ({ competencia }) =>
       executar(async () => {
         const repo = await obterRepo();
         const mes = competencia ?? competenciaAtual();
-        const [config, registros, pagamentos, medicoes] = await Promise.all([repo.carregarConfig(), repo.carregarMes(mes), repo.listarPagamentos(), repo.listarMedicoes()]);
-        const calibragem = calcularCalibragem(config, medicoes);
+        const [config, registros, pagamentos, tarefas] = await Promise.all([repo.carregarConfig(), repo.carregarMes(mes), repo.listarPagamentos(), repo.listarTarefas()]);
         return {
           competencia: mes,
           investidoNaAden: config.clientes.some((c) => c.ativo && c.interno)
-            ? horasInvestidasNaAden(config, medicoes, mes).map((x) => ({ socio: x.nome, horas: Math.round(x.horas * 10) / 10, medicoes: x.medicoes }))
+            ? horasInvestidasNaAden(config, tarefas, mes).map((x) => ({ socio: x.nome, horas: Math.round(x.horas * 10) / 10, tarefasConcluidas: x.tarefas, semTempoCadastrado: x.semTempo }))
             : null,
           clientes: config.clientes
             .filter((c) => c.ativo && !c.interno)
             .map((c) => {
               const s = calcularSaudeCliente(config, c, registros[c.id] ?? null, {
-                calibragem,
                 pagamentosCentavos: somaPagamentos(pagamentos, c.id, mes),
                 mesFechado: mes < competenciaAtual(),
-                horasTarefas: horasDasTarefas(medicoes, c.id, mes),
               });
-              const sol = calcularSolucoes(config, c, s, calibragem);
+              const sol = calcularSolucoes(config, c, s);
               return {
                 nome: s.nome,
                 bloqueado: s.bloqueio?.texto ?? null,
@@ -938,7 +957,13 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const c = resolver(config.clientes, cliente, "Cliente");
-        const [tarefas, pagamentos, leads, contexto] = await Promise.all([repo.listarTarefas(), repo.listarPagamentos(), repo.listarLeads(), repo.listarContexto(c.id)]);
+        const [tarefas, pagamentos, leads, contexto, briefing] = await Promise.all([
+          repo.listarTarefas(),
+          repo.listarPagamentos(),
+          repo.listarLeads(),
+          repo.listarContexto(c.id),
+          repo.listarRespostasBriefing(c.id).catch(() => []),
+        ]);
         const k = c.contrato ?? contratoVazio();
         const lead = leads.find((l) => l.clienteId === c.id);
         return {
@@ -967,6 +992,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           atalhosDoPainel: c.atalhos ?? null,
           contexto: contexto.slice(0, 10).map(notaParaConector),
           contextoTotal: contexto.length,
+          // M15: a conversa inicial (briefing) respondida, para o Claude sugerir com base nela
+          conversaInicial: briefing.filter((b) => b.resposta?.trim()).map((b) => ({ pergunta: b.perguntaTexto, resposta: b.resposta })),
         };
       }),
   );
@@ -1661,8 +1688,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         telefone: z.string().optional(),
         email: z.string().optional(),
         instagram: z.string().optional(),
-        origem: z.string().optional(),
+        origem: z.string().optional().describe("como chegou: Indicação, Instagram, Quiz, Landing ou Outro"),
         pacote: z.string().nullable().optional().describe("pacote de interesse (nome ou id)"),
+        simulacao: z.string().nullable().optional().describe("proposta salva ligada ao lead (nome ou id da simulação); é dela que ganhar_lead tira as entregas do contrato"),
         valorEstimadoReais: opt(z.number(), "valor estimado por mês"),
         responsavel: z.string().nullable().optional().describe("sócio (nome ou id)"),
         proximoContato: z.string().nullable().optional(),
@@ -1694,6 +1722,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.origem != null && { origem: e.origem }),
           ...(e.pacote !== undefined && { pacoteId: e.pacote ? resolver(config.pacotes ?? [], e.pacote, "Pacote").id : null }),
           ...(e.valorEstimadoReais !== undefined && { valorEstimadoCentavos: paraCentavos(e.valorEstimadoReais) }),
+          ...(e.simulacao !== undefined && { simulacaoId: e.simulacao ? resolver(await repo.listarSimulacoes(), e.simulacao, "Proposta salva").id : null }),
           ...(e.responsavel !== undefined && { responsavelId: e.responsavel ? resolver(config.pessoas, e.responsavel, "Sócio").id : null }),
           ...(e.proximoContato !== undefined && { proximoContato: e.proximoContato }),
           ...(e.proximaAcao != null && { proximaAcao: e.proximaAcao }),
@@ -1740,6 +1769,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const l = resolver(await repo.listarLeads(), id, "Lead");
+        // M16: sem proposta ligada, sem pacote e sem valor, o cliente nasceria sem valor nem entregas
+        if (!l.simulacaoId && !l.pacoteId && l.valorEstimadoCentavos == null)
+          throw new Error(
+            `${l.nome} ainda não tem proposta, pacote nem valor. Antes de fechar, grave com salvar_lead o pacote (pacote) e o valor combinado (valorEstimadoReais), ou ligue a proposta salva (simulacao).`,
+          );
         const r = await ganharLead(repo, config, l);
         return {
           cliente: l.nome,
@@ -1973,11 +2007,28 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   // ─── Tarefas ──────────────────────────────────────────────────────────────
 
   server.registerTool(
+    "ver_avisos",
+    {
+      title: "Avisos do sócio",
+      description:
+        "Os avisos que o Aden mandou para o sócio dono deste código (tarefa pedida pelo outro sócio, mudança protegida aprovada ou esperando, quanto muda no bolso). Por padrão só os não lidos. Use no começo do chat para contar o que chegou de novo.",
+      inputSchema: { todos: z.boolean().optional().describe("true = inclui os já lidos (até 30)") },
+    },
+    async ({ todos }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [eu, avisos] = await Promise.all([repo.usuarioAtual(), repo.listarAvisos()]);
+        const meus = avisos.filter((x) => !eu?.pessoaId || x.pessoaId === eu.pessoaId).filter((x) => todos || !x.lidoEm);
+        return meus.slice(0, 30).map((x) => ({ titulo: x.titulo, texto: x.texto, de: x.autorNome, quando: x.criadoEm, lido: !!x.lidoEm }));
+      }),
+  );
+
+  server.registerTool(
     "quem_sou_eu",
     {
       title: "Quem está usando o conector",
       description:
-        "Diz de qual sócio é o código deste conector (quem está conversando com você): nome e papel. Use no começo do chat para saber quem é \"eu\" (ex.: \"o que eu tenho pra fazer?\" → ver_visao_do_dia com este nome) e quem é o outro sócio.",
+        "Diz de qual sócio é o código deste conector (quem está conversando com você): nome e papel, e a versão das ferramentas com o que mudou. Use no começo do chat para saber quem é \"eu\" (ex.: \"o que eu tenho pra fazer?\" → ver_visao_do_dia com este nome) e quem é o outro sócio. Se a versão for mais nova do que a que você conhece nesta conversa, diga ao sócio o que mudou e como atualizar o conector.",
       inputSchema: {},
     },
     async () =>
@@ -1992,6 +2043,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           voce: pessoa?.nome ?? nome,
           papel: eu.papel === "admin" ? "sócio" : eu.papel,
           outrosSocios: socios.filter((p) => p.id !== eu.pessoaId).map((p) => p.nome),
+          versaoFerramentas: VERSAO_FERRAMENTAS,
+          novidades: NOVIDADES.slice(0, 3),
+          comoAtualizar: COMO_ATUALIZAR,
         };
       }),
   );
@@ -2001,7 +2055,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Visão do dia",
       description:
-        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, com o cliente e concluídas hoje; o que vai ao ar hoje e peças que o cliente não aprovou no prazo; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
+        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, sem prazo (em produção ou pedidas por outro sócio, com pedidaPor), com o cliente e concluídas hoje; o que vai ao ar hoje e peças que o cliente não aprovou no prazo; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
       inputSchema: { socio: z.string().optional().describe("sócio (nome ou id); vazio = todo mundo") },
     },
     async ({ socio }) =>
@@ -2012,13 +2066,14 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const [tarefas, pedidos] = await Promise.all([repo.listarTarefas(), repo.listarPedidos()]);
         const v = montarVisaoDoDia(tarefas, pessoaId, hojeISO());
         const cli = (id: string | null) => (id ? (config.clientes.find((c) => c.id === id)?.nome ?? null) : null);
-        const resumo = (l: typeof tarefas) => l.map((t) => ({ id: t.id, titulo: t.titulo, cliente: cli(t.clienteId), vencimento: t.vencimento, status: rotuloStatus(t.status) }));
+        const resumo = (l: typeof tarefas) =>
+          l.map((t) => ({ id: t.id, titulo: t.titulo, cliente: cli(t.clienteId), vencimento: t.vencimento, status: rotuloStatus(t.status), ...(t.pedidaPorNome ? { pedidaPor: t.pedidaPorNome } : {}) }));
         return {
           hoje: resumo(v.hoje),
           atrasadas: resumo(v.atrasadas),
           proximos7Dias: resumo(v.semana),
           emAprovacao: resumo(v.emAprovacao),
-          emProducaoSemPrazo: resumo(v.emAndamento),
+          semPrazo: resumo(v.emAndamento),
           semResponsavel: resumo(v.semResponsavel),
           concluidasHoje: v.concluidasHoje.length,
           publicacao: (() => {
@@ -2076,8 +2131,16 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               inicio: t.inicio,
               vencimento: t.vencimento,
               checklist: t.etapas.map((e) => `${e.feita ? "[x]" : "[ ]"} ${e.titulo}`),
+              // M15: o que está escrito na tarefa e o que o cliente já respondeu, para o Claude sugerir com base nisso
+              ...(t.descricao?.trim() && { descricao: t.descricao.trim().slice(0, 600) }),
+              ...(t.legenda?.trim() && { legenda: t.legenda.trim().slice(0, 600) }),
+              ...(t.textoArte?.trim() && { textoDaArte: t.textoArte.trim().slice(0, 300) }),
+              ...((t.respostasCliente?.length ?? 0) > 0 && {
+                respostasDoCliente: t.respostasCliente!.slice(-3).map((r) => ({ decisao: r.decisao === "aprovar" ? "aprovou" : "pediu ajuste", texto: r.texto, em: r.em })),
+              }),
               ...(t.rede && { rede: t.rede }),
               ...(t.lote && { lote: t.lote }),
+              ...(t.pedidaPorNome && { pedidaPor: t.pedidaPorNome }),
               estimativaMin: est == null ? null : Math.round(est * 60),
               tempoMedidoMin: m ? Math.round(segundosDaMedicao(m) / 60) : 0,
               relogio: m?.estado ?? "nunca ligado",
@@ -2101,7 +2164,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou editar tarefa",
       description:
-        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. checklist substitui a lista inteira. Peça de conteúdo: textoArte, legenda, publicarEm (quando vai ao ar) e agendada (já programada). Com data, fica 'planejado' antes de aprovar; aprovada vira 'agendada' quando marcada como programada.",
+        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. Pedido ao outro sócio (responsavel = o outro): tem prazo mínimo em dias úteis (configuração); sem vencimento, entra sozinho com o mínimo; vencimento menor que o mínimo só como urgência: pergunte antes se é urgente e, se for, mande prioridade \"urgente\". checklist substitui a lista inteira. Peça de conteúdo: textoArte, legenda, publicarEm (quando vai ao ar) e agendada (já programada). Com data, fica 'planejado' antes de aprovar; aprovada vira 'agendada' quando marcada como programada.",
       inputSchema: {
         id: z.string().optional(),
         titulo: z.string().optional(),
@@ -2109,7 +2172,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         entrega: z.string().nullable().optional().describe("tipo de entrega (nome ou id)"),
         quantidade: z.number().int().positive().optional(),
         responsavel: z.string().nullable().optional().describe("sócio (nome ou id)"),
-        prioridade: z.enum(["urgente", "alta", "normal", "baixa"]).nullable().optional(),
+        prioridade: z
+          .enum(["urgente", "alta", "normal", "baixa"])
+          .nullable()
+          .optional()
+          .describe("urgente = selo urgente; é a única forma de pedir ao outro sócio com prazo menor que o mínimo (confirme antes)"),
         inicio: z.string().nullable().optional(),
         vencimento: z.string().nullable().optional(),
         descricao: z.string().optional(),
@@ -2157,8 +2224,21 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.lote !== undefined && { lote: e.lote?.trim() || null }),
           ...(e.mostrarAoCliente != null && { visivelCliente: e.mostrarAoCliente }),
         };
-        await repo.salvarTarefa(t);
-        return { salva: t.titulo, id: t.id, criada: !antes };
+        // pedido ao outro sócio: prazo mínimo em dias úteis (sem prazo entra sozinho; menor só como urgência)
+        const eu = await repo.usuarioAtual();
+        const prazo = conferirPrazoDoPedido({ config, antes, depois: t, eu: eu?.pessoaId, hoje: dataDeBrasilia(new Date().toISOString()) });
+        if (prazo.pedeUrgencia)
+          throw new Error(
+            `Pedido ao outro sócio tem prazo mínimo de ${prazo.dias} dias úteis (a partir de ${prazo.minimo}). Prazo menor só como urgência: confirme com quem pediu se é urgente e mande de novo com prioridade "urgente", ou use ${prazo.minimo} ou depois.`,
+          );
+        await repo.salvarTarefa(prazo.tarefa);
+        return {
+          salva: t.titulo,
+          id: t.id,
+          criada: !antes,
+          ...(prazo.minimo && { prazo: prazo.tarefa.vencimento, prazoMinimo: prazo.preencheu ? `entrou sozinho: ${prazo.dias} dias úteis a partir do pedido` : undefined }),
+          ...(prazo.minimo && prazo.tarefa.prioridade === "urgente" && { urgente: true }),
+        };
       }),
   );
 
@@ -2259,7 +2339,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "mudar_status_tarefa",
     {
       title: "Mudar o status de uma tarefa",
-      description: "a_fazer, em_producao, revisao (com o cliente, esperando a aprovação dele) ou concluida. Concluir encerra o tempo medido (conta na calibragem).",
+      description: "a_fazer, em_producao, revisao (com o cliente, esperando a aprovação dele) ou concluida. Concluir encerra o tempo medido, se alguém estava medindo (cronômetro opcional).",
       inputSchema: { id: z.string(), status: z.enum(["a_fazer", "em_producao", "revisao", "concluida"]) },
     },
     async ({ id, status }) =>
@@ -2282,7 +2362,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Calibragem das horas",
       description:
-        "Para cada tipo de entrega: tempo cadastrado, média medida pelo cronômetro, quantas medições, se está calibrado e se o sistema sugere atualizar o tempo.",
+        "Para cada tipo de entrega: tempo cadastrado, média medida pelo cronômetro (opcional: só existe se alguém mediu), quantas medições e se o sistema sugere atualizar o tempo cadastrado. A média nunca entra sozinha nas contas.",
       inputSchema: {},
     },
     async () =>
@@ -2293,7 +2373,6 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           entrega: c.nome,
           situacao: c.situacao,
           medicoes: c.medicoes,
-          medicoesPedidas: c.alvo,
           tempoCadastradoMin: c.padraoMinutos == null ? null : Math.round(c.padraoMinutos),
           mediaMedidaMin: c.mediaMinutos == null ? null : Math.round(c.mediaMinutos),
           diferencaPct: c.diferencaPct == null ? null : Math.round(c.diferencaPct),
@@ -2341,7 +2420,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "recalibrar_tipo",
     {
       title: "Recalibrar um tipo de entrega",
-      description: "Quando o processo mudou: as medições antigas deixam de contar e o cronômetro volta a pedir medições. Confirme antes.",
+      description: "Quando o processo mudou: as medições antigas deixam de contar na média da Calibragem (o cronômetro continua opcional e não pede nada). Confirme antes.",
       inputSchema: { entrega: z.string().describe("tipo de entrega (nome ou id)") },
     },
     async ({ entrega }) =>
@@ -2450,8 +2529,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   server.registerTool(
     "ver_pagamentos_do_mes",
     {
-      title: "Pagamentos e repasse do mês",
-      description: "Por cliente: contrato, quanto entrou, quanto falta, se está em atraso e para onde foi o dinheiro. Por sócio: quanto já recebeu no mês e quanto falta.",
+      title: "Quem está devendo no mês",
+      description:
+        "Pelo mês de referência (o mês que o cliente está pagando): por cliente, contrato, quanto entrou, quanto falta e se está em atraso. Serve para saber QUEM DEVE. A divisão dos sócios e o caixa contam pelo mês em que o dinheiro entrou: para isso use ver_mes_visto_de_cima (regra de 01/10/2026). Os campos de repasse por sócio daqui são a conta antiga e não valem para a divisão.",
       inputSchema: { competencia: zCompetencia },
     },
     async ({ competencia }) =>

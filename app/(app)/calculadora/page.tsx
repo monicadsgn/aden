@@ -109,25 +109,25 @@ export default function Calculadora() {
   const guardarEscopo = async () => {
     const cliente = config.clientes.find((c) => c.id === ativo.clienteId);
     if (!cliente) return;
-    const substitui = cliente.escopo ? " Isso substitui o escopo guardado antes." : "";
+    const substitui = cliente.escopo ? " Isso substitui as entregas do contrato guardadas antes." : "";
     const valor = resultadoAtivo.proposta && resultadoAtivo.mes ? resultadoAtivo.proposta.valorCentavos - resultadoAtivo.mes.receitaTrafegoCentavos : null;
     const textoValor = ativo.modo === "valor" ? ativo.mensalidadeCentavos : valor;
-    if (!confirm(`Guardar "${ativo.nome}" como o escopo contratado de ${cliente.nome}, com mensalidade de ${formatarMoeda(textoValor)}?${substitui}`)) return;
+    if (!confirm(`Guardar "${ativo.nome}" como as entregas do contrato de ${cliente.nome}, com mensalidade de ${formatarMoeda(textoValor)}?${substitui}`)) return;
     try {
       const r = await guardarEscopoComRegra(repo, config, cliente.id, ativo);
       setConfig(await repo.carregarConfig());
       setPedidos(await repo.listarPedidos().catch(() => []));
       if (r.gravado)
-        setMensagem({ tom: "ok", texto: `Escopo contratado de ${cliente.nome} guardado. Ele já conta na tela Mês.` });
+        setMensagem({ tom: "ok", texto: `Entregas do contrato de ${cliente.nome} guardadas. Elas já contam na tela Mês.` });
       else if (r.pedido?.status === "aplicado")
         setMensagem({ tom: "ok", texto: `Guardado como exceção: fica abaixo do seu piso, e você mesma aprovou. Ficou no histórico.` });
       else
         setMensagem({
           tom: "erro",
-          texto: `Este escopo fica abaixo do piso de ${r.abaixo.map((a) => a.nome).join(" e ")}. Ele só vale depois que ${r.pedido?.aguardando.map(nomePessoa).join(" e ")} aprovar a exceção (em Sócios → Pedidos e avisos).`,
+          texto: `Estas entregas do contrato ficam abaixo do piso de ${r.abaixo.map((a) => a.nome).join(" e ")}. Elas só valem depois que ${r.pedido?.aguardando.map(nomePessoa).join(" e ")} aprovar a exceção (em Sócios → Pedidos e avisos).`,
         });
     } catch (e) {
-      setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao guardar o escopo." });
+      setMensagem({ tom: "erro", texto: e instanceof Error ? e.message : "Erro ao guardar as entregas do contrato." });
     }
   };
 
@@ -227,7 +227,7 @@ export default function Calculadora() {
     <div className="pb-16">
       <CabecalhoPagina
         icone={Calculator}
-        selo="Vendas"
+        selo="Comercial"
         titulo="Calculadora de projeto"
         descricao="A proposta vista por dentro, só para os sócios: se o preço paga os custos e a hora de cada um."
         acoes={
@@ -303,7 +303,7 @@ export default function Calculadora() {
                 key={c.id}
                 className={cx(
                   "flex items-center gap-1 rounded-botao border py-1 pr-1 pl-1 transition-all",
-                  sel ? "border-marca bg-marca text-sobre-marca shadow-card" : "border-linha bg-superficie hover:border-marca/50",
+                  sel ? "border-marca bg-marca-cheio text-sobre-marca shadow-card" : "border-linha bg-superficie hover:border-marca/50",
                 )}
               >
                 <button type="button" role="tab" aria-selected={sel} onClick={() => setAtivoId(c.id)} className="flex items-center gap-2 py-1 pr-1 pl-1 text-sm font-bold">

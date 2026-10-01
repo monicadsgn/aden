@@ -118,7 +118,7 @@ export function Botao({
   ...resto
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: Variante; icone?: LucideIcon; pequeno?: boolean }) {
   const v: Record<Variante, string> = {
-    primario: "bg-marca text-sobre-marca hover:bg-marca-forte shadow-sm",
+    primario: "bg-marca-cheio text-sobre-marca hover:bg-marca-cheio-hover shadow-sm",
     secundario: "bg-superficie border border-linha text-texto hover:bg-superficie-2",
     fantasma: "text-texto-suave hover:bg-superficie-2 hover:text-texto",
     perigo: "text-erro hover:bg-erro-suave",
@@ -129,8 +129,9 @@ export function Botao({
       {...resto}
       className={cx(
         "inline-flex items-center justify-center gap-1.5 rounded-botao font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-        pequeno ? "h-8 text-xs" : "h-10 text-sm",
-        children ? (pequeno ? "px-3" : "px-4") : pequeno ? "w-8" : "w-10",
+        // M9 (01/10/2026): 44 px para o dedo; no computador, o pequeno fica com 36 px
+        pequeno ? "h-9 text-xs pointer-coarse:h-11" : "h-11 text-sm",
+        children ? (pequeno ? "px-3" : "px-4") : pequeno ? "w-9 pointer-coarse:w-11" : "w-11",
         v[variante],
         className,
       )}
@@ -165,7 +166,7 @@ export function Segmentado<T extends string>({
             aria-checked={ativo}
             onClick={() => aoMudar(o.valor)}
             className={cx(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-botao px-3 py-1.5 text-xs font-semibold transition-all",
+              "flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-botao px-3 py-1.5 text-xs font-semibold transition-all pointer-coarse:min-h-11",
               ativo ? "bg-superficie text-marca-forte shadow-card" : "text-texto-suave hover:text-texto",
             )}
           >
@@ -181,7 +182,7 @@ export function Segmentado<T extends string>({
 // ─── Campos ─────────────────────────────────────────────────────────────────
 
 const campoBase =
-  "h-10 w-full rounded-campo border border-linha bg-superficie px-3 text-sm text-texto placeholder:text-texto-suave/70 transition-colors hover:border-marca/50 focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20";
+  "h-11 w-full rounded-campo border border-linha bg-superficie px-3 text-sm text-texto placeholder:text-texto-suave/70 transition-colors hover:border-marca/50 focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20";
 
 export function Rotulo({ children, htmlFor, dica }: { children: ReactNode; htmlFor?: string; dica?: ReactNode }) {
   return (
@@ -366,8 +367,8 @@ export function Selecao({
 export function Passo({ valor, aoMudar, ariaLabel }: { valor: number | null; aoMudar: (v: number | null) => void; ariaLabel: string }) {
   const v = valor ?? 0;
   return (
-    <div className="inline-flex h-10 items-center rounded-botao border border-linha bg-superficie">
-      <button type="button" aria-label={`Menos ${ariaLabel}`} className="flex size-9 items-center justify-center rounded-botao text-texto-suave hover:bg-superficie-2 hover:text-texto" onClick={() => aoMudar(Math.max(0, v - 1))}>
+    <div className="inline-flex h-11 items-center rounded-botao border border-linha bg-superficie">
+      <button type="button" aria-label={`Menos ${ariaLabel}`} className="flex size-10 items-center justify-center rounded-botao text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11" onClick={() => aoMudar(Math.max(0, v - 1))}>
         <Minus size={14} />
       </button>
       <input
@@ -378,7 +379,7 @@ export function Passo({ valor, aoMudar, ariaLabel }: { valor: number | null; aoM
         placeholder="0"
         onChange={(e) => aoMudar(lerNumero(e.target.value))}
       />
-      <button type="button" aria-label={`Mais ${ariaLabel}`} className="flex size-9 items-center justify-center rounded-botao text-texto-suave hover:bg-superficie-2 hover:text-texto" onClick={() => aoMudar(v + 1)}>
+      <button type="button" aria-label={`Mais ${ariaLabel}`} className="flex size-10 items-center justify-center rounded-botao text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11" onClick={() => aoMudar(v + 1)}>
         <Plus size={14} />
       </button>
     </div>
@@ -387,7 +388,7 @@ export function Passo({ valor, aoMudar, ariaLabel }: { valor: number | null; aoM
 
 export function Interruptor({ ligado, aoMudar, rotulo }: { ligado: boolean; aoMudar: (v: boolean) => void; rotulo: string }) {
   return (
-    <button type="button" role="switch" aria-checked={ligado} onClick={() => aoMudar(!ligado)} className="inline-flex items-center gap-2 text-left text-xs font-semibold text-texto-suave">
+    <button type="button" role="switch" aria-checked={ligado} onClick={() => aoMudar(!ligado)} className="inline-flex min-h-11 items-center gap-2 text-left text-xs font-semibold text-texto-suave">
       <span className={cx("relative h-5 w-9 shrink-0 rounded-full transition-colors", ligado ? "bg-marca" : "bg-linha")}>
         <span className={cx("absolute top-0.5 size-4 rounded-full bg-superficie shadow transition-all", ligado ? "left-[18px]" : "left-0.5")} />
       </span>

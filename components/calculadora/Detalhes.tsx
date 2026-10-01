@@ -47,7 +47,7 @@ export function Detalhe({
             <Link
               key={a.rotulo}
               href={linkConfig(a.secao, a.campo)}
-              className="inline-flex items-center gap-1 rounded-botao bg-marca px-3 py-1.5 text-xs font-semibold text-sobre-marca hover:bg-marca-forte"
+              className="inline-flex items-center gap-1 rounded-botao bg-marca-cheio px-3 py-1.5 text-xs font-semibold text-sobre-marca hover:bg-marca-cheio-hover"
             >
               {a.rotulo} <ArrowRight size={12} />
             </Link>
@@ -152,14 +152,14 @@ export function DetalhesCustos({ config, m }: { config: Configuracao; m: Resulta
       oQueE={
         <>
           Aqui entram os custos <strong>só deste cliente</strong> (ex.: edição de vídeo por terceiro, banco de imagens para ele). Os custos fixos
-          da empresa, como as ferramentas, <strong>não</strong> precisam ser lançados aqui: eles já entram sozinhos pelo rateio, divididos entre
+          da empresa, como as ferramentas, <strong>não</strong> precisam ser lançados aqui: eles já entram sozinhos na divisão dos custos fixos, repartidos entre
           todos os clientes.
         </>
       }
       exemplo="Editor de vídeo cobra R$ 80 por reels e são 4 por mês: lance R$ 80 por entrega de vídeo. O sistema soma R$ 320 no mês."
       atalhos={[
         { rotulo: "Ver custos fixos", secao: "custos" },
-        { rotulo: "Regra de rateio", secao: "regras", campo: "regraRateio" },
+        { rotulo: "Regra da divisão dos custos fixos", secao: "regras", campo: "regraRateio" },
       ]}
       termos={["rateio"]}
     >
@@ -169,7 +169,7 @@ export function DetalhesCustos({ config, m }: { config: Configuracao; m: Resulta
           ...fixos.map((c): [ReactNode, ReactNode] => [c.nome, moeda(c.valorMensalCentavos)]),
           ...(config.empresa.impostoFixoMensalCentavos ? [["Imposto fixo (DAS)", formatarMoeda(config.empresa.impostoFixoMensalCentavos)] as [ReactNode, ReactNode]] : []),
           [<strong key="t">Total fixo por mês</strong>, formatarMoeda(totalFixo)],
-          ...(m ? [["Parte deste cliente (rateio)", formatarMoeda(m.rateio.quotaCentavos)] as [ReactNode, ReactNode]] : []),
+          ...(m ? [["Parte deste cliente (divisão dos custos fixos)", formatarMoeda(m.rateio.quotaCentavos)] as [ReactNode, ReactNode]] : []),
         ]}
       />
       {m?.rateio.explicacao && <p className="mt-1.5 text-[12px] text-texto-suave">{m.rateio.explicacao}</p>}
@@ -297,8 +297,8 @@ export function DetalhesDestaque({ modo }: { modo: "escopo" | "valor" }) {
     />
   ) : (
     <Detalhe
-      oQueE="É o que sobra por mês deste cliente depois de tirar custos, imposto e taxas. Embaixo aparece o valor mínimo para o mesmo escopo, e quanto você está acima ou abaixo dele."
-      exemplo="Cliente paga R$ 2.000 e a sobra é R$ 1.400. Se o mínimo para esse escopo é R$ 1.800, você está R$ 200 acima."
+      oQueE="É o que sobra por mês deste cliente depois de tirar custos, imposto e taxas. Embaixo aparece o valor mínimo para as mesmas entregas, e quanto você está acima ou abaixo dele."
+      exemplo="Cliente paga R$ 2.000 e a sobra é R$ 1.400. Se o mínimo para essas entregas é R$ 1.800, você está R$ 200 acima."
       termos={["sobra", "piso"]}
     />
   );
@@ -307,7 +307,7 @@ export function DetalhesDestaque({ modo }: { modo: "escopo" | "valor" }) {
 export function DetalhesProposta() {
   return (
     <Detalhe
-      oQueE="É o valor que vai para o cliente: um número só, com tudo embutido (ferramentas, estrutura, imposto). O cliente nunca vê custos nem a divisão entre sócios. Daqui você copia o texto, gera o PDF ou guarda como escopo contratado."
+      oQueE="É o valor que vai para o cliente: um número só, com tudo embutido (ferramentas, estrutura, imposto). O cliente nunca vê custos nem a divisão entre sócios. Daqui você copia o texto, gera o PDF ou guarda como entregas do contrato."
       exemplo={"\"Gestão de social media: R$ 2.000 por mês.\" A verba de anúncios, se houver, aparece separada, porque é paga direto à plataforma."}
       termos={["escopo"]}
     />

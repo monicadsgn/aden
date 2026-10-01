@@ -1,6 +1,6 @@
 // Números aqui são só fixtures de teste.
 import { describe, expect, it } from "vitest";
-import { calcularSaudeCliente, calcularVisaoMes, horasDasTarefas } from "./mes";
+import { calcularSaudeCliente, calcularVisaoMes } from "./mes";
 import type { Medicao } from "./calibragem";
 import { calcularCenario, calcularComReceita, calcularMinimo, prepararMes } from "./motor";
 import { configVazia, novoCenario } from "./novo";
@@ -154,52 +154,18 @@ describe("imposto fixo, taxa fixa, custo outro, teto e proposta", () => {
   });
 });
 
-describe("horas vindas das tarefas (grave 6)", () => {
-  const med = (id: string, pessoaId: string | null, clienteId: string, segundos: number, fim: string): Medicao => ({
-    id,
-    clienteId,
-    tipoEntregaId: "post",
-    pessoaId,
-    estado: "concluido",
-    acumuladoSegundos: segundos,
-    retomadoEm: null,
-    fim,
-    criadoEm: fim,
-  });
-
-  it("soma o cronômetro do cliente no mês, por sócio, e ignora outros meses, clientes e medição sem pessoa", () => {
-    const h = horasDasTarefas(
-      [
-        med("1", "a", "c1", 3600, "2026-10-03T10:00:00Z"),
-        med("2", "a", "c1", 1800, "2026-10-20T10:00:00Z"),
-        med("3", "a", "c1", 3600, "2026-09-30T10:00:00Z"),
-        med("4", "a", "c2", 3600, "2026-10-05T10:00:00Z"),
-        med("5", null, "c1", 3600, "2026-10-05T10:00:00Z"),
-        med("6", "b", "c1", 7200, "2026-10-06T10:00:00Z"),
-      ],
-      "c1",
-      "2026-10",
-    );
-    expect(h.get("a")).toEqual({ horas: 1.5, medicoes: 2 });
-    expect(h.get("b")).toEqual({ horas: 2, medicoes: 1 });
-  });
-
-  it("a saúde usa as horas das tarefas; o valor corrigido à mão vence; sem tarefa, usa a previsão", () => {
+describe("horas do mês com o cronômetro opcional (01/10/2026)", () => {
+  it("o valor corrigido à mão vence; sem correção vale o tempo cadastrado, nunca o cronômetro", () => {
     const c = config();
     const cli = { id: "c1", nome: "C1", interno: false, participaRateio: true, valorMensalCentavos: 300000, ativo: true, escopo: escopo(10, 2) };
     c.clientes = [cli];
-    const horasTarefas = new Map([["a", { horas: 30, medicoes: 4 }]]);
-    const s = calcularSaudeCliente(c, cli, { valorRecebidoCentavos: null, horas: { b: 12 } }, { horasTarefas });
+    const s = calcularSaudeCliente(c, cli, { valorRecebidoCentavos: null, horas: { b: 12 } });
     const a = s.socios.find((x) => x.id === "a")!;
     const b = s.socios.find((x) => x.id === "b")!;
-    expect(a.horasReais).toBe(30);
-    expect(a.origemHoras).toEqual({ tipo: "tarefas", medicoes: 4 });
-    expect(a.semRegistro).toBe(false);
+    expect(a.origemHoras).toEqual({ tipo: "previsto" });
+    expect(a.semRegistro).toBe(true);
+    expect(a.horasReais).toBeCloseTo(a.horasPrevistas);
     expect(b.horasReais).toBe(12);
     expect(b.origemHoras).toEqual({ tipo: "manual" });
-    expect(a.valorHoraReal).toBeCloseTo(108000 / 30);
-    // sem nada, A volta para a previsão
-    const s2 = calcularSaudeCliente(c, cli, null, { horasTarefas: new Map() });
-    expect(s2.socios.find((x) => x.id === "a")!.origemHoras).toEqual({ tipo: "previsto" });
   });
 });

@@ -94,7 +94,7 @@ function Destaque({
   const Ic = icone;
   const [aberto, setAberto] = useState(false);
   return (
-    <div className="relative overflow-hidden rounded-card bg-marca p-5 text-sobre-marca shadow-forte">
+    <div className="relative overflow-hidden rounded-card bg-marca-cheio p-5 text-sobre-marca shadow-forte">
       <Forma className="-top-16 -right-12 size-52 text-sobre-marca/10" variante={2} />
       <Forma className="-bottom-20 left-1/3 size-40 text-destaque/25" variante={3} />
       <div className="relative">
@@ -147,7 +147,7 @@ function Cascata({ m, taxaFixa }: { m: ResultadoMes; taxaFixa: number | null }) 
       {m.verbaMidiaCentavos != null && m.verbaMidiaCentavos > 0 && (
         <div className="my-1 flex items-baseline justify-between gap-3 rounded-item border border-dashed border-linha px-3 py-1.5 text-texto-suave">
           <span className="text-[12px]">
-            Verba de mídia do cliente <span className="text-[11px]">(paga direto na plataforma, fora de qualquer soma)</span>
+            Verba de mídia do cliente <span className="text-[12px]">(paga direto na plataforma, fora de qualquer soma)</span>
           </span>
           <span className="numero text-[13px] whitespace-nowrap">{formatarMoeda(m.verbaMidiaCentavos)}</span>
         </div>
@@ -170,12 +170,12 @@ function Cascata({ m, taxaFixa }: { m: ResultadoMes; taxaFixa: number | null }) 
       {(c.outro ?? 0) > 0 && <LinhaCascata rotulo="Outros custos do caso (diária, deslocamento…)" valor={c.outro} sinal="-" />}
       {m.custoPontualDiluidoCentavos > 0 && <LinhaCascata rotulo="Pontual diluído (custos)" valor={m.custoPontualDiluidoCentavos} sinal="-" />}
       <LinhaCascata
-        rotulo="Custo fixo da empresa (rateio)"
+        rotulo="Custo fixo da empresa (dividido entre os clientes)"
         valor={m.rateio.quotaCentavos}
         sinal="-"
         sub={
           m.rateio.totalFixoCentavos > 0 && m.rateio.regra ? (
-            <span className="text-[11px] text-texto-suave">
+            <span className="text-[12px] text-texto-suave">
               {m.rateio.regra === "igual" ? `÷ ${m.rateio.clientesNaBase} clientes` : "proporcional ao valor"} de {formatarMoeda(m.rateio.totalFixoCentavos)}
               {m.rateio.impostoFixoCentavos > 0 && ` (inclui ${formatarMoeda(m.rateio.impostoFixoCentavos)} de imposto fixo)`}
             </span>
@@ -245,14 +245,14 @@ function CartaoSocio({ p, grande, foto }: { p: ResultadoPessoa; grande?: boolean
         </div>
       )}
       {p.recebeSemHoras && (
-        <p className="relative mt-2 rounded-item bg-info-suave px-2 py-1.5 text-[11px] leading-snug font-semibold text-info">
+        <p className="relative mt-2 rounded-item bg-info-suave px-2 py-1.5 text-[12px] leading-snug font-semibold text-info">
           {p.nome} recebe {formatarMoeda(p.valorCentavos)} sem horas neste cliente. A regra da divisão é dos sócios; aqui só fica visível.
         </p>
       )}
       <div className="relative mt-3">
         <div className="mb-1 flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-texto-suave">
           <span className="inline-flex items-center gap-1.5">
-            {formatarHoras(p.horas)} no projeto <EtiquetaOrigem texto="previsto no escopo" previsao />
+            {formatarHoras(p.horas)} no projeto <EtiquetaOrigem texto="previsto nas entregas do contrato" previsao />
           </span>
           {p.consumoCapacidadePct != null ? <span>{formatarPct(p.consumoCapacidadePct)} do mês</span> : <span>capacidade não configurada</span>}
         </div>
@@ -428,15 +428,15 @@ function BlocoProposta({
             (cliente ? (
               jaEEscopo ? (
                 <Badge tom="ok" icone={CheckCircle2}>
-                  é o escopo contratado de {cliente}
+                  são as entregas do contrato de {cliente}
                 </Badge>
               ) : (
                 <Botao pequeno variante="primario" icone={ClipboardCheck} onClick={aoGuardarEscopo}>
-                  Guardar como escopo contratado de {cliente}
+                  Guardar como entregas do contrato de {cliente}
                 </Botao>
               )
             ) : (
-              <span className="self-center text-[11px] text-texto-suave">Para guardar como escopo contratado, escolha o cliente em “Como calcular”.</span>
+              <span className="self-center text-[12px] text-texto-suave">Para guardar como entregas do contrato, escolha o cliente em “Como calcular”.</span>
             ))}
         </div>
       </div>
@@ -474,7 +474,7 @@ function BlocoHorizonte({ h }: { h: ResultadoHorizonte }) {
             return (
               <div key={o} className={cx("flex flex-col gap-2 rounded-bloco border p-3", escolhida ? "border-marca bg-marca-tinta" : "border-linha")}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-marca text-[11px] font-bold text-sobre-marca">{ROTULO_SUSPENSAO[o].letra}</span>
+                  <span className="flex size-6 items-center justify-center rounded-full bg-marca-cheio text-[11px] font-bold text-sobre-marca">{ROTULO_SUSPENSAO[o].letra}</span>
                   <span className="text-[13px] font-bold">{ROTULO_SUSPENSAO[o].texto}</span>
                   {escolhida && (
                     <Badge tom="marca" icone={CheckCircle2}>
@@ -584,7 +584,7 @@ export function PainelResultado({
         sub={
           r.minimo.possivel && dif != null ? (
             <span className="inline-flex flex-wrap items-center gap-1.5">
-              Valor mínimo para este escopo: <strong className="numero">{formatarMoeda(r.minimo.mensalidadeMinimaCentavos)}</strong>
+              Valor mínimo para estas entregas: <strong className="numero">{formatarMoeda(r.minimo.mensalidadeMinimaCentavos)}</strong>
               <span className="inline-flex items-center gap-1 rounded-botao bg-sobre-marca/20 px-2 py-0.5 font-bold">
                 {dif >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                 {dif >= 0 ? `${formatarMoeda(dif)} acima` : `${formatarMoeda(-dif)} abaixo`}
@@ -736,7 +736,7 @@ export function PainelResultado({
                         )}
                         {t.folga != null && t.folga >= 0 && t.folga < 9999 && t.limites.length > 0 && (
                           <div className="flex flex-col items-end gap-0.5">
-                            <span className="text-[10px] text-texto-suave">o próximo esbarra em</span>
+                            <span className="text-[12px] text-texto-suave">o próximo esbarra em</span>
                             {t.limites.map((l) => (
                               <ChipLimite key={l.tipo + l.pessoaId} l={l} />
                             ))}
@@ -770,7 +770,7 @@ export function PainelResultado({
             <div className="grid grid-cols-2 gap-2 px-5 pb-5">
               <Indicador icone={Clock3} rotulo="Horas no mês" valor={formatarHoras(m.horasTotais)} dica="Soma das entregas × horas por entrega." />
               <Indicador icone={Coins} rotulo="Valor cobrado por hora" valor={formatarMoeda(m.valorCobradoHoraCentavos)} dica="Receita bruta ÷ horas." />
-              <Indicador icone={ArrowDown} rotulo="Custo por hora" valor={formatarMoeda(m.custoHoraCentavos)} dica="(Custos do projeto + rateio) ÷ horas." />
+              <Indicador icone={ArrowDown} rotulo="Custo por hora" valor={formatarMoeda(m.custoHoraCentavos)} dica="(Custos do projeto + parte dos custos fixos) ÷ horas." />
               <Indicador icone={Sparkles} rotulo="Sobra por hora" valor={formatarMoeda(m.sobraHoraCentavos)} dica="Sobra ÷ horas. Informativo." />
             </div>
           </Card>
@@ -791,7 +791,7 @@ export function PainelResultado({
 
       {r.pontuaisFora.map((pf) => (
         <Card key={pf.id}>
-          <TituloCard icone={Gem} titulo={pf.nome} descricao="Projeto pontual cobrado fora da mensalidade (sem rateio de custo fixo)." />
+          <TituloCard icone={Gem} titulo={pf.nome} descricao="Projeto pontual cobrado fora da mensalidade (sem divisão dos custos fixos)." />
           <div className="grid grid-cols-2 gap-3 px-5 pb-5 text-[13px]">
             <div>
               <p className="text-[11px] font-semibold text-texto-suave">Horas do projeto</p>

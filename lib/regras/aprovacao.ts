@@ -312,3 +312,23 @@ export function assinaturaCenario(c: Cenario): string {
   for (let i = 0; i < texto.length; i++) h = ((h << 5) + h + texto.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
 }
+
+/**
+ * Apagar também é mudar (G8 da auditoria, 01/10/2026): sócio, serviço com divisão de horas e tipo de entrega com tempo
+ * cadastrado não se apagam, só se desativam (o número continua guardado). O banco trava igual (migration 0034).
+ * Devolve a frase do motivo, ou null quando pode apagar.
+ */
+export function motivoNaoApagar(config: Configuracao, tipo: "socio" | "servico" | "tipo_entrega", id: string): string | null {
+  if (tipo === "socio") {
+    const p = config.pessoas.find((x) => x.id === id);
+    return p?.socio ? `${p.nome} é sócio: apagar muda a divisão entre os sócios. Isso só se decide com os dois.` : null;
+  }
+  if (tipo === "servico") {
+    const s = config.servicos.find((x) => x.id === id);
+    return s && Object.values(s.divisaoPadrao).some((v) => (v ?? 0) > 0)
+      ? `O serviço "${s.nome}" tem divisão de horas entre os sócios (protegida): desative em vez de apagar.`
+      : null;
+  }
+  const t = config.tiposEntrega.find((x) => x.id === id);
+  return t && t.horasPorUnidade != null ? `O tipo "${t.nome}" tem tempo cadastrado (protegido): desative em vez de apagar.` : null;
+}

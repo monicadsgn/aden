@@ -48,7 +48,7 @@ function Trilha({ degraus, atual }: { degraus: DegrauTrilha[]; atual: number | n
             Metas em degraus, com o que fazer ao chegar em cada uma (ex.: primeira terceirização, contratar alguém pra equipe). Vocês definem juntos; o sistema
             acompanha o progresso e marca cada conquista.
           </p>
-          <Link href={linkConfig("metas")} className="inline-flex items-center gap-1.5 rounded-botao bg-marca px-4 py-2 text-sm font-semibold text-sobre-marca">
+          <Link href={linkConfig("metas")} className="inline-flex items-center gap-1.5 rounded-botao bg-marca-cheio px-4 py-2 text-sm font-semibold text-sobre-marca">
             Definir os degraus <ArrowRight size={14} />
           </Link>
         </div>
@@ -66,7 +66,7 @@ function Trilha({ degraus, atual }: { degraus: DegrauTrilha[]; atual: number | n
             <span
               className={cx(
                 "inline-flex items-center gap-1.5 rounded-botao px-3 py-1 text-xs font-semibold",
-                g.batida ? "bg-ok-suave text-ok" : i === atual ? "bg-marca text-sobre-marca" : "bg-superficie-2 text-texto-suave",
+                g.batida ? "bg-ok-suave text-ok" : i === atual ? "bg-marca-cheio text-sobre-marca" : "bg-superficie-2 text-texto-suave",
               )}
               title={g.meta.conquistadaEm ? `Conquistada em ${new Date(g.meta.conquistadaEm).toLocaleDateString("pt-BR")}` : undefined}
             >
@@ -79,7 +79,7 @@ function Trilha({ degraus, atual }: { degraus: DegrauTrilha[]; atual: number | n
       </ol>
 
       {d ? (
-        <div className="relative overflow-hidden rounded-card bg-marca p-6 text-sobre-marca shadow-forte">
+        <div className="relative overflow-hidden rounded-card bg-marca-cheio p-6 text-sobre-marca shadow-forte">
           <p className="flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase opacity-85">
             <Flag size={13} /> Degrau atual · {atual! + 1} de {degraus.length}
           </p>

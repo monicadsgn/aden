@@ -36,7 +36,7 @@ export function Avatar({
       className={cx(
         "flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold",
         TAMANHO[tamanho],
-        tom === "marca" ? "bg-marca text-sobre-marca" : "bg-marca-suave text-marca-forte",
+        tom === "marca" ? "bg-marca-cheio text-sobre-marca" : "bg-marca-suave text-marca-forte",
         className,
       )}
     >

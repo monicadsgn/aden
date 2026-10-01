@@ -16,12 +16,19 @@ O preço sai do cálculo do Aden, nunca da sua cabeça. Esta skill conduz a conv
 - Ferramentas e estrutura já estão embutidas na mensalidade: um valor só, nunca assinatura à parte.
 - Verba de anúncio é do cliente, paga direto na plataforma, e nunca entra no faturamento da Aden.
 - Audiovisual é extra, só se o cliente pedir.
+- Horas saem do **tempo cadastrado** de cada tipo de entrega. O cronômetro é opcional, nunca liga sozinho e o
+  sistema não pede medições: só se usa quando ninguém sabe quanto uma entrega leva.
+- **Projetos de marca** (logo, identidade visual, branding, estrutura visual) não se medem em minutos: o tipo de
+  entrega é um projeto, com horas totais estimadas e prazo em dias (que vai para o contrato). O preço sai do cálculo.
+  Se faltar a hora ou o prazo, pergunte aos sócios; nunca invente.
 - Abaixo do piso de um sócio: não esconda. Mostre o que dá para fazer (pacote que cabe) ou diga que vira pedido de
   exceção, que o sócio afetado aprova no site.
 
 ## Passo a passo
 
 1. **Lead:** `listar_leads`. Se não existir, `salvar_lead` (nome, contato, telefone, instagram, origem).
+   Quando o pacote e o valor estiverem combinados, grave no lead com `salvar_lead` (`pacote`, `valorEstimadoReais`;
+   proposta salva em `simulacao`): é daí que o cliente nasce quando fechar.
    Registre o que foi conversado com `registrar_conversa_lead` e, se houver, a data do próximo contato.
 2. **Sondagem:** falta saber o que o cliente quer (social media, tráfego, os dois), o segmento, se o comercial dele
    está estruturado e quanto pode investir? Monte **uma** mensagem curta de WhatsApp pedindo só o que falta.

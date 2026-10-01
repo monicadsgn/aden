@@ -27,7 +27,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Avatar } from "../Avatar";
 import { Modal } from "../Modal";
 import { Botao, CampoMoeda, Segmentado, cx } from "../ui";
-import { ETAPAS, moverLead, situacaoFollowUp, TIPOS_INTERACAO, type InteracaoLead, type Lead, type TipoInteracao } from "@/lib/calculo/crm";
+import { ETAPAS, moverLead, ORIGENS_LEAD, situacaoFollowUp, TIPOS_INTERACAO, type InteracaoLead, type Lead, type TipoInteracao } from "@/lib/calculo/crm";
 import { novoId } from "@/lib/calculo/novo";
 import { precoDoPacote } from "@/lib/calculo/pacotes";
 import type { Configuracao } from "@/lib/calculo/tipos";
@@ -39,7 +39,7 @@ export const COR_ETAPA: Record<Lead["etapa"], string> = {
   lead_recebido: "bg-superficie-2 text-texto",
   pesquisa: "bg-marca-suave text-marca-forte",
   contato_feito: "bg-info text-superficie",
-  reuniao: "bg-marca text-sobre-marca",
+  reuniao: "bg-marca-cheio text-sobre-marca",
   proposta_enviada: "bg-aviso text-superficie",
   ganho: "bg-ok text-superficie",
   perdido: "bg-erro text-superficie",
@@ -82,7 +82,10 @@ export function DetalheLead({
   aoRemover,
   aoGanhar,
   aoFechar,
+  confirmarGanho,
 }: {
+  /** veio de arrastar para Ganho: pede o "Fechou!" em destaque */
+  confirmarGanho?: boolean;
   lead: Lead | null;
   config: Configuracao;
   simulacoes: ResumoSimulacao[];
@@ -163,18 +166,23 @@ export function DetalheLead({
             </Botao>
           )}
           {l.clienteId ? (
-            <Link href={`/clientes?cliente=${l.clienteId}`} className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-ok px-4 text-sm font-semibold text-superficie">
+            <Link href={`/clientes?cliente=${l.clienteId}&aba=comercial`} className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-ok px-4 text-sm font-semibold text-superficie">
               <Users size={16} /> Ver o cliente
             </Link>
-          ) : (
+          ) : l.etapa !== "perdido" ? (
             <Botao variante="primario" icone={UserPlus} onClick={() => void aoGanhar(l).catch((e) => setErro(e instanceof Error ? e.message : "Não deu para criar o cliente."))}>
               Fechou! Virar cliente
             </Botao>
-          )}
+          ) : null}
         </>
       }
     >
       {erro && <p className="mb-3 rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro">{erro}</p>}
+      {confirmarGanho && !l.clienteId && (
+        <p className="mb-3 rounded-bloco bg-ok-suave px-3 py-2 text-[13px] text-ok">
+          Fechou? Confirme no botão <strong>Fechou! Virar cliente</strong>, lá embaixo: ele cria o cliente, guarda as entregas do contrato e abre o checklist de fechamento.
+        </p>
+      )}
 
       <div className="mb-3 flex flex-wrap gap-1">
         {ETAPAS.map((e) => (
@@ -242,7 +250,14 @@ export function DetalheLead({
             <Texto rotulo="E-mail" valor={l.email} aoSalvar={(v) => set({ email: v })} />
           </Linha>
           <Linha icone={AtSign} rotulo="Como chegou">
-            <Texto rotulo="Origem" valor={l.origem} aoSalvar={(v) => set({ origem: v })} placeholder="indicação, Instagram…" />
+            <select className={campo} aria-label="Como chegou" value={l.origem ?? ""} onChange={(e) => set({ origem: e.target.value })}>
+              <option value="">Vazio</option>
+              {[...ORIGENS_LEAD, ...(l.origem && !(ORIGENS_LEAD as readonly string[]).includes(l.origem) ? [l.origem] : [])].map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
           </Linha>
         </div>
         <div>
@@ -331,7 +346,7 @@ export function DetalheLead({
             </button>
           )}
           <Link href={`/negociacao?cliente=${encodeURIComponent(l.nome)}&lead=${l.id}`} className="inline-flex items-center gap-1 font-semibold text-marca-forte underline">
-            <Presentation size={13} /> Abrir a negociação
+            <Presentation size={13} /> Abrir a Proposta
           </Link>
           {l.simulacaoId && (
             <Link href={`/calculadora?sim=${l.simulacaoId}`} className="inline-flex items-center gap-1 font-semibold text-marca-forte underline">
@@ -339,6 +354,7 @@ export function DetalheLead({
             </Link>
           )}
         </div>
+        <p className="text-[12px] leading-snug text-texto-suave sm:col-span-2">Quanto esse lead deve pagar por mês se fechar; soma no total da etapa em Leads. Ex.: R$ 1.500.</p>
       </div>
 
       <label className="mt-4 flex flex-col gap-1 text-xs font-semibold text-texto-suave">

@@ -32,7 +32,7 @@ export function SecaoTerceiros({ rascunho, set }: Props) {
       <p className="text-[12px] text-texto-suave">
         Serviço terceirizado cobrado <strong>por saída</strong> (ex.: audiovisual: a pessoa vai ao cliente, grava, edita e entrega). O custo de cada cliente é
         saídas por mês × (valor por saída + deslocamento). É custo só do cliente que recebe a gravação, nunca dividido entre todos. Mudou o valor aqui, todos os pacotes
-        e escopos recalculam. Ligue o terceiro a um tipo de entrega em <strong>Tipos de entrega</strong>.
+        e entregas dos contratos recalculam. Ligue o terceiro a um tipo de entrega em <strong>Tipos de entrega</strong>.
       </p>
       {lista.length === 0 && (
         <Vazio icone={Truck} titulo="Nenhum terceiro cadastrado">
@@ -46,8 +46,14 @@ export function SecaoTerceiros({ rascunho, set }: Props) {
             <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-[1.2fr_1.4fr_1fr_1fr_auto]">
               <CampoTexto className="col-span-2 sm:col-span-1" rotulo="Serviço" placeholder="Ex.: Audiovisual" valor={t.nome} aoMudar={(v) => setLista(atualizar(lista, t.id, { nome: v }))} />
               <CampoTexto className="col-span-2 sm:col-span-1" rotulo="O que inclui" placeholder="Ex.: gravação e edição" valor={t.inclui} aoMudar={(v) => setLista(atualizar(lista, t.id, { inclui: v }))} />
-              <CampoMoeda rotulo="Valor por saída" valor={t.valorPorSaidaCentavos} aoMudar={(v) => setLista(atualizar(lista, t.id, { valorPorSaidaCentavos: v }))} />
-              <CampoMoeda rotulo="Deslocamento médio" valor={t.deslocamentoMedioCentavos} aoMudar={(v) => setLista(atualizar(lista, t.id, { deslocamentoMedioCentavos: v }))} />
+              <div>
+                <CampoMoeda rotulo="Valor por saída" valor={t.valorPorSaidaCentavos} aoMudar={(v) => setLista(atualizar(lista, t.id, { valorPorSaidaCentavos: v }))} />
+                <p className="mt-1 text-[12px] leading-snug text-texto-suave">Quanto o terceiro cobra por ida ao cliente. Ex.: R$ 300.</p>
+              </div>
+              <div>
+                <CampoMoeda rotulo="Deslocamento médio" valor={t.deslocamentoMedioCentavos} aoMudar={(v) => setLista(atualizar(lista, t.id, { deslocamentoMedioCentavos: v }))} />
+                <p className="mt-1 text-[12px] leading-snug text-texto-suave">Gasto médio para chegar ao cliente (Uber, gasolina). Ex.: R$ 40.</p>
+              </div>
               <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label={`Remover ${t.nome}`} onClick={() => setLista(lista.filter((x) => x.id !== t.id))} />
             </div>
             <CampoTexto
@@ -110,6 +116,7 @@ function ItensDoPacote({
           <Botao variante="perigo" icone={Trash2} aria-label="Tirar do pacote" onClick={() => aoMudar(itens.filter((_, j) => j !== idx))} />
         </div>
       ))}
+      {itens.length > 0 && <p className="text-[12px] leading-snug text-texto-suave">Quantidade: quantas unidades dessa entrega o pacote inclui. Ex.: 12 posts.</p>}
       <div>
         <Botao icone={Plus} pequeno disabled={!tipos.length} onClick={() => aoMudar([...itens, { tipoEntregaId: tipos[0].id, quantidade: null }])}>
           Adicionar entrega
@@ -138,7 +145,7 @@ function PrecoCalculado({ config, pacote }: { config: Configuracao; pacote: Paco
         </p>
       </div>
       <p className="text-[12px] text-texto-suave sm:col-span-2">
-        Ninguém digita preço: sai do tempo de cada entrega, do piso de cada sócio, dos custos (terceiros inclusos) e do rateio. Mudou a configuração, o preço muda junto.
+        Ninguém digita preço: sai do tempo de cada entrega, do piso de cada sócio, dos custos (terceiros inclusos) e da divisão dos custos fixos. Mudou a configuração, o preço muda junto.
       </p>
     </div>
   );
@@ -150,7 +157,7 @@ export function SecaoPacotes({ rascunho, set }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[12px] text-texto-suave">
-        Pacotes fechados para a negociação. O cliente vê só o nome, as frases do que está incluso e o valor; nunca quantidades nem horas. As quantidades ficam aqui, para
+        Pacotes fechados para a Proposta. O cliente vê só o nome, as frases do que está incluso e o valor; nunca quantidades nem horas. As quantidades ficam aqui, para
         o sistema calcular.
       </p>
       {lista.length === 0 && (
@@ -216,7 +223,7 @@ export function SecaoPacotes({ rascunho, set }: Props) {
               rotulo="Pacote padrão (a tela Mês conta quantos deste ainda cabem)"
               aoMudar={(v) => setLista(lista.map((x) => (x.id === p.id ? { ...x, padrao: v } : v ? { ...x, padrao: false } : x)))}
             />
-            <Interruptor ligado={p.ativo} rotulo="Aparece na negociação" aoMudar={(v) => setLista(atualizar(lista, p.id, { ativo: v }))} />
+            <Interruptor ligado={p.ativo} rotulo="Aparece na Proposta" aoMudar={(v) => setLista(atualizar(lista, p.id, { ativo: v }))} />
           </div>
         </div>
       ))}
@@ -268,7 +275,7 @@ export function SecaoMetas({ rascunho, set }: Props) {
       {lista.map((m, i) => (
         <div key={m.id} className="flex flex-col gap-3 rounded-bloco bg-superficie-2/60 p-3">
           <div className="flex items-center gap-2">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-marca text-xs font-bold text-sobre-marca">{i + 1}</span>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-marca-cheio text-xs font-bold text-sobre-marca">{i + 1}</span>
             <CampoTexto className="flex-1" ariaLabel="Nome do degrau" placeholder="Nome do degrau" valor={m.nome} aoMudar={(v) => setLista(atualizar(lista, m.id, { nome: v }))} />
             {m.conquistadaEm && (
               <Badge tom="ok" icone={Star}>
@@ -287,7 +294,10 @@ export function SecaoMetas({ rascunho, set }: Props) {
               opcoes={CRITERIOS.map((c) => ({ valor: c.valor, rotulo: c.rotulo }))}
               aoMudar={(v) => setLista(atualizar(lista, m.id, { criterio: v as Meta["criterio"], alvo: null }))}
             />
-            <CampoAlvo meta={m} aoMudar={(v) => setLista(atualizar(lista, m.id, { alvo: v }))} />
+            <div>
+              <CampoAlvo meta={m} aoMudar={(v) => setLista(atualizar(lista, m.id, { alvo: v }))} />
+              <p className="mt-1 text-[12px] leading-snug text-texto-suave">O número que marca o degrau como conquistado. Ex.: 5 clientes ou R$ 20.000 por mês.</p>
+            </div>
           </div>
           <CampoTexto
             rotulo="Ação ligada a este degrau"

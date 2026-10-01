@@ -24,6 +24,8 @@
   --marca-suave: #e6e8d6;    /* fundos tingidos, badges */
   --marca-tinta: #f1f2e8;    /* fundos bem leves */
   --sobre-marca: #ffffff;    /* texto sobre a cor da marca */
+  --marca-cheio: #5c5f33;    /* M10 (01/10/2026): fundo de botão cheio, um tom mais escuro (branco em cima: 6,8:1) */
+  --marca-cheio-hover: #4a4d29;
   --destaque: #3e4122;       /* verde profundo: acento das formas decorativas */
   --creme: #fcf9f1;          /* creme da marca: só no ícone quadrado ("a" creme no verde ou fundo creme) */
   --verde-aden: #797c46;     /* verde da marca que não muda no modo escuro: só no ícone quadrado */
@@ -59,6 +61,21 @@
   --sombra: 0 1px 2px rgb(43 46 26 / 0.04), 0 8px 24px -12px rgb(43 46 26 / 0.12);
   --sombra-forte: 0 2px 4px rgb(43 46 26 / 0.06), 0 20px 40px -20px rgb(43 46 26 / 0.25);
 
+  /* vidro (01/10/2026): só no que fica POR CIMA da tela (janelas, pop-ups, menus que abrem, avisos), para dar a
+     sensação de camada. Nunca no fundo nem nos cartões da tela. Camada a 80%: texto suave fica ≥ 4,8:1. */
+  --vidro: rgb(255 255 255 / 0.8);
+  --vidro-borda: rgb(255 255 255 / 0.9);
+  --vidro-desfoque: 24px;
+  --veu: rgb(43 46 26 / 0.18);         /* o que escurece a tela atrás da janela */
+
+  /* etiqueta por cliente (M6, 01/10/2026): 6 tons de apoio, texto ≥ 4,5:1 sobre o fundo da etiqueta */
+  --cliente-1: #4f5229; --cliente-1-fundo: #e6e8d6;
+  --cliente-2: #8a3f24; --cliente-2-fundo: #f6e3da;
+  --cliente-3: #2f5a66; --cliente-3-fundo: #dfeef1;
+  --cliente-4: #74550c; --cliente-4-fundo: #f5ecd3;
+  --cliente-5: #6b3a5c; --cliente-5-fundo: #f0e1ea;
+  --cliente-6: #3b4f86; --cliente-6-fundo: #e2e7f4;
+
   color-scheme: light;
 }
 
@@ -70,6 +87,15 @@
     --marca-suave: #34361f;
     --marca-tinta: #25261a;
     --sobre-marca: #17180f;
+  --marca-cheio: #a6a96a;
+  --marca-cheio-hover: #b7ba7c;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.55);
+  --sombra-forte: 0 2px 4px rgb(0 0 0 / 0.35), 0 20px 40px -20px rgb(0 0 0 / 0.7);
+    --marca-cheio: #a6a96a;
+    --marca-cheio-hover: #b7ba7c;
+    /* D8: no escuro a sombra é preta e mais forte, senão some no fundo */
+    --sombra: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.55);
+    --sombra-forte: 0 2px 4px rgb(0 0 0 / 0.35), 0 20px 40px -20px rgb(0 0 0 / 0.7);
     --destaque: #7c8052;
     --fundo: #16170f;
     --superficie: #1f2016;
@@ -85,6 +111,15 @@
     --ok-suave: #1f3019;
     --info: #9dbfd2;
     --info-suave: #1a2a33;
+    --vidro: rgb(31 32 22 / 0.8);
+    --vidro-borda: rgb(255 255 255 / 0.1);
+    --veu: rgb(0 0 0 / 0.45);
+    --cliente-1: #c8cb8e; --cliente-1-fundo: #34361f;
+    --cliente-2: #eba48a; --cliente-2-fundo: #3d2219;
+    --cliente-3: #9fd0db; --cliente-3-fundo: #17323a;
+    --cliente-4: #e3c27a; --cliente-4-fundo: #3a2e12;
+    --cliente-5: #d9a6c9; --cliente-5-fundo: #3a2033;
+    --cliente-6: #aab9ea; --cliente-6-fundo: #222c4a;
     color-scheme: dark;
   }
 }
@@ -94,6 +129,8 @@
   --marca-suave: #34361f;
   --marca-tinta: #25261a;
   --sobre-marca: #17180f;
+  --marca-cheio: #a6a96a;
+  --marca-cheio-hover: #b7ba7c;
   --destaque: #7c8052;
   --fundo: #16170f;
   --superficie: #1f2016;
@@ -109,5 +146,14 @@
   --ok-suave: #1f3019;
   --info: #9dbfd2;
   --info-suave: #1a2a33;
+  --vidro: rgb(31 32 22 / 0.8);
+  --vidro-borda: rgb(255 255 255 / 0.1);
+  --veu: rgb(0 0 0 / 0.45);
+  --cliente-1: #c8cb8e; --cliente-1-fundo: #34361f;
+  --cliente-2: #eba48a; --cliente-2-fundo: #3d2219;
+  --cliente-3: #9fd0db; --cliente-3-fundo: #17323a;
+  --cliente-4: #e3c27a; --cliente-4-fundo: #3a2e12;
+  --cliente-5: #d9a6c9; --cliente-5-fundo: #3a2033;
+  --cliente-6: #aab9ea; --cliente-6-fundo: #222c4a;
   color-scheme: dark;
 }

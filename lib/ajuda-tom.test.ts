@@ -10,4 +10,9 @@ describe("tom da Visão do mês", () => {
     const semComentarios = fonte.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
     expect(semComentarios).not.toMatch(/impediment|n[ãa]o cabe|bloquead|n[ãa]o d[áa]\b|afogad/i);
   });
+  it("Mês → Cada cliente e Horas falam em caminhos, sem tom de alarme", () => {
+    const fonte = ["components/mes/CadaCliente.tsx", "components/mes/Horas.tsx", "components/mes/Socios.tsx"].map((f) => readFileSync(f, "utf8")).join("\n");
+    const semComentarios = fonte.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(semComentarios).not.toMatch(/c[áa]lculo bloqueado|preju[íi]zo silencioso|custando mais horas|passou das horas/i);
+  });
 });

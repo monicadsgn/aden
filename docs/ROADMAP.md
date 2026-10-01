@@ -11,6 +11,37 @@ Plano guardado. **Nada daqui é para construir sem a Moni pedir.** Atualizado em
   Sem clientes reais cadastrados ainda.
 - 29/09/2026: reunião de sociedade com o Áleff. Decisões na seção 0; plano em fases (0 a 6) logo abaixo delas.
   Fase 0 (diagnóstico) entregue e aprovada; próxima é a Fase 1.
+- 30/09/2026: auditoria geral depois das Fases 1 a 6 (inventário, diagnóstico e relatório numerado G1–G10,
+  M1–M18, D1–D11) em `docs/AUDITORIA.md`. Nada corrigido: a Moni aprova por número.
+
+## Decidido: projetos de marca (01/10/2026, opção A, feita na migration 0036)
+
+A Moni escolheu a A. Logo e Estrutura visual já estão marcados como projeto; faltam as horas totais e o prazo de cada
+um (perguntar à Moni). Histórico da proposta:
+
+### Proposta levada à Moni
+
+Logo, identidade visual e branding levam dias ou semanas (estudo, pesquisa, rascunho, teste) e o prazo do contrato é em
+dias: não cabem em "minutos por entrega". Proposta levada à Moni (nada construído):
+- **A (recomendada): horas totais estimadas do projeto + prazo em dias.** O tipo de entrega ganha a unidade "projeto"
+  com o tempo digitado em **horas** (não minutos) e o prazo em dias úteis, que vai para o contrato. O preço sai do cálculo,
+  como os pacotes (horas × piso de quem faz + custos, dividido por 1 − imposto − taxa), e o cliente vê um valor fechado.
+  Já existe "Projeto pontual" na calculadora (fora da mensalidade ou diluído), então é reaproveitar, não criar.
+- B: preço fixo digitado por pacote de marca. Simples, mas fere a regra "pacote não tem preço digitado" e perde a
+  conferência do piso.
+- C: medir em dias de trabalho. Precisa de mais um número (horas por dia) e não muda o resultado da A.
+O cronômetro (opcional) pode ser usado nos primeiros projetos para ajustar as horas totais.
+
+## M13: aviso ao cliente e relatório do mês (01/10/2026)
+
+- **Aviso (feito):** na tarefa que está esperando o cliente, "Avisar no WhatsApp" abre a conversa com o telefone da
+  ficha e a mensagem pronta com o link do painel (`lib/calculo/avisoCliente.ts`). Sem integração nova: quem manda é o
+  sócio, pelo número de sempre.
+- **Relatório do mês (proposta, esperando a Moni):** no painel, "Relatório do mês" com os meses anteriores: o que foi
+  ao ar (por formato), ajustes pedidos, e um bloco de resultado que os sócios preenchem no fim do mês (números que eles
+  escolhem, por exemplo alcance, seguidores, contatos do tráfego, com uma frase de leitura), mais o PDF.
+  **Guardado (Moni, 01/10/2026):** fica para depois. Os números serão puxados à mão (sem Supermetrics); o Áleff sugere
+  os de tráfego (tarefa dele "Números do relatório do mês do cliente"). Nada se constrói antes disso.
 
 ## Pendências da Moni (fora do código)
 

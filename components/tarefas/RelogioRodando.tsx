@@ -40,8 +40,8 @@ export function RelogioRodando() {
   if (!rodando) return null;
   const naPropriaTela = caminho === "/tarefas";
   return (
-    <div className="nao-imprimir fixed right-4 bottom-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-botao bg-marca py-1.5 pr-1.5 pl-4 text-sobre-marca shadow-forte">
-      <Timer size={15} className="shrink-0 animate-pulse" aria-hidden />
+    <div className="nao-imprimir fixed right-4 bottom-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-2 vidro rounded-botao border bg-superficie py-1.5 pr-1.5 pl-4 text-texto shadow-forte">
+      <Timer size={15} className="shrink-0 animate-pulse text-marca-forte" aria-hidden />
       <Link
         href={rodando.t ? `/tarefas?tarefa=${rodando.t.id}` : "/tarefas"}
         className="min-w-0 truncate text-xs font-semibold hover:underline"
@@ -54,7 +54,7 @@ export function RelogioRodando() {
         type="button"
         aria-label="Pausar"
         title="Pausar"
-        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sobre-marca/20 hover:bg-sobre-marca/30"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-marca-cheio text-sobre-marca hover:bg-marca-cheio-hover"
         onClick={async () => {
           await repo.salvarMedicao(pausarMedicao(rodando.m, new Date()));
           avisarRelogio();

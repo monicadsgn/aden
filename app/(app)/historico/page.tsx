@@ -3,7 +3,7 @@
 import { FilePlus2, History, PencilLine, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CabecalhoPagina } from "@/components/Shell";
-import { Badge, Card, Vazio, type Tom } from "@/components/ui";
+import { Badge, CampoTexto, Card, Selecao, Vazio, type Tom } from "@/components/ui";
 import type { RegistroAuditoria } from "@/lib/dados/repositorio";
 import { useDados } from "@/lib/dados/contexto";
 import { formatarMoeda } from "@/lib/formato";
@@ -33,8 +33,8 @@ const CAMPOS: Record<string, string> = {
   impostoPct: "imposto (%)",
   taxa_recebimento_pct: "taxa de recebimento (%)",
   taxaRecebimentoPct: "taxa de recebimento (%)",
-  regra_rateio: "regra de rateio",
-  regraRateio: "regra de rateio",
+  regra_rateio: "regra da divisão dos custos fixos",
+  regraRateio: "regra da divisão dos custos fixos",
   percentual_padrao: "% padrão",
   percentualPadrao: "% padrão",
   piso_hora_centavos: "piso por hora",
@@ -49,7 +49,7 @@ const CAMPOS: Record<string, string> = {
   divisaoPadrao: "divisão padrão",
   ativo: "ativo",
   interno: "interno",
-  participa_rateio: "entra no rateio",
+  participa_rateio: "entra na divisão dos custos fixos",
   participaRateio: "entra no rateio",
   servico_id: "serviço",
   servicoId: "serviço",
@@ -95,6 +95,9 @@ export default function Historico() {
   const { repo } = useDados();
   const [registros, setRegistros] = useState<RegistroAuditoria[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  // D4 (01/10/2026): busca por quem, onde ou nome, e filtro por assunto
+  const [busca, setBusca] = useState("");
+  const [assunto, setAssunto] = useState<string | null>(null);
 
   useEffect(() => {
     repo
@@ -115,9 +118,30 @@ export default function Historico() {
         {erro && <p className="rounded-card bg-erro-suave px-4 py-3 text-sm text-erro">{erro}</p>}
         {registros && registros.length === 0 && <Vazio icone={History} titulo="Nada registrado ainda">As alterações aparecem aqui assim que forem salvas.</Vazio>}
         {registros && registros.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-3">
+            <CampoTexto className="min-w-0 flex-1 basis-56" rotulo="Buscar" placeholder="Quem mudou, nome do item…" valor={busca} aoMudar={setBusca} />
+            <Selecao
+              className="w-full sm:w-56"
+              rotulo="Assunto"
+              valor={assunto}
+              vazio="Todos"
+              opcoes={[...new Set(registros.map((r) => r.tabela))].map((t) => ({ valor: t, rotulo: TABELAS[t] ?? t }))}
+              aoMudar={setAssunto}
+            />
+          </div>
+        )}
+        {registros && registros.length > 0 && (
           <Card>
             <ol className="relative flex flex-col px-5 py-4">
-              {registros.map((r) => {
+              {registros
+                .filter((r) => !assunto || r.tabela === assunto)
+                .filter((r) => {
+                  const b = busca.trim().toLowerCase();
+                  if (!b) return true;
+                  const nome = String(r.depois?.nome ?? r.antes?.nome ?? "");
+                  return `${r.autor} ${nome} ${TABELAS[r.tabela] ?? r.tabela}`.toLowerCase().includes(b);
+                })
+                .map((r) => {
                 const a = ACOES[r.acao];
                 const Ic = a.icone;
                 const nome = (r.depois?.nome ?? r.antes?.nome) as string | undefined;
