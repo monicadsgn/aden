@@ -292,3 +292,26 @@ Segunda rodada (01/10/2026, mesmo branch):
 | D10, D11 | aceitos por enquanto (só os dois sócios); rever quando entrar equipe ou freelancer |
 | M4 (imposto) | fica obrigatório (Moni, 01/10/2026) |
 | Prazo mínimo de pedido | regra nova feita: 2 dias úteis (Configurações → Limites), sem prazo entra sozinho, menor só como urgência (selo); tela, conector, skill e banco (migration 0037) |
+
+### Encerramento (01/10/2026)
+
+Em produção pelo PR #6 (deploy da Vercel pronto, sem erro de execução nas últimas 24 h). O conector de produção
+já responde com as ferramentas novas (versão 2026-10-01, prazo mínimo de pedido = 2 dias úteis). Migrations 0034 a
+0037 aplicadas.
+
+**Feito:** G1–G10, M1–M18 (M13 só o aviso pelo WhatsApp), D1–D9 (D10 e D11 aceitos como estão), vidro nas camadas
+por cima, projetos de marca (opção A, prazos em dias úteis), "PDF de apresentação" por entrega, imposto obrigatório,
+prazo mínimo de pedido ao outro sócio (tela, conector, skill e banco).
+
+**Pendente:**
+
+| O quê | De quem |
+|---|---|
+| Horas totais do projeto do Logo e da Estrutura visual (hoje vazia e 0); sem elas a proposta não calcula esses projetos | Moni |
+| Contatos da Olinda Máquinas e da StadiumPlay na ficha (pessoa, telefone, e-mail, Instagram); sem telefone, o "Avisar no WhatsApp" não abre a conversa | Moni |
+| Atualizar o conector Aden no claude.ai (tem tarefa) | Áleff |
+| Data de início do contrato da Olinda e da StadiumPlay; meta da garantia da StadiumPlay (tarefas sem pressa, sem prazo) | Áleff |
+| Sugerir os números de tráfego do relatório do mês (tarefa dele) | Áleff |
+| Relatório do mês para o cliente (M13, parte 2): construir depois que os números estiverem definidos; preenchimento à mão | Claude, quando a Moni pedir |
+| Rever D10 e D11 quando entrar equipe ou freelancer | Claude, quando entrar alguém |
+| Plano guardado (tarefa do mês, etapas, paradas, extras) | segue guardado em `docs/ROADMAP.md` |
