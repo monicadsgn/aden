@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CalendarHeart,
   FileQuestion,
   FileSignature,
   Handshake,
@@ -36,7 +35,6 @@ import { OQueQuerDizer } from "@/components/Alertas";
 import { SecaoBriefing } from "@/components/configuracoes/SecaoBriefing";
 import { SecaoContrato } from "@/components/configuracoes/SecaoContrato";
 import { SecaoOnboarding } from "@/components/configuracoes/SecaoOnboarding";
-import { SecaoDatas } from "@/components/configuracoes/SecaoDatas";
 import { SecaoEquipe } from "@/components/configuracoes/SecaoEquipe";
 import { SecaoMetas, SecaoPacotes, SecaoTerceiros } from "@/components/configuracoes/SecoesNovas";
 import { CabecalhoPagina } from "@/components/Shell";
@@ -79,7 +77,6 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "custos", rotulo: "Custos fixos", icone: Building2, frase: "O que a empresa paga todo mês, tenha cliente ou não. É dividido entre os clientes." },
   { id: "terceiros", rotulo: "Terceiros", icone: Truck, frase: "Serviços terceirizados cobrados por saída (ex.: audiovisual). Custo só do cliente que recebe." },
   { id: "pacotes", rotulo: "Pacotes", icone: Package, frase: "Pacotes fechados para a negociação. O preço sai do cálculo, nunca digitado." },
-  { id: "datas", rotulo: "Datas comemorativas", icone: CalendarHeart, frase: "As datas que entram no planejamento de cada cliente, com a antecedência da campanha de cada um." },
   { id: "briefing", rotulo: "Briefing", icone: FileQuestion, frase: "As perguntas do briefing que o Áleff e a Moni respondem na ficha de cada cliente." },
   { id: "onboarding", rotulo: "Onboarding", icone: Handshake, frase: "O texto que o cliente recebe ao fechar: boas-vindas, como funciona cada serviço, próximos passos e contato." },
   { id: "contrato", rotulo: "Contrato", icone: FileSignature, frase: "O que é igual em todo contrato da Aden: dados da contratada, quem assina e o texto das obrigações e disposições." },
@@ -89,10 +86,24 @@ const SECOES: { id: SecaoConfig; rotulo: string; icone: LucideIcon; frase: strin
   { id: "limites", rotulo: "Limites e avisos", icone: SlidersHorizontal, frase: "Quando o sistema acende um alerta. Vazio = sem aviso." },
 ];
 
-const GRUPOS_SECOES: { titulo: string; ids: SecaoConfig[] }[] = [
-  { titulo: "A empresa", ids: ["socios", "equipe", "regras", "custos", "metas", "limites"] },
-  { titulo: "O que a Aden vende", ids: ["servicos", "tipos", "pacotes", "terceiros", "datas", "briefing", "onboarding", "contrato"] },
+// G5 da auditoria (01/10/2026): configurações do sistema × configurações comerciais, na ordem de preenchimento
+// (o número na aba). Metas e Limites são opcionais e ficam sem número. Datas comemorativas foram para o Calendário.
+const GRUPOS_SECOES: { titulo: string; frase: string; ids: SecaoConfig[]; ordem: SecaoConfig[] }[] = [
+  {
+    titulo: "Sistema",
+    frase: "Sócios, dinheiro da empresa e quem acessa.",
+    ids: ["socios", "custos", "regras", "equipe", "metas", "limites"],
+    ordem: ["socios", "custos", "regras", "equipe"],
+  },
+  {
+    titulo: "Comercial",
+    frase: "O que a Aden vende e os documentos do cliente.",
+    ids: ["servicos", "tipos", "terceiros", "pacotes", "contrato", "onboarding", "briefing"],
+    ordem: ["servicos", "tipos", "terceiros", "pacotes", "contrato", "onboarding", "briefing"],
+  },
 ];
+/** seções com campo protegido (cadeado): só nelas aparece a explicação da proteção */
+const COM_CADEADO: SecaoConfig[] = ["socios", "servicos", "tipos", "regras"];
 
 function atualizar<T extends { id: string }>(lista: T[], id: string, patch: Partial<T>): T[] {
   return lista.map((x) => (x.id === id ? { ...x, ...patch } : x));
@@ -145,6 +156,11 @@ export default function Configuracoes() {
     // os dados do cliente moram só na ficha (grave 5 da auditoria): o endereço antigo leva para lá
     if (secaoUrl === "clientes") {
       router.replace("/clientes");
+      return;
+    }
+    // datas comemorativas moram no Calendário (G5)
+    if ((secaoUrl as string) === "datas") {
+      router.replace("/calendario?aba=datas");
       return;
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- a seção vem da URL (botões dos avisos)
@@ -286,26 +302,26 @@ export default function Configuracoes() {
       />
 
       <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex items-start gap-3 rounded-card border border-marca/30 bg-marca-tinta px-4 py-3 text-xs leading-relaxed">
-          <ShieldCheck size={18} className="mt-0.5 shrink-0 text-marca-forte" />
-          <p>
-            <strong>Proteção da remuneração dos sócios.</strong> {REGRAS_PROTECAO} Os campos com <Lock size={11} className="inline" /> são os protegidos.
-            {pendentes.length > 0 && (
-              <>
-                {" "}
-                <Link href="/aprovacoes" className="font-bold text-marca-forte underline">
-                  {pendentes.length} pedido(s) esperando aprovação.
-                </Link>
-              </>
-            )}
-          </p>
-        </div>
+        <p className="px-1 text-[12px] text-texto-suave">
+          Tudo aqui se configura uma vez e muda pouco: preencha na ordem dos números. O que mexe todo mês fica no dia a dia (datas comemorativas no
+          Calendário, atalhos do painel na ficha do cliente).
+          {pendentes.length > 0 && (
+            <>
+              {" "}
+              <Link href="/aprovacoes" className="font-bold text-marca-forte underline">
+                {pendentes.length} pedido(s) esperando aprovação.
+              </Link>
+            </>
+          )}
+        </p>
 
-        {/* abas em dois grupos (médio 12): a empresa e o que ela vende */}
+        {/* abas em dois grupos (G5): sistema e comercial, com o número da ordem de preenchimento */}
         <div className="flex flex-col gap-3 md:flex-row md:gap-6" role="tablist" aria-label="Seções das configurações">
           {GRUPOS_SECOES.map((g) => (
             <div key={g.titulo} className="flex min-w-0 flex-col gap-1.5">
-              <p className="px-1 text-[11px] font-bold tracking-wide text-texto-suave uppercase">{g.titulo}</p>
+              <p className="px-1 text-[11px] font-bold tracking-wide text-texto-suave uppercase">
+                Configurações {g.titulo === "Sistema" ? "do sistema" : "comerciais"} <span className="font-medium normal-case tracking-normal">· {g.frase}</span>
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {g.ids
                   .flatMap((id) => secoesVisiveis.filter((s) => s.id === id))
@@ -325,8 +341,15 @@ export default function Configuracoes() {
                           sel ? "border-marca bg-marca text-sobre-marca shadow-card" : "border-linha bg-superficie text-texto hover:border-marca/50",
                         )}
                       >
-                        <Ic size={14} />
+                        {g.ordem.includes(s.id) ? (
+                          <span className={cx("numero inline-flex size-4 items-center justify-center rounded-full text-[10px]", sel ? "bg-sobre-marca/25" : "bg-marca-suave text-marca-forte")} aria-label={`passo ${g.ordem.indexOf(s.id) + 1}`}>
+                            {g.ordem.indexOf(s.id) + 1}
+                          </span>
+                        ) : (
+                          <Ic size={14} />
+                        )}
                         {s.rotulo}
+                        {!g.ordem.includes(s.id) && <span className="text-[10px] font-medium opacity-70">opcional</span>}
                         {n > 0 && (
                           <span className={cx("rounded-botao px-1.5 py-px text-[9px] font-bold uppercase", sel ? "bg-sobre-marca/25" : "bg-aviso-suave text-aviso")} title={faltando[s.id].join(", ")}>
                             falta preencher
@@ -345,6 +368,14 @@ export default function Configuracoes() {
           <div className="px-5 pb-5">
             {faltando[secao].length > 0 && (
               <p className="mb-3 rounded-bloco bg-aviso-suave px-3 py-2 text-[12px] font-medium text-aviso">Falta preencher: {faltando[secao].join(", ")}.</p>
+            )}
+            {COM_CADEADO.includes(secao) && (
+              <details className="mb-3 rounded-bloco bg-marca-tinta px-3 py-2 text-[12px] leading-relaxed">
+                <summary className="flex min-h-8 cursor-pointer items-center gap-1.5 font-semibold text-marca-forte">
+                  <ShieldCheck size={14} /> Os campos com <Lock size={11} className="inline" /> protegem a remuneração dos sócios. Como funciona?
+                </summary>
+                <p className="mt-1">{REGRAS_PROTECAO}</p>
+              </details>
             )}
 
             {secao === "socios" && (
@@ -681,7 +712,6 @@ export default function Configuracoes() {
             {secao === "pacotes" && <SecaoPacotes rascunho={rascunho} set={set} />}
             {secao === "metas" && <SecaoMetas rascunho={rascunho} set={set} />}
             {secao === "equipe" && <SecaoEquipe />}
-            {secao === "datas" && <SecaoDatas clientes={rascunho.clientes} />}
             {secao === "briefing" && <SecaoBriefing servicos={rascunho.servicos} />}
             {secao === "onboarding" && <SecaoOnboarding servicos={rascunho.servicos} />}
             {secao === "contrato" && <SecaoContrato />}

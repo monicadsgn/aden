@@ -67,13 +67,14 @@ export interface PassoComecar {
 // Ordem de quem começa do zero: primeiro quem são os sócios, depois o que a Aden vende, depois as regras.
 // Limites e avisos ficam de fora (vazio = sem aviso, é escolha) e metas também (os sócios decidem quando).
 const ORDEM_COMECAR: { secao: SecaoConfig; rotulo: string }[] = [
+  // mesma ordem dos números das abas de Configurações (G5): primeiro o sistema, depois o comercial
   { secao: "socios", rotulo: "Sócios: % de cada um, piso e horas no mês" },
+  { secao: "custos", rotulo: "Custos fixos: quanto a empresa paga por mês" },
+  { secao: "regras", rotulo: "Regras da empresa: imposto, reinvestimento e divisão dos pagamentos" },
   { secao: "servicos", rotulo: "Serviços: quem executa cada um" },
   { secao: "tipos", rotulo: "Tipos de entrega: quanto tempo leva cada um" },
-  { secao: "custos", rotulo: "Custos fixos: quanto a empresa paga por mês" },
   { secao: "terceiros", rotulo: "Terceiros: valor por saída" },
   { secao: "pacotes", rotulo: "Pacotes: confirmar as quantidades" },
-  { secao: "regras", rotulo: "Regras da empresa: imposto, reinvestimento e divisão dos pagamentos" },
   { secao: "clientes", rotulo: "Clientes: valor e escopo de cada um" },
 ];
 

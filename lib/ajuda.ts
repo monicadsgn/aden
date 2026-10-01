@@ -34,6 +34,11 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
     titulo: "Calendário",
     texto: "As tarefas no tempo, do início ao prazo, junto com os seus compromissos do Google Agenda. Clique num dia para ver o que tem nele ou criar uma tarefa ali. Dá para ver só as suas tarefas, as de outro sócio ou de todo mundo.",
   },
+  "/calendario#datas": {
+    titulo: "Datas comemorativas",
+    texto:
+      "As datas que entram no planejamento de cada cliente. Ligue a data ao cliente e diga com quantos dias de antecedência a campanha começa; elas aparecem quando o Claude monta o planejamento do mês.",
+  },
   "/calculadora": {
     titulo: "Calculadora de projeto",
     texto:
@@ -110,7 +115,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/configuracoes": {
     titulo: "Configurações",
     texto:
-      "É a base de tudo: sócios, serviços, entregas, custos fixos, regras da empresa e clientes. Comece por aqui: sem esses números a proposta não tem o que calcular. As abas marcadas com \"falta preencher\" têm campo vazio; o histórico de alterações fica no botão do topo.",
+      "Em dois grupos: configurações do sistema (sócios, custos, regras, acessos) e configurações comerciais (serviços, entregas, terceiros, pacotes, contrato, onboarding, briefing). Preencha na ordem dos números: sem esses números a proposta não tem o que calcular. Tudo aqui se configura uma vez; o que mexe todo mês fica no dia a dia. As abas marcadas com \"falta preencher\" têm campo vazio; o histórico de alterações fica no botão do topo.",
     termos: ["piso", "capacidade", "rateio", "reinvestimento", "ordem-distribuicao"],
   },
   "/historico": {

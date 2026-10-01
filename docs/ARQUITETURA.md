@@ -38,6 +38,18 @@
 - **Lead ganho (G7):** arrastar para Ganho abre o lead pedindo o "Fechou! Virar cliente" (só ele cria o cliente);
   o botão some em lead perdido; proposta salva na Proposta aberta pelo lead já fica ligada a ele.
 
+- **Pedido de tarefa entre sócios (G4, migration 0035):** substitui o bot de WhatsApp. Tarefa criada (ou passada) para
+  outra pessoa grava quem pediu (`tarefas.pedida_por_id`, `pedida_por_nome`, preenchidos pelo banco via `quem_age`:
+  "Mônica (pelo Claude)") e manda um aviso ao sócio que recebeu (`avisos_socios`, aparece em Depende de mim). Sem
+  prazo, entra em "Sem prazo" na Visão do dia dele (`montarVisaoDoDia.emAndamento`), com o selo "pedida por". No
+  conector: `pedidaPor` em `listar_tarefas` e `ver_visao_do_dia.semPrazo`.
+- **Configurações em dois grupos (G5):** "Configurações do sistema" (1 Sócios, 2 Custos fixos, 3 Regras da empresa,
+  4 Equipe e acessos; Metas e Limites opcionais) e "Configurações comerciais" (1 Serviços, 2 Tipos de entrega,
+  3 Terceiros, 4 Pacotes, 5 Contrato, 6 Onboarding, 7 Briefing). O número na aba é a ordem de preenchimento (a mesma
+  do "Para começar", `ORDEM_COMECAR`). A explicação da proteção dos sócios só aparece, recolhida, nas abas com
+  cadeado. Datas comemorativas viraram a aba "Datas comemorativas" do Calendário (`/calendario?aba=datas`, só sócio;
+  `?secao=datas` redireciona). Calendário agora é tela com abas (`components/calendario/`).
+
 ## Stack
 
 Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + Tailwind v4 + Vercel.
