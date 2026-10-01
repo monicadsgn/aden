@@ -979,6 +979,14 @@ export default function Configuracoes() {
                   <Explica>A verba é paga pelo cliente direto na plataforma e nunca entra no faturamento. Abaixo do mínimo, a Proposta só avisa (sem pedido de exceção).</Explica>
                 </Bloco>
 
+                <Bloco titulo="Projeto avulso (sem mensalidade)">
+                  <CampoPct rotulo="Pago no início do projeto" valor={e.avulsoSinalPct ?? null} aoMudar={(v) => setE({ avulsoSinalPct: v })} />
+                  <Explica>
+                    Quanto do valor do projeto avulso o cliente paga para começar; o resto vem na entrega. Aparece na Proposta e no PDF. Ex.: 50% = metade no início e
+                    metade na entrega. Vazio = a proposta não mostra as parcelas.
+                  </Explica>
+                </Bloco>
+
                 <Bloco titulo="Leads">
                   <CampoNumero rotulo="Follow-ups do &quot;vou ver&quot; antes de sugerir perda" valor={e.followUpsMaximo ?? null} aoMudar={(v) => setE({ followUpsMaximo: v })} />
                   <Explica>Depois desse número de follow-ups sem resposta, a ficha do lead sugere marcar como perdido. Ex.: 3 follow-ups. Só sugere; vazio = nunca.</Explica>

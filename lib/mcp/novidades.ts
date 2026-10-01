@@ -2,9 +2,14 @@
 // muda de jeito, sobe a VERSAO e ganha uma linha em NOVIDADES. O quem_sou_eu devolve isso para o Claude avisar o sócio,
 // e a Visão do dia mostra um aviso aos dois sócios até cada um marcar que atualizou o conector no claude.ai.
 
-export const VERSAO_FERRAMENTAS = "2026-10-01";
+export const VERSAO_FERRAMENTAS = "2026-10-01.2";
 
 export const NOVIDADES: { versao: string; texto: string }[] = [
+  {
+    versao: "2026-10-01.2",
+    texto:
+      "Pacotes de projeto avulso (sem mensalidade): ver_pacotes e salvar_pacote com avulso, valor mínimo calculado, prazo em dias úteis e parcelas; ver_projetos_que_cabem diz qual projeto cabe no valor do cliente (calcular_cenario com avulso=true também); ganhar_lead de projeto avulso cria o cliente sem mensalidade e as tarefas do projeto.",
+  },
   {
     versao: "2026-10-01",
     texto:

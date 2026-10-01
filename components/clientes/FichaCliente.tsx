@@ -168,7 +168,11 @@ export function FichaCliente({
         subtitulo={
           <span className="flex flex-wrap items-center gap-2">
             {c.segmento && <span>{c.segmento}</span>}
-            {c.valorMensalCentavos != null && <span className="numero font-semibold text-texto">{formatarMoeda(c.valorMensalCentavos)}/mês</span>}
+            {c.projetoAvulso ? (
+              <span className="numero font-semibold text-texto">projeto avulso · {formatarMoeda(c.projetoAvulso.valorCentavos)}</span>
+            ) : (
+              c.valorMensalCentavos != null && <span className="numero font-semibold text-texto">{formatarMoeda(c.valorMensalCentavos)}/mês</span>
+            )}
             {situacaoMes && <Badge tom={SITUACAO_PAGAMENTO[situacaoMes].tom}>este mês: {SITUACAO_PAGAMENTO[situacaoMes].rotulo}</Badge>}
             {!c.ativo && <Badge>inativo</Badge>}
           </span>
@@ -191,6 +195,18 @@ export function FichaCliente({
           />
         </div>
         {msg && <p className="mb-3 rounded-bloco bg-info-suave px-3 py-2 text-xs text-info">{msg}</p>}
+        {c.projetoAvulso && (
+          <div className="mb-3 rounded-bloco bg-marca-tinta px-3 py-2 text-[13px]">
+            <p className="font-semibold">
+              Projeto avulso: {c.projetoAvulso.nome} · {formatarMoeda(c.projetoAvulso.valorCentavos)}
+              {c.projetoAvulso.prazoDiasUteis != null && ` · entrega em até ${c.projetoAvulso.prazoDiasUteis} dias úteis`}
+            </p>
+            <p className="text-[12px] text-texto-suave">
+              Sem mensalidade e fora da divisão dos custos fixos do mês. Fechado em {new Date(c.projetoAvulso.fechadoEm).toLocaleDateString("pt-BR")}
+              {c.projetoAvulso.sinalPct != null && `; ${c.projetoAvulso.sinalPct}% no início e o resto na entrega`}. Registre cada parte em Pagamentos quando cair.
+            </p>
+          </div>
+        )}
 
         {aba === "resumo" && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -420,7 +436,7 @@ export function FichaCliente({
               ) : (
                 <p className="text-xs text-texto-suave">Sem entregas do contrato guardadas: as horas deste cliente não entram na tela Mês.</p>
               )}
-              {(config.pacotes ?? []).some((p) => p.ativo) && (
+              {(config.pacotes ?? []).some((p) => p.ativo && !p.avulso) && (
                 <div className="mt-3 flex items-center gap-2">
                   <Package size={14} className="text-texto-suave" />
                   <Selecao
@@ -428,7 +444,7 @@ export function FichaCliente({
                     ariaLabel="Usar um pacote como entregas do contrato"
                     valor={null}
                     vazio="Usar as entregas de um pacote…"
-                    opcoes={(config.pacotes ?? []).filter((p) => p.ativo).map((p) => ({ valor: p.id, rotulo: p.nome }))}
+                    opcoes={(config.pacotes ?? []).filter((p) => p.ativo && !p.avulso).map((p) => ({ valor: p.id, rotulo: p.nome }))}
                     aoMudar={(v) => void escopoDoPacote(v)}
                   />
                 </div>

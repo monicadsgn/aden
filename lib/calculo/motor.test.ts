@@ -197,7 +197,7 @@ describe("pontuais, horizonte e encaixe", () => {
     expect(r.custoPontualDiluidoCentavos).toBe(10000);
   });
 
-  it("pontual fora da mensalidade tem cálculo próprio, sem rateio", () => {
+  it("pontual fora da mensalidade tem cálculo próprio e paga a parte dele dos custos fixos (01/10/2026)", () => {
     const c = cenario();
     c.pontuais = [
       {
@@ -213,7 +213,7 @@ describe("pontuais, horizonte e encaixe", () => {
     const r = calcularCenario(config(), c);
     expect(r.pontuaisFora).toHaveLength(1);
     expect(r.pontuaisFora[0].horasTotais).toBe(20);
-    expect(r.pontuaisFora[0].minimo.resultado!.rateio.quotaCentavos).toBe(0);
+    expect(r.pontuaisFora[0].minimo.resultado!.rateio.quotaCentavos).toBeGreaterThan(0);
     expect(r.mes!.horasTotais).toBe(30); // não entra no mês
   });
 

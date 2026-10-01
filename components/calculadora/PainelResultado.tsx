@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { ajustarQuantidade } from "@/lib/calculo/motor";
+import { projetosQueCabem } from "@/lib/calculo/pacotes";
 import type {
   Cenario,
   Configuracao,
@@ -554,7 +555,7 @@ export function PainelResultado({
         detalhes={<DetalhesDestaque modo="escopo" />}
         grande={grande}
         icone={Scale}
-        rotulo="Valor mínimo mensal · rotina"
+        rotulo={cenario.avulso ? "Valor mínimo do projeto · uma vez" : "Valor mínimo mensal · rotina"}
         valor={r.minimo.possivel ? formatarMoeda(r.minimo.mensalidadeMinimaCentavos) : "—"}
         sub={
           r.minimo.possivel ? (
@@ -579,7 +580,7 @@ export function PainelResultado({
         detalhes={<DetalhesDestaque modo="valor" />}
         grande={grande}
         icone={PiggyBank}
-        rotulo="Sobra do mês da rotina"
+        rotulo={cenario.avulso ? "Sobra do projeto" : "Sobra do mês da rotina"}
         valor={m ? formatarMoeda(m.sobraCentavos) : "—"}
         sub={
           r.minimo.possivel && dif != null ? (
@@ -644,6 +645,8 @@ export function PainelResultado({
 
           {r.entrada && <BlocoEntrada e={r.entrada} mesesDesejados={cenario.entrada?.mesesParaPagar ?? null} />}
 
+
+          {cenario.avulso && cenario.modo === "valor" && <ProjetosQueCabem config={config} valorCentavos={cenario.mensalidadeCentavos} />}
 
           {r.encaixe && (
             <Card>
@@ -825,5 +828,43 @@ export function PainelResultado({
         </Card>
       ))}
     </div>
+  );
+}
+
+/** Modo valor, paga uma vez: os pacotes de projeto avulso e se cabem no que o cliente pode pagar. */
+function ProjetosQueCabem({ config, valorCentavos }: { config: Configuracao; valorCentavos: number | null }) {
+  const lista = projetosQueCabem(config, valorCentavos);
+  if (!lista.length) return null;
+  return (
+    <Card>
+      <TituloCard
+        icone={Gem}
+        titulo="Projetos que cabem neste valor"
+        descricao="Os pacotes de projeto avulso, do mais barato ao mais caro. O valor de cada um é o mínimo calculado (piso de cada sócio pela regra da sociedade e a parte dos custos fixos)."
+      />
+      <ul className="flex flex-col gap-2 px-5 pb-5">
+        {lista.map((p) => (
+          <li key={p.pacoteId} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-bloco bg-superficie-2/60 px-3 py-2">
+            <span className="min-w-0 flex-1 text-sm font-semibold">
+              {p.nome}
+              {p.prazoDiasUteis != null && <span className="ml-1.5 text-[12px] font-medium text-texto-suave">· {p.prazoDiasUteis} dias úteis</span>}
+            </span>
+            <span className="numero text-sm font-bold">{p.precoCentavos != null ? formatarMoeda(p.precoCentavos) : "—"}</span>
+            {p.cabe != null && (
+              <Badge tom={p.cabe ? "ok" : "erro"} icone={p.cabe ? CheckCircle2 : AlertOctagon}>
+                {p.cabe ? "cabe" : "não cabe"}
+              </Badge>
+            )}
+            {p.cabe && p.folgaCentavos != null && (
+              <span className="basis-full text-[12px] text-texto-suave">
+                Sobram {formatarMoeda(p.folgaCentavos)} acima do mínimo
+                {p.porHora.length > 0 && ` · ${p.porHora.map((x) => `${x.nome}: ${x.valorHoraCentavos != null ? formatarMoeda(x.valorHoraCentavos) : "—"}/h`).join(" · ")}`}
+              </span>
+            )}
+            {p.cabe === false && p.folgaCentavos != null && <span className="basis-full text-[12px] text-texto-suave">Faltam {formatarMoeda(-p.folgaCentavos)} para o mínimo.</span>}
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }

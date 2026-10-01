@@ -5,10 +5,10 @@
 
 import { ArrowDown, ArrowUp, Package, Plus, Star, Trash2, Trophy, Truck } from "lucide-react";
 import type { ReactNode } from "react";
-import { Badge, Botao, CampoMoeda, CampoNumero, CampoPct, CampoTexto, Interruptor, Selecao, Vazio, cx } from "../ui";
+import { Badge, Botao, CampoMoeda, CampoNumero, CampoPct, CampoTexto, Interruptor, Segmentado, Selecao, Vazio, cx } from "../ui";
 import { CRITERIOS, unidadeDoCriterio } from "@/lib/calculo/metas";
 import { novoId } from "@/lib/calculo/novo";
-import { precoDoPacote } from "@/lib/calculo/pacotes";
+import { parcelasDoProjeto, prazoDoProjeto, precoDoPacote, textoParcelas } from "@/lib/calculo/pacotes";
 import type { Configuracao, ItemPacote, Meta, Pacote, Terceiro } from "@/lib/calculo/tipos";
 import { formatarDuracao, formatarMoeda } from "@/lib/formato";
 
@@ -128,6 +128,28 @@ function ItensDoPacote({
 
 function PrecoCalculado({ config, pacote }: { config: Configuracao; pacote: Pacote }) {
   const p = precoDoPacote(config, pacote);
+  if (pacote.avulso) {
+    const prazo = prazoDoProjeto(config, pacote.rotina);
+    const parc = parcelasDoProjeto(config, p.mensalCentavos);
+    return (
+      <div className="grid gap-2 rounded-bloco bg-marca-tinta p-3 sm:grid-cols-2">
+        <div>
+          <p className="text-[11px] font-semibold text-texto-suave">Valor mínimo do projeto (calculado)</p>
+          <p className="numero text-xl font-extrabold">{p.mensalCentavos != null ? formatarMoeda(p.mensalCentavos) : "—"}</p>
+          <p className="text-[12px] text-texto-suave">{p.resultado.mes ? `${formatarDuracao(p.resultado.mes.horasTotais)} de trabalho, uma vez só` : (p.motivo ?? "")}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold text-texto-suave">Prazo e pagamento</p>
+          <p className="numero text-xl font-extrabold">{prazo != null ? `${prazo} dias úteis` : "—"}</p>
+          <p className="text-[12px] text-texto-suave">{parc ? textoParcelas(parc) : "Sem o % pago no início (Configurações → Regras), a proposta não mostra as parcelas."}</p>
+        </div>
+        <p className="text-[12px] text-texto-suave sm:col-span-2">
+          Ninguém digita preço: sai das horas do projeto e dos extras, do piso de cada sócio pela regra da sociedade e da parte do projeto nos custos fixos. Mudou a
+          regra ou o piso, o preço muda junto. O prazo vem do tipo de entrega marcado como projeto.
+        </p>
+      </div>
+    );
+  }
   const horas = p.resultado.mes?.horasTotais;
   const horasEntrada = p.resultado.entrada?.horasTotais;
   return (
@@ -200,29 +222,50 @@ export function SecaoPacotes({ rascunho, set }: Props) {
             </div>
             <p className="text-[12px] text-texto-suave">A frase de cada terceiro usado (ex.: gravação e edição) entra sozinha.</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <Segmentado
+            rotulo="Como o cliente paga"
+            valor={p.avulso ? "avulso" : "mensal"}
+            aoMudar={(v) => setLista(atualizar(lista, p.id, v === "avulso" ? { avulso: true, entrada: [], padrao: false } : { avulso: false }))}
+            opcoes={[
+              { valor: "mensal", rotulo: "Mensal" },
+              { valor: "avulso", rotulo: "Projeto avulso (uma vez)" },
+            ]}
+          />
+          {p.avulso ? (
             <ItensDoPacote
-              titulo="Manutenção mensal"
-              explica="O que acontece todo mês."
+              titulo="Projeto e extras"
+              explica="Uma vez só, sem mensalidade. O projeto (ex.: Logo essencial) e, se quiser, extras (ex.: PDF de apresentação), cada um pelas horas dele."
               itens={p.rotina}
               config={rascunho}
               aoMudar={(rotina) => setLista(atualizar(lista, p.id, { rotina }))}
             />
-            <ItensDoPacote
-              titulo="Primeiro mês (entrada)"
-              explica="Uma vez só: onboarding, enxoval do perfil, estrutura visual. Vazio = a confirmar."
-              itens={p.entrada}
-              config={rascunho}
-              aoMudar={(entrada) => setLista(atualizar(lista, p.id, { entrada }))}
-            />
-          </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <ItensDoPacote
+                titulo="Manutenção mensal"
+                explica="O que acontece todo mês."
+                itens={p.rotina}
+                config={rascunho}
+                aoMudar={(rotina) => setLista(atualizar(lista, p.id, { rotina }))}
+              />
+              <ItensDoPacote
+                titulo="Primeiro mês (entrada)"
+                explica="Uma vez só: onboarding, enxoval do perfil, estrutura visual. Vazio = a confirmar."
+                itens={p.entrada}
+                config={rascunho}
+                aoMudar={(entrada) => setLista(atualizar(lista, p.id, { entrada }))}
+              />
+            </div>
+          )}
           <PrecoCalculado config={rascunho} pacote={p} />
           <div className="flex flex-wrap gap-4">
-            <Interruptor
-              ligado={p.padrao}
-              rotulo="Pacote padrão (a tela Mês conta quantos deste ainda cabem)"
-              aoMudar={(v) => setLista(lista.map((x) => (x.id === p.id ? { ...x, padrao: v } : v ? { ...x, padrao: false } : x)))}
-            />
+            {!p.avulso && (
+              <Interruptor
+                ligado={p.padrao}
+                rotulo="Pacote padrão (a tela Mês conta quantos deste ainda cabem)"
+                aoMudar={(v) => setLista(lista.map((x) => (x.id === p.id ? { ...x, padrao: v } : v ? { ...x, padrao: false } : x)))}
+              />
+            )}
             <Interruptor ligado={p.ativo} rotulo="Aparece na Proposta" aoMudar={(v) => setLista(atualizar(lista, p.id, { ativo: v }))} />
           </div>
         </div>

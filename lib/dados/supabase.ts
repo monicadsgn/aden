@@ -256,6 +256,7 @@ export class RepositorioSupabase implements Repositorio {
         ofertaVerbaMaxCentavos: num(e?.oferta_verba_max_centavos),
         ofertaGestaoAposResultadoCentavos: num(e?.oferta_gestao_apos_resultado_centavos),
         ofertaMinimoSocialTrafegoCentavos: num(e?.oferta_minimo_social_trafego_centavos),
+        avulsoSinalPct: num(e?.avulso_sinal_pct),
       },
       pessoas: ((pes.data ?? []) as Linha[]).map((p) => ({
         id: p.id as string,
@@ -319,6 +320,7 @@ export class RepositorioSupabase implements Repositorio {
           clienteDesde: (c.cliente_desde as string) ?? null,
           painelToken: (c.painel_token as string) ?? null,
           fechamentoIniciadoEm: (c.fechamento_iniciado_em as string) ?? null,
+          projetoAvulso: (c.projeto_avulso as ClienteBase["projetoAvulso"]) ?? null,
           atalhos: {
             planejamentoUrl: (c.painel_planejamento_url as string) ?? null,
             planejamentoRotulo: (c.painel_planejamento_rotulo as string) ?? null,
@@ -362,6 +364,7 @@ export class RepositorioSupabase implements Repositorio {
         itensCliente: Array.isArray(p.itens_cliente) ? (p.itens_cliente as string[]) : [],
         rotina: Array.isArray(p.rotina) ? (p.rotina as Pacote["rotina"]) : [],
         entrada: Array.isArray(p.entrada) ? (p.entrada as Pacote["entrada"]) : [],
+        avulso: (p.avulso as boolean) ?? false,
         padrao: (p.padrao as boolean) ?? false,
         ativo: p.ativo as boolean,
       })),
@@ -444,6 +447,7 @@ export class RepositorioSupabase implements Repositorio {
         oferta_verba_max_centavos: a.empresa.ofertaVerbaMaxCentavos ?? null,
         oferta_gestao_apos_resultado_centavos: a.empresa.ofertaGestaoAposResultadoCentavos ?? null,
         oferta_minimo_social_trafego_centavos: a.empresa.ofertaMinimoSocialTrafegoCentavos ?? null,
+        avulso_sinal_pct: a.empresa.avulsoSinalPct ?? null,
       });
       erro(error);
     }
@@ -555,6 +559,7 @@ export class RepositorioSupabase implements Repositorio {
         painel_identidade_url: c.atalhos?.identidadeUrl?.trim() || null,
         painel_incluso: c.atalhos?.inclusoTexto?.trim() || null,
         fechamento_iniciado_em: c.fechamentoIniciadoEm ?? null,
+        projeto_avulso: c.projetoAvulso ?? null,
       })),
     );
     // valor mensal e condições moram no contrato ativo do cliente
@@ -604,8 +609,9 @@ export class RepositorioSupabase implements Repositorio {
         descricao: p.descricao || null,
         itens_cliente: p.itensCliente,
         rotina: p.rotina,
-        entrada: p.entrada,
-        padrao: p.padrao,
+        entrada: p.avulso ? [] : p.entrada,
+        avulso: !!p.avulso,
+        padrao: p.avulso ? false : p.padrao,
         ativo: p.ativo,
         ordem: i,
       })),

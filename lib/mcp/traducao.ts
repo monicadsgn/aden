@@ -71,7 +71,8 @@ export const zCenarioConversa = z.object({
   nome: z.string(),
   modo: z.enum(["escopo", "valor"]).describe("escopo = calcula o valor mínimo; valor = mostra o que cabe na mensalidade informada"),
   cliente: z.string().nullable().optional().describe("Cliente ativo (nome ou id) que este cenário substitui no rateio. Vazio = cliente novo."),
-  mensalidadeReais: z.number().nullable().optional().describe("Modo valor: mensalidade que o cliente vai pagar"),
+  mensalidadeReais: z.number().nullable().optional().describe("Modo valor: mensalidade que o cliente vai pagar (no projeto avulso, o valor do projeto)"),
+  avulso: z.boolean().optional().describe("true = projeto avulso pago uma vez (sem mensalidade): as entregas são o projeto e os extras"),
   entregas: z.array(zEntrega).optional().describe("Rotina mensal"),
   custos: z.array(zCusto).optional().describe("Custos da rotina mensal"),
   trafego: z
@@ -160,6 +161,7 @@ export function cenarioParaInterno(c: CenarioConversa, config: Configuracao, id?
     modo: c.modo,
     clienteId: c.cliente ? resolver(config.clientes, c.cliente, "Cliente").id : null,
     mensalidadeCentavos: paraCentavos(c.mensalidadeReais),
+    avulso: !!c.avulso,
     entregas: entregasParaInterno(c.entregas, config),
     custos: custosParaInterno(c.custos, config),
     trafego: {
@@ -239,6 +241,7 @@ export function cenarioParaConversa(c: Cenario, config: Configuracao): CenarioCo
     modo: c.modo,
     cliente: nomeDe(config.clientes, c.clienteId),
     mensalidadeReais: paraReais(c.mensalidadeCentavos),
+    ...(c.avulso && { avulso: true }),
     entregas: entregasParaConversa(c.entregas, config),
     custos: custosParaConversa(c.custos, config),
     trafego: {
@@ -312,6 +315,7 @@ export function configParaConversa(c: Configuracao) {
       ociosidadePct: e.ociosidadePct ?? null,
       arredondamentoPropostaReais: paraReais(e.arredondamentoPropostaCentavos),
       followUpsMaximo: e.followUpsMaximo ?? null,
+      pagoNoInicioDoProjetoAvulsoPct: e.avulsoSinalPct ?? null,
       prazoMinimoPedidoDiasUteis: e.prazoMinimoPedidoDiasUteis ?? null,
       sociedade: {
         socioDoPercentual: nomeDe(c.pessoas, e.socioPercentualId ?? null) ?? null,

@@ -19,8 +19,12 @@ O preço sai do cálculo do Aden, nunca da sua cabeça. Esta skill conduz a conv
 - Horas saem do **tempo cadastrado** de cada tipo de entrega. O cronômetro é opcional, nunca liga sozinho e o
   sistema não pede medições: só se usa quando ninguém sabe quanto uma entrega leva.
 - **Projetos de marca** (logo, identidade visual, branding, estrutura visual) não se medem em minutos: o tipo de
-  entrega é um projeto, com horas totais estimadas e prazo em dias (que vai para o contrato). O preço sai do cálculo.
-  Se faltar a hora ou o prazo, pergunte aos sócios; nunca invente.
+  entrega é um projeto, com horas totais estimadas e prazo em dias úteis (que vai para o contrato). O preço sai do
+  cálculo. Se faltar a hora ou o prazo, pergunte aos sócios; nunca invente.
+- **Projeto avulso** (sem mensalidade, pago uma vez): os pacotes avulsos de `ver_pacotes` (`avulso: true`) são a
+  escada de branding, do menor ao maior (hoje: Logo essencial, Identidade visual simples, Identidade visual completa).
+  Cada um traz o valor mínimo calculado, o prazo em dias úteis e o pagamento (parte no início, o resto na entrega).
+  Extras (ex.: PDF de apresentação) entram pelas horas deles. Nunca diga "IV": use os nomes por extenso.
 - Abaixo do piso de um sócio: não esconda. Mostre o que dá para fazer (pacote que cabe) ou diga que vira pedido de
   exceção, que o sócio afetado aprova no site.
 
@@ -33,20 +37,23 @@ O preço sai do cálculo do Aden, nunca da sua cabeça. Esta skill conduz a conv
 2. **Sondagem:** falta saber o que o cliente quer (social media, tráfego, os dois), o segmento, se o comercial dele
    está estruturado e quanto pode investir? Monte **uma** mensagem curta de WhatsApp pedindo só o que falta.
 3. **Pacote:** `ver_pacotes` mostra os pacotes com as frases que o cliente lê e os preços calculados.
-   Escolha o que combina com o pedido e explique por quê, em linguagem simples.
+   Escolha o que combina com o pedido e explique por quê, em linguagem simples. Cliente que quer só a marca (logo,
+   identidade), sem gestão mensal: ofereça um pacote de projeto avulso.
 4. **Conferir:**
    - Escopo personalizado: `calcular_cenario` (modo escopo dá o valor mínimo; modo valor mostra se fica no piso e
      cabe nas horas).
-   - "O cliente só tem R$ X": `montar_pacote_que_cabe` com o valor dito.
+   - "O cliente só tem R$ X": `montar_pacote_que_cabe` com o valor dito (mensal). Para projeto pago uma vez,
+     `ver_projetos_que_cabem` com o valor: diz qual projeto da escada cabe, quanto sobra ou falta.
    - Cabe mais um cliente no mês? `ver_visao_do_mes`.
 5. **Guardar:** `salvar_simulacao` com até 3 cenários (aparecem no site em Calculadora → Abrir simulação salva) e
    `mover_lead` para "proposta_enviada" quando a pessoa confirmar que mandou.
 6. **PDF:** a proposta em PDF sai no site (Proposta → Exportar PDF). Você não gera o PDF.
-7. **Mensagem de envio:** texto curto de WhatsApp, no tom da Aden, com o que está incluso, o valor mensal e o
-   próximo passo. Sem horas nem termos internos.
+7. **Mensagem de envio:** texto curto de WhatsApp, no tom da Aden, com o que está incluso, o valor mensal (ou, no
+   projeto avulso, o valor único, o prazo em dias úteis e como paga) e o próximo passo. Sem horas nem termos internos.
 
 ## Quando o cliente responder
 
 - "Vou pensar": `registrar_conversa_lead` com o follow-up e a data.
-- Fechou: siga a skill **aden-fechamento**.
+- Fechou: siga a skill **aden-fechamento**. Projeto avulso: `ganhar_lead` cria o cliente sem mensalidade e as
+  tarefas do projeto; o contrato de valor único ainda não está pronto no Aden, avise quem está conversando.
 - Perdido: `mover_lead` para "perdido" com o motivo numa conversa registrada.

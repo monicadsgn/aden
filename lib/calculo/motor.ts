@@ -1277,15 +1277,16 @@ export function calcularEntrada(
 
 /**
  * Projeção anual de faturamento: (valor mensal dos outros clientes ativos + a receita
- * deste cenário) × 12, contra o teto configurado. Sem teto configurado → null.
+ * deste cenário) × 12, contra o teto configurado. Projeto avulso entra uma vez só
+ * (outros × 12 + o projeto). Sem teto configurado → null.
  */
-export function calcularTeto(config: Configuracao, clienteId: Id | null, receitaMensal: number | null): ProjecaoTeto | null {
+export function calcularTeto(config: Configuracao, clienteId: Id | null, receitaMensal: number | null, unicaVez = false): ProjecaoTeto | null {
   const teto = config.empresa.tetoFaturamentoAnualCentavos;
   if (!positivo(teto)) return null;
   const outros = config.clientes
     .filter((c) => c.ativo && !c.interno && c.id !== clienteId)
     .reduce((a, c) => a + v0(c.valorMensalCentavos), 0);
-  const anual = (outros + v0(receitaMensal)) * 12;
+  const anual = unicaVez ? outros * 12 + v0(receitaMensal) : (outros + v0(receitaMensal)) * 12;
   const pct = (anual / teto) * 100;
   const aviso = config.empresa.avisoTetoPct;
   const nivel = pct > 100 + EPS ? "estourou" : aviso != null && pct >= aviso ? "perto" : "ok";
@@ -1326,7 +1327,8 @@ function calcularPontuaisFora(config: Configuracao, cenario: Cenario): Resultado
         pontuais: [],
         clienteId: null,
       };
-      const prep = prepararMes(config, pseudo, { semRateio: true, semCapacidade: true, ignorarPontuais: true });
+      // projeto à parte paga a parte dele dos custos fixos pela regra da divisão (Moni, 01/10/2026), igual ao projeto avulso
+      const prep = prepararMes(config, pseudo, { semCapacidade: true, ignorarPontuais: true });
       const minimo = calcularMinimo(prep);
       const resultado =
         cenario.modo === "valor" && p.valorCobradoCentavos != null ? calcularComReceita(prep, p.valorCobradoCentavos) : null;
@@ -1387,7 +1389,7 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
       mes = null;
       alertas.push(...prep.alertas, {
         nivel: "info",
-        texto: "Informe o valor mensal que o cliente vai pagar.",
+        texto: cenario.avulso ? "Informe quanto o cliente vai pagar pelo projeto." : "Informe o valor mensal que o cliente vai pagar.",
         explica: "Neste modo você diz quanto o cliente paga e o sistema mostra se vale a pena. Digite o valor para ver o resultado.",
         acao: { rotulo: "Informar o valor", destino: { tipo: "cenario", bloco: "modo" } },
       });
@@ -1428,7 +1430,7 @@ export function calcularCenario(config: Configuracao, cenario: Cenario): Resulta
     if (pf.resultado) for (const a of pf.resultado.alertas) if (a.nivel === "erro") alertas.push({ ...a, texto: `${pf.nome}: ${a.texto}` });
   }
 
-  const teto = calcularTeto(config, cenario.clienteId, mes ? mes.receitaBrutaCentavos : null);
+  const teto = calcularTeto(config, cenario.clienteId, mes ? mes.receitaBrutaCentavos : null, !!cenario.avulso);
   if (teto?.nivel === "estourou")
     alertas.push({
       nivel: "erro",

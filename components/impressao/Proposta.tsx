@@ -9,8 +9,13 @@ export function PropostaDoc({ doc }: { doc: DocumentoProposta }) {
   return (
     <>
       <Capa tipo="Proposta" titulo={doc.cliente} sub={`Referência: ${doc.mesReferencia}`} />
-      <NumeroGrande rotulo="Investimento mensal" valor={formatarMoeda(doc.valorMensalCentavos)} destaque />
+      <NumeroGrande rotulo={doc.projeto ? "Investimento do projeto" : "Investimento mensal"} valor={formatarMoeda(doc.valorMensalCentavos)} destaque />
       <p className="-mt-4 text-sm leading-relaxed text-texto-suave">{doc.observacao}</p>
+      {doc.projeto?.parcelas && (
+        <BlocoDoc titulo="Pagamento">
+          <p className="text-sm leading-relaxed">{doc.projeto.parcelas}</p>
+        </BlocoDoc>
+      )}
       {doc.garantia.length > 0 && (
         <BlocoDoc titulo="Garantia">
           {doc.garantia.map((f) => (
@@ -23,7 +28,7 @@ export function PropostaDoc({ doc }: { doc: DocumentoProposta }) {
       {doc.blocos.map((b) => (
         <BlocoDoc key={b.servico} titulo={b.servico}>
           {b.itens.map((i) => (
-            <LinhaDoc key={i.nome} rotulo={i.nome} valor={`${i.quantidade} por mês`} />
+            <LinhaDoc key={i.nome} rotulo={i.nome} valor={doc.projeto ? i.quantidade : `${i.quantidade} por mês`} />
           ))}
         </BlocoDoc>
       ))}

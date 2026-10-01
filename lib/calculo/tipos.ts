@@ -60,7 +60,7 @@ export interface TipoEntrega {
   nomeCliente?: string | null;
   /**
    * Projeto de marca (logo, identidade visual, branding, estrutura visual; decisão de 01/10/2026): não se mede em
-   * minutos. horasPorUnidade = horas totais estimadas do projeto (1 unidade = 1 projeto); prazoDias vai para o contrato.
+   * minutos. horasPorUnidade = horas totais estimadas do projeto (1 unidade = 1 projeto); prazoDias (em dias úteis) vai para o contrato.
    */
   projeto?: boolean;
   /** prazo de entrega do projeto, em dias (só para projeto) */
@@ -101,6 +101,12 @@ export interface Pacote {
   itensCliente: string[];
   /** manutenção mensal */
   rotina: ItemPacote[];
+  /**
+   * Projeto avulso (01/10/2026): sem mensalidade, pago uma vez (ex.: Logo essencial). Os itens do projeto, com os
+   * extras, ficam em `rotina`; `entrada` fica vazia. O preço sai do mesmo cálculo de um mês com só esse projeto
+   * (piso de cada sócio pela regra da sociedade e a parte dos custos fixos pela regra da divisão).
+   */
+  avulso?: boolean;
   /** primeiro mês (entrada: onboarding, enxoval, estrutura visual) */
   entrada: ItemPacote[];
   /** o pacote de referência para "cabem mais N clientes" */
@@ -170,6 +176,19 @@ export interface ClienteBase {
   atalhos?: AtalhosPainel | null;
   /** quando o fechamento começou (lead virou cliente); vazio = sem checklist de fechamento */
   fechamentoIniciadoEm?: string | null;
+  /** cliente de projeto avulso (sem mensalidade): o projeto fechado, para as tarefas e o contrato de valor único */
+  projetoAvulso?: ProjetoAvulsoFechado | null;
+}
+
+/** Projeto avulso fechado com o cliente (o valor é o combinado; prazo e parcela saem do pacote e da configuração). */
+export interface ProjetoAvulsoFechado {
+  pacoteId: Id | null;
+  nome: string;
+  itens: ItemPacote[];
+  valorCentavos: Centavos;
+  prazoDiasUteis: number | null;
+  sinalPct: Pct;
+  fechadoEm: string;
 }
 
 /** Atalhos do painel do cliente: o que ele abre sem pedir por fora. Tudo opcional. */
@@ -280,6 +299,8 @@ export interface ConfigEmpresa {
   ofertaGestaoAposResultadoCentavos?: Centavos;
   /** social media + tráfego abaixo deste valor mostra um aviso na Proposta (só aviso) */
   ofertaMinimoSocialTrafegoCentavos?: Centavos;
+  /** projeto avulso: % pago no início (o resto na entrega); vazio = a proposta não mostra as parcelas */
+  avulsoSinalPct?: Pct;
 }
 
 export interface Configuracao {
@@ -411,6 +432,8 @@ export interface Cenario {
   deslocamentos?: Record<Id, number | null>;
   /** pacote de onde o cenário saiu (para mostrar a diferença na negociação) */
   pacoteId?: Id | null;
+  /** projeto avulso: as entregas são de um projeto pago uma vez (sem mensalidade); o teto do ano conta uma vez só */
+  avulso?: boolean;
 }
 
 // ─── Resultado ──────────────────────────────────────────────────────────────

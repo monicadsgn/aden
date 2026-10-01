@@ -2,11 +2,13 @@
 // avisos para os sócios e guardar escopo com a regra do piso.
 
 import { moverLead, type Lead } from "../calculo/crm";
-import { pacoteParaCenario } from "../calculo/pacotes";
+import { pacoteParaCenario, prazoDoProjeto, precoDoCenario } from "../calculo/pacotes";
+import { novaTarefa, type Tarefa } from "../calculo/tarefas";
+import { somarDiasUteis } from "../regras/prazoPedido";
 import { calcularCenario } from "../calculo/motor";
 import { hojeISO } from "../calculo/dia";
 import { novoId } from "../calculo/novo";
-import type { Cenario, ClienteBase, Configuracao } from "../calculo/tipos";
+import type { Cenario, ClienteBase, Configuracao, Pacote } from "../calculo/tipos";
 import { formatarMoeda, formatarPct, formatarDuracao } from "../formato";
 import { aplicarItens, assinaturaCenario, impactoNoBolso, sociosAbaixoDoPiso, type ItemProtegido } from "../regras/aprovacao";
 import type { NovoAviso, Repositorio, ResultadoPedido, Usuario } from "./repositorio";
@@ -184,8 +186,20 @@ export function assinaturaProposta(cenario: Cenario, valorCentavos: number | nul
 
 export interface ResultadoGanho {
   clienteId: string;
-  /** escopo guardado a partir da proposta ou do pacote (null = lead sem proposta nem pacote) */
+  /** escopo guardado a partir da proposta ou do pacote (null = lead sem proposta nem pacote, ou projeto avulso) */
   escopo: ResultadoGuardarEscopo | null;
+  /** projeto avulso: as tarefas criadas (uma por entrega do projeto) */
+  tarefasDoProjeto?: Tarefa[];
+}
+
+/** Sócio que faz um tipo de entrega: o de maior % na divisão de horas do serviço dele. */
+function quemFaz(config: Configuracao, tipoEntregaId: string | null): string | null {
+  const t = config.tiposEntrega.find((x) => x.id === tipoEntregaId);
+  const s = config.servicos.find((x) => x.id === t?.servicoId);
+  const socios = new Set(config.pessoas.filter((p) => p.socio && p.ativo).map((p) => p.id));
+  const div = Object.entries(s?.divisaoPadrao ?? {}).filter(([id, pct]) => socios.has(id) && (pct ?? 0) > 0);
+  div.sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
+  return div[0]?.[0] ?? null;
 }
 
 /**
@@ -195,6 +209,11 @@ export interface ResultadoGanho {
  */
 export async function ganharLead(repo: Repositorio, config: Configuracao, lead: Lead): Promise<ResultadoGanho> {
   if (lead.clienteId) return { clienteId: lead.clienteId, escopo: null };
+  let cenario: Cenario | null = null;
+  if (lead.simulacaoId) cenario = (await repo.carregarSimulacao(lead.simulacaoId))?.cenarios[0] ?? null;
+  const pacote = lead.pacoteId ? ((config.pacotes ?? []).find((x) => x.id === lead.pacoteId) ?? null) : null;
+  if (!cenario && pacote) cenario = pacoteParaCenario(pacote);
+  if (cenario?.avulso) return ganharProjetoAvulso(repo, config, lead, cenario, pacote);
   const cliente: ClienteBase = {
     id: novoId(),
     nome: lead.nome,
@@ -218,12 +237,6 @@ export async function ganharLead(repo: Repositorio, config: Configuracao, lead: 
     custosFixos: { salvar: [], remover: [] },
     clientes: { salvar: [cliente], remover: [] },
   });
-  let cenario: Cenario | null = null;
-  if (lead.simulacaoId) cenario = (await repo.carregarSimulacao(lead.simulacaoId))?.cenarios[0] ?? null;
-  if (!cenario && lead.pacoteId) {
-    const p = (config.pacotes ?? []).find((x) => x.id === lead.pacoteId);
-    if (p) cenario = pacoteParaCenario(p);
-  }
   let escopo: ResultadoGuardarEscopo | null = null;
   if (cenario) {
     const cfg = await repo.carregarConfig();
@@ -233,6 +246,58 @@ export async function ganharLead(repo: Repositorio, config: Configuracao, lead: 
   }
   await repo.salvarLead({ ...moverLead(lead, "ganho"), clienteId: cliente.id });
   return { clienteId: cliente.id, escopo };
+}
+
+/**
+ * Projeto avulso fechado (01/10/2026): vira cliente sem mensalidade (fora da divisão dos custos fixos do mês), guarda
+ * o projeto fechado (valor combinado, prazo, % no início) e cria uma tarefa por entrega do projeto, para o sócio que
+ * faz aquele serviço, com o prazo do projeto em dias úteis a partir de hoje. O contrato de valor único é a etapa seguinte.
+ */
+async function ganharProjetoAvulso(repo: Repositorio, config: Configuracao, lead: Lead, cenario: Cenario, pacote: Pacote | null): Promise<ResultadoGanho> {
+  const hoje = hojeISO();
+  const itens = cenario.entregas.filter((l) => l.tipoEntregaId && (l.quantidade ?? 0) > 0);
+  const prazo = prazoDoProjeto(config, itens);
+  const valor = lead.valorEstimadoCentavos ?? precoDoCenario(config, cenario).mensalCentavos ?? 0;
+  const cliente: ClienteBase = {
+    id: novoId(),
+    nome: lead.nome,
+    interno: false,
+    participaRateio: false,
+    valorMensalCentavos: 0,
+    ativo: true,
+    escopo: null,
+    contato: lead.contato,
+    telefone: lead.telefone,
+    email: lead.email,
+    instagram: lead.instagram,
+    clienteDesde: hoje,
+    fechamentoIniciadoEm: new Date().toISOString(),
+    projetoAvulso: {
+      pacoteId: pacote?.id ?? cenario.pacoteId ?? null,
+      nome: pacote?.nome ?? cenario.nome,
+      itens: itens.map((l) => ({ tipoEntregaId: l.tipoEntregaId!, quantidade: l.quantidade })),
+      valorCentavos: valor,
+      prazoDiasUteis: prazo,
+      sinalPct: config.empresa.avulsoSinalPct ?? null,
+      fechadoEm: new Date().toISOString(),
+    },
+  };
+  await salvarCliente(repo, cliente);
+  const vencimento = prazo != null ? somarDiasUteis(hoje, prazo) : null;
+  const tarefas = itens.map((l) => {
+    const t = config.tiposEntrega.find((x) => x.id === l.tipoEntregaId);
+    return novaTarefa(novoId(), `${t?.nome ?? "Projeto"} · ${cliente.nome}`, {
+      clienteId: cliente.id,
+      tipoEntregaId: l.tipoEntregaId,
+      quantidade: l.quantidade ?? 1,
+      responsavelId: quemFaz(config, l.tipoEntregaId),
+      vencimento,
+      descricao: `Projeto avulso fechado em ${hoje.split("-").reverse().join("/")}${prazo != null ? `, entrega em até ${prazo} dias úteis` : ""}.`,
+    });
+  });
+  for (const t of tarefas) await repo.salvarTarefa(t);
+  await repo.salvarLead({ ...moverLead(lead, "ganho"), clienteId: cliente.id });
+  return { clienteId: cliente.id, escopo: null, tarefasDoProjeto: tarefas };
 }
 
 /** Salva só a ficha de um cliente (dados, contrato, valor). */

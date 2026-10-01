@@ -110,7 +110,7 @@ export function calcularVisaoMes(config: Configuracao): VisaoMes {
   return {
     socios: visaoSocios,
     clientes,
-    semEscopo: ativos.filter((c) => !c.escopo).map((c) => c.nome),
+    semEscopo: ativos.filter((c) => !c.escopo && !c.projetoAvulso).map((c) => c.nome),
     faturamentoMensalCentavos: faturamento,
     teto: calcularTeto(config, null, 0),
   };

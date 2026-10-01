@@ -5,7 +5,7 @@
 // discreto (ok / atenção) quando algum sócio fica abaixo do piso — sem nenhuma palavra.
 
 import { ajustarQuantidade, calcularCenario } from "./motor";
-import { diferencaDoPacote, frasesParaCliente, precoDoCenario, precoDoPacote } from "./pacotes";
+import { diferencaDoPacote, frasesParaCliente, parcelasDoProjeto, prazoDoProjeto, precoDoCenario, precoDoPacote, textoParcelas } from "./pacotes";
 import type { Cenario, Configuracao, Id, Pacote } from "./tipos";
 
 const v0 = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? 0 : v);
@@ -135,7 +135,9 @@ export function pacoteQueCabe(config: Configuracao, cenario: Cenario, valorCenta
     return t?.audiovisual ? 0 : v0(t?.horasPorUnidade);
   };
   for (let passo = 0; passo < 500 && !cabe(c); passo++) {
-    const candidatos = c.entregas.filter((l) => l.tipoEntregaId && v0(l.quantidade) >= 1);
+    // projeto avulso: o projeto em si fica; só os extras saem
+    const ehProjeto = (id: Id | null) => !!cenario.avulso && !!config.tiposEntrega.find((t) => t.id === id)?.projeto;
+    const candidatos = c.entregas.filter((l) => l.tipoEntregaId && v0(l.quantidade) >= 1 && !ehProjeto(l.tipoEntregaId));
     if (!candidatos.length) break;
     // tira a entrega que mais pesa em horas; empate: a de maior quantidade
     candidatos.sort((a, b) => horasTipo(b.tipoEntregaId!) - horasTipo(a.tipoEntregaId!) || v0(b.quantidade) - v0(a.quantidade));
@@ -169,6 +171,8 @@ export interface VistaPacote {
   /** para o "personalizar": as entregas do pacote e as quantidades atuais */
   itens: ItemVista[];
   sinal: Sinal;
+  /** projeto avulso: valor único (em mensalCentavos), prazo, parcelas e extras que dá para somar */
+  projeto: { prazoDiasUteis: number | null; parcelas: string | null; extras: { tipoEntregaId: Id; nome: string }[] } | null;
 }
 
 export function vistaPacote(config: Configuracao, pacote: Pacote, estado: EstadoApresentacao): VistaPacote {
@@ -190,5 +194,18 @@ export function vistaPacote(config: Configuracao, pacote: Pacote, estado: Estado
     diferencaMensalCentavos: mudou && mensal != null && original.mensalCentavos != null ? mensal - original.mensalCentavos : null,
     itens: ids.map((id) => ({ tipoEntregaId: id, nome: config.tiposEntrega.find((t) => t.id === id)?.nome ?? "", quantidade: qtd.get(id) ?? 0 })),
     sinal: sinalDoCenario(config, cen),
+    projeto: pacote.avulso
+      ? {
+          prazoDiasUteis: prazoDoProjeto(config, cen.entregas),
+          parcelas: (() => {
+            const p = parcelasDoProjeto(config, mensal);
+            return p ? textoParcelas(p) : null;
+          })(),
+          // extras: qualquer entrega com tempo dos sócios, cada uma pelas horas dela
+          extras: config.tiposEntrega
+            .filter((t) => t.ativo && !t.audiovisual && (t.horasPorUnidade ?? 0) > 0 && !ids.includes(t.id))
+            .map((t) => ({ tipoEntregaId: t.id, nome: t.nome })),
+        }
+      : null,
   };
 }

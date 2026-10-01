@@ -336,6 +336,22 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
               { valor: "valor", rotulo: "Do preço ao que entregar", icone: Wallet },
             ]}
           />
+          <div className="mt-3">
+            <Segmentado
+              rotulo="Como o cliente paga"
+              valor={cenario.avulso ? "avulso" : "mensal"}
+              aoMudar={(v) => set({ avulso: v === "avulso" })}
+              opcoes={[
+                { valor: "mensal", rotulo: "Todo mês" },
+                { valor: "avulso", rotulo: "Uma vez (projeto avulso)" },
+              ]}
+            />
+            <p className="mt-1 text-[12px] leading-snug text-texto-suave">
+              {cenario.avulso
+                ? "Projeto avulso: as entregas abaixo são um projeto pago uma vez, sem mensalidade. Ex.: um logo. O teto do ano conta esse valor uma vez só."
+                : "Todo mês: as entregas abaixo se repetem e o valor é a mensalidade."}
+            </p>
+          </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Selecao
               rotulo="Cliente"
@@ -345,7 +361,11 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
               aoMudar={(v) => set({ clienteId: v })}
             />
             {cenario.modo === "valor" && (
-              <CampoMoeda rotulo="Mensalidade que o cliente vai pagar" valor={cenario.mensalidadeCentavos} aoMudar={(v) => set({ mensalidadeCentavos: v })} />
+              <CampoMoeda
+                rotulo={cenario.avulso ? "Quanto o cliente pode pagar pelo projeto" : "Mensalidade que o cliente vai pagar"}
+                valor={cenario.mensalidadeCentavos}
+                aoMudar={(v) => set({ mensalidadeCentavos: v })}
+              />
             )}
           </div>
         </Secao>
@@ -355,13 +375,17 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
       <Card>
         <TituloCard
           icone={Shapes}
-          titulo="Rotina mensal"
+          titulo={cenario.avulso ? "Entregas do projeto" : "Rotina mensal"}
           detalhes={<DetalhesRotina config={config} />}
-          descricao="O que acontece todo mês: planejamento, reunião mensal, roteiros, estáticos, criativos pontuais e extras. Quantidade × horas por entrega."
-          acao={<Badge tom="marca">todo mês</Badge>}
+          descricao={
+            cenario.avulso
+              ? "O projeto e os extras, uma vez só. Quantidade × horas de cada um (projeto de marca: as horas totais do projeto)."
+              : "O que acontece todo mês: planejamento, reunião mensal, roteiros, estáticos, criativos pontuais e extras. Quantidade × horas por entrega."
+          }
+          acao={<Badge tom="marca">{cenario.avulso ? "uma vez" : "todo mês"}</Badge>}
         />
         <Secao>
-          <EditorEntregas linhas={cenario.entregas} config={config} unidade="Qtd./mês" aoMudar={(entregas) => set({ entregas })} />
+          <EditorEntregas linhas={cenario.entregas} config={config} unidade={cenario.avulso ? "Qtd." : "Qtd./mês"} aoMudar={(entregas) => set({ entregas })} />
         </Secao>
       </Card>
 

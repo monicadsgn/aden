@@ -40,6 +40,15 @@
 - **Lead ganho (G7):** arrastar para Ganho abre o lead pedindo o "Fechou! Virar cliente" (só ele cria o cliente);
   o botão some em lead perdido; proposta salva na Proposta aberta pelo lead já fica ligada a ele.
 
+- **Projeto avulso (migration 0038, `lib/calculo/pacotes.ts`):** `pacotes.avulso` = projeto pago uma vez; os itens
+  (projeto + extras) ficam em `rotina`. `pacoteParaCenario` marca `cenario.avulso`; o preço é `calcularCenario` no
+  modo escopo de um mês só com o projeto (piso pela regra da sociedade, parte dos custos fixos pela divisão); o teto do
+  ano conta o projeto uma vez (`calcularTeto(..., unicaVez)`). `prazoDoProjeto` = maior `prazo_dias` dos tipos
+  projeto; `parcelasDoProjeto` usa `avulso_sinal_pct`. `projetosQueCabem` (calculadora "paga uma vez" e conector
+  `ver_projetos_que_cabem`). `ganharLead` de avulso: cliente com `valor 0`, fora da divisão, `projeto_avulso` e uma
+  tarefa por entrega (sócio de maior % no serviço, prazo em dias úteis). Projeto pontual "cobrado à parte" da
+  calculadora passou a pagar a parte dos custos fixos também. Primeiro mês dos pacotes mensais = mínimo(rotina +
+  entrada) − mínimo(rotina), para seguir a regra da sociedade.
 - **Prazo mínimo de pedido (migration 0037, `lib/regras/prazoPedido.ts`):** pedido ao outro sócio tem prazo mínimo
   de `configuracoes_empresa.prazo_minimo_pedido_dias_uteis` dias úteis (seg. a sex., sem feriados) a partir do pedido.
   Vale ao criar, ao passar a tarefa para outro sócio e quando quem pediu muda o prazo. Sem prazo, entra o mínimo; menor

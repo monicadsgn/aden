@@ -180,7 +180,8 @@ export function DetalheLead({
       {erro && <p className="mb-3 rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro">{erro}</p>}
       {confirmarGanho && !l.clienteId && (
         <p className="mb-3 rounded-bloco bg-ok-suave px-3 py-2 text-[13px] text-ok">
-          Fechou? Confirme no botão <strong>Fechou! Virar cliente</strong>, lá embaixo: ele cria o cliente, guarda as entregas do contrato e abre o checklist de fechamento.
+          Fechou? Confirme no botão <strong>Fechou! Virar cliente</strong>, lá embaixo: ele cria o cliente,{" "}
+          {pacote?.avulso ? "cria as tarefas do projeto" : "guarda as entregas do contrato"} e abre o checklist de fechamento.
         </p>
       )}
 
@@ -338,7 +339,11 @@ export function DetalheLead({
       </div>
 
       <div className="mt-3 grid items-end gap-3 rounded-bloco bg-marca-tinta p-3 sm:grid-cols-[14rem_1fr]">
-        <CampoMoeda rotulo="Valor estimado por mês" valor={l.valorEstimadoCentavos} aoMudar={(v) => set({ valorEstimadoCentavos: v })} />
+        <CampoMoeda
+          rotulo={pacote?.avulso ? "Valor do projeto (uma vez)" : "Valor estimado por mês"}
+          valor={l.valorEstimadoCentavos}
+          aoMudar={(v) => set({ valorEstimadoCentavos: v })}
+        />
         <div className="flex flex-wrap items-center gap-3 pb-2 text-xs">
           {precoPacote != null && l.valorEstimadoCentavos !== precoPacote && (
             <button type="button" className="font-semibold text-marca-forte underline" onClick={() => set({ valorEstimadoCentavos: precoPacote })}>

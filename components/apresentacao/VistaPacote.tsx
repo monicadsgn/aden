@@ -27,26 +27,34 @@ export function VistaPacoteCliente({
         <span className="absolute top-4 right-4">
           <SinalDiscreto sinal={vista.sinal} />
         </span>
-        <p className="text-xs font-bold tracking-[0.14em] uppercase opacity-80">Pacote</p>
+        <p className="text-xs font-bold tracking-[0.14em] uppercase opacity-80">{vista.projeto ? "Projeto" : "Pacote"}</p>
         <h2 className="mt-1 text-3xl font-extrabold tracking-tight sm:text-4xl">{vista.nome}</h2>
         {vista.descricao && <p className="mt-2 max-w-2xl text-sm opacity-90">{vista.descricao}</p>}
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-xs font-bold tracking-wide uppercase opacity-80">Investimento mensal</p>
+            <p className="text-xs font-bold tracking-wide uppercase opacity-80">{vista.projeto ? "Investimento do projeto" : "Investimento mensal"}</p>
             <p className="numero text-5xl font-extrabold tracking-tight">{vista.mensalCentavos != null ? formatarMoeda(vista.mensalCentavos) : "—"}</p>
             {dif != null && dif !== 0 && (
               <p className="mt-1 inline-flex rounded-botao bg-sobre-marca/20 px-2.5 py-0.5 text-xs font-bold">
-                {dif > 0 ? "+" : "−"} {formatarMoeda(Math.abs(dif))} em relação ao pacote
+                {dif > 0 ? "+" : "−"} {formatarMoeda(Math.abs(dif))} em relação ao {vista.projeto ? "projeto" : "pacote"}
               </p>
             )}
           </div>
-          <div>
-            <p className="text-xs font-bold tracking-wide uppercase opacity-80">Primeiro mês</p>
-            <p className="numero text-3xl font-extrabold tracking-tight">
-              {vista.entradaAConfirmar ? "a combinar" : vista.entradaCentavos != null && vista.entradaCentavos > 0 ? formatarMoeda(vista.entradaCentavos) : "—"}
-            </p>
-            <p className="mt-1 text-xs opacity-85">Uma vez só: a estrutura para começar (onboarding, perfil e identidade).</p>
-          </div>
+          {vista.projeto ? (
+            <div>
+              <p className="text-xs font-bold tracking-wide uppercase opacity-80">Prazo de entrega</p>
+              <p className="numero text-3xl font-extrabold tracking-tight">{vista.projeto.prazoDiasUteis != null ? `${vista.projeto.prazoDiasUteis} dias úteis` : "a combinar"}</p>
+              <p className="mt-1 text-xs opacity-85">Valor único, sem mensalidade.{vista.projeto.parcelas ? ` Pagamento: ${vista.projeto.parcelas}` : ""}</p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs font-bold tracking-wide uppercase opacity-80">Primeiro mês</p>
+              <p className="numero text-3xl font-extrabold tracking-tight">
+                {vista.entradaAConfirmar ? "a combinar" : vista.entradaCentavos != null && vista.entradaCentavos > 0 ? formatarMoeda(vista.entradaCentavos) : "—"}
+              </p>
+              <p className="mt-1 text-xs opacity-85">Uma vez só: a estrutura para começar (onboarding, perfil e identidade).</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -101,6 +109,23 @@ export function VistaPacoteCliente({
                 </button>
               </li>
             ))}
+            {vista.projeto && vista.projeto.extras.length > 0 && (
+              <li>
+                <select
+                  aria-label="Somar um extra ao projeto"
+                  className="h-11 w-full rounded-campo border border-linha bg-superficie px-3 text-sm font-semibold"
+                  value=""
+                  onChange={(e) => e.target.value && aoMudarQuantidade?.(e.target.value, 1)}
+                >
+                  <option value="">+ Somar um extra ao projeto…</option>
+                  {vista.projeto.extras.map((x) => (
+                    <option key={x.tipoEntregaId} value={x.tipoEntregaId}>
+                      {x.nome}
+                    </option>
+                  ))}
+                </select>
+              </li>
+            )}
           </ul>
         )}
       </section>
@@ -114,7 +139,7 @@ export function EscolherPacote({
   aoEscolher,
   aoMontarDoZero,
 }: {
-  pacotes: { id: Id; nome: string; descricao: string; frases: string[]; mensalCentavos: number | null }[];
+  pacotes: { id: Id; nome: string; descricao: string; frases: string[]; mensalCentavos: number | null; avulso?: boolean; prazoDiasUteis?: number | null }[];
   aoEscolher: (id: Id) => void;
   aoMontarDoZero: () => void;
 }) {
@@ -140,8 +165,9 @@ export function EscolherPacote({
             </ul>
             <span className="numero mt-auto text-3xl font-extrabold">
               {p.mensalCentavos != null ? formatarMoeda(p.mensalCentavos) : "—"}
-              <span className="text-sm font-semibold text-texto-suave"> /mês</span>
+              <span className="text-sm font-semibold text-texto-suave">{p.avulso ? " o projeto" : " /mês"}</span>
             </span>
+            {p.avulso && <span className="-mt-2 text-xs text-texto-suave">Valor único{p.prazoDiasUteis != null ? ` · entrega em até ${p.prazoDiasUteis} dias úteis` : ""}</span>}
           </button>
         ))}
       </div>
