@@ -89,8 +89,13 @@
     --sobre-marca: #17180f;
   --marca-cheio: #a6a96a;
   --marca-cheio-hover: #b7ba7c;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.55);
+  --sombra-forte: 0 2px 4px rgb(0 0 0 / 0.35), 0 20px 40px -20px rgb(0 0 0 / 0.7);
     --marca-cheio: #a6a96a;
     --marca-cheio-hover: #b7ba7c;
+    /* D8: no escuro a sombra é preta e mais forte, senão some no fundo */
+    --sombra: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.55);
+    --sombra-forte: 0 2px 4px rgb(0 0 0 / 0.35), 0 20px 40px -20px rgb(0 0 0 / 0.7);
     --destaque: #7c8052;
     --fundo: #16170f;
     --superficie: #1f2016;

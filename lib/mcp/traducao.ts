@@ -30,9 +30,15 @@ const normalizar = (s: string) =>
     .trim()
     .toLowerCase();
 
-/** Acha um item por id ou nome (sem diferenciar maiúsculas e acentos). Erro claro se não achar. */
+/** Acha um item por id ou nome (sem diferenciar maiúsculas e acentos; aceita apelido quando só um bate). Erro claro se não achar. */
 export function resolver<T extends { id: string; nome: string }>(lista: T[], ref: string, oque: string): T {
-  const achado = lista.find((x) => x.id === ref) ?? lista.find((x) => normalizar(x.nome) === normalizar(ref));
+  const r = normalizar(ref);
+  let achado = lista.find((x) => x.id === ref) ?? lista.find((x) => normalizar(x.nome) === r);
+  // apelido ou começo do nome ("Moni" → Mônica, "Olinda" → Olinda Máquinas), só quando um único nome bate (M14)
+  if (!achado && r.length >= 3) {
+    const comeca = lista.filter((x) => normalizar(x.nome).startsWith(r) || normalizar(x.nome).split(/\s+/).some((p) => p.startsWith(r)));
+    if (comeca.length === 1) achado = comeca[0];
+  }
   if (!achado) {
     const opcoes = lista.map((x) => x.nome).join(", ") || "nenhum cadastrado";
     throw new Error(`${oque} "${ref}" não encontrado. Opções: ${opcoes}.`);

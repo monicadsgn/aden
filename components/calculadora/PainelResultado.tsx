@@ -147,7 +147,7 @@ function Cascata({ m, taxaFixa }: { m: ResultadoMes; taxaFixa: number | null }) 
       {m.verbaMidiaCentavos != null && m.verbaMidiaCentavos > 0 && (
         <div className="my-1 flex items-baseline justify-between gap-3 rounded-item border border-dashed border-linha px-3 py-1.5 text-texto-suave">
           <span className="text-[12px]">
-            Verba de mídia do cliente <span className="text-[11px]">(paga direto na plataforma, fora de qualquer soma)</span>
+            Verba de mídia do cliente <span className="text-[12px]">(paga direto na plataforma, fora de qualquer soma)</span>
           </span>
           <span className="numero text-[13px] whitespace-nowrap">{formatarMoeda(m.verbaMidiaCentavos)}</span>
         </div>
@@ -175,7 +175,7 @@ function Cascata({ m, taxaFixa }: { m: ResultadoMes; taxaFixa: number | null }) 
         sinal="-"
         sub={
           m.rateio.totalFixoCentavos > 0 && m.rateio.regra ? (
-            <span className="text-[11px] text-texto-suave">
+            <span className="text-[12px] text-texto-suave">
               {m.rateio.regra === "igual" ? `÷ ${m.rateio.clientesNaBase} clientes` : "proporcional ao valor"} de {formatarMoeda(m.rateio.totalFixoCentavos)}
               {m.rateio.impostoFixoCentavos > 0 && ` (inclui ${formatarMoeda(m.rateio.impostoFixoCentavos)} de imposto fixo)`}
             </span>
@@ -245,7 +245,7 @@ function CartaoSocio({ p, grande, foto }: { p: ResultadoPessoa; grande?: boolean
         </div>
       )}
       {p.recebeSemHoras && (
-        <p className="relative mt-2 rounded-item bg-info-suave px-2 py-1.5 text-[11px] leading-snug font-semibold text-info">
+        <p className="relative mt-2 rounded-item bg-info-suave px-2 py-1.5 text-[12px] leading-snug font-semibold text-info">
           {p.nome} recebe {formatarMoeda(p.valorCentavos)} sem horas neste cliente. A regra da divisão é dos sócios; aqui só fica visível.
         </p>
       )}
@@ -436,7 +436,7 @@ function BlocoProposta({
                 </Botao>
               )
             ) : (
-              <span className="self-center text-[11px] text-texto-suave">Para guardar como entregas do contrato, escolha o cliente em “Como calcular”.</span>
+              <span className="self-center text-[12px] text-texto-suave">Para guardar como entregas do contrato, escolha o cliente em “Como calcular”.</span>
             ))}
         </div>
       </div>
@@ -736,7 +736,7 @@ export function PainelResultado({
                         )}
                         {t.folga != null && t.folga >= 0 && t.folga < 9999 && t.limites.length > 0 && (
                           <div className="flex flex-col items-end gap-0.5">
-                            <span className="text-[10px] text-texto-suave">o próximo esbarra em</span>
+                            <span className="text-[12px] text-texto-suave">o próximo esbarra em</span>
                             {t.limites.map((l) => (
                               <ChipLimite key={l.tipo + l.pessoaId} l={l} />
                             ))}

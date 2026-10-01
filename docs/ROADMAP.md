@@ -32,6 +32,16 @@ dias: não cabem em "minutos por entrega". Proposta levada à Moni (nada constru
 - C: medir em dias de trabalho. Precisa de mais um número (horas por dia) e não muda o resultado da A.
 O cronômetro (opcional) pode ser usado nos primeiros projetos para ajustar as horas totais.
 
+## M13: aviso ao cliente e relatório do mês (01/10/2026)
+
+- **Aviso (feito):** na tarefa que está esperando o cliente, "Avisar no WhatsApp" abre a conversa com o telefone da
+  ficha e a mensagem pronta com o link do painel (`lib/calculo/avisoCliente.ts`). Sem integração nova: quem manda é o
+  sócio, pelo número de sempre.
+- **Relatório do mês (proposta, esperando a Moni):** no painel, "Relatório do mês" com os meses anteriores: o que foi
+  ao ar (por formato), ajustes pedidos, e um bloco de resultado que os sócios preenchem no fim do mês (números que eles
+  escolhem, por exemplo alcance, seguidores, contatos do tráfego, com uma frase de leitura), mais o PDF. Falta decidir
+  quais números entram e quem preenche.
+
 ## Pendências da Moni (fora do código)
 
 - Supabase → Authentication: deixar ligado o cadastro de novos usuários (senão o "Primeiro acesso" dá erro), conferir a

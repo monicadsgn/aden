@@ -34,6 +34,7 @@ import { chaveAutentique } from "../contrato/autentique";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
 import { motivoNaoApagar, REGRAS_PROTECAO } from "../regras/aprovacao";
+import { COMO_ATUALIZAR, NOVIDADES, VERSAO_FERRAMENTAS } from "./novidades";
 import { PAINEL_CLIENTE_ATIVO } from "../recursos";
 import type { RepositorioSupabase } from "../dados/supabase";
 import {
@@ -196,7 +197,7 @@ function notaParaConector(n: NotaContexto) {
 }
 
 export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, origem = ""): McpServer {
-  const server = new McpServer({ name: "aden", version: "1.0.0" }, { instructions: INSTRUCOES });
+  const server = new McpServer({ name: "aden", version: VERSAO_FERRAMENTAS }, { instructions: INSTRUCOES });
 
   // ─── Leitura ──────────────────────────────────────────────────────────────
 
@@ -221,7 +222,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     async ({ limite }) =>
       executar(async () => {
         const regs = await (await obterRepo()).listarAuditoria(limite ?? 30);
-        return regs.map((r) => ({ quando: r.em, quem: r.autor, acao: r.acao, onde: r.tabela, registro: r.registroId, antes: r.antes, depois: r.depois }));
+        // M15: o link do painel e o CPF/CNPJ nunca saem crus
+        const SENSIVEIS = new Set(["painel_token", "documento", "endereco", "hash", "codigo_hash"]);
+        const limpar = (o: unknown) =>
+          o && typeof o === "object" ? Object.fromEntries(Object.entries(o as Record<string, unknown>).map(([k, v]) => [k, SENSIVEIS.has(k) && v ? "(guardado)" : v])) : o;
+        return regs.map((r) => ({ quando: r.em, quem: r.autor, acao: r.acao, onde: r.tabela, registro: r.registroId, antes: limpar(r.antes), depois: limpar(r.depois) }));
       }),
   );
 
@@ -949,7 +954,13 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const c = resolver(config.clientes, cliente, "Cliente");
-        const [tarefas, pagamentos, leads, contexto] = await Promise.all([repo.listarTarefas(), repo.listarPagamentos(), repo.listarLeads(), repo.listarContexto(c.id)]);
+        const [tarefas, pagamentos, leads, contexto, briefing] = await Promise.all([
+          repo.listarTarefas(),
+          repo.listarPagamentos(),
+          repo.listarLeads(),
+          repo.listarContexto(c.id),
+          repo.listarRespostasBriefing(c.id).catch(() => []),
+        ]);
         const k = c.contrato ?? contratoVazio();
         const lead = leads.find((l) => l.clienteId === c.id);
         return {
@@ -978,6 +989,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           atalhosDoPainel: c.atalhos ?? null,
           contexto: contexto.slice(0, 10).map(notaParaConector),
           contextoTotal: contexto.length,
+          // M15: a conversa inicial (briefing) respondida, para o Claude sugerir com base nela
+          conversaInicial: briefing.filter((b) => b.resposta?.trim()).map((b) => ({ pergunta: b.perguntaTexto, resposta: b.resposta })),
         };
       }),
   );
@@ -1674,6 +1687,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         instagram: z.string().optional(),
         origem: z.string().optional(),
         pacote: z.string().nullable().optional().describe("pacote de interesse (nome ou id)"),
+        simulacao: z.string().nullable().optional().describe("proposta salva ligada ao lead (nome ou id da simulação); é dela que ganhar_lead tira as entregas do contrato"),
         valorEstimadoReais: opt(z.number(), "valor estimado por mês"),
         responsavel: z.string().nullable().optional().describe("sócio (nome ou id)"),
         proximoContato: z.string().nullable().optional(),
@@ -1705,6 +1719,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.origem != null && { origem: e.origem }),
           ...(e.pacote !== undefined && { pacoteId: e.pacote ? resolver(config.pacotes ?? [], e.pacote, "Pacote").id : null }),
           ...(e.valorEstimadoReais !== undefined && { valorEstimadoCentavos: paraCentavos(e.valorEstimadoReais) }),
+          ...(e.simulacao !== undefined && { simulacaoId: e.simulacao ? resolver(await repo.listarSimulacoes(), e.simulacao, "Proposta salva").id : null }),
           ...(e.responsavel !== undefined && { responsavelId: e.responsavel ? resolver(config.pessoas, e.responsavel, "Sócio").id : null }),
           ...(e.proximoContato !== undefined && { proximoContato: e.proximoContato }),
           ...(e.proximaAcao != null && { proximaAcao: e.proximaAcao }),
@@ -1751,6 +1766,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const l = resolver(await repo.listarLeads(), id, "Lead");
+        // M16: sem proposta ligada, sem pacote e sem valor, o cliente nasceria sem valor nem entregas
+        if (!l.simulacaoId && !l.pacoteId && l.valorEstimadoCentavos == null)
+          throw new Error(
+            `${l.nome} ainda não tem proposta, pacote nem valor. Antes de fechar, grave com salvar_lead o pacote (pacote) e o valor combinado (valorEstimadoReais), ou ligue a proposta salva (simulacao).`,
+          );
         const r = await ganharLead(repo, config, l);
         return {
           cliente: l.nome,
@@ -1984,11 +2004,28 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   // ─── Tarefas ──────────────────────────────────────────────────────────────
 
   server.registerTool(
+    "ver_avisos",
+    {
+      title: "Avisos do sócio",
+      description:
+        "Os avisos que o Aden mandou para o sócio dono deste código (tarefa pedida pelo outro sócio, mudança protegida aprovada ou esperando, quanto muda no bolso). Por padrão só os não lidos. Use no começo do chat para contar o que chegou de novo.",
+      inputSchema: { todos: z.boolean().optional().describe("true = inclui os já lidos (até 30)") },
+    },
+    async ({ todos }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [eu, avisos] = await Promise.all([repo.usuarioAtual(), repo.listarAvisos()]);
+        const meus = avisos.filter((x) => !eu?.pessoaId || x.pessoaId === eu.pessoaId).filter((x) => todos || !x.lidoEm);
+        return meus.slice(0, 30).map((x) => ({ titulo: x.titulo, texto: x.texto, de: x.autorNome, quando: x.criadoEm, lido: !!x.lidoEm }));
+      }),
+  );
+
+  server.registerTool(
     "quem_sou_eu",
     {
       title: "Quem está usando o conector",
       description:
-        "Diz de qual sócio é o código deste conector (quem está conversando com você): nome e papel. Use no começo do chat para saber quem é \"eu\" (ex.: \"o que eu tenho pra fazer?\" → ver_visao_do_dia com este nome) e quem é o outro sócio.",
+        "Diz de qual sócio é o código deste conector (quem está conversando com você): nome e papel, e a versão das ferramentas com o que mudou. Use no começo do chat para saber quem é \"eu\" (ex.: \"o que eu tenho pra fazer?\" → ver_visao_do_dia com este nome) e quem é o outro sócio. Se a versão for mais nova do que a que você conhece nesta conversa, diga ao sócio o que mudou e como atualizar o conector.",
       inputSchema: {},
     },
     async () =>
@@ -2003,6 +2040,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           voce: pessoa?.nome ?? nome,
           papel: eu.papel === "admin" ? "sócio" : eu.papel,
           outrosSocios: socios.filter((p) => p.id !== eu.pessoaId).map((p) => p.nome),
+          versaoFerramentas: VERSAO_FERRAMENTAS,
+          novidades: NOVIDADES.slice(0, 3),
+          comoAtualizar: COMO_ATUALIZAR,
         };
       }),
   );
@@ -2088,6 +2128,13 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               inicio: t.inicio,
               vencimento: t.vencimento,
               checklist: t.etapas.map((e) => `${e.feita ? "[x]" : "[ ]"} ${e.titulo}`),
+              // M15: o que está escrito na tarefa e o que o cliente já respondeu, para o Claude sugerir com base nisso
+              ...(t.descricao?.trim() && { descricao: t.descricao.trim().slice(0, 600) }),
+              ...(t.legenda?.trim() && { legenda: t.legenda.trim().slice(0, 600) }),
+              ...(t.textoArte?.trim() && { textoDaArte: t.textoArte.trim().slice(0, 300) }),
+              ...((t.respostasCliente?.length ?? 0) > 0 && {
+                respostasDoCliente: t.respostasCliente!.slice(-3).map((r) => ({ decisao: r.decisao === "aprovar" ? "aprovou" : "pediu ajuste", texto: r.texto, em: r.em })),
+              }),
               ...(t.rede && { rede: t.rede }),
               ...(t.lote && { lote: t.lote }),
               ...(t.pedidaPorNome && { pedidaPor: t.pedidaPorNome }),

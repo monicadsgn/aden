@@ -125,6 +125,24 @@ describe("contrato do cliente", () => {
     expect(valor.itens[1].texto).toBe("O pagamento vence no último dia útil de cada mês.");
   });
 
+  it("\"Outras condições\" da ficha vira a cláusula Observações, e nada interno (piso, horas, divisão entre sócios) entra no contrato", () => {
+    const c = config();
+    c.pessoas = [{ id: "p", nome: "Fulana", socio: true, ativo: true, percentualPadrao: 37, pisoHoraCentavos: 4321, capacidadeHorasMes: 77 }];
+    c.servicos[0].divisaoPadrao = { p: 100 };
+    c.empresa.regraRateio = "igual";
+    c.empresa.reinvestimentoPct = 13;
+    c.clientes[0].contrato = { ...c.clientes[0].contrato!, observacoes: "Reuniões por vídeo.\nFotos enviadas pelo cliente." };
+    const m: ModeloContrato = { ...modelo, signatariosAden: [{ nome: "Beltrana", email: "beltrana@aden.com" }] };
+    const d = montarContrato(c, "c", m, opcoes);
+    const obs = d.clausulas.find((x) => x.titulo.endsWith("Observações"))!;
+    expect(obs.itens.map((i) => i.texto)).toEqual(["Reuniões por vídeo.", "Fotos enviadas pelo cliente."]);
+    // fora as cláusulas que vêm do texto do modelo (escrito pelos sócios), nada interno aparece
+    const doModelo = new Set([m.obrigacoes, m.disposicoes].flatMap((t) => itensDoTexto(t ?? "", 0).map((i) => i.texto)));
+    const proprio = { ...d, clausulas: d.clausulas.map((cl) => ({ ...cl, itens: cl.itens.filter((i) => !doModelo.has(i.texto)) })) };
+    const texto = JSON.stringify(proprio).toLowerCase();
+    for (const interno of ["piso", "por hora", "sócio", "socio", "percentual", "rateio", "reinvest", "43,21", "Fulana".toLowerCase()]) expect(texto, interno).not.toContain(interno);
+  });
+
   it("texto dos sócios: uma cláusula por linha, número escrito é trocado", () => {
     expect(itensDoTexto("1. Primeira\n\n2) Segunda\nc) sub", 7)).toEqual([
       { marcador: "7.1", texto: "Primeira" },

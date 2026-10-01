@@ -121,7 +121,7 @@ export function FechamentoCliente({
               </button>
               <span className="min-w-40 flex-1">
                 <span className={i.feito ? "font-semibold" : ""}>{i.rotulo}</span>
-                <span className="block text-[11px] text-texto-suave">
+                <span className="block text-[12px] text-texto-suave">
                   {i.feito && i.feitoEm ? `${i.feitoPorNome ?? "?"} · ${quando(i.feitoEm)}` : i.ajuda}
 
                 </span>

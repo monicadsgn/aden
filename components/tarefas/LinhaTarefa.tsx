@@ -91,13 +91,25 @@ export function LinhaTarefa({ t, a, abrir }: { t: Tarefa; a: AcoesTarefas; abrir
         className={cx("shrink-0", feita ? "text-ok" : "text-texto-suave hover:text-ok")}
         onClick={(e) => {
           e.stopPropagation();
+          // M12: concluir com um toque, mas pergunta quando o relógio está rodando ou a peça ainda não foi ao ar
+          const rodando = a.medicoes.some((m) => m.tarefaId === t.id && m.estado === "rodando");
+          const pecaNoAr = !feita && !!t.publicarEm && !t.publicadaEm;
+          if (!feita && (rodando || pecaNoAr)) {
+            const motivo = rodando ? "O relógio desta tarefa está rodando e vai parar." : "Esta peça tem data para ir ao ar e ainda não foi marcada como publicada.";
+            if (!confirm(`Concluir "${t.titulo}"? ${motivo}`)) return;
+          }
           void a.status(t, feita ? "em_producao" : "concluida");
         }}
       >
         <CheckSquare size={17} />
       </button>
       <span className={cx("min-w-0 flex-1 basis-40 truncate text-[13px] font-medium", feita && "text-texto-suave line-through")}>{t.titulo}</span>
-      <span className={cx("rounded-botao px-2 py-0.5 text-[10px] font-bold uppercase", COR_STATUS[t.status])}>{STATUS.find((s) => s.valor === t.status)?.rotulo}</span>
+      {/* aprovada pelo cliente: o selo diz isso, em vez de "com o cliente" (M12) */}
+      {t.status === "revisao" && t.clienteAprovouEm ? (
+        <span className="rounded-botao bg-ok-suave px-2 py-0.5 text-[10px] font-bold text-ok uppercase">aprovada</span>
+      ) : (
+        <span className={cx("rounded-botao px-2 py-0.5 text-[10px] font-bold uppercase", COR_STATUS[t.status])}>{STATUS.find((s) => s.valor === t.status)?.rotulo}</span>
+      )}
       <MetaTarefa t={t} a={a} />
       <BotaoRelogio t={t} a={a} pequeno />
     </div>

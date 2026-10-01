@@ -30,6 +30,13 @@ describe("visão do dia", () => {
     ];
     expect(montarVisaoDoDia(ts, "m", hoje).emAndamento.map((t) => t.id).sort()).toEqual(["p", "r"]);
   });
+  it("peça aprovada pelo cliente sai de 'com o cliente' (M12)", () => {
+    const ts = [
+      novaTarefa("x", "esperando", { responsavelId: "m", status: "revisao" }),
+      { ...novaTarefa("y", "aprovada", { responsavelId: "m", status: "revisao" }), clienteAprovouEm: "2026-09-26T10:00:00Z" },
+    ];
+    expect(montarVisaoDoDia(ts, "m", hoje).emAprovacao.map((t) => t.id)).toEqual(["x"]);
+  });
   it("do outro sócio, e de todos (com as sem dono)", () => {
     expect(montarVisaoDoDia(tarefas, "a", hoje).semana.map((t) => t.id)).toEqual(["3"]);
     const todos = montarVisaoDoDia(tarefas, null, hoje);

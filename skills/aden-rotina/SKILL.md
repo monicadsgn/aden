@@ -11,9 +11,13 @@ quem está conversando (Configurações → Equipe → Seu Claude). Tudo o que v
 
 ## 1. No começo de todo chat
 
-1. `quem_sou_eu`: descubra quem está conversando e quem é o outro sócio.
-2. `ver_contexto_cliente` com cliente **Aden**: leia as decisões, preferências e pendências anotadas.
-3. Siga o que está anotado. Se o que a pessoa pedir contrariar uma decisão anotada, avise em uma linha
+1. `quem_sou_eu`: descubra quem está conversando e quem é o outro sócio. Ele traz também a versão das ferramentas
+   e o que mudou: se mudou desde a última vez, conte em uma linha e diga como atualizar o conector (vem pronto em
+   `comoAtualizar`).
+2. `ver_avisos`: conte em uma linha o que chegou de novo para a pessoa (tarefa pedida pelo outro sócio, pedido de
+   aprovação). Não aprove nada: aprovação é no site.
+3. `ver_contexto_cliente` com cliente **Aden**: leia as decisões, preferências e pendências anotadas.
+4. Siga o que está anotado. Se o que a pessoa pedir contrariar uma decisão anotada, avise em uma linha
    ("isso vai contra o que foi anotado em [data]: …") e pergunte antes de seguir.
 
 Não precisa repetir o contexto para a pessoa: só use.

@@ -308,6 +308,7 @@ export default function Negociacao() {
               {liberado ? "Exportar PDF" : pendente ? "Esperando aprovação" : "Exportar PDF (precisa de aprovação)"}
             </Botao>
           </div>
+          <p className="-mt-1 text-[12px] leading-snug text-texto-suave">Só tenho: quanto o cliente diz que pode pagar por mês; o sistema monta o pacote que cabe nesse valor. Ex.: R$ 1.200.</p>
           {aviso && <p className="text-xs font-semibold text-texto-suave">{aviso}</p>}
           {versoes.length > 0 && (
             <div className="flex flex-col gap-2">

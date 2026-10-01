@@ -347,6 +347,7 @@ export function DetalheLead({
             </Link>
           )}
         </div>
+        <p className="text-[12px] leading-snug text-texto-suave sm:col-span-2">Quanto esse lead deve pagar por mês se fechar; soma no total da etapa em Leads. Ex.: R$ 1.500.</p>
       </div>
 
       <label className="mt-4 flex flex-col gap-1 text-xs font-semibold text-texto-suave">

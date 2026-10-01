@@ -683,7 +683,18 @@ describe("conector: quem sou eu", () => {
       { id: "a", nome: "Áleff", socio: true, percentualPadrao: 50, pisoHoraCentavos: null, capacidadeHorasMes: null, ativo: true },
     ];
     const r = await chamar("quem_sou_eu");
-    expect(r).toEqual({ voce: "Mônica", papel: "sócio", outrosSocios: ["Áleff"] });
+    expect(r).toMatchObject({ voce: "Mônica", papel: "sócio", outrosSocios: ["Áleff"] });
+    // M14: a versão das ferramentas e o que mudou vêm junto, para o Claude avisar o sócio
+    expect(r.versaoFerramentas).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(r.novidades.length).toBeGreaterThan(0);
+  });
+  it("aceita apelido quando só um nome bate (M14)", async () => {
+    banco.config.pessoas = [
+      { id: "p1", nome: "Mônica", socio: true, percentualPadrao: 50, pisoHoraCentavos: null, capacidadeHorasMes: null, ativo: true },
+      { id: "a", nome: "Áleff", socio: true, percentualPadrao: 50, pisoHoraCentavos: null, capacidadeHorasMes: null, ativo: true },
+    ];
+    const r = await chamar("ver_visao_do_dia", { socio: "Moni" });
+    expect(r).toHaveProperty("hoje");
   });
 });
 

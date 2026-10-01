@@ -18,6 +18,7 @@ import {
   MessagesSquare,
   Plus,
   ShieldCheck,
+  Sparkle,
   Sun,
   Wallet,
   type LucideIcon,
@@ -31,10 +32,11 @@ import { horaDoEvento, useAgenda } from "@/components/agenda/useAgenda";
 import { DetalheTarefa } from "@/components/tarefas/DetalheTarefa";
 import { ListaTarefas } from "@/components/tarefas/LinhaTarefa";
 import { montarFechamento } from "@/lib/calculo/fechamento";
+import { COMO_ATUALIZAR, NOVIDADES, VERSAO_FERRAMENTAS } from "@/lib/mcp/novidades";
 import { useTarefas } from "@/components/tarefas/useTarefas";
 import { Avatar } from "@/components/Avatar";
 import { BotaoAjudaTela } from "@/components/Ajuda";
-import { Card, cx } from "@/components/ui";
+import { Botao, Card, cx } from "@/components/ui";
 import { clienteNoMes, lembretesDeContrato } from "@/lib/calculo/clientes";
 import { contatosParaHoje, resumoFunil, type Lead } from "@/lib/calculo/crm";
 import { avisosDePublicacao, hojeISO, montarVisaoDoDia, somarDias } from "@/lib/calculo/dia";
@@ -131,6 +133,20 @@ export default function VisaoDoDia() {
   const { repo, usuario } = useDados();
   const router = useRouter();
   const [verProximos, setVerProximos] = useState(false);
+  // M14: quando as ferramentas do Claude mudam, avisa cada sócio até ele marcar que atualizou o conector
+  const [ferramentasVistas, setFerramentasVistas] = useState<string | null>(VERSAO_FERRAMENTAS);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- preferência guardada no navegador
+      setFerramentasVistas(localStorage.getItem("aden:ferramentas-vistas"));
+    } catch {}
+  }, []);
+  const marcarFerramentasVistas = () => {
+    setFerramentasVistas(VERSAO_FERRAMENTAS);
+    try {
+      localStorage.setItem("aden:ferramentas-vistas", VERSAO_FERRAMENTAS);
+    } catch {}
+  };
   const [fechamentos, setFechamentos] = useState<{ clienteId: string; nome: string; proximo: string; feitos: number; total: number }[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [avisos, setAvisos] = useState<AvisoSocio[]>([]);
@@ -298,6 +314,20 @@ export default function VisaoDoDia() {
         {a.erro && !tarefa && <p className="rounded-card bg-erro-suave px-4 py-3 text-sm text-erro">{a.erro}</p>}
 
         {socio && <ParaComecar passos={passosParaComecar(cfg)} />}
+
+        {socio && ferramentasVistas !== VERSAO_FERRAMENTAS && (
+          <div className="flex flex-wrap items-start gap-3 rounded-card border border-info/30 bg-info-suave px-4 py-3 text-[13px] text-info">
+            <Sparkle size={16} className="mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1 basis-64">
+              <p className="font-semibold">As ferramentas do seu Claude mudaram ({VERSAO_FERRAMENTAS.split("-").reverse().slice(0, 2).join("/")}).</p>
+              <p className="mt-0.5 text-[12px]">{NOVIDADES[0]?.texto}</p>
+              <p className="mt-1 text-[12px]">{COMO_ATUALIZAR}</p>
+            </div>
+            <Botao pequeno onClick={marcarFerramentasVistas}>
+              Já atualizei
+            </Botao>
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0">

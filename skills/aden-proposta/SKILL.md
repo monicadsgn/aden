@@ -27,6 +27,8 @@ O preço sai do cálculo do Aden, nunca da sua cabeça. Esta skill conduz a conv
 ## Passo a passo
 
 1. **Lead:** `listar_leads`. Se não existir, `salvar_lead` (nome, contato, telefone, instagram, origem).
+   Quando o pacote e o valor estiverem combinados, grave no lead com `salvar_lead` (`pacote`, `valorEstimadoReais`;
+   proposta salva em `simulacao`): é daí que o cliente nasce quando fechar.
    Registre o que foi conversado com `registrar_conversa_lead` e, se houver, a data do próximo contato.
 2. **Sondagem:** falta saber o que o cliente quer (social media, tráfego, os dois), o segmento, se o comercial dele
    está estruturado e quanto pode investir? Monte **uma** mensagem curta de WhatsApp pedindo só o que falta.

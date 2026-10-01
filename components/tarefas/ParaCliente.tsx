@@ -3,10 +3,11 @@
 // Parte da tarefa que vai para o cliente: mostrar no painel, legenda, artes, enviar
 // para aprovação e as respostas dele (aprovou / pediu ajuste, rodadas usadas).
 
-import { CalendarClock, CheckCircle2, Eye, EyeOff, FileText, ImagePlus, Loader2, MessageSquareWarning, Megaphone, Send, Trash2, Undo2 } from "lucide-react";
+import { CalendarClock, CheckCircle2, Eye, EyeOff, FileText, ImagePlus, Loader2, MessageCircle, MessageSquareWarning, Megaphone, Send, Trash2, Undo2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Badge, Botao, cx } from "../ui";
 import { aprovarAte } from "@/lib/calculo/painel";
+import { linkWhatsapp, mensagemPecaNoPainel } from "@/lib/calculo/avisoCliente";
 import { ROTULO_PECA, situacaoPeca, type Tarefa } from "@/lib/calculo/tarefas";
 import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
 import type { AcoesTarefas } from "./useTarefas";
@@ -33,13 +34,18 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
   const rodadas = t.rodadas ?? 0;
   const prazo = sit === "aguardando" ? aprovarAte(t.enviadaClienteEm ?? null, cliente.contrato?.prazoAprovacaoDias ?? null) : null;
   const arquivos = t.arquivos ?? [];
-  const ehPeca = aberto || !!(t.visivelCliente || arquivos.length > 0 || t.legenda || t.textoArte || t.publicarEm || t.publicadaEm);
+  // M12: tarefa de um calendário do planejamento já é peça: o bloco abre sozinho
+  const ehPeca = aberto || !!(t.visivelCliente || arquivos.length > 0 || t.legenda || t.textoArte || t.publicarEm || t.publicadaEm || t.lote);
+  // com painel, a peça passa pela aprovação do cliente antes de agendar ou publicar
+  const semAprovar = !interno && !t.clienteAprovouEm;
+  const confirmarSemAprovar = (acao: string) =>
+    !semAprovar || confirm(`${cliente.nome} ainda não aprovou esta peça pelo painel. ${acao} mesmo assim? (Use se a aprovação veio por outro caminho.)`);
 
   if (!ehPeca)
     return (
-      <button type="button" className="mt-4 text-[12px] font-semibold text-marca-forte underline" onClick={() => setAberto(true)}>
-        É uma peça de conteúdo? Pôr legenda, arte e o dia de ir ao ar
-      </button>
+      <Botao className="mt-4" pequeno icone={Megaphone} onClick={() => setAberto(true)}>
+        É uma peça de conteúdo: pôr legenda, arte e o dia de ir ao ar
+      </Botao>
     );
 
   return (
@@ -194,11 +200,11 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
                 pequeno
                 icone={CalendarClock}
                 variante={t.agendadaEm ? "primario" : undefined}
-                onClick={() => void a.salvar({ ...t, agendadaEm: t.agendadaEm ? null : new Date().toISOString() })}
+                onClick={() => (t.agendadaEm || confirmarSemAprovar("Marcar como agendada")) && void a.salvar({ ...t, agendadaEm: t.agendadaEm ? null : new Date().toISOString() })}
               >
                 {t.agendadaEm ? "Agendada (desfazer)" : "Marcar como agendada"}
               </Botao>
-              <Botao pequeno icone={Megaphone} onClick={() => void a.marcarPublicada(t, true)}>
+              <Botao pequeno icone={Megaphone} onClick={() => confirmarSemAprovar("Marcar como publicada") && void a.marcarPublicada(t, true)}>
                 Marcar como publicada
               </Botao>
             </>
@@ -214,7 +220,19 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
               {rodadas > 0 ? "Reenviar para o cliente aprovar" : "Enviar para o cliente aprovar"}
             </Botao>
           )}
-          {sit === "aguardando" && <span className="text-[11px] text-texto-suave">Enviada em {dataBr(t.enviadaClienteEm)}{prazo && ` · aprovar até ${dataBr(prazo)}`}</span>}
+          {sit === "aguardando" && <span className="text-[12px] text-texto-suave">Enviada em {dataBr(t.enviadaClienteEm)}{prazo && ` · aprovar até ${dataBr(prazo)}`}</span>}
+          {/* M13: avisar o cliente de que tem peça esperando (o sócio manda pelo WhatsApp de sempre) */}
+          {sit === "aguardando" && cliente.painelToken && (
+            <a
+              href={linkWhatsapp(cliente.telefone, mensagemPecaNoPainel(cliente.contato, `${window.location.origin}/c/${cliente.painelToken}`))}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 items-center gap-1.5 rounded-botao border border-linha bg-superficie px-3 text-xs font-semibold hover:bg-superficie-2"
+              title={cliente.telefone ? "Abre o WhatsApp com a mensagem pronta" : "Sem telefone na ficha: o WhatsApp abre para escolher o contato"}
+            >
+              <MessageCircle size={14} /> Avisar no WhatsApp
+            </a>
+          )}
           {(rodadas > 0 || limite != null) && (
             <span className={cx("text-[11px]", limite != null && rodadas > limite ? "font-semibold text-erro" : "text-texto-suave")}>
               {rodadas} ajuste{rodadas === 1 ? "" : "s"}

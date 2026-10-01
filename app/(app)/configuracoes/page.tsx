@@ -63,7 +63,7 @@ import { useDados } from "@/lib/dados/contexto";
 import { diferenca, temAlteracoes, type AlteracoesConfig, type Membro, type Pedido } from "@/lib/dados/repositorio";
 import { formatarMoeda, formatarPct } from "@/lib/formato";
 import { motivoNaoApagar, REGRAS_PROTECAO, type ItemProtegido } from "@/lib/regras/aprovacao";
-import { camposFaltando } from "@/lib/regras/pendencias";
+import { pendencias as calcularPendencias, SEM_O_OBRIGATORIO } from "@/lib/regras/pendencias";
 import { COM_VOLUME } from "@/lib/recursos";
 
 // Nomes citados pela Moni no briefing. Só nomes: horas e divisões ficam vazias.
@@ -135,7 +135,7 @@ function Alvo({ campo, children, className }: { campo: string; children: ReactNo
 /** Cadeado + alteração pendente, embaixo de um campo protegido. */
 function Protegido({ pendente }: { pendente: ItemProtegido | null }) {
   if (!pendente) return null;
-  return <p className="mt-1 text-[10px] leading-tight font-semibold text-aviso">alteração pendente de aprovação: {descreverItem(pendente).split(": ").slice(1).join(": ")}</p>;
+  return <p className="mt-1 text-[12px] leading-tight font-semibold text-aviso">alteração pendente de aprovação: {descreverItem(pendente).split(": ").slice(1).join(": ")}</p>;
 }
 
 export default function Configuracoes() {
@@ -227,7 +227,7 @@ export default function Configuracoes() {
     [original, rascunho],
   );
   const sujo = temAlteracoes(alteracoes);
-  const faltando = useMemo(() => camposFaltando(rascunho), [rascunho]);
+  const pendencias = useMemo(() => calcularPendencias(rascunho), [rascunho]);
   const pendentes = pedidos.filter((p) => p.status === "pendente" && p.tipo === "campos");
   const itemPendente = (campo: ItemProtegido["campo"], registroId: string, pessoaId?: string) =>
     pendentes.flatMap((p) => p.itens).find((i) => i.campo === campo && i.registroId === registroId && (pessoaId == null || i.pessoaId === pessoaId)) ?? null;
@@ -327,7 +327,7 @@ export default function Configuracoes() {
                   .flatMap((id) => secoesVisiveis.filter((s) => s.id === id))
                   .map((s) => {
                     const Ic = s.icone;
-                    const n = faltando[s.id].length;
+                    const n = pendencias[s.id].obrigatorio.length;
                     const sel = s.id === secao;
                     return (
                       <button
@@ -351,7 +351,7 @@ export default function Configuracoes() {
                         {s.rotulo}
                         {!g.ordem.includes(s.id) && <span className="text-[10px] font-medium opacity-70">opcional</span>}
                         {n > 0 && (
-                          <span className={cx("rounded-botao px-1.5 py-px text-[9px] font-bold uppercase", sel ? "bg-sobre-marca/25" : "bg-aviso-suave text-aviso")} title={faltando[s.id].join(", ")}>
+                          <span className={cx("rounded-botao px-1.5 py-px text-[9px] font-bold uppercase", sel ? "bg-sobre-marca/25" : "bg-aviso-suave text-aviso")} title={`Obrigatório: ${pendencias[s.id].obrigatorio.join(", ")}`}>
                             falta preencher
                           </span>
                         )}
@@ -366,8 +366,16 @@ export default function Configuracoes() {
         <Card>
           <TituloCard icone={atual.icone} titulo={atual.rotulo} descricao={atual.frase} />
           <div className="px-5 pb-5">
-            {faltando[secao].length > 0 && (
-              <p className="mb-3 rounded-bloco bg-aviso-suave px-3 py-2 text-[12px] font-medium text-aviso">Falta preencher: {faltando[secao].join(", ")}.</p>
+            {pendencias[secao].obrigatorio.length > 0 && (
+              <p className="mb-2 rounded-bloco bg-aviso-suave px-3 py-2 text-[12px] font-medium text-aviso">
+                <strong>Obrigatório:</strong> {pendencias[secao].obrigatorio.join(", ")}
+                {SEM_O_OBRIGATORIO[secao] ? ` (sem isso, ${SEM_O_OBRIGATORIO[secao]}).` : "."}
+              </p>
+            )}
+            {pendencias[secao].opcional.length > 0 && (
+              <p className="mb-3 px-1 text-[12px] leading-snug text-texto-suave">
+                <strong className="text-texto">Opcional, pode ficar vazio:</strong> {pendencias[secao].opcional.map((o) => `${o.campo} (vazio = ${o.vazio})`).join("; ")}.
+              </p>
             )}
             {COM_CADEADO.includes(secao) && (
               <details className="mb-3 rounded-bloco bg-marca-tinta px-3 py-2 text-[12px] leading-relaxed">
@@ -460,15 +468,15 @@ export default function Configuracoes() {
                     </div>
                   );
                 })}
-                <div className="grid gap-2 text-[11px] leading-snug text-texto-suave sm:grid-cols-3">
+                <div className="grid gap-2 text-[12px] leading-snug text-texto-suave sm:grid-cols-3">
                   <p>
-                    <strong className="text-texto">% da sobra:</strong> quanto do que sobra de cada cliente vai para cada sócio. Os dois precisam somar 100%.
+                    <strong className="text-texto">% da sobra:</strong> quanto do que sobra de cada cliente vai para cada sócio. Os dois precisam somar 100%. Ex.: 60% e 40%.
                   </p>
                   <p>
-                    <strong className="text-texto">Piso por hora:</strong> o mínimo que cada hora de trabalho precisa pagar. Abaixo disso, o sistema acende o alerta.
+                    <strong className="text-texto">Piso por hora:</strong> o mínimo que cada hora de trabalho precisa pagar. Abaixo disso, o sistema acende o alerta. Ex.: R$ 50 por hora.
                   </p>
                   <p>
-                    <strong className="text-texto">Horas no mês:</strong> quanto cada um consegue produzir por mês. A tela Mês compara com o que os clientes pedem.
+                    <strong className="text-texto">Horas no mês:</strong> quanto cada um consegue produzir por mês. A tela Mês compara com o que os clientes pedem. Ex.: 100 h no mês.
                   </p>
                 </div>
                 <div>
@@ -533,8 +541,11 @@ export default function Configuracoes() {
                           </div>
                         </Alvo>
                       )}
+                      {socios.length > 0 && (
+                        <p className="mt-1 text-[12px] leading-snug text-texto-suave">Quanto das horas deste serviço cada sócio faz; a soma dá 100%. Ex.: 70% para um e 30% para o outro.</p>
+                      )}
                       {pend.length > 0 && (
-                        <p className="mt-1 text-[10px] font-semibold text-aviso">alteração pendente de aprovação: {pend.map(descreverItem).join("; ")}</p>
+                        <p className="mt-1 text-[12px] font-semibold text-aviso">alteração pendente de aprovação: {pend.map(descreverItem).join("; ")}</p>
                       )}
                     </div>
                   );
@@ -598,7 +609,7 @@ export default function Configuracoes() {
                       }}
                     />
                     {t.audiovisual ? (
-                      <div className="pt-6 text-center text-[11px] leading-tight font-semibold text-texto-suave">sem tempo dos sócios</div>
+                      <div className="pt-6 text-center text-[12px] leading-tight font-semibold text-texto-suave">sem tempo dos sócios</div>
                     ) : t.projeto ? (
                       <Alvo campo="horasPorUnidade">
                         <CampoNumero
@@ -705,6 +716,9 @@ export default function Configuracoes() {
                   aparece em &quot;bancado por&quot; e não sai do caixa da Aden. <strong className="text-texto">Planejado:</strong> custo guardado para quando o caixa permitir; fica
                   desligado e avisa quando a sobra do mês cobre.
                 </p>
+                <p className="text-[12px] text-texto-suave">
+                  <strong className="text-texto">Valor:</strong> quanto o custo sai por mês. Ex.: R$ 60 por mês de uma ferramenta.
+                </p>
                 {rascunho.custosFixos.map((c) => (
                   <div key={c.id} className={cx("flex flex-col gap-2 rounded-bloco bg-superficie-2/60 p-3", !c.ativo && "opacity-70")}>
                     <div className="grid grid-cols-[1fr_9rem_auto] items-end gap-2">
@@ -770,7 +784,7 @@ export default function Configuracoes() {
                       <Alvo campo="impostoFixoMensalCentavos">
                         <CampoMoeda rotulo="Imposto fixo por mês (ex.: DAS do MEI)" valor={e.impostoFixoMensalCentavos ?? null} aoMudar={(v) => setE({ impostoFixoMensalCentavos: v })} />
                       </Alvo>
-                      <Explica>O que a empresa paga de imposto todo mês, tenha o faturamento que tiver. Entra dividido entre os clientes, junto com os custos fixos.</Explica>
+                      <Explica>O que a empresa paga de imposto todo mês, tenha o faturamento que tiver. Entra dividido entre os clientes, junto com os custos fixos. Ex.: R$ 70 por mês.</Explica>
                     </>
                   )}
                   {e.regime !== "mei" && (
@@ -778,7 +792,7 @@ export default function Configuracoes() {
                       <Alvo campo="impostoPct">
                         <CampoPct rotulo="Imposto em % do faturamento" valor={e.impostoPct} aoMudar={(v) => setE({ impostoPct: v })} />
                       </Alvo>
-                      <Explica>Para regimes em que o imposto é uma porcentagem do que entra.</Explica>
+                      <Explica>Para regimes em que o imposto é uma porcentagem do que entra. Ex.: 6% de R$ 1.000 são R$ 60.</Explica>
                     </>
                   )}
                   {e.regime == null && <p className="text-[12px] text-aviso sm:col-span-2">Escolha o regime: no MEI, o campo de imposto em % some e não entra na conta.</p>}
@@ -815,16 +829,16 @@ export default function Configuracoes() {
                   <Alvo campo="reinvestimentoPct">
                     <CampoPct rotulo="Reinvestimento (% da sobra)" valor={e.reinvestimentoPct} aoMudar={(v) => setE({ reinvestimentoPct: v })} />
                   </Alvo>
-                  <Explica>Quanto da sobra de cada cliente fica guardado na empresa antes da divisão entre os sócios. Vazio = nada fica guardado.</Explica>
+                  <Explica>Quanto da sobra de cada cliente fica guardado na empresa antes da divisão entre os sócios. Ex.: 10% de uma sobra de R$ 1.000 são R$ 100 guardados. Vazio = nada fica guardado.</Explica>
                 </Bloco>
 
                 <Bloco titulo="Taxa de recebimento">
                   <Alvo campo="taxaRecebimentoPct">
                     <CampoPct rotulo="Taxa (%)" valor={e.taxaRecebimentoPct} aoMudar={(v) => setE({ taxaRecebimentoPct: v })} />
                   </Alvo>
-                  <Explica>Quanto o meio de pagamento desconta de cada cobrança, em porcentagem.</Explica>
+                  <Explica>Quanto o meio de pagamento desconta de cada cobrança, em porcentagem. Ex.: 3% de R$ 1.000 são R$ 30.</Explica>
                   <CampoMoeda rotulo="Tarifa fixa por cobrança" valor={e.taxaRecebimentoFixaCentavos ?? null} aoMudar={(v) => setE({ taxaRecebimentoFixaCentavos: v })} />
-                  <Explica>Valor fixo por cobrança, se houver. Quando o InfinitePay for integrado, estes dois campos recebem a taxa real.</Explica>
+                  <Explica>Valor fixo por cobrança, se houver. Ex.: R$ 2 por boleto. Quando o InfinitePay for integrado, estes dois campos recebem a taxa real.</Explica>
                 </Bloco>
 
                 <Bloco titulo="Ordem de distribuição dos pagamentos">
@@ -880,7 +894,10 @@ export default function Configuracoes() {
                       aoMudar={(v) => setE({ socioPercentualId: v })}
                     />
                   </Alvo>
-                  <CampoPct rotulo={<span className="flex items-center gap-1"><Lock size={11} /> % do que entra</span>} valor={e.sociedadePctSocio ?? null} aoMudar={(v) => setE({ sociedadePctSocio: v })} />
+                  <div>
+                    <CampoPct rotulo={<span className="flex items-center gap-1"><Lock size={11} /> % do que entra</span>} valor={e.sociedadePctSocio ?? null} aoMudar={(v) => setE({ sociedadePctSocio: v })} />
+                    <p className="mt-1 text-[12px] leading-snug text-texto-suave">Parte do que entra no mês que vai para esse sócio, antes da virada. Ex.: 30% de R$ 1.000 são R$ 300.</p>
+                  </div>
                   <Selecao
                     rotulo="Quem fica com a sobra"
                     valor={e.socioSobraId ?? null}
@@ -889,26 +906,38 @@ export default function Configuracoes() {
                     opcoes={rascunho.pessoas.filter((p) => p.socio && p.ativo && p.id !== e.socioPercentualId).map((p) => ({ valor: p.id, rotulo: p.nome }))}
                     aoMudar={(v) => setE({ socioSobraId: v })}
                   />
-                  <CampoPct
-                    rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Da sobra, vai para o tráfego</span>}
-                    valor={e.sociedadeSobraTrafegoPct ?? null}
-                    aoMudar={(v) => setE({ sociedadeSobraTrafegoPct: v })}
-                  />
-                  <CampoMoeda
-                    rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Virada: quando entrar no mês</span>}
-                    valor={e.sociedadeTetoViradaCentavos ?? null}
-                    aoMudar={(v) => setE({ sociedadeTetoViradaCentavos: v })}
-                  />
-                  <CampoMoeda
-                    rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Parte acima disso vira bônus</span>}
-                    valor={e.sociedadeAvisoBonusCentavos ?? null}
-                    aoMudar={(v) => setE({ sociedadeAvisoBonusCentavos: v })}
-                  />
-                  <CampoMoeda
-                    rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Mínimo do tráfego próprio por mês</span>}
-                    valor={e.trafegoProprioMinimoCentavos ?? null}
-                    aoMudar={(v) => setE({ trafegoProprioMinimoCentavos: v })}
-                  />
+                  <div>
+                    <CampoPct
+                      rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Da sobra, vai para o tráfego</span>}
+                      valor={e.sociedadeSobraTrafegoPct ?? null}
+                      aoMudar={(v) => setE({ sociedadeSobraTrafegoPct: v })}
+                    />
+                    <p className="mt-1 text-[12px] leading-snug text-texto-suave">Parte da sobra que vira anúncio da própria Aden. Ex.: 20% de uma sobra de R$ 500 são R$ 100.</p>
+                  </div>
+                  <div>
+                    <CampoMoeda
+                      rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Virada: quando entrar no mês</span>}
+                      valor={e.sociedadeTetoViradaCentavos ?? null}
+                      aoMudar={(v) => setE({ sociedadeTetoViradaCentavos: v })}
+                    />
+                    <p className="mt-1 text-[12px] leading-snug text-texto-suave">Quando o que entrou no mês chegar a este valor, a sobra passa a ser dividida pelo % de cada sócio. Ex.: R$ 10.000.</p>
+                  </div>
+                  <div>
+                    <CampoMoeda
+                      rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Parte acima disso vira bônus</span>}
+                      valor={e.sociedadeAvisoBonusCentavos ?? null}
+                      aoMudar={(v) => setE({ sociedadeAvisoBonusCentavos: v })}
+                    />
+                    <p className="mt-1 text-[12px] leading-snug text-texto-suave">Quando a parte de quem recebe o % passar deste valor, o que passar aparece como bônus. Ex.: R$ 3.000.</p>
+                  </div>
+                  <div>
+                    <CampoMoeda
+                      rotulo={<span className="flex items-center gap-1"><Lock size={11} /> Mínimo do tráfego próprio por mês</span>}
+                      valor={e.trafegoProprioMinimoCentavos ?? null}
+                      aoMudar={(v) => setE({ trafegoProprioMinimoCentavos: v })}
+                    />
+                    <p className="mt-1 text-[12px] leading-snug text-texto-suave">O menor valor por mês que vai para o anúncio da própria Aden. Ex.: R$ 200 por mês.</p>
+                  </div>
                   <Explica>
                     Quem escolhe quanto da sobra vai para o tráfego é quem fica com ela: mudar esse % pede a aprovação só dele. Os outros números pedem a aprovação dos
                     dois. Depois de escolhidos, quem recebe o % e quem fica com a sobra não mudam por aqui.
@@ -919,24 +948,36 @@ export default function Configuracoes() {
                   <p className="text-[12px] leading-snug text-texto-suave sm:col-span-2">
                     O cliente só paga a gestão do tráfego quando o resultado vier. Estes valores aparecem na Proposta para o cliente e servem de aviso interno.
                   </p>
-                  <CampoMoeda rotulo="Verba de mídia indicada: de" valor={e.ofertaVerbaMinCentavos ?? null} aoMudar={(v) => setE({ ofertaVerbaMinCentavos: v })} />
-                  <CampoMoeda rotulo="até" valor={e.ofertaVerbaMaxCentavos ?? null} aoMudar={(v) => setE({ ofertaVerbaMaxCentavos: v })} />
-                  <CampoMoeda
-                    rotulo="Gestão depois do resultado"
-                    valor={e.ofertaGestaoAposResultadoCentavos ?? null}
-                    aoMudar={(v) => setE({ ofertaGestaoAposResultadoCentavos: v })}
-                  />
-                  <CampoMoeda
-                    rotulo="Social media + tráfego não fecha abaixo de"
-                    valor={e.ofertaMinimoSocialTrafegoCentavos ?? null}
-                    aoMudar={(v) => setE({ ofertaMinimoSocialTrafegoCentavos: v })}
-                  />
+                  <div>
+                    <CampoMoeda rotulo="Verba de mídia indicada: de" valor={e.ofertaVerbaMinCentavos ?? null} aoMudar={(v) => setE({ ofertaVerbaMinCentavos: v })} />
+                    <p className="mt-1 text-[12px] leading-snug text-texto-suave">O menor valor de anúncio por mês que a Proposta indica ao cliente. Ex.: R$ 500.</p>
+                  </div>
+                  <div>
+                    <CampoMoeda rotulo="até" valor={e.ofertaVerbaMaxCentavos ?? null} aoMudar={(v) => setE({ ofertaVerbaMaxCentavos: v })} />
+                    <p className="mt-1 text-[12px] leading-snug text-texto-suave">O maior valor de anúncio por mês da faixa indicada. Ex.: R$ 1.500.</p>
+                  </div>
+                  <div>
+                    <CampoMoeda
+                      rotulo="Gestão depois do resultado"
+                      valor={e.ofertaGestaoAposResultadoCentavos ?? null}
+                      aoMudar={(v) => setE({ ofertaGestaoAposResultadoCentavos: v })}
+                    />
+                    <p className="mt-1 text-[12px] leading-snug text-texto-suave">Quanto o cliente passa a pagar por mês pela gestão quando o resultado vier. Ex.: R$ 800.</p>
+                  </div>
+                  <div>
+                    <CampoMoeda
+                      rotulo="Social media + tráfego não fecha abaixo de"
+                      valor={e.ofertaMinimoSocialTrafegoCentavos ?? null}
+                      aoMudar={(v) => setE({ ofertaMinimoSocialTrafegoCentavos: v })}
+                    />
+                    <p className="mt-1 text-[12px] leading-snug text-texto-suave">Menor mensalidade para os dois serviços juntos; abaixo disso a Proposta avisa. Ex.: R$ 2.000.</p>
+                  </div>
                   <Explica>A verba é paga pelo cliente direto na plataforma e nunca entra no faturamento. Abaixo do mínimo, a Proposta só avisa (sem pedido de exceção).</Explica>
                 </Bloco>
 
                 <Bloco titulo="Leads">
                   <CampoNumero rotulo="Follow-ups do &quot;vou ver&quot; antes de sugerir perda" valor={e.followUpsMaximo ?? null} aoMudar={(v) => setE({ followUpsMaximo: v })} />
-                  <Explica>Depois desse número de follow-ups sem resposta, a ficha do lead sugere marcar como perdido. Só sugere; vazio = nunca.</Explica>
+                  <Explica>Depois desse número de follow-ups sem resposta, a ficha do lead sugere marcar como perdido. Ex.: 3 follow-ups. Só sugere; vazio = nunca.</Explica>
                 </Bloco>
               </div>
             )}
@@ -946,17 +987,17 @@ export default function Configuracoes() {
                 <Alvo campo="tetoFaturamentoAnualCentavos">
                   <CampoMoeda rotulo="Teto de faturamento no ano" valor={e.tetoFaturamentoAnualCentavos ?? null} aoMudar={(v) => setE({ tetoFaturamentoAnualCentavos: v })} />
                 </Alvo>
-                <Explica>O limite do regime (no MEI, o teto anual). Passar dele muda o regime inteiro da empresa.</Explica>
+                <Explica>O limite do regime (no MEI, o teto anual). Passar dele muda o regime inteiro da empresa. Ex.: R$ 100.000 por ano.</Explica>
                 <CampoPct rotulo="Avisar a partir de (% do teto)" valor={e.avisoTetoPct ?? null} aoMudar={(v) => setE({ avisoTetoPct: v })} />
-                <Explica>Quando a soma do ano projetada chegar a esta porcentagem do teto, o sistema avisa antes de estourar.</Explica>
+                <Explica>Quando a soma do ano projetada chegar a esta porcentagem do teto, o sistema avisa antes de estourar. Ex.: com 80%, avisa ao chegar em 80% do teto.</Explica>
                 <CampoPct rotulo="Folga sobrando abaixo de (% das horas)" valor={e.ociosidadePct ?? null} aoMudar={(v) => setE({ ociosidadePct: v })} />
-                <Explica>Se os clientes usarem menos que isso das horas de um sócio, a tela Mês mostra que ele tem espaço sobrando.</Explica>
+                <Explica>Se os clientes usarem menos que isso das horas de um sócio, a tela Mês mostra que ele tem espaço sobrando. Ex.: 70% das horas.</Explica>
                 <CampoMoeda rotulo="Arredondar a proposta para cima, de" valor={e.arredondamentoPropostaCentavos ?? null} aoMudar={(v) => setE({ arredondamentoPropostaCentavos: v })} />
-                <Explica>O valor que vai para o cliente sobe até o próximo múltiplo deste valor, para sair um número redondo.</Explica>
+                <Explica>O valor que vai para o cliente sobe até o próximo múltiplo deste valor, para sair um número redondo. Ex.: com R$ 50, R$ 1.432 vira R$ 1.450.</Explica>
                 <CampoPct rotulo="Sugerir novo tempo quando a média diferir mais de" valor={e.diferencaSugerirPct ?? null} aoMudar={(v) => setE({ diferencaSugerirPct: v })} />
-                <Explica>Vazio = qualquer diferença de 1 minuto ou mais já vira sugestão de atualizar o tempo cadastrado.</Explica>
+                <Explica>Quanto a média medida pode se afastar do tempo cadastrado antes de sugerir trocar. Ex.: 15%. Vazio = qualquer diferença de 1 minuto ou mais já vira sugestão de atualizar o tempo cadastrado.</Explica>
                 <CampoNumero rotulo="Lead parado na etapa depois de" sufixo="dias" valor={e.diasLeadParado ?? null} aoMudar={(v) => setE({ diasLeadParado: v })} />
-                <Explica>Em Leads, o card do lead fica em destaque quando passa esse tempo sem mudar de etapa. Vazio = nunca destaca.</Explica>
+                <Explica>Em Leads, o card do lead fica em destaque quando passa esse tempo sem mudar de etapa. Ex.: 7 dias. Vazio = nunca destaca.</Explica>
               </div>
             )}
 

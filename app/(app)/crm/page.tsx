@@ -25,7 +25,7 @@ function Numero({ icone: Ic, rotulo, valor, sub }: { icone: LucideIcon; rotulo: 
         <Ic size={13} /> {rotulo}
       </p>
       <p className="numero text-xl font-extrabold">{valor}</p>
-      {sub && <p className="text-[10px] text-texto-suave">{sub}</p>}
+      {sub && <p className="text-[12px] text-texto-suave">{sub}</p>}
     </div>
   );
 }
@@ -132,7 +132,8 @@ export default function Crm() {
           />
         </div>
 
-        <div className="-mx-1 grid gap-3 overflow-x-auto px-1 pb-2" style={{ gridTemplateColumns: `repeat(${colunas.length}, minmax(15rem, 1fr))` }}>
+        {/* D5: no celular as colunas encaixam uma por vez ao deslizar (como o painel do cliente) */}
+        <div className="-mx-1 grid snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 sm:snap-none" style={{ gridTemplateColumns: `repeat(${colunas.length}, minmax(min(15rem, 85vw), 1fr))` }}>
           {colunas.map((c) => {
             const itens = leads.filter((l) => l.etapa === c.valor);
             const soma = itens.reduce((a, l) => a + (l.valorEstimadoCentavos ?? 0), 0);
@@ -157,7 +158,7 @@ export default function Crm() {
                   }
                   void salvar(moverLead(l, c.valor));
                 }}
-                className={cx("flex min-h-48 flex-col gap-2 rounded-bloco bg-superficie-2/60 p-2 transition-colors", sobre === c.valor && "bg-marca-suave")}
+                className={cx("flex min-h-48 snap-start flex-col gap-2 rounded-bloco bg-superficie-2/60 p-2 transition-colors", sobre === c.valor && "bg-marca-suave")}
               >
                 <div className="flex items-center gap-2 px-1 pt-1">
                   <span className={cx("size-2.5 rounded-full", COR_ETAPA[c.valor])} aria-hidden />

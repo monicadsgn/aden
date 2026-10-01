@@ -151,6 +151,9 @@ export function SecaoDatas({ clientes: todos }: { clientes: ClienteBase[] }) {
                 );
               })}
               {clientes.length === 0 && <p className="text-xs text-texto-suave">Cadastre um cliente ativo para ligar a data.</p>}
+              {ligacoes.some((x) => x.dataId === d.id) && (
+                <p className="text-[12px] leading-snug text-texto-suave">Dias antes: quantos dias antes da data a campanha começa para aquele cliente. Ex.: 30 dias.</p>
+              )}
             </div>
           </div>
         ))

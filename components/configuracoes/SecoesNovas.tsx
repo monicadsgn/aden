@@ -46,8 +46,14 @@ export function SecaoTerceiros({ rascunho, set }: Props) {
             <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-[1.2fr_1.4fr_1fr_1fr_auto]">
               <CampoTexto className="col-span-2 sm:col-span-1" rotulo="Serviço" placeholder="Ex.: Audiovisual" valor={t.nome} aoMudar={(v) => setLista(atualizar(lista, t.id, { nome: v }))} />
               <CampoTexto className="col-span-2 sm:col-span-1" rotulo="O que inclui" placeholder="Ex.: gravação e edição" valor={t.inclui} aoMudar={(v) => setLista(atualizar(lista, t.id, { inclui: v }))} />
-              <CampoMoeda rotulo="Valor por saída" valor={t.valorPorSaidaCentavos} aoMudar={(v) => setLista(atualizar(lista, t.id, { valorPorSaidaCentavos: v }))} />
-              <CampoMoeda rotulo="Deslocamento médio" valor={t.deslocamentoMedioCentavos} aoMudar={(v) => setLista(atualizar(lista, t.id, { deslocamentoMedioCentavos: v }))} />
+              <div>
+                <CampoMoeda rotulo="Valor por saída" valor={t.valorPorSaidaCentavos} aoMudar={(v) => setLista(atualizar(lista, t.id, { valorPorSaidaCentavos: v }))} />
+                <p className="mt-1 text-[12px] leading-snug text-texto-suave">Quanto o terceiro cobra por ida ao cliente. Ex.: R$ 300.</p>
+              </div>
+              <div>
+                <CampoMoeda rotulo="Deslocamento médio" valor={t.deslocamentoMedioCentavos} aoMudar={(v) => setLista(atualizar(lista, t.id, { deslocamentoMedioCentavos: v }))} />
+                <p className="mt-1 text-[12px] leading-snug text-texto-suave">Gasto médio para chegar ao cliente (Uber, gasolina). Ex.: R$ 40.</p>
+              </div>
               <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label={`Remover ${t.nome}`} onClick={() => setLista(lista.filter((x) => x.id !== t.id))} />
             </div>
             <CampoTexto
@@ -110,6 +116,7 @@ function ItensDoPacote({
           <Botao variante="perigo" icone={Trash2} aria-label="Tirar do pacote" onClick={() => aoMudar(itens.filter((_, j) => j !== idx))} />
         </div>
       ))}
+      {itens.length > 0 && <p className="text-[12px] leading-snug text-texto-suave">Quantidade: quantas unidades dessa entrega o pacote inclui. Ex.: 12 posts.</p>}
       <div>
         <Botao icone={Plus} pequeno disabled={!tipos.length} onClick={() => aoMudar([...itens, { tipoEntregaId: tipos[0].id, quantidade: null }])}>
           Adicionar entrega
@@ -287,7 +294,10 @@ export function SecaoMetas({ rascunho, set }: Props) {
               opcoes={CRITERIOS.map((c) => ({ valor: c.valor, rotulo: c.rotulo }))}
               aoMudar={(v) => setLista(atualizar(lista, m.id, { criterio: v as Meta["criterio"], alvo: null }))}
             />
-            <CampoAlvo meta={m} aoMudar={(v) => setLista(atualizar(lista, m.id, { alvo: v }))} />
+            <div>
+              <CampoAlvo meta={m} aoMudar={(v) => setLista(atualizar(lista, m.id, { alvo: v }))} />
+              <p className="mt-1 text-[12px] leading-snug text-texto-suave">O número que marca o degrau como conquistado. Ex.: 5 clientes ou R$ 20.000 por mês.</p>
+            </div>
           </div>
           <CampoTexto
             rotulo="Ação ligada a este degrau"

@@ -78,6 +78,25 @@
   (#5c5f33 no claro: branco em cima a 6,8:1; no escuro, o verde claro de sempre). Nos PDFs, os textos pequenos da capa
   passaram a branco (de 3,1:1 para 4,4:1), sem mudar o verde da capa.
 
+- **Textos (M3, M4, M5, M11, M18):** campos com número têm frase e exemplo; "falta preencher" separa obrigatório (sem
+  ele a conta não sai: selo na aba e "Para começar") de opcional (vazio = o que vale, em linha discreta), em
+  `lib/regras/pendencias.ts` (`pendencias`, `SEM_O_OBRIGATORIO`); Limites, reinvestimento, taxa e deslocamento são
+  opcionais. Mês → Cada cliente fala em caminhos ("abaixo do piso: veja os caminhos", "falta um número"), travado em
+  `lib/ajuda-tom.test.ts`. Frases de explicação com 12 px. "Outras condições" avisa que vai para o contrato; teste do
+  contrato confere que nada interno aparece.
+- **Peça (M12):** agendar ou publicar sem a aprovação do painel pede confirmação; aprovada sai de "Com o cliente" e
+  ganha o selo "aprovada"; concluir pelo quadradinho pergunta quando o relógio roda ou a peça tem data e não foi ao
+  ar; tarefa de um calendário já abre com o bloco da peça.
+- **Conector (M14, M15, M16):** versão das ferramentas e novidades em `lib/mcp/novidades.ts` (`quem_sou_eu` devolve;
+  a Visão do dia avisa cada sócio até ele marcar "Já atualizei"); nomes aceitam apelido quando só um bate ("Moni",
+  "Olinda"); `ver_avisos`; `listar_tarefas` com descrição, legenda, texto da arte e as últimas respostas do cliente;
+  `ver_cliente` com a conversa inicial; `ver_historico` sem link do painel nem CPF crus; `salvar_lead` liga a proposta
+  salva (`simulacao`); `ganhar_lead` recusa lead sem proposta, pacote nem valor.
+- **Aviso ao cliente (M13, parte 1):** "Avisar no WhatsApp" na peça que espera o cliente (mensagem pronta com o link
+  do painel, `lib/calculo/avisoCliente.ts`).
+- **Detalhes:** D4 Histórico com busca e filtro por assunto; D5 colunas de Leads encaixam ao deslizar no celular; D7
+  teste trava as cores dos PDFs iguais a `tokens.css`; D8 sombras no escuro; D9 `.env.example` completo.
+
 ## Stack
 
 Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + Tailwind v4 + Vercel.

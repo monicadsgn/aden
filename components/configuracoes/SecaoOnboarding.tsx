@@ -50,7 +50,7 @@ export function SecaoOnboarding({ servicos }: { servicos: Servico[] }) {
     <label className="flex min-w-60 flex-1 flex-col gap-1 text-xs font-semibold text-texto-suave">
       {rotulo}
       <input key={`${k}-${m[k] ?? ""}`} className={campo} defaultValue={m[k] ?? ""} onBlur={(e) => e.target.value.trim() !== (m[k] ?? "") && void salvar({ ...m, [k]: e.target.value })} />
-      {dica && <span className="text-[11px] font-normal">{dica}</span>}
+      {dica && <span className="text-[12px] font-normal">{dica}</span>}
     </label>
   );
 
@@ -74,7 +74,7 @@ export function SecaoOnboarding({ servicos }: { servicos: Servico[] }) {
             />
             {AUTOMATICO[s.chave] && <Badge tom="info">automático</Badge>}
           </div>
-          {AUTOMATICO[s.chave] && <p className="text-[11px] text-texto-suave">{AUTOMATICO[s.chave]}</p>}
+          {AUTOMATICO[s.chave] && <p className="text-[12px] text-texto-suave">{AUTOMATICO[s.chave]}</p>}
           <textarea
             key={`x-${i}-${s.texto}`}
             aria-label={`Texto de ${s.titulo}`}

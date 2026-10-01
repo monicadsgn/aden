@@ -23,8 +23,9 @@ como "Nome (pelo Claude)".
 ## Passo 0: situar
 
 1. `ver_fechamento` com o cliente. Se ele ainda for lead, `listar_leads` e confirme qual é.
-2. Lead que fechou agora: confirme valor e pacote com a pessoa e rode `ganhar_lead`. Isso cria o cliente,
-   guarda o escopo e abre o checklist. Se voltar pedido de exceção, explique quem precisa aprovar.
+2. Lead que fechou agora: confirme valor e pacote com a pessoa, grave no lead com `salvar_lead` (`pacote`,
+   `valorEstimadoReais` e, se houver proposta salva, `simulacao`) e só então rode `ganhar_lead`. Isso cria o
+   cliente, guarda as entregas do contrato e abre o checklist. Sem pacote, proposta nem valor, o `ganhar_lead` recusa. Se voltar pedido de exceção, explique quem precisa aprovar.
 3. Mostre um resumo curto: cliente, valor mensal, pacote e o que está pendente no checklist.
 
 ## Os 7 passos, na ordem

@@ -2,7 +2,7 @@
 // apresentação, PDF, aprovação e pagamentos). Números aqui são só fixtures de teste.
 import { describe, expect, it } from "vitest";
 import { separarProtegidas, aprovadoresPendentes, aplicarItens, impactoNoBolso, assinaturaCenario } from "../regras/aprovacao";
-import { camposFaltando } from "../regras/pendencias";
+import { camposFaltando, pendencias } from "../regras/pendencias";
 import { diferenca, type AlteracoesConfig } from "../dados/repositorio";
 import { minutosParaHoras, horasParaMinutos, formatarDuracao } from "../formato";
 import { alternarServico, pacoteQueCabe, sinalDoCenario, vistaApresentacao } from "./apresentacao";
@@ -525,6 +525,12 @@ describe("falta preencher", () => {
     expect(f.socios).toContain("piso de Áleff");
     expect(f.regras).toContain("ordem de distribuição dos pagamentos");
     expect(f.limites).not.toContain("medições para calibrar"); // o sistema não pede mais medições
+    expect(f.limites).toEqual([]); // limites são opcionais (vazio = sem aviso): nunca acendem o selo
+  });
+  it("limites vazios aparecem só como opcional, com o que vale vazio", () => {
+    const p = pendencias(config());
+    expect(p.limites.obrigatorio).toEqual([]);
+    for (const o of p.limites.opcional) expect(o.vazio).not.toBe("");
   });
 });
 

@@ -48,7 +48,7 @@ export function SecaoContrato() {
     <label className="flex min-w-60 flex-1 flex-col gap-1 text-xs font-semibold text-texto-suave">
       {rotulo}
       <input key={`${k}-${m[k] ?? ""}`} className={campo} defaultValue={m[k] ?? ""} onBlur={(e) => e.target.value.trim() !== (m[k] ?? "") && void salvar({ [k]: e.target.value })} />
-      {dica && <span className="text-[11px] font-normal">{dica}</span>}
+      {dica && <span className="text-[12px] font-normal">{dica}</span>}
     </label>
   );
 

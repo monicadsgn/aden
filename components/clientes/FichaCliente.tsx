@@ -51,8 +51,18 @@ function Rot({ rotulo, children, dica }: { rotulo: string; children: ReactNode; 
     <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
       {rotulo}
       {children}
-      {dica && <span className="text-[10px] font-normal">{dica}</span>}
+      {dica && <span className="text-[12px] leading-snug font-normal">{dica}</span>}
     </label>
+  );
+}
+
+/** Campo numérico com a frase do que ele significa embaixo. */
+function ComDica({ dica, children }: { dica: string; children: ReactNode }) {
+  return (
+    <div>
+      {children}
+      <p className="mt-1 text-[12px] leading-snug text-texto-suave">{dica}</p>
+    </div>
   );
 }
 
@@ -288,13 +298,17 @@ export function FichaCliente({
         {aba === "contrato" && (
           <div className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-3">
-              <CampoMoeda rotulo="Valor mensal" valor={c.valorMensalCentavos} aoMudar={(v) => set({ valorMensalCentavos: v })} />
+              <ComDica dica="Quanto o cliente paga por mês. Ex.: R$ 1.500.">
+                <CampoMoeda rotulo="Valor mensal" valor={c.valorMensalCentavos} aoMudar={(v) => set({ valorMensalCentavos: v })} />
+              </ComDica>
               {k.venceUltimoDiaUtil ? (
                 <Rot rotulo="Vencimento">
                   <p className="flex h-10 items-center text-sm text-texto-suave">último dia útil do mês</p>
                 </Rot>
               ) : (
+                <ComDica dica="Dia do mês em que a mensalidade vence. Ex.: 10.">
                 <CampoNumero rotulo="Dia do pagamento" valor={k.diaPagamento} aoMudar={(v) => setK({ diaPagamento: v == null ? null : Math.min(31, Math.max(1, Math.round(v))) })} />
+              </ComDica>
               )}
               <Rot rotulo="Início da cobrança">
                 <Texto valor={k.inicioCobranca} aoSalvar={(v) => setK({ inicioCobranca: v })} placeholder="ex.: na assinatura" />
@@ -305,12 +319,24 @@ export function FichaCliente({
               <Rot rotulo="Fim do contrato">
                 <input type="date" className={campo} value={k.fim ?? ""} onChange={(e) => setK({ fim: e.target.value || null })} />
               </Rot>
-              <CampoNumero rotulo="Prazo mínimo" sufixo="meses" valor={k.prazoMinimoMeses} aoMudar={(v) => setK({ prazoMinimoMeses: v })} />
-              <CampoNumero rotulo="Aviso prévio" sufixo="dias" valor={k.avisoPrevioDias} aoMudar={(v) => setK({ avisoPrevioDias: v })} />
-              <CampoNumero rotulo="Rodadas de alteração por peça" valor={k.limiteRodadas} aoMudar={(v) => setK({ limiteRodadas: v })} />
-              <CampoNumero rotulo="Prazo para o cliente aprovar" sufixo="dias" valor={k.prazoAprovacaoDias} aoMudar={(v) => setK({ prazoAprovacaoDias: v })} />
-              <CampoNumero rotulo="Prazo de entrega" sufixo="dias" valor={k.prazoEntregaDias} aoMudar={(v) => setK({ prazoEntregaDias: v })} />
-              <CampoNumero rotulo="Máximo de reuniões por mês" valor={k.limiteReunioesMes ?? null} aoMudar={(v) => setK({ limiteReunioesMes: v })} />
+              <ComDica dica="Tempo mínimo de contrato (fidelidade). Ex.: 6 meses.">
+                <CampoNumero rotulo="Prazo mínimo" sufixo="meses" valor={k.prazoMinimoMeses} aoMudar={(v) => setK({ prazoMinimoMeses: v })} />
+              </ComDica>
+              <ComDica dica="Quantos dias antes o cliente avisa se não for renovar. Ex.: 30 dias.">
+                <CampoNumero rotulo="Aviso prévio" sufixo="dias" valor={k.avisoPrevioDias} aoMudar={(v) => setK({ avisoPrevioDias: v })} />
+              </ComDica>
+              <ComDica dica="Quantas vezes o cliente pode pedir ajuste na mesma peça. Ex.: 2 rodadas.">
+                <CampoNumero rotulo="Rodadas de alteração por peça" valor={k.limiteRodadas} aoMudar={(v) => setK({ limiteRodadas: v })} />
+              </ComDica>
+              <ComDica dica="Dias que o cliente tem para aprovar uma peça. Ex.: 2 dias.">
+                <CampoNumero rotulo="Prazo para o cliente aprovar" sufixo="dias" valor={k.prazoAprovacaoDias} aoMudar={(v) => setK({ prazoAprovacaoDias: v })} />
+              </ComDica>
+              <ComDica dica="Dias para a Aden entregar depois do pedido. Ex.: 5 dias.">
+                <CampoNumero rotulo="Prazo de entrega" sufixo="dias" valor={k.prazoEntregaDias} aoMudar={(v) => setK({ prazoEntregaDias: v })} />
+              </ComDica>
+              <ComDica dica="Condição do contrato: quantas reuniões cabem no mês. Ex.: 2 reuniões.">
+                <CampoNumero rotulo="Máximo de reuniões por mês" valor={k.limiteReunioesMes ?? null} aoMudar={(v) => setK({ limiteReunioesMes: v })} />
+              </ComDica>
               <div className="flex items-end pb-2 sm:col-span-2">
                 <Interruptor ligado={!!k.venceUltimoDiaUtil} rotulo="Vence no último dia útil do mês" aoMudar={(v) => setK({ venceUltimoDiaUtil: v })} />
               </div>
@@ -347,6 +373,7 @@ export function FichaCliente({
                 defaultValue={k.observacoes}
                 onBlur={(e) => e.target.value !== k.observacoes && setK({ observacoes: e.target.value })}
               />
+              <span className="text-[12px] leading-snug font-normal">Vai para o contrato que o cliente assina, como cláusula de observações.</span>
             </label>
 
             <div className="rounded-bloco border border-linha p-3">

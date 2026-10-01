@@ -55,9 +55,9 @@ function horasSemCobranca(config: Configuracao, c: ClienteBase): number {
 /** O sinal de cada cliente no mês (a mesma etiqueta na linha e no detalhe). */
 function sinalDoCliente(s: SaudeCliente) {
   return s.bloqueio
-    ? { tom: "erro" as const, icone: AlertOctagon, texto: "cálculo bloqueado" }
+    ? { tom: "erro" as const, icone: AlertOctagon, texto: "falta um número" }
     : s.prejuizoSilencioso
-      ? { tom: "erro" as const, icone: TrendingDown, texto: "prejuízo silencioso" }
+      ? { tom: "erro" as const, icone: TrendingDown, texto: "abaixo do piso: veja os caminhos" }
       : s.contratadoAbaixoDoPiso
         ? { tom: "aviso" as const, icone: TrendingDown, texto: "contratado abaixo do piso" }
         : !s.horasLancadas
@@ -235,8 +235,8 @@ function CartaoCliente({
         {s.prejuizoSilencioso && (
           <p className="flex items-start gap-2 rounded-bloco bg-erro-suave px-3 py-2 text-xs font-medium text-erro">
             <AlertOctagon size={15} className="mt-px shrink-0" />
-            Este cliente pagou menos que o piso por hora de {s.socios.filter((x) => x.abaixoPisoReal).map((x) => x.nome).join(" e ")} neste mês. Ele está custando mais horas do
-            que paga.
+            Este cliente pagou menos que o piso por hora de {s.socios.filter((x) => x.abaixoPisoReal).map((x) => x.nome).join(" e ")} neste mês. Ele pede mais horas do que paga:
+            veja os caminhos abaixo.
           </p>
         )}
 
@@ -318,7 +318,7 @@ function CartaoCliente({
               <tr>
                 <td className="border-t border-linha py-1.5 pr-3 text-texto-suave">
                   O que ele paga por hora
-                  <span className="block text-[10px]">valor do mês ÷ horas que ele deu</span>
+                  <span className="block text-[12px]">valor do mês ÷ horas que ele deu</span>
                 </td>
                 <td className="numero border-t border-linha px-3 py-1.5 text-right">{formatarMoeda(s.valorCobradoHoraPrevisto)}</td>
                 <td className="numero border-t border-linha px-3 py-1.5 text-right font-bold">{formatarMoeda(s.valorCobradoHoraReal)}</td>
@@ -327,7 +327,7 @@ function CartaoCliente({
                 <tr key={x.id} className={cx(x.abaixoPisoReal && "bg-erro-suave/50")}>
                   <td className="border-t border-linha py-1.5 pr-3">
                     <span className="font-semibold">{x.nome}</span> por hora
-                    <span className="block text-[10px] text-texto-suave">
+                    <span className="block text-[12px] text-texto-suave">
                       piso: {formatarMoeda(x.piso)} · recebe {formatarMoeda(x.valorReal)} · {formatarHoras(x.horasReais)}
                     </span>
                     <span className="mt-0.5 flex flex-wrap gap-1">
@@ -335,7 +335,7 @@ function CartaoCliente({
                       <EtiquetaOrigem texto={rotuloOrigemHoras(x.origemHoras)} previsao={x.origemHoras.tipo === "previsto"} />
                     </span>
                     {x.recebeSemHoras && (
-                      <span className="mt-1 block text-[11px] font-semibold text-info">
+                      <span className="mt-1 block text-[12px] font-semibold text-info">
                         {x.nome} recebe {formatarMoeda(x.valorReal ?? x.valorPrevisto)} sem horas neste cliente.
                       </span>
                     )}
@@ -545,7 +545,7 @@ export default function Saude() {
                             {sinal.texto}
                           </Badge>
                           {investidas > 0 && (
-                            <span className="mt-1 block text-[11px] text-info">garantia: {formatarHoras(investidas)} de tráfego por mês sem cobrança</span>
+                            <span className="mt-1 block text-[12px] text-info">garantia: {formatarHoras(investidas)} de tráfego por mês sem cobrança</span>
                           )}
                         </td>
                       </tr>

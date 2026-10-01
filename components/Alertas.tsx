@@ -108,7 +108,7 @@ export function ListaAlertas({ alertas }: { alertas: Alerta[] }) {
         <div className="flex flex-col gap-1.5">
           <button
             type="button"
-            className="self-start px-1 text-[11px] font-semibold text-texto-suave hover:text-texto"
+            className="self-start px-1 text-[12px] font-semibold text-texto-suave hover:text-texto"
             onClick={() => setVerLembretes(!verLembretes)}
           >
             {verLembretes ? "Esconder lembretes" : `${lembretes.length} lembrete(s): campos opcionais vazios, contados como zero`}

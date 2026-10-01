@@ -52,7 +52,7 @@ export function SecaoEquipe() {
     <div className="flex flex-col gap-4">
       <div className="grid gap-2 sm:grid-cols-2">
         {PAPEIS.map((p) => (
-          <div key={p.valor} className="rounded-bloco bg-superficie-2/60 px-3 py-2 text-[11px] leading-snug">
+          <div key={p.valor} className="rounded-bloco bg-superficie-2/60 px-3 py-2 text-[12px] leading-snug">
             <strong className="text-xs">{p.rotulo}:</strong> {p.explica}
           </div>
         ))}

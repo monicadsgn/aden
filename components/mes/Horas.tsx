@@ -13,7 +13,7 @@ import { useDados } from "@/lib/dados/contexto";
 import { formatarHoras, formatarMoeda, formatarPct } from "@/lib/formato";
 
 const SITUACAO: Record<SituacaoSocio, { tom: Tom; icone: LucideIcon; rotulo: string }> = {
-  afogado: { tom: "erro", icone: AlertOctagon, rotulo: "passou das horas" },
+  afogado: { tom: "erro", icone: AlertOctagon, rotulo: "acima das horas do mês" },
   folga_sobrando: { tom: "info", icone: Waves, rotulo: "folga sobrando" },
   ok: { tom: "ok", icone: CheckCircle2, rotulo: "dentro da capacidade" },
   sem_capacidade: { tom: "neutro", icone: Info, rotulo: "capacidade não configurada" },

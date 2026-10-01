@@ -147,6 +147,9 @@ function EditorEntregas({
           </div>
         );
       })}
+      {linhas.length > 0 && (
+        <p className="text-[12px] leading-snug text-texto-suave">Tempo/un.: quanto leva uma unidade desta entrega; vazio usa o tempo cadastrado no tipo. Ex.: 20 min.</p>
+      )}
       <div>
         <Botao icone={Plus} pequeno disabled={tipos.length === 0} onClick={() => aoMudar([...linhas, novaLinhaEntrega()])}>
           Adicionar entrega
@@ -391,7 +394,10 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
           <EditorCustos pontual linhas={entrada.custos} config={config} aoMudar={(custos) => setEntrada({ custos })} />
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <CampoMoeda rotulo="Valor cobrado pela entrada (opcional)" valor={entrada.valorCobradoCentavos} aoMudar={(v) => setEntrada({ valorCobradoCentavos: v })} />
-            <CampoNumero rotulo="Quero que se pague em (opcional)" sufixo="meses" valor={entrada.mesesParaPagar} aoMudar={(v) => setEntrada({ mesesParaPagar: v })} />
+            <div>
+              <CampoNumero rotulo="Quero que se pague em (opcional)" sufixo="meses" valor={entrada.mesesParaPagar} aoMudar={(v) => setEntrada({ mesesParaPagar: v })} />
+              <p className="mt-1 text-[12px] leading-snug text-texto-suave">Em quantos meses o custo da entrada volta, somado à mensalidade. Ex.: 3 meses: R$ 900 de custo viram R$ 300 a mais por mês.</p>
+            </div>
           </div>
         </Secao>
       </Card>
@@ -496,6 +502,13 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
               <CampoPct rotulo="Percentual sobre a verba" valor={t.percentualVerba} aoMudar={(v) => setT({ percentualVerba: v })} />
             )}
           </div>
+          {t.modelo === "fixo" && <p className="mt-1 text-[12px] leading-snug text-texto-suave">Quanto a Aden cobra por mês pela gestão do tráfego. Ex.: R$ 800.</p>}
+          {t.modelo === "por_campanha" && (
+            <p className="mt-1 text-[12px] leading-snug text-texto-suave">Valor de cada campanha vezes quantas rodam no mês. Ex.: R$ 400 × 2 campanhas = R$ 800 por mês.</p>
+          )}
+          {t.modelo === "percentual_verba" && (
+            <p className="mt-1 text-[12px] leading-snug text-texto-suave">Parte da verba do cliente cobrada pela gestão. Ex.: 15% de R$ 2.000 de verba = R$ 300.</p>
+          )}
           {t.modelo !== "sem_trafego" && (
             <div className="mt-3 rounded-bloco border border-dashed border-linha bg-marca-tinta/50 p-3">
               <CampoMoeda
@@ -508,7 +521,8 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
                 Paga pelo cliente direto na plataforma: não passa pela conta da Aden, não é faturamento e não entra em imposto, taxa nem receita.
                 {t.modelo === "percentual_verba"
                   ? " Aqui ela serve só de base: o que a Aden fatura é o percentual."
-                  : " Campo só informativo, para ver o tamanho da operação."}
+                  : " Campo só informativo, para ver o tamanho da operação."}{" "}
+                Ex.: R$ 1.500 por mês.
               </p>
             </div>
           )}
@@ -605,6 +619,7 @@ export function EditorCenario({ cenario, config, aoMudar }: { cenario: Cenario; 
                   />
                 ))}
               </div>
+              <p className="mt-1 text-[12px] leading-snug text-texto-suave">Quanto da sobra deste projeto vai para cada sócio; vazio usa o padrão. Ex.: 50% e 50%.</p>
             </>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
