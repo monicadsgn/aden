@@ -269,4 +269,24 @@ pede medições) e projetos de marca fora de "minutos" (proposta de como medir e
 | M17 (parte) | cliente "teste" apagado; tarefas do Áleff: início do contrato da Olinda e da StadiumPlay, meta da garantia da StadiumPlay | — |
 | Vidro | refeito (01/10): só no que fica por cima. Primeiro na janela (Modal), esperando o ok para espalhar | antes `vidro2-antes-*.png`; depois `vidro2-depois-*.png` |
 
-Encontrado no caminho (dado real, não mexido): tempo do Reels cadastrado como 2 min e da Estrutura visual como 0 min.
+Encontrado no caminho: tempo do Reels em 2 min (certo: gravação e edição são do terceiro, a legenda sai no
+planejamento) e da Estrutura visual em 0 min (é projeto: entrou na regra dos projetos de marca).
+
+Segunda rodada (01/10/2026, mesmo branch):
+
+| Item | Situação |
+|---|---|
+| Vidro | refeito: só no que fica por cima; primeiro na janela, esperando o ok (`vidro2-*`) |
+| Projetos de marca | opção A feita (migration 0036): Logo e Estrutura visual como projeto; faltam horas e prazo de cada um |
+| M1, M2 | feitos (calendário, entregas do contrato, divisão dos custos fixos; nomes alinhados) |
+| M3, M4, M5, M11, M18 | feitos (frase e exemplo, obrigatório × opcional, tom de caminhos, 12 px, aviso do contrato) |
+| M6 | feito (`m6-depois-tarefas.png`) |
+| M7 | feito (grupo Comercial) |
+| M8 | feito (`m8-depois-pagamentos.png`) |
+| M9, M10 | feitos (44 px no toque; verde mais escuro: `m10-depois-*.png`) |
+| M12 | feito |
+| M13 | aviso pelo WhatsApp feito; relatório do mês esperando decisão (`docs/ROADMAP.md`) |
+| M14, M15, M16 | feitos (versão e aviso das ferramentas, apelidos, `ver_avisos`, mais contexto, lead sem valor recusado) |
+| M17 | contatos com a Moni; tarefas do Áleff criadas |
+| D1, D2, D4–D9 | feitos; D3 resolvido com o G1 (o link de metas saiu da Visão do dia) |
+| D10, D11 | aceitos por enquanto (só os dois sócios); rever quando entrar equipe ou freelancer |

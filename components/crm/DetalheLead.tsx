@@ -27,7 +27,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Avatar } from "../Avatar";
 import { Modal } from "../Modal";
 import { Botao, CampoMoeda, Segmentado, cx } from "../ui";
-import { ETAPAS, moverLead, situacaoFollowUp, TIPOS_INTERACAO, type InteracaoLead, type Lead, type TipoInteracao } from "@/lib/calculo/crm";
+import { ETAPAS, moverLead, ORIGENS_LEAD, situacaoFollowUp, TIPOS_INTERACAO, type InteracaoLead, type Lead, type TipoInteracao } from "@/lib/calculo/crm";
 import { novoId } from "@/lib/calculo/novo";
 import { precoDoPacote } from "@/lib/calculo/pacotes";
 import type { Configuracao } from "@/lib/calculo/tipos";
@@ -250,7 +250,14 @@ export function DetalheLead({
             <Texto rotulo="E-mail" valor={l.email} aoSalvar={(v) => set({ email: v })} />
           </Linha>
           <Linha icone={AtSign} rotulo="Como chegou">
-            <Texto rotulo="Origem" valor={l.origem} aoSalvar={(v) => set({ origem: v })} placeholder="indicação, Instagram…" />
+            <select className={campo} aria-label="Como chegou" value={l.origem ?? ""} onChange={(e) => set({ origem: e.target.value })}>
+              <option value="">Vazio</option>
+              {[...ORIGENS_LEAD, ...(l.origem && !(ORIGENS_LEAD as readonly string[]).includes(l.origem) ? [l.origem] : [])].map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
           </Linha>
         </div>
         <div>

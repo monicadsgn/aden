@@ -365,6 +365,10 @@ export default function Configuracoes() {
 
         <Card>
           <TituloCard icone={atual.icone} titulo={atual.rotulo} descricao={atual.frase} />
+          {/* D2: estas seções gravam cada mudança na hora; as outras usam a barra Salvar embaixo */}
+          {(["equipe", "briefing", "onboarding", "contrato"] as SecaoConfig[]).includes(secao) && (
+            <p className="-mt-2 px-5 pb-3 text-[12px] text-texto-suave">Esta seção salva sozinha, a cada mudança: não precisa do botão Salvar.</p>
+          )}
           <div className="px-5 pb-5">
             {pendencias[secao].obrigatorio.length > 0 && (
               <p className="mb-2 rounded-bloco bg-aviso-suave px-3 py-2 text-[12px] font-medium text-aviso">

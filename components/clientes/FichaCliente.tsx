@@ -243,7 +243,9 @@ export function FichaCliente({
               {PAINEL_CLIENTE_ATIVO && !c.interno && <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />}
             </div>
             {PAINEL_CLIENTE_ATIVO && !c.interno && c.painelToken && (
-              <div className="grid gap-3 rounded-bloco border border-linha p-3 sm:col-span-2 sm:grid-cols-2">
+              <div className="grid gap-3 rounded-bloco border border-marca/40 bg-marca-tinta/40 p-3 sm:col-span-2 sm:grid-cols-2">
+                {/* D1: o que muda todo mês fica separado do cadastro (que se preenche uma vez) */}
+                <p className="text-[11px] font-bold tracking-wide text-marca-forte uppercase sm:col-span-2">Muda todo mês</p>
                 <p className="text-[12px] text-texto-suave sm:col-span-2">
                   <strong className="text-texto">Atalhos do painel.</strong> O que o cliente abre direto no painel, sem pedir por fora. Links completos, começando com https://. Vazio = não
                   aparece. Todo mês, troque o planejamento.

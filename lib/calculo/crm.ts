@@ -19,6 +19,7 @@ export interface Lead {
   email: string;
   instagram: string;
   /** como chegou (indicação, Instagram…) */
+  /** como chegou: uma de ORIGENS_LEAD (texto antigo continua valendo) */
   origem: string;
   etapa: EtapaLead;
   entrouNaEtapaEm: string;
@@ -153,3 +154,9 @@ export function situacaoFollowUp(lead: Lead, interacoes: InteracaoLead[], maximo
   const feitos = interacoes.filter((i) => i.leadId === lead.id && i.tipo === "follow_up").length;
   return { feitos, sugerirPerda: maximo != null && maximo > 0 && etapaAberta(lead.etapa) && feitos >= maximo };
 }
+
+/**
+ * De onde o lead veio (D6 da auditoria, 01/10/2026): lista fixa para dar para medir, por exemplo, o quiz e a landing
+ * quando existirem. Lead antigo com texto livre continua com o texto dele.
+ */
+export const ORIGENS_LEAD = ["Indicação", "Instagram", "Quiz", "Landing", "Outro"] as const;
