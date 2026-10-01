@@ -329,8 +329,8 @@ export function Shell({ children }: { children: ReactNode }) {
         </header>
         {menuAberto && (
           <div className="fixed inset-0 z-40 lg:hidden">
-            <button aria-label="Fechar menu" className="absolute inset-0 bg-texto/30" onClick={() => setMenuAberto(false)} />
-            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto bg-superficie px-3 py-5 shadow-forte">
+            <button aria-label="Fechar menu" className="veu absolute inset-0" onClick={() => setMenuAberto(false)} />
+            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto border-r bg-superficie px-3 py-5 shadow-forte vidro">
               <div className="flex items-center justify-between px-2">
                 <Marca />
                 <button aria-label="Fechar menu" onClick={() => setMenuAberto(false)} className="flex size-11 items-center justify-center rounded-item hover:bg-superficie-2">

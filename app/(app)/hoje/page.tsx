@@ -260,9 +260,10 @@ export default function VisaoDoDia() {
   const fmtMeta = (val: number | null) =>
     val == null || !degrau?.meta.criterio ? "—" : unidadeDoCriterio(degrau.meta.criterio) === "moeda" ? formatarMoeda(val) : unidadeDoCriterio(degrau.meta.criterio) === "pct" ? formatarPct(val) : String(Math.round(val));
 
+  // na visão do outro sócio vira pedido: sem data, entra o prazo mínimo de dias úteis
   const criar = async () => {
     if (!rapida.trim()) return;
-    await a.salvar(novaTarefa(novoId(), rapida.trim(), { responsavelId: pessoa ?? eu, vencimento: hoje }));
+    await a.salvar(novaTarefa(novoId(), rapida.trim(), { responsavelId: pessoa ?? eu, vencimento: pessoa && eu && pessoa !== eu ? null : hoje }));
     setRapida("");
   };
 

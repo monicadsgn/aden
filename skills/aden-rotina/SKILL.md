@@ -43,10 +43,14 @@ Não existe bot de WhatsApp: pedido entre os sócios vira tarefa no Aden.
   - `titulo` curto e claro;
   - `responsavel` = o outro sócio;
   - `cliente` quando for de um cliente (ou **Aden** quando for da própria agência);
-  - `vencimento` (AAAA-MM-DD) e `prioridade` só se a pessoa disse;
+  - `vencimento` (AAAA-MM-DD) e `prioridade` só se a pessoa disse. **Prazo mínimo:** pedido ao outro sócio
+    (principalmente criativo) tem no mínimo 2 dias úteis a partir do pedido (o número está na configuração). Sem
+    data, não pergunte: o Aden põe o prazo mínimo sozinho. Se a pessoa pedir para antes disso, pergunte "é urgente?"
+    antes de gravar; se for, mande `prioridade: "urgente"` (a tarefa ganha o selo urgente); se não, use o prazo mínimo.
+    Sem "urgente", o Aden recusa o prazo curto;
   - `descricao` com o pedido em uma ou duas frases e quem pediu.
 - O Aden grava sozinho quem pediu ("[você] (pelo Claude)") e avisa o outro sócio na Visão do dia dele (Depende de
-  mim) e em Pedidos e avisos. Sem prazo, a tarefa aparece em "Sem prazo" na Visão do dia dele, com quem pediu.
+  mim) e em Pedidos e avisos, com o prazo (o que veio ou o mínimo que entrou sozinho).
 - Confirme em uma linha: "tarefa criada para [sócio]: …, até [data]; ele foi avisado".
 - Se o pedido também for uma decisão, anote no contexto (item 2).
 

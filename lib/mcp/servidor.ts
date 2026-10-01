@@ -34,6 +34,7 @@ import { chaveAutentique } from "../contrato/autentique";
 import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
 import { motivoNaoApagar, REGRAS_PROTECAO } from "../regras/aprovacao";
+import { conferirPrazoDoPedido } from "../regras/prazoPedido";
 import { COMO_ATUALIZAR, NOVIDADES, VERSAO_FERRAMENTAS } from "./novidades";
 import { PAINEL_CLIENTE_ATIVO } from "../recursos";
 import type { RepositorioSupabase } from "../dados/supabase";
@@ -94,6 +95,7 @@ Regras que você deve seguir:
   (botão "Medir o tempo" dentro da tarefa no site), nunca liga sozinho e o sistema não pede medições: serve só para
   quando ninguém sabe quanto uma entrega leva. Você não liga relógio; pode registrar um tempo que a pessoa disse com
   registrar_medicao. ver_calibragem mostra a média medida, que nunca entra sozinha nas contas.
+  Tarefa pedida ao outro sócio tem prazo mínimo em dias úteis (configuração): sem prazo, entra sozinho; menor só como urgência (pergunte, e se for, prioridade "urgente").
 - Projetos de marca (logo, identidade visual, branding) levam dias ou semanas e não se medem em minutos: nunca invente
   um tempo em minutos para eles; pergunte aos sócios.
 - Peças de conteúdo são tarefas: legenda e publicarEm (salvar_tarefa) dão a etapa planejado → produção → esperando
@@ -256,6 +258,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         ),
         diferencaSugerirPct: opt(z.number(), "sugerir novo tempo quando a média medida diferir mais que este %"),
         followUpsMaximo: opt(z.number().int().positive(), "depois de quantos follow-ups do \"vou ver\" o sistema sugere marcar o lead como perdido"),
+        prazoMinimoPedidoDiasUteis: opt(z.number().int().positive(), "prazo mínimo, em dias úteis, de tarefa pedida ao outro sócio (sem prazo entra sozinho; menor só como urgência)"),
         ofertaVerbaIndicadaDeReais: opt(z.number(), "oferta padrão: verba de mídia indicada ao cliente, a partir de (reais)"),
         ofertaVerbaIndicadaAteReais: opt(z.number(), "oferta padrão: verba de mídia indicada, até (reais)"),
         ofertaGestaoDepoisDoResultadoReais: opt(z.number(), "oferta padrão: valor da gestão de tráfego depois do resultado (reais)"),
@@ -370,7 +373,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou alterar tipo de entrega",
       description:
-        "Unidade de esforço da calculadora (ex.: post simples, carrossel, roteiro). Projeto de marca (logo, identidade visual, branding, estrutura visual): projeto=true, com horasDoProjeto (horas totais estimadas, nunca minutos) e prazoDias (vai para o contrato); só grave horas que os sócios disseram. Quem faz: os sócios (padrão, com tempo) ou um terceiro cadastrado (terceiro=nome): aí não conta horas dos sócios e vira custo do cliente pelo valor do terceiro. terceiro=null volta para os sócios.",
+        "Unidade de esforço da calculadora (ex.: post simples, carrossel, roteiro). Projeto de marca (logo, identidade visual, branding, estrutura visual): projeto=true, com horasDoProjeto (horas totais estimadas, nunca minutos) e prazoDias (dias úteis, vai para o contrato); só grave horas que os sócios disseram. Quem faz: os sócios (padrão, com tempo) ou um terceiro cadastrado (terceiro=nome): aí não conta horas dos sócios e vira custo do cliente pelo valor do terceiro. terceiro=null volta para os sócios.",
       inputSchema: {
         id: z.string().optional().describe("id ou nome do tipo a alterar; vazio = novo"),
         nome: z.string().optional(),
@@ -382,7 +385,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         nomeCliente: opt(z.string(), "como aparece no painel do cliente (ex.: Post, Carrossel); null = o próprio nome"),
         projeto: z.boolean().optional().describe("true = projeto de marca: mede em horas totais do projeto e prazo em dias, não em minutos"),
         horasDoProjeto: opt(z.number().positive(), "horas totais estimadas do projeto (só para projeto; campo protegido)"),
-        prazoDias: opt(z.number().int().positive(), "prazo de entrega do projeto em dias (só para projeto; vai para o contrato)"),
+        prazoDias: opt(z.number().int().positive(), "prazo de entrega do projeto em dias úteis (só para projeto; vai para o contrato)"),
         ativo: z.boolean().optional(),
       },
     },
@@ -2161,7 +2164,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou editar tarefa",
       description:
-        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. checklist substitui a lista inteira. Peça de conteúdo: textoArte, legenda, publicarEm (quando vai ao ar) e agendada (já programada). Com data, fica 'planejado' antes de aprovar; aprovada vira 'agendada' quando marcada como programada.",
+        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. Pedido ao outro sócio (responsavel = o outro): tem prazo mínimo em dias úteis (configuração); sem vencimento, entra sozinho com o mínimo; vencimento menor que o mínimo só como urgência: pergunte antes se é urgente e, se for, mande prioridade \"urgente\". checklist substitui a lista inteira. Peça de conteúdo: textoArte, legenda, publicarEm (quando vai ao ar) e agendada (já programada). Com data, fica 'planejado' antes de aprovar; aprovada vira 'agendada' quando marcada como programada.",
       inputSchema: {
         id: z.string().optional(),
         titulo: z.string().optional(),
@@ -2169,7 +2172,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         entrega: z.string().nullable().optional().describe("tipo de entrega (nome ou id)"),
         quantidade: z.number().int().positive().optional(),
         responsavel: z.string().nullable().optional().describe("sócio (nome ou id)"),
-        prioridade: z.enum(["urgente", "alta", "normal", "baixa"]).nullable().optional(),
+        prioridade: z
+          .enum(["urgente", "alta", "normal", "baixa"])
+          .nullable()
+          .optional()
+          .describe("urgente = selo urgente; é a única forma de pedir ao outro sócio com prazo menor que o mínimo (confirme antes)"),
         inicio: z.string().nullable().optional(),
         vencimento: z.string().nullable().optional(),
         descricao: z.string().optional(),
@@ -2217,8 +2224,21 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.lote !== undefined && { lote: e.lote?.trim() || null }),
           ...(e.mostrarAoCliente != null && { visivelCliente: e.mostrarAoCliente }),
         };
-        await repo.salvarTarefa(t);
-        return { salva: t.titulo, id: t.id, criada: !antes };
+        // pedido ao outro sócio: prazo mínimo em dias úteis (sem prazo entra sozinho; menor só como urgência)
+        const eu = await repo.usuarioAtual();
+        const prazo = conferirPrazoDoPedido({ config, antes, depois: t, eu: eu?.pessoaId, hoje: dataDeBrasilia(new Date().toISOString()) });
+        if (prazo.pedeUrgencia)
+          throw new Error(
+            `Pedido ao outro sócio tem prazo mínimo de ${prazo.dias} dias úteis (a partir de ${prazo.minimo}). Prazo menor só como urgência: confirme com quem pediu se é urgente e mande de novo com prioridade "urgente", ou use ${prazo.minimo} ou depois.`,
+          );
+        await repo.salvarTarefa(prazo.tarefa);
+        return {
+          salva: t.titulo,
+          id: t.id,
+          criada: !antes,
+          ...(prazo.minimo && { prazo: prazo.tarefa.vencimento, prazoMinimo: prazo.preencheu ? `entrou sozinho: ${prazo.dias} dias úteis a partir do pedido` : undefined }),
+          ...(prazo.minimo && prazo.tarefa.prioridade === "urgente" && { urgente: true }),
+        };
       }),
   );
 

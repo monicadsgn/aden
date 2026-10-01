@@ -238,7 +238,7 @@ export default function PainelDoCliente() {
       )}
 
       {recebido && (
-        <p role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto max-w-md rounded-card bg-marca-cheio px-4 py-3 text-center text-sm font-semibold text-sobre-marca shadow-forte">
+        <p role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto max-w-md vidro rounded-card border bg-superficie px-4 py-3 text-center text-sm font-semibold text-marca-forte shadow-forte">
           {recebido}
         </p>
       )}

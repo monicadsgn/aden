@@ -251,6 +251,8 @@ export interface ConfigEmpresa {
   diferencaSugerirPct?: Pct;
   /** lead parado na mesma etapa há este número de dias acende o aviso em Leads; vazio = nunca */
   diasLeadParado?: number | null;
+  /** tarefa pedida ao outro sócio: prazo mínimo em dias úteis (sem prazo, entra sozinho; menor só como urgência); vazio = sem regra */
+  prazoMinimoPedidoDiasUteis?: number | null;
   /** depois de quantos follow-ups sem resposta o sistema sugere marcar o lead como perdido; vazio = nunca */
   followUpsMaximo?: number | null;
 

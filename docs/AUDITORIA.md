@@ -276,8 +276,8 @@ Segunda rodada (01/10/2026, mesmo branch):
 
 | Item | Situação |
 |---|---|
-| Vidro | refeito: só no que fica por cima; primeiro na janela, esperando o ok (`vidro2-*`) |
-| Projetos de marca | opção A feita (migration 0036): Logo e Estrutura visual como projeto; faltam horas e prazo de cada um |
+| Vidro | aprovado e espalhado: janelas (e o tour e a ajuda, que usam a janela), menu do celular, barra de salvar das Configurações, relógio rodando e aviso do painel do cliente |
+| Projetos de marca | opção A feita (migration 0036); prazos em dias úteis: Logo 25 (referência 15 a 25), Estrutura visual 5; faltam as horas de cada um (a Moni passa). "PDF" virou "PDF de apresentação", por entrega |
 | M1, M2 | feitos (calendário, entregas do contrato, divisão dos custos fixos; nomes alinhados) |
 | M3, M4, M5, M11, M18 | feitos (frase e exemplo, obrigatório × opcional, tom de caminhos, 12 px, aviso do contrato) |
 | M6 | feito (`m6-depois-tarefas.png`) |
@@ -285,8 +285,10 @@ Segunda rodada (01/10/2026, mesmo branch):
 | M8 | feito (`m8-depois-pagamentos.png`) |
 | M9, M10 | feitos (44 px no toque; verde mais escuro: `m10-depois-*.png`) |
 | M12 | feito |
-| M13 | aviso pelo WhatsApp feito; relatório do mês esperando decisão (`docs/ROADMAP.md`) |
+| M13 | aviso pelo WhatsApp feito; relatório do mês guardado para depois (números à mão; Áleff sugere os de tráfego) |
 | M14, M15, M16 | feitos (versão e aviso das ferramentas, apelidos, `ver_avisos`, mais contexto, lead sem valor recusado) |
 | M17 | contatos com a Moni; tarefas do Áleff criadas |
 | D1, D2, D4–D9 | feitos; D3 resolvido com o G1 (o link de metas saiu da Visão do dia) |
 | D10, D11 | aceitos por enquanto (só os dois sócios); rever quando entrar equipe ou freelancer |
+| M4 (imposto) | fica obrigatório (Moni, 01/10/2026) |
+| Prazo mínimo de pedido | regra nova feita: 2 dias úteis (Configurações → Limites), sem prazo entra sozinho, menor só como urgência (selo); tela, conector, skill e banco (migration 0037) |

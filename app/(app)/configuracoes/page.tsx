@@ -281,7 +281,7 @@ export default function Configuracoes() {
     metas: COM_VOLUME.secaoMetas || (rascunho.metas ?? []).length > 0,
     limites:
       COM_VOLUME.secaoLimites ||
-      [e0.tetoFaturamentoAnualCentavos, e0.avisoTetoPct, e0.ociosidadePct, e0.arredondamentoPropostaCentavos, e0.diferencaSugerirPct, e0.diasLeadParado].some(
+      [e0.tetoFaturamentoAnualCentavos, e0.avisoTetoPct, e0.ociosidadePct, e0.arredondamentoPropostaCentavos, e0.diferencaSugerirPct, e0.diasLeadParado, e0.prazoMinimoPedidoDiasUteis].some(
         (v) => v != null,
       ),
   };
@@ -661,7 +661,7 @@ export default function Configuracoes() {
                           ]}
                         />
                         {t.projeto && (
-                          <CampoNumero className="w-40" rotulo="Prazo de entrega" sufixo="dias" valor={t.prazoDias ?? null} aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { prazoDias: v }) })} />
+                          <CampoNumero className="w-40" rotulo="Prazo de entrega" sufixo="dias úteis" valor={t.prazoDias ?? null} aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { prazoDias: v }) })} />
                         )}
                         <p className="min-w-0 flex-1 basis-60 pb-2 text-[12px] text-texto-suave">
                           {t.projeto
@@ -1002,6 +1002,8 @@ export default function Configuracoes() {
                 <Explica>Quanto a média medida pode se afastar do tempo cadastrado antes de sugerir trocar. Ex.: 15%. Vazio = qualquer diferença de 1 minuto ou mais já vira sugestão de atualizar o tempo cadastrado.</Explica>
                 <CampoNumero rotulo="Lead parado na etapa depois de" sufixo="dias" valor={e.diasLeadParado ?? null} aoMudar={(v) => setE({ diasLeadParado: v })} />
                 <Explica>Em Leads, o card do lead fica em destaque quando passa esse tempo sem mudar de etapa. Ex.: 7 dias. Vazio = nunca destaca.</Explica>
+                <CampoNumero rotulo="Prazo mínimo de tarefa pedida ao outro sócio" sufixo="dias úteis" valor={e.prazoMinimoPedidoDiasUteis ?? null} aoMudar={(v) => setE({ prazoMinimoPedidoDiasUteis: v })} />
+                <Explica>Tarefa pedida ao outro sócio sem prazo entra sozinha com esses dias úteis a partir do pedido. Prazo menor só como urgência: o sistema pergunta e a tarefa ganha o selo &quot;urgente&quot;. Ex.: 2 dias úteis. Vazio = sem prazo mínimo.</Explica>
               </div>
             )}
 
@@ -1018,7 +1020,7 @@ export default function Configuracoes() {
       {/* barra de salvar */}
       {(sujo || mensagem) && (
         <div className="nao-imprimir fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-4 lg:pl-64">
-          <div className="flex w-full max-w-2xl flex-wrap items-center gap-3 rounded-card border border-linha bg-superficie px-4 py-2 shadow-forte">
+          <div className="flex w-full max-w-2xl flex-wrap items-center gap-3 vidro rounded-card border bg-superficie px-4 py-2 shadow-forte">
             <p className={cx("flex-1 text-xs font-semibold", mensagem?.tom === "erro" ? "text-erro" : mensagem?.tom === "aviso" ? "text-aviso" : sujo ? "text-texto" : "text-ok")}>
               {sujo ? "Há alterações não salvas." : mensagem?.texto}
               {sujo && mensagem?.tom === "erro" && <span className="block text-erro">{mensagem.texto}</span>}

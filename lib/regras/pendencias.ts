@@ -91,6 +91,7 @@ export function pendencias(c: Configuracao): Pendencias {
   if (e.avisoTetoPct == null) out.limites.opcional.push({ campo: "aviso do teto", vazio: "só avisa quando passar do teto" });
   if (e.ociosidadePct == null) out.limites.opcional.push({ campo: "folga sobrando", vazio: "sem aviso de horas sobrando" });
   if (e.arredondamentoPropostaCentavos == null) out.limites.opcional.push({ campo: "arredondamento da proposta", vazio: "o valor sai sem arredondar" });
+  if (e.prazoMinimoPedidoDiasUteis == null) out.limites.opcional.push({ campo: "prazo mínimo de pedido", vazio: "pedido ao outro sócio sem prazo fica em \"sem prazo\"" });
 
   for (const k of c.clientes.filter((x) => x.ativo)) {
     if (k.valorMensalCentavos == null && !k.interno) out.clientes.obrigatorio.push(`valor de ${k.nome || "cliente sem nome"}`);

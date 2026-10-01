@@ -61,7 +61,7 @@ export function MetaTarefa({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
         <span
           className={cx(
             "inline-flex items-center gap-1 text-[11px] font-semibold",
-            t.prioridade === "urgente" ? "text-erro" : t.prioridade === "alta" ? "text-aviso" : "text-texto-suave",
+            t.prioridade === "urgente" ? "rounded-item bg-erro-suave px-1.5 py-0.5 tracking-wide text-erro uppercase" : t.prioridade === "alta" ? "text-aviso" : "text-texto-suave",
           )}
           title="Prioridade"
         >

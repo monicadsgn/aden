@@ -8,6 +8,8 @@
 - Tempo por entrega vem da média cadastrada; o cronômetro é opcional, nunca liga sozinho e só se usa quando não se
   sabe quanto tempo algo leva.
 - Projetos de marca (logo, identidade, branding) não se medem em minutos.
+- Pedido ao outro sócio tem prazo mínimo em dias úteis; menor só como urgência.
+- Vidro só no que fica por cima da tela (janelas, menus que abrem por cima, avisos), nunca no fundo nem nos cartões.
 - Voz da Aden direta, sem achismo, e neutra.
 
 ## Segurança das travas (auditoria, 01/10/2026, migration 0034)
@@ -38,6 +40,14 @@
 - **Lead ganho (G7):** arrastar para Ganho abre o lead pedindo o "Fechou! Virar cliente" (só ele cria o cliente);
   o botão some em lead perdido; proposta salva na Proposta aberta pelo lead já fica ligada a ele.
 
+- **Prazo mínimo de pedido (migration 0037, `lib/regras/prazoPedido.ts`):** pedido ao outro sócio tem prazo mínimo
+  de `configuracoes_empresa.prazo_minimo_pedido_dias_uteis` dias úteis (seg. a sex., sem feriados) a partir do pedido.
+  Vale ao criar, ao passar a tarefa para outro sócio e quando quem pediu muda o prazo. Sem prazo, entra o mínimo; menor
+  só com prioridade `urgente` (a tela pergunta em `useTarefas.salvar`, o conector recusa e explica em `salvar_tarefa`,
+  o banco barra em `tarefa_quem_pediu`). O aviso ao sócio diz "Tarefa urgente para você" quando for o caso.
+- **Vidro (aprovado 01/10/2026):** classes `.vidro` (painel) e `.veu` (fundo atrás) em `app/globals.css`, tokens
+  `--vidro*` e `--veu`. Usado em `Modal`, menu do celular, barra de salvar das Configurações, relógio rodando e aviso
+  do painel do cliente. Quem pede menos transparência (ou navegador sem desfoque) vê o sólido de sempre.
 - **Pedido de tarefa entre sócios (G4, migration 0035):** substitui o bot de WhatsApp. Tarefa criada (ou passada) para
   outra pessoa grava quem pediu (`tarefas.pedida_por_id`, `pedida_por_nome`, preenchidos pelo banco via `quem_age`:
   "Mônica (pelo Claude)") e manda um aviso ao sócio que recebeu (`avisos_socios`, aparece em Depende de mim). Sem

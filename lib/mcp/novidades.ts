@@ -8,7 +8,7 @@ export const NOVIDADES: { versao: string; texto: string }[] = [
   {
     versao: "2026-10-01",
     texto:
-      "Cronômetro opcional (as horas vêm do tempo cadastrado); projeto de marca em salvar_tipo_entrega (projeto, horasDoProjeto, prazoDias); pedido de tarefa ao outro sócio com aviso (pedidaPor em listar_tarefas e ver_visao_do_dia.semPrazo); ver_avisos; descrição e respostas do cliente em listar_tarefas; conversa inicial (briefing) em ver_cliente; apelido aceito nos nomes (\"Moni\", \"Olinda\"); ver_pagamentos_do_mes mostra quem deve, a divisão fica em ver_mes_visto_de_cima.",
+      "Cronômetro opcional (as horas vêm do tempo cadastrado); projeto de marca em salvar_tipo_entrega (projeto, horasDoProjeto, prazoDias); pedido de tarefa ao outro sócio com aviso (pedidaPor em listar_tarefas e ver_visao_do_dia.semPrazo) e prazo mínimo em dias úteis (sem prazo entra sozinho; menor só com prioridade \"urgente\", depois de perguntar); ver_avisos; descrição e respostas do cliente em listar_tarefas; conversa inicial (briefing) em ver_cliente; apelido aceito nos nomes (\"Moni\", \"Olinda\"); ver_pagamentos_do_mes mostra quem deve, a divisão fica em ver_mes_visto_de_cima.",
   },
 ];
 

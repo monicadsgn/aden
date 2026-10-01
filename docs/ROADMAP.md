@@ -39,8 +39,9 @@ O cronômetro (opcional) pode ser usado nos primeiros projetos para ajustar as h
   sócio, pelo número de sempre.
 - **Relatório do mês (proposta, esperando a Moni):** no painel, "Relatório do mês" com os meses anteriores: o que foi
   ao ar (por formato), ajustes pedidos, e um bloco de resultado que os sócios preenchem no fim do mês (números que eles
-  escolhem, por exemplo alcance, seguidores, contatos do tráfego, com uma frase de leitura), mais o PDF. Falta decidir
-  quais números entram e quem preenche.
+  escolhem, por exemplo alcance, seguidores, contatos do tráfego, com uma frase de leitura), mais o PDF.
+  **Guardado (Moni, 01/10/2026):** fica para depois. Os números serão puxados à mão (sem Supermetrics); o Áleff sugere
+  os de tráfego (tarefa dele "Números do relatório do mês do cliente"). Nada se constrói antes disso.
 
 ## Pendências da Moni (fora do código)
 

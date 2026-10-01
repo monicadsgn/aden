@@ -312,6 +312,7 @@ export function configParaConversa(c: Configuracao) {
       ociosidadePct: e.ociosidadePct ?? null,
       arredondamentoPropostaReais: paraReais(e.arredondamentoPropostaCentavos),
       followUpsMaximo: e.followUpsMaximo ?? null,
+      prazoMinimoPedidoDiasUteis: e.prazoMinimoPedidoDiasUteis ?? null,
       sociedade: {
         socioDoPercentual: nomeDe(c.pessoas, e.socioPercentualId ?? null) ?? null,
         percentualDoSocio: e.sociedadePctSocio ?? null,

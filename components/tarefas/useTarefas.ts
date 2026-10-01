@@ -8,6 +8,10 @@ import { configVazia, novoId } from "@/lib/calculo/novo";
 import { darStart, medicaoDaTarefa, mudarStatus, pausar, publicar, type StatusTarefa, type Tarefa } from "@/lib/calculo/tarefas";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
+import { hojeISO } from "@/lib/calculo/dia";
+import { conferirPrazoDoPedido } from "@/lib/regras/prazoPedido";
+
+const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
 /** Avisa o relógio do menu que algo mudou. */
 export const avisarRelogio = () => window.dispatchEvent(new Event("aden:relogio"));
@@ -59,8 +63,18 @@ export function useTarefas() {
   };
 
   /** Salva a tarefa (otimista: a tela muda na hora). */
-  const salvar = (t: Tarefa) =>
+  const salvar = (pedida: Tarefa) =>
     tentar(async () => {
+      // pedido ao outro sócio: prazo mínimo em dias úteis; sem prazo entra o mínimo, menor só como urgência
+      const antes = tarefas.find((x) => x.id === pedida.id);
+      const p = conferirPrazoDoPedido({ config, antes, depois: pedida, eu: usuario?.pessoaId, hoje: hojeISO() });
+      let t = p.tarefa;
+      if (p.pedeUrgencia && p.minimo) {
+        const urgente = window.confirm(
+          `Pedido ao outro sócio tem prazo mínimo de ${p.dias} dias úteis (a partir de ${ddmm(p.minimo)}).\n\nOK: é urgente, mantém ${ddmm(t.vencimento!)} com o selo "urgente".\nCancelar: usa ${ddmm(p.minimo)}.`,
+        );
+        t = urgente ? { ...t, prioridade: "urgente" } : { ...t, vencimento: p.minimo };
+      }
       setTarefas((l) => (l.some((x) => x.id === t.id) ? l.map((x) => (x.id === t.id ? t : x)) : [t, ...l]));
       await repo.salvarTarefa(t);
       // a medição acompanha a quantidade da tarefa
