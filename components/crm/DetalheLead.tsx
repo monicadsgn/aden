@@ -82,7 +82,10 @@ export function DetalheLead({
   aoRemover,
   aoGanhar,
   aoFechar,
+  confirmarGanho,
 }: {
+  /** veio de arrastar para Ganho: pede o "Fechou!" em destaque */
+  confirmarGanho?: boolean;
   lead: Lead | null;
   config: Configuracao;
   simulacoes: ResumoSimulacao[];
@@ -163,18 +166,23 @@ export function DetalheLead({
             </Botao>
           )}
           {l.clienteId ? (
-            <Link href={`/clientes?cliente=${l.clienteId}`} className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-ok px-4 text-sm font-semibold text-superficie">
+            <Link href={`/clientes?cliente=${l.clienteId}&aba=comercial`} className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-ok px-4 text-sm font-semibold text-superficie">
               <Users size={16} /> Ver o cliente
             </Link>
-          ) : (
+          ) : l.etapa !== "perdido" ? (
             <Botao variante="primario" icone={UserPlus} onClick={() => void aoGanhar(l).catch((e) => setErro(e instanceof Error ? e.message : "Não deu para criar o cliente."))}>
               Fechou! Virar cliente
             </Botao>
-          )}
+          ) : null}
         </>
       }
     >
       {erro && <p className="mb-3 rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro">{erro}</p>}
+      {confirmarGanho && !l.clienteId && (
+        <p className="mb-3 rounded-bloco bg-ok-suave px-3 py-2 text-[13px] text-ok">
+          Fechou? Confirme no botão <strong>Fechou! Virar cliente</strong>, lá embaixo: ele cria o cliente, guarda o escopo e abre o checklist de fechamento.
+        </p>
+      )}
 
       <div className="mb-3 flex flex-wrap gap-1">
         {ETAPAS.map((e) => (

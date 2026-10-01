@@ -489,6 +489,7 @@ export function FichaCliente({
                 a={a}
                 mensalidadeNoOnboarding={config.empresa.mensalidadeNoOnboarding}
                 aoAbrir={() => set({ fechamentoIniciadoEm: new Date().toISOString() })}
+                irPara={setAba}
               />
             )}
             {!c.interno && <ContratoCliente config={config} clienteId={c.id} />}

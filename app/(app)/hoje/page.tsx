@@ -5,23 +5,19 @@
 // as pendências um do outro quando quiserem, pelo seletor "De quem".
 
 import {
-  Calculator,
   AlertTriangle,
   ArrowRight,
   Bell,
   CalendarDays,
   CheckCircle2,
-  Circle,
+  ClipboardCheck,
   Clock,
   Flag,
   Hourglass,
   Megaphone,
   MessagesSquare,
-  Package,
   Plus,
-  Rocket,
   ShieldCheck,
-  Sparkles,
   Sun,
   Wallet,
   type LucideIcon,
@@ -33,7 +29,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ConectarAgenda } from "@/components/agenda/ConectarAgenda";
 import { horaDoEvento, useAgenda } from "@/components/agenda/useAgenda";
 import { DetalheTarefa } from "@/components/tarefas/DetalheTarefa";
-import { LinhaTarefa } from "@/components/tarefas/LinhaTarefa";
+import { ListaTarefas } from "@/components/tarefas/LinhaTarefa";
+import { montarFechamento } from "@/lib/calculo/fechamento";
 import { useTarefas } from "@/components/tarefas/useTarefas";
 import { Avatar } from "@/components/Avatar";
 import { BotaoAjudaTela } from "@/components/Ajuda";
@@ -48,10 +45,9 @@ import { pacotePadrao } from "@/lib/calculo/pacotes";
 import { distribuirPagamentos, type Pagamento } from "@/lib/calculo/pagamentos";
 import { novaTarefa, situacaoPeca, type Tarefa } from "@/lib/calculo/tarefas";
 import { useDados } from "@/lib/dados/contexto";
-import type { AvisoSocio, Pedido, ResumoSimulacao } from "@/lib/dados/repositorio";
+import type { AvisoSocio, Pedido } from "@/lib/dados/repositorio";
 import { formatarMoeda, formatarPct, primeiraMaiuscula } from "@/lib/formato";
 import { linkConfig } from "@/lib/navegacao";
-import { COM_VOLUME } from "@/lib/recursos";
 import { mesQueEstouraOTeto } from "@/lib/calculo/sociedade";
 import { passosParaComecar, type PassoComecar } from "@/lib/regras/pendencias";
 
@@ -97,48 +93,28 @@ function Bloco({ titulo, icone: Ic, acao, children }: { titulo: string; icone: L
   );
 }
 
-/** Enquanto faltar o básico da configuração, mostra por onde começar (some sozinho quando tudo estiver pronto). */
+/**
+ * Enquanto faltar o básico da configuração, uma linha só com o próximo passo (G1 da auditoria, 01/10/2026: configurar
+ * não disputa espaço com o dia). A lista inteira, na ordem, fica em Configurações. Some quando tudo estiver pronto.
+ */
 function ParaComecar({ passos }: { passos: PassoComecar[] }) {
   const prontos = passos.filter((p) => p.faltando.length === 0).length;
   if (prontos === passos.length) return null;
-  const proximo = passos.find((p) => p.faltando.length > 0);
+  const proximo = passos.find((p) => p.faltando.length > 0)!;
   return (
-    <Card>
-      <div className="flex flex-wrap items-center gap-2 px-4 pt-4 pb-1">
-        <Flag size={16} className="text-marca-forte" />
-        <h2 className="flex-1 text-sm font-bold">Para começar</h2>
-        <span className="numero text-xs font-semibold text-texto-suave">
-          {prontos} de {passos.length} prontos
-        </span>
-      </div>
-      <p className="px-4 text-xs text-texto-suave">Faltam alguns números para o Aden fazer as contas. Um passo de cada vez, na ordem:</p>
-      <ol className="flex flex-col gap-1 px-4 pt-2 pb-4">
-        {passos.map((p) => {
-          const pronto = p.faltando.length === 0;
-          const href = linkConfig(p.secao);
-          return (
-            <li key={p.secao}>
-              <Link
-                href={href}
-                title={pronto ? "Pronto" : `Falta: ${p.faltando.join(", ")}`}
-                className={cx(
-                  "flex items-center gap-2 rounded-item px-2 py-1.5 text-[13px]",
-                  pronto ? "text-texto-suave line-through" : p === proximo ? "bg-marca-tinta font-semibold" : "hover:bg-superficie-2",
-                )}
-              >
-                {pronto ? <CheckCircle2 size={15} className="shrink-0 text-ok" /> : <Circle size={15} className="shrink-0 text-texto-suave" />}
-                <span className="flex-1">{p.rotulo}</span>
-                {p === proximo && (
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-marca-forte">
-                    Preencher <ArrowRight size={12} />
-                  </span>
-                )}
-              </Link>
-            </li>
-          );
-        })}
-      </ol>
-    </Card>
+    <Link
+      href={linkConfig(proximo.secao)}
+      title={`Falta: ${proximo.faltando.join(", ")}`}
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-linha bg-superficie px-4 py-3 text-[13px] hover:bg-superficie-2/70"
+    >
+      <Flag size={16} className="shrink-0 text-marca-forte" />
+      <span className="min-w-0 flex-1">
+        <strong>Configuração: {prontos} de {passos.length} prontos.</strong> <span className="text-texto-suave">Próximo: {proximo.rotulo}</span>
+      </span>
+      <span className="inline-flex items-center gap-1 text-xs font-bold text-marca-forte">
+        Preencher <ArrowRight size={12} />
+      </span>
+    </Link>
   );
 }
 
@@ -154,10 +130,11 @@ export default function VisaoDoDia() {
   const a = useTarefas();
   const { repo, usuario } = useDados();
   const router = useRouter();
+  const [verProximos, setVerProximos] = useState(false);
+  const [fechamentos, setFechamentos] = useState<{ clienteId: string; nome: string; proximo: string; feitos: number; total: number }[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [avisos, setAvisos] = useState<AvisoSocio[]>([]);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
-  const [sims, setSims] = useState<ResumoSimulacao[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [deQuem, setDeQuem] = useState<string | null | undefined>(undefined);
   const [aberto, setAberto] = useState<Chave | null>(null);
@@ -174,17 +151,32 @@ export default function VisaoDoDia() {
 
   useEffect(() => {
     repo.listarLeads().then(setLeads).catch(() => {});
-    Promise.all([repo.listarPedidos(), repo.listarAvisos(), repo.listarPagamentos(), repo.listarSimulacoes()])
-      .then(([p, av, pg, s]) => {
+    Promise.all([repo.listarPedidos(), repo.listarAvisos(), repo.listarPagamentos()])
+      .then(([p, av, pg]) => {
         setPedidos(p);
         setAvisos(av);
         setPagamentos(pg);
-        setSims(s);
       })
       .catch(() => {});
   }, [repo]);
 
   const cfg = a.config;
+
+  // G6 (01/10/2026): fechamento de cliente em andamento aparece no dia, com o próximo passo
+  const comFechamento = cfg.clientes.filter((c) => c.ativo && c.fechamentoIniciadoEm);
+  const chaveFechamento = comFechamento.map((c) => `${c.id}:${c.painelToken ? 1 : 0}`).join(",");
+  useEffect(() => {
+    if (!comFechamento.length) return;
+    Promise.all(
+      comFechamento.map(async (c) => {
+        const f = montarFechamento(await repo.listarFechamento(c.id), !!c.painelToken);
+        return f.completo || !f.proximo ? null : { clienteId: c.id, nome: c.nome, proximo: f.proximo.rotulo, feitos: f.feitos, total: f.total };
+      }),
+    )
+      .then((l) => setFechamentos(l.filter((x): x is NonNullable<typeof x> => !!x)))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recarrega quando a lista de clientes em fechamento muda
+  }, [repo, chaveFechamento]);
   const socio = usuario?.papel === "admin" || repo.modo === "local";
   const eu = usuario?.pessoaId ?? null;
   const pessoa = deQuem === undefined ? eu : deQuem;
@@ -257,8 +249,6 @@ export default function VisaoDoDia() {
   };
 
   // próximos 7 dias, agrupados por dia
-  const proximos = new Map<string, Tarefa[]>();
-  for (const t of v.semana) proximos.set(t.vencimento!, [...(proximos.get(t.vencimento!) ?? []), t]);
 
   return (
     <div className="pb-16">
@@ -308,10 +298,9 @@ export default function VisaoDoDia() {
         {socio && <ParaComecar passos={passosParaComecar(cfg)} />}
 
         <div className="flex flex-col gap-2">
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-5">
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 sm:pb-0">
             <Cartao rotulo="Para hoje" valor={v.hoje.length} icone={Sun} tom="destaque" ativo={aberto === "hoje"} aoClicar={() => setAberto(aberto === "hoje" ? null : "hoje")} />
             <Cartao rotulo="Atrasadas" valor={v.atrasadas.length} icone={AlertTriangle} tom="alerta" ativo={aberto === "atrasadas"} aoClicar={() => setAberto(aberto === "atrasadas" ? null : "atrasadas")} />
-            <Cartao rotulo="Próximos 7 dias" valor={v.semana.length} icone={CalendarDays} ativo={aberto === "semana"} aoClicar={() => setAberto(aberto === "semana" ? null : "semana")} />
             <Cartao rotulo="Com o cliente" valor={v.emAprovacao.length} icone={Hourglass} ativo={aberto === "aprovacao"} aoClicar={() => setAberto(aberto === "aprovacao" ? null : "aprovacao")} />
             <Cartao rotulo="Concluídas hoje" valor={v.concluidasHoje.length} icone={CheckCircle2} ativo={aberto === "concluidas"} aoClicar={() => setAberto(aberto === "concluidas" ? null : "concluidas")} />
           </div>
@@ -321,16 +310,16 @@ export default function VisaoDoDia() {
                 {listas[aberto].length === 0 ? (
                   <p className="py-3 text-center text-xs text-texto-suave">Nada aqui. 🌿</p>
                 ) : (
-                  listas[aberto].map((t) => <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />)
+                  <ListaTarefas tarefas={listas[aberto]} a={a} abrir={setTarefaAberta} />
                 )}
               </div>
             </Card>
           )}
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[1fr_22rem]">
-          {/* coluna principal */}
-          <div className="flex flex-col gap-5">
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          {/* coluna principal (min-w-0: título comprido não estica a coluna além da tela) */}
+          <div className="flex min-w-0 flex-col gap-5">
             <Bloco
               titulo={minhaVisao ? "O que eu tenho para resolver" : `O que ${pessoa == null ? "todo mundo tem" : `${nomeDe(pessoa)} tem`} para resolver`}
               icone={Flag}
@@ -397,6 +386,23 @@ export default function VisaoDoDia() {
                   ))}
                 </div>
               )}
+              {socio && fechamentos.length > 0 && (
+                <div className="mb-2 flex flex-col">
+                  <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">Fechamento de cliente</p>
+                  {fechamentos.map((f) => (
+                    <Link key={f.clienteId} href={`/clientes?cliente=${f.clienteId}&aba=comercial`} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-item px-2 py-2 hover:bg-superficie-2/70">
+                      <ClipboardCheck size={16} className="shrink-0 text-marca-forte" />
+                      <span className="min-w-0 flex-1 basis-40 truncate text-[13px] font-medium">
+                        {f.nome}
+                        <span className="font-normal text-texto-suave"> · próximo: {f.proximo.toLowerCase()}</span>
+                      </span>
+                      <span className="numero text-[11px] text-texto-suave">
+                        {f.feitos} de {f.total}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
               {falarCom.length > 0 && (
                 <div className="mb-2 flex flex-col">
                   <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">Falar com (leads)</p>
@@ -419,17 +425,11 @@ export default function VisaoDoDia() {
               ) : paraResolver.length === 0 ? null : (
                 <div className="flex flex-col">
                   {v.atrasadas.length > 0 && <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-erro uppercase">Atrasadas</p>}
-                  {v.atrasadas.map((t) => (
-                    <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />
-                  ))}
+                  <ListaTarefas tarefas={v.atrasadas} a={a} abrir={setTarefaAberta} />
                   {v.hoje.length > 0 && <p className="px-2 pt-2 text-[11px] font-bold tracking-wide text-texto-suave uppercase">Hoje</p>}
-                  {v.hoje.map((t) => (
-                    <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />
-                  ))}
+                  <ListaTarefas tarefas={v.hoje} a={a} abrir={setTarefaAberta} />
                   {emAndamento.length > 0 && <p className="px-2 pt-2 text-[11px] font-bold tracking-wide text-texto-suave uppercase">Em produção, sem prazo</p>}
-                  {emAndamento.map((t) => (
-                    <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />
-                  ))}
+                  <ListaTarefas tarefas={emAndamento} a={a} abrir={setTarefaAberta} />
                 </div>
               )}
               {v.semResponsavel.length > 0 && (
@@ -443,26 +443,34 @@ export default function VisaoDoDia() {
             </Bloco>
 
             {/* Fase 1: com pouco volume, cada bloco só aparece quando tem algo */}
-            {proximos.size > 0 && (
-            <Bloco titulo="Próximos dias" icone={CalendarDays} acao={<LinkPequeno href="/calendario">Calendário</LinkPequeno>}>
-                <div className="flex flex-col gap-3">
-                  {[...proximos].map(([dia, ts]) => (
-                    <div key={dia}>
-                      <p className="px-2 text-[11px] font-bold text-texto-suave">
-                        {primeiraMaiuscula(new Date(`${dia}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short" }))}
-                      </p>
-                      {ts.map((t) => (
-                        <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-            </Bloco>
+            {/* G1: o que não é de hoje fica recolhido; as peças do mesmo calendário vêm juntas (G2) */}
+            {v.semana.length > 0 && (
+              <Bloco
+                titulo="Próximos 7 dias"
+                icone={CalendarDays}
+                acao={
+                  <button type="button" className="text-[11px] font-semibold text-marca-forte hover:underline" onClick={() => setVerProximos(!verProximos)} aria-expanded={verProximos}>
+                    {verProximos ? "Recolher" : `Ver (${v.semana.length})`}
+                  </button>
+                }
+              >
+                {verProximos ? (
+                  <ListaTarefas tarefas={v.semana} a={a} abrir={setTarefaAberta} />
+                ) : (
+                  <p className="text-[12px] text-texto-suave">
+                    {v.semana.length === 1 ? "1 tarefa" : `${v.semana.length} tarefas`} com prazo nos próximos 7 dias. Abra quando quiser olhar adiante, ou veja no{" "}
+                    <Link href="/calendario" className="font-semibold text-marca-forte underline">
+                      calendário
+                    </Link>
+                    .
+                  </p>
+                )}
+              </Bloco>
             )}
           </div>
 
           {/* coluna lateral: o que depende de mim e o resumo de tudo */}
-          <div className="flex flex-col gap-5">
+          <div className="flex min-w-0 flex-col gap-5">
             {minhaVisao && (
               <Bloco
                 titulo="Agenda de hoje"
@@ -515,144 +523,83 @@ export default function VisaoDoDia() {
               </Bloco>
             )}
 
-            {socio && (trilha.degraus.length > 0 || COM_VOLUME.secaoMetas) && (
-            <Bloco titulo="Metas" icone={Rocket} acao={<LinkPequeno href="/mes">Mês</LinkPequeno>}>
-              {!trilha.degraus.length ? (
-                <p className="text-xs text-texto-suave">
-                  A trilha de crescimento ainda não foi definida.{" "}
-                  <Link href={linkConfig("metas")} className="font-semibold text-marca-forte underline">
-                    Definir
+            {/* G1 (01/10/2026): metas, comercial e financeiro viram um resumo de uma linha cada; o detalhe fica nas telas deles */}
+            {socio && (
+              <Bloco titulo="Resumo do mês" icone={Wallet}>
+                <div className="flex flex-col divide-y divide-linha">
+                  <Link href="/mes?aba=cima" className="flex min-h-11 flex-col justify-center gap-1 py-2 hover:opacity-80">
+                    <span className="flex items-baseline gap-2 text-[13px]">
+                      <span className="flex-1 font-semibold">Dinheiro</span>
+                      <span className="numero font-bold">
+                        {formatarMoeda(financeiro.recebido)} <span className="text-[12px] font-normal text-texto-suave">de {formatarMoeda(financeiro.contratado)}</span>
+                      </span>
+                    </span>
+                    {financeiro.contratado > 0 && (
+                      <span className="block h-1.5 overflow-hidden rounded-full bg-superficie-2">
+                        <span className="block h-full rounded-full bg-ok" style={{ width: `${Math.min(100, (financeiro.recebido / financeiro.contratado) * 100)}%` }} />
+                      </span>
+                    )}
+                    <span className="text-[12px] text-texto-suave">
+                      {financeiro.contratado > financeiro.recebido
+                        ? `Falta entrar ${formatarMoeda(financeiro.contratado - financeiro.recebido)} este mês.`
+                        : "O que foi contratado para o mês já entrou."}
+                    </span>
                   </Link>
-                </p>
-              ) : degrau ? (
-                <div>
-                  <p className="text-sm font-bold">{degrau.meta.nome}</p>
-                  {degrau.progressoPct != null && (
-                    <>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-superficie-2">
-                        <div className="h-full rounded-full bg-marca" style={{ width: `${degrau.progressoPct}%` }} />
-                      </div>
-                      <p className="mt-1 text-[12px] text-texto-suave">
-                        {fmtMeta(degrau.valor)} de {fmtMeta(degrau.meta.alvo)} · faltam {fmtMeta(degrau.falta)}
-                      </p>
-                    </>
-                  )}
-                  {degrau.meta.acao && <p className="mt-2 text-xs">Ao chegar: {degrau.meta.acao}</p>}
-                </div>
-              ) : (
-                <p className="text-xs text-ok">Todos os degraus conquistados!</p>
-              )}
-            </Bloco>
-            )}
-
-            {socio && (
-            <Bloco titulo="Comercial" icone={Sparkles} acao={<LinkPequeno href="/crm">Leads</LinkPequeno>}>
-              <Link
-                href="/calculadora"
-                className="mb-3 flex items-center gap-2 rounded-bloco bg-marca-suave px-3 py-2 text-xs font-bold text-marca-forte hover:opacity-90"
-              >
-                <Calculator size={15} />
-                <span className="flex-1">Calcular uma proposta</span>
-                <ArrowRight size={13} />
-              </Link>
-              {leads.length > 0 && (
-                <p className="mb-2 text-xs">
-                  <strong>{funil.abertos}</strong> lead{funil.abertos === 1 ? "" : "s"} em negociação
-                  {funil.valorEmAbertoCentavos > 0 && ` (${formatarMoeda(funil.valorEmAbertoCentavos)}/mês)`}
-                  {funil.ganhosNoMes > 0 && ` · ${funil.ganhosNoMes} fechado${funil.ganhosNoMes === 1 ? "" : "s"} este mês`}.
-                </p>
-              )}
-              {espaco?.cabem != null ? (
-                <p className="text-sm">
-                  {espaco.cabem > 0 ? (
-                    <>
-                      <strong className="numero text-marca-forte">+{espaco.cabem}</strong> cliente{espaco.cabem === 1 ? "" : "s"} do pacote {padrao!.nome} ainda cabe
-                      {espaco.cabem === 1 ? "" : "m"}.
-                    </>
-                  ) : (
-                    "Horas bem usadas: hora do próximo passo da trilha."
-                  )}
-                </p>
-              ) : (
-                <p className="text-xs text-texto-suave">
-                  {padrao ? "Complete os tempos e as horas dos sócios para ver quantos clientes ainda cabem." : "Marque um pacote padrão para ver o espaço para vender."}
-                </p>
-              )}
-              {sims.length > 0 && (
-                <div className="mt-3">
-                  <p className="mb-1 text-[11px] font-bold text-texto-suave uppercase">Propostas recentes</p>
-                  {sims.slice(0, 3).map((s) => (
-                    <Link key={s.id} href={`/calculadora?sim=${s.id}`} className="flex items-center gap-2 rounded-item px-2 py-1 text-xs hover:bg-superficie-2">
-                      <Package size={12} className="text-texto-suave" />
-                      <span className="flex-1 truncate">{s.nome}</span>
-                      <span className="text-[10px] text-texto-suave">{new Date(s.atualizadoEm).toLocaleDateString("pt-BR")}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </Bloco>
-            )}
-
-            {socio && (
-            <Bloco titulo="Financeiro do mês" icone={Wallet} acao={<LinkPequeno href="/mes?aba=cima">Mês visto de cima</LinkPequeno>}>
-              <p className="text-[11px] text-texto-suave">Recebido este mês</p>
-              <p className="numero text-xl font-extrabold">
-                {formatarMoeda(financeiro.recebido)}
-                <span className="text-xs font-semibold text-texto-suave"> de {formatarMoeda(financeiro.contratado)}</span>
-              </p>
-              {financeiro.contratado > 0 && (
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-superficie-2">
-                  <div className="h-full rounded-full bg-ok" style={{ width: `${Math.min(100, (financeiro.recebido / financeiro.contratado) * 100)}%` }} />
-                </div>
-              )}
-              {financeiro.contratado > financeiro.recebido && (
-                <p className="mt-1.5 text-[12px] text-texto-suave">
-                  Falta entrar <strong className="numero text-texto">{formatarMoeda(financeiro.contratado - financeiro.recebido)}</strong> este mês.
-                </p>
-              )}
-              {lembretes.length > 0 && (
-                <div className="mt-3 flex flex-col gap-1">
-                  {lembretes.map((l) => (
-                    <Link key={`${l.clienteId}-${l.texto}`} href={`/clientes?cliente=${l.clienteId}`} className="flex items-center gap-2 rounded-item bg-aviso-suave px-2 py-1.5 text-[11px] text-aviso hover:opacity-90">
-                      <CalendarDays size={12} />
-                      <span className="flex-1">
-                        <strong>{l.cliente}</strong>: {l.texto}
-                        {l.data !== hoje && ` (${new Date(`${l.data}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })})`}
+                  <Link href="/crm" className="flex min-h-11 items-center gap-2 py-2 text-[13px] hover:opacity-80">
+                    <span className="flex-1 font-semibold">Comercial</span>
+                    <span className="text-[12px] text-texto-suave">
+                      {funil.abertos === 1 ? "1 lead em negociação" : `${funil.abertos} leads em negociação`}
+                      {espaco?.cabem != null && espaco.cabem > 0 && ` · cabem +${espaco.cabem}`}
+                    </span>
+                    <ArrowRight size={13} className="text-texto-suave" />
+                  </Link>
+                  {trilha.degraus.length > 0 && (
+                    <Link href="/mes" className="flex min-h-11 items-center gap-2 py-2 text-[13px] hover:opacity-80">
+                      <span className="flex-1 font-semibold">Meta</span>
+                      <span className="text-[12px] text-texto-suave">
+                        {degrau ? (degrau.progressoPct != null ? `${degrau.meta.nome}: faltam ${fmtMeta(degrau.falta)}` : degrau.meta.nome) : "todos os degraus conquistados"}
                       </span>
+                      <ArrowRight size={13} className="text-texto-suave" />
                     </Link>
-                  ))}
+                  )}
                 </div>
-              )}
-              {estouroTeto && (
-                <Link href="/mes?aba=cima" className="mt-3 flex items-start gap-1.5 rounded-bloco bg-aviso-suave px-3 py-2 text-xs text-aviso hover:opacity-90">
-                  <Clock size={13} className="mt-px shrink-0" />
-                  No ritmo de hoje, o faturamento do ano passa do teto do MEI em{" "}
-                  {new Date(`${estouroTeto}-15T12:00:00`).toLocaleDateString("pt-BR", { month: "long" })}. Vale falar com o contador antes.
-                </Link>
-              )}
-              {financeiro.atrasados.length > 0 && (
-                <div className="mt-3 flex flex-col gap-1.5 rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro">
-                  <p className="flex items-start gap-1.5 font-semibold">
-                    <Clock size={13} className="mt-px shrink-0" />
-                    Mês passado em aberto
-                  </p>
-                  <p className="text-[12px]">O mês passado já acabou e estes clientes não pagaram tudo. Se o dinheiro já caiu, registre; se não, vale cobrar.</p>
-                  {financeiro.atrasados.map((d) => (
-                    <div key={d.clienteId} className="flex flex-wrap items-center gap-2">
-                      <span className="flex-1">
-                        <strong>{d.nome}</strong>: falta {formatarMoeda(d.faltaReceberCentavos)}
-                      </span>
+                {(lembretes.length > 0 || estouroTeto || financeiro.atrasados.length > 0) && (
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {financeiro.atrasados.map((d) => (
                       <Link
+                        key={d.clienteId}
                         href={`/pagamentos?cliente=${d.clienteId}&mes=${d.competencia}`}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-botao bg-erro px-2.5 py-1 text-[11px] font-bold text-superficie hover:opacity-90"
+                        title="O mês passado já acabou e este cliente não pagou tudo. Se o dinheiro já caiu, registre; se não, vale cobrar."
+                        className="flex min-h-11 items-center gap-2 rounded-item bg-aviso-suave px-3 py-2 text-[12px] text-aviso hover:opacity-90"
                       >
-                        Registrar o que caiu
+                        <Clock size={13} className="shrink-0" />
+                        <span className="flex-1">
+                          <strong>{d.nome}</strong>: falta {formatarMoeda(d.faltaReceberCentavos)} do mês passado. Registrar o que caiu ou cobrar.
+                        </span>
+                        <ArrowRight size={13} />
                       </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Bloco>
+                    ))}
+                    {lembretes.map((l) => (
+                      <Link key={`${l.clienteId}-${l.texto}`} href={`/clientes?cliente=${l.clienteId}`} className="flex min-h-11 items-center gap-2 rounded-item bg-aviso-suave px-3 py-2 text-[12px] text-aviso hover:opacity-90">
+                        <CalendarDays size={13} className="shrink-0" />
+                        <span className="flex-1">
+                          <strong>{l.cliente}</strong>: {l.texto}
+                          {l.data !== hoje && ` (${new Date(`${l.data}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })})`}
+                        </span>
+                      </Link>
+                    ))}
+                    {estouroTeto && (
+                      <Link href="/mes?aba=cima" className="flex min-h-11 items-center gap-2 rounded-item bg-aviso-suave px-3 py-2 text-[12px] text-aviso hover:opacity-90">
+                        <Clock size={13} className="shrink-0" />
+                        <span className="flex-1">
+                          No ritmo de hoje, o faturamento do ano passa do teto do MEI em{" "}
+                          {new Date(`${estouroTeto}-15T12:00:00`).toLocaleDateString("pt-BR", { month: "long" })}. Vale falar com o contador antes.
+                        </span>
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </Bloco>
             )}
           </div>
         </div>

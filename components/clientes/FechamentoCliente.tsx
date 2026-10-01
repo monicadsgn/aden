@@ -17,6 +17,7 @@ import { montarOnboarding } from "@/lib/calculo/onboarding";
 import { baixarPdf } from "@/lib/documentos/base";
 import { onboardingVisual } from "@/lib/documentos/onboarding-visual";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
+import type { Aba } from "./FichaCliente";
 
 const campo = "h-9 rounded-campo border border-linha bg-superficie px-2 text-sm outline-none focus:border-marca focus:ring-2 focus:ring-marca/20";
 const quando = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
@@ -26,7 +27,10 @@ export function FechamentoCliente({
   a,
   mensalidadeNoOnboarding,
   aoAbrir,
+  irPara,
 }: {
+  /** leva para a aba da ficha que resolve o passo (G6 da auditoria) */
+  irPara?: (aba: Aba) => void;
   cliente: ClienteBase;
   a: AcoesTarefas;
   mensalidadeNoOnboarding: boolean | null | undefined;
@@ -119,7 +123,7 @@ export function FechamentoCliente({
                 <span className={i.feito ? "font-semibold" : ""}>{i.rotulo}</span>
                 <span className="block text-[11px] text-texto-suave">
                   {i.feito && i.feitoEm ? `${i.feitoPorNome ?? "?"} · ${quando(i.feitoEm)}` : i.ajuda}
-                  {i.passo === "painel" && !i.feito && " Crie o link em Dados."}
+
                 </span>
               </span>
               {passo && def.pedeLink && (
@@ -137,6 +141,30 @@ export function FechamentoCliente({
                     </a>
                   )}
                 </span>
+              )}
+              {/* G6: cada passo com o botão do lugar que resolve */}
+              {i.passo === "contrato" && !i.feito && irPara && (
+                <span className="flex flex-wrap items-center gap-1 text-[12px] text-texto-suave">
+                  dados em
+                  <Botao pequeno variante="fantasma" onClick={() => irPara("resumo")}>
+                    Dados
+                  </Botao>
+                  e
+                  <Botao pequeno variante="fantasma" onClick={() => irPara("contrato")}>
+                    Contrato
+                  </Botao>
+                  · envio logo abaixo
+                </span>
+              )}
+              {i.passo === "briefing" && irPara && (
+                <Botao pequeno onClick={() => irPara("briefing")}>
+                  Abrir o briefing
+                </Botao>
+              )}
+              {i.passo === "painel" && !i.feito && irPara && (
+                <Botao pequeno onClick={() => irPara("resumo")}>
+                  Criar o link
+                </Botao>
               )}
               {passo === "onboarding" && (
                 <Botao

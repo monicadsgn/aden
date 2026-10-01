@@ -38,6 +38,7 @@ export default function Crm() {
   const [carregado, setCarregado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState<string | null>(null);
+  const [confirmarGanho, setConfirmarGanho] = useState(false);
   const [rapido, setRapido] = useState("");
   const [sobre, setSobre] = useState<EtapaLead | null>(null);
   const [verPerdidos, setVerPerdidos] = useState(false);
@@ -148,7 +149,12 @@ export default function Crm() {
                   setSobre(null);
                   const l = leads.find((x) => x.id === e.dataTransfer.getData("text/plain"));
                   if (!l || l.etapa === c.valor) return;
-                  if (c.valor === "ganho") setAberto(l.id);
+                  // ganho de verdade cria o cliente: abre o lead para confirmar no "Fechou! Virar cliente" (G7)
+                  if (c.valor === "ganho" && !l.clienteId) {
+                    setAberto(l.id);
+                    setConfirmarGanho(true);
+                    return;
+                  }
                   void salvar(moverLead(l, c.valor));
                 }}
                 className={cx("flex min-h-48 flex-col gap-2 rounded-bloco bg-superficie-2/60 p-2 transition-colors", sobre === c.valor && "bg-marca-suave")}
@@ -229,12 +235,16 @@ export default function Crm() {
         config={config}
         simulacoes={sims}
         aoSalvar={salvar}
+        confirmarGanho={confirmarGanho}
         aoRemover={async (l) => {
           setLeads((ls) => ls.filter((x) => x.id !== l.id));
           await repo.removerLead(l.id);
         }}
         aoGanhar={ganhar}
-        aoFechar={() => setAberto(null)}
+        aoFechar={() => {
+          setAberto(null);
+          setConfirmarGanho(false);
+        }}
       />
     </div>
   );

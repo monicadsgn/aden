@@ -4,7 +4,7 @@ import { Columns3, List, ListChecks, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CabecalhoPagina } from "@/components/Shell";
 import { BotaoRelogio, COR_STATUS, DetalheTarefa } from "@/components/tarefas/DetalheTarefa";
-import { LinhaTarefa, MetaTarefa } from "@/components/tarefas/LinhaTarefa";
+import { LinhaTarefa, ListaTarefas, MetaTarefa } from "@/components/tarefas/LinhaTarefa";
 import { useTarefas, type AcoesTarefas } from "@/components/tarefas/useTarefas";
 import { Botao, Card, Segmentado, Selecao, Vazio, cx } from "@/components/ui";
 import { podeCriarTarefa } from "@/lib/acesso";
@@ -214,9 +214,7 @@ export default function Tarefas() {
                       {ROTULO_GRUPO[g.grupo]} <span className="font-semibold">{g.tarefas.length}</span>
                       <span className="h-px flex-1 bg-linha" aria-hidden />
                     </p>
-                    {g.tarefas.map((t) => (
-                      <LinhaTarefa key={t.id} t={t} a={a} abrir={() => abrir(t.id)} />
-                    ))}
+                    <ListaTarefas tarefas={g.tarefas} a={a} abrir={abrir} />
                   </div>
                 ))}
               {concluidas > 0 && (

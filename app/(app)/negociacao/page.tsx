@@ -119,7 +119,13 @@ export default function Negociacao() {
       const nomeSim = `Proposta · ${nomeCliente || "cliente novo"}`;
       const cens = lista.map((x) => x.estado.cenario);
       await repo.salvarSimulacao({ id: simId, nome: nomeSim, cenarios: cens }, cens.map((x) => calcularCenario(config, x)), config);
-      setAviso(`${v.nome} guardada.`);
+      // aberta pelo lead (G7 da auditoria): a proposta já fica ligada a ele, sem escolher depois
+      if (lead && lead.simulacaoId !== simId) {
+        const ligado = { ...lead, simulacaoId: simId };
+        await repo.salvarLead(ligado);
+        setLead(ligado);
+      }
+      setAviso(lead ? `${v.nome} guardada e ligada ao lead ${lead.nome}.` : `${v.nome} guardada.`);
     } catch (e) {
       setAviso(e instanceof Error ? e.message : "Erro ao guardar a versão.");
     }

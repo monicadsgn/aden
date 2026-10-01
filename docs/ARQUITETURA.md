@@ -21,6 +21,23 @@
   authenticated/anon) ninguém escreve; só as funções do painel (security definer). Reenviar pode zerar o "aprovou"
   (`proteger_respostas_cliente`).
 
+## Execução da auditoria, bloco 2 (01/10/2026)
+
+- **Visão do dia só com o de hoje (G1):** "Para começar" virou uma linha com o próximo passo (a lista inteira fica em
+  Configurações); saiu o contador "Próximos 7 dias"; o bloco Próximos 7 dias vem recolhido; Metas, Comercial e
+  Financeiro viraram o "Resumo do mês" (uma linha cada, com link) e os avisos que pedem ação hoje (mês passado em
+  aberto, contrato, teto do MEI) ficam embaixo dele, em amarelo. Colunas com `min-w-0` (no celular nada estica além
+  da tela).
+- **Peças do mesmo calendário juntas (G2):** `ListaTarefas` (`components/tarefas/LinhaTarefa.tsx`) junta as tarefas
+  do mesmo lote e cliente num card "N/M prontas" que abre as peças (`lib/calculo/lotes.ts`, testado; pronta =
+  concluída, publicada ou aprovada pelo cliente; conta o calendário inteiro). Usada na Visão do dia e na Lista de
+  Tarefas. Só tela: status e relógio não mudam.
+- **Checklist de fechamento (G6):** cada passo com o botão do lugar que resolve (Dados e Contrato no passo do contrato,
+  "Abrir o briefing", "Criar o link" do painel); "Ver o cliente" do lead abre direto na aba Comercial; fechamento em
+  andamento aparece na Visão do dia ("Fechamento de cliente", com o próximo passo).
+- **Lead ganho (G7):** arrastar para Ganho abre o lead pedindo o "Fechou! Virar cliente" (só ele cria o cliente);
+  o botão some em lead perdido; proposta salva na Proposta aberta pelo lead já fica ligada a ele.
+
 ## Stack
 
 Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + Tailwind v4 + Vercel.
