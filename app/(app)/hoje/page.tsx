@@ -68,7 +68,7 @@ function Cartao({ rotulo, valor, icone: Ic, tom, ativo, aoClicar }: { rotulo: st
       aria-pressed={ativo}
       className={cx(
         "relative flex min-w-[7.5rem] shrink-0 flex-col items-start gap-1 rounded-bloco border p-3 text-left transition-colors sm:min-w-0",
-        ativo ? "border-marca bg-marca-tinta" : "vidro border-linha bg-superficie hover:border-marca/50",
+        ativo ? "border-marca bg-marca-tinta" : "border-linha bg-superficie hover:border-marca/50",
       )}
     >
       <span className="flex items-center gap-1.5 text-[11px] font-semibold text-texto-suave">
@@ -82,7 +82,7 @@ function Cartao({ rotulo, valor, icone: Ic, tom, ativo, aoClicar }: { rotulo: st
 
 function Bloco({ titulo, icone: Ic, acao, children }: { titulo: string; icone: LucideIcon; acao?: ReactNode; children: ReactNode }) {
   return (
-    <Card className="vidro">
+    <Card>
       <div className="flex items-center gap-2 px-4 pt-4 pb-2">
         <Ic size={16} className="text-marca-forte" />
         <h2 className="flex-1 text-sm font-bold">{titulo}</h2>
@@ -105,7 +105,7 @@ function ParaComecar({ passos }: { passos: PassoComecar[] }) {
     <Link
       href={linkConfig(proximo.secao)}
       title={`Falta: ${proximo.faltando.join(", ")}`}
-      className="vidro flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-linha bg-superficie px-4 py-3 text-[13px] hover:bg-superficie-2/70"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-linha bg-superficie px-4 py-3 text-[13px] hover:bg-superficie-2/70"
     >
       <Flag size={16} className="shrink-0 text-marca-forte" />
       <span className="min-w-0 flex-1">
@@ -292,13 +292,6 @@ export default function VisaoDoDia() {
         </div>
       </div>
 
-      {/* formas da marca atrás do vidro (só decoração; o conteúdo fica por cima) */}
-      <div className="relative isolate overflow-hidden">
-      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <div className="forma-1 absolute -top-16 left-1/4 size-[30rem] rounded-full blur-2xl" />
-        <div className="forma-2 absolute top-1/4 -right-24 size-[34rem] rounded-full blur-2xl" />
-        <div className="forma-1 absolute -bottom-24 -left-20 size-[26rem] rounded-full blur-2xl" />
-      </div>
       <div className="mx-auto flex max-w-[1300px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
         {a.erro && !tarefa && <p className="rounded-card bg-erro-suave px-4 py-3 text-sm text-erro">{a.erro}</p>}
 
@@ -610,7 +603,6 @@ export default function VisaoDoDia() {
             )}
           </div>
         </div>
-      </div>
       </div>
       <DetalheTarefa tarefa={tarefa} a={a} aoFechar={() => setTarefaAberta(null)} />
       <ConectarAgenda aberto={conectando} aoFechar={() => setConectando(false)} aoMudar={() => void agenda.recarregar()} />

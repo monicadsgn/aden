@@ -53,7 +53,7 @@ export function Modal({
 
   return (
     <div
-      className={cx("fixed inset-0 z-50 flex bg-texto/40 backdrop-blur-[2px]", cheia ? "items-stretch" : "items-end sm:items-center sm:justify-center sm:p-4")}
+      className={cx("veu fixed inset-0 z-50 flex", cheia ? "items-stretch" : "items-end sm:items-center sm:justify-center sm:p-4")}
       onMouseDown={(e) => (comecouFora.current = e.target === e.currentTarget)}
       onClick={(e) => {
         if (comecouFora.current && e.target === e.currentTarget) aoFechar();
@@ -66,7 +66,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titulo ? idTitulo : undefined}
         className={cx(
-          "sem-contorno flex w-full flex-col bg-superficie shadow-forte outline-none",
+          "vidro sem-contorno flex w-full flex-col border bg-superficie shadow-forte outline-none",
           cheia ? "h-full" : cx("max-h-[88vh] rounded-t-card sm:rounded-card", larguras[largura]),
         )}
       >

@@ -267,6 +267,6 @@ pede medições) e projetos de marca fora de "minutos" (proposta de como medir e
 | G4 | feito (migration 0035), conferido com dado real: 3 tarefas do Áleff "pedida por Mônica (pelo Claude)", com aviso | — |
 | G5 | feito | antes `pc-config.png`; depois `g5-depois-config.png`, `g5-depois-calendario-datas.png` |
 | M17 (parte) | cliente "teste" apagado; tarefas do Áleff: início do contrato da Olinda e da StadiumPlay, meta da garantia da StadiumPlay | — |
-| Vidro | só na Visão do dia, esperando o ok para espalhar | antes `vidro-antes-*.png`; depois `vidro-depois-*.png` |
+| Vidro | refeito (01/10): só no que fica por cima. Primeiro na janela (Modal), esperando o ok para espalhar | antes `vidro2-antes-*.png`; depois `vidro2-depois-*.png` |
 
 Encontrado no caminho (dado real, não mexido): tempo do Reels cadastrado como 2 min e da Estrutura visual como 0 min.

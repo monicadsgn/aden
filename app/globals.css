@@ -46,7 +46,7 @@ body {
   font-feature-settings: "tnum" 0;
 }
 
-/* vidro: só por esta classe (nada de cor solta nos componentes) */
+/* vidro: só por esta classe (nada de cor solta nos componentes); só no que fica por cima da tela */
 .vidro {
   background: var(--vidro);
   border-color: var(--vidro-borda);
@@ -56,12 +56,17 @@ body {
 /* quem pede menos transparência no aparelho (ou navegador sem desfoque) vê o cartão sólido de sempre */
 @media (prefers-reduced-transparency: reduce) {
   .vidro { background: var(--superficie); -webkit-backdrop-filter: none; backdrop-filter: none; border-color: var(--linha); }
+  .veu { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .vidro { background: var(--superficie); border-color: var(--linha); }
 }
-.forma-1 { background: var(--forma-1); }
-.forma-2 { background: var(--forma-2); }
+/* véu atrás das janelas: escurece pouco e desfoca a tela, para a janela parecer uma camada por cima */
+.veu {
+  background: var(--veu);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
 
 .numero {
   font-family: var(--fonte-numeros);
