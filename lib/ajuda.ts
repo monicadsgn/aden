@@ -115,7 +115,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/configuracoes": {
     titulo: "Configurações",
     texto:
-      "Em dois grupos: configurações do sistema (sócios, custos, regras, acessos) e configurações comerciais (serviços, entregas, terceiros, pacotes, contrato, onboarding, briefing). Preencha na ordem dos números: sem esses números a proposta não tem o que calcular. Tudo aqui se configura uma vez; o que mexe todo mês fica no dia a dia. As abas marcadas com \"falta preencher\" têm campo vazio; o histórico de alterações fica no botão do topo.",
+      "Em dois grupos: configurações do sistema (sócios, custos, regras, acessos) e comerciais (serviços, entregas, terceiros, pacotes, contrato, onboarding, briefing). Tudo aqui se configura uma vez, na ordem dos números: sem eles a proposta não tem o que calcular. As abas com \"falta preencher\" têm campo vazio; o histórico de alterações fica no botão do topo.",
     termos: ["piso", "capacidade", "rateio", "reinvestimento", "ordem-distribuicao"],
   },
   "/historico": {
