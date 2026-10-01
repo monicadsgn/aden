@@ -5,7 +5,7 @@ import { calcularVisaoMes } from "./mes";
 import { calcularTrilha, espacoPraVender } from "./metas";
 import { ajustarQuantidade, calcularCenario } from "./motor";
 import { configVazia } from "./novo";
-import { diferencaDoPacote, frasesParaCliente, pacoteParaCenario, precoDoPacote } from "./pacotes";
+import { diferencaDoPacote, frasesParaCliente, pacoteParaCenario, parcelasDoProjeto, prazoDoProjeto, precoDoPacote } from "./pacotes";
 import type { Configuracao, Pacote } from "./tipos";
 
 function cfg(): Configuracao {
@@ -110,5 +110,108 @@ describe("visão do mês: espaço pra vender e trilha", () => {
     c.metas[0].conquistadaEm = "2026-09-26T00:00:00Z";
     c.clientes = [];
     expect(calcularTrilha(c).degraus[0].batida).toBe(true);
+  });
+});
+
+// Projeto avulso e primeiro mês com a regra da sociedade (01/10/2026). Fixtures, não valores de negócio.
+describe("projeto avulso e regra da sociedade", () => {
+  function soc(pct = 30): Configuracao {
+    const c = configVazia();
+    c.empresa = {
+      reinvestimentoPct: 0,
+      impostoPct: 0,
+      taxaRecebimentoPct: 0,
+      regraRateio: "proporcional",
+      regime: "mei",
+      impostoFixoMensalCentavos: 0,
+      socioPercentualId: "m",
+      sociedadePctSocio: pct,
+      sociedadeTetoViradaCentavos: 10_000_000,
+      socioSobraId: "a",
+      tetoFaturamentoAnualCentavos: 10_000_000,
+      avulsoSinalPct: 50,
+    };
+    c.pessoas = [
+      { id: "m", nome: "M", socio: true, percentualPadrao: 50, pisoHoraCentavos: 4500, capacidadeHorasMes: 100, ativo: true },
+      { id: "a", nome: "A", socio: true, percentualPadrao: 50, pisoHoraCentavos: 6000, capacidadeHorasMes: 100, ativo: true },
+    ];
+    c.servicos = [{ id: "br", nome: "Branding", divisaoPadrao: { m: 100 }, ativo: true }];
+    c.tiposEntrega = [
+      { id: "logo", nome: "Logo essencial", servicoId: "br", horasPorUnidade: 8, projeto: true, prazoDias: 15, ativo: true },
+      { id: "ivc", nome: "Identidade visual completa", servicoId: "br", horasPorUnidade: 24, projeto: true, prazoDias: 25, ativo: true },
+      { id: "pdf", nome: "PDF de apresentação", servicoId: "br", horasPorUnidade: 6, ativo: true },
+    ];
+    c.custosFixos = [{ id: "f", nome: "Ferramentas", valorMensalCentavos: 50000, ativo: true }];
+    c.clientes = [{ id: "k", nome: "Cliente", interno: false, participaRateio: true, valorMensalCentavos: 300000, ativo: true }];
+    return c;
+  }
+  const logo = (extras: Pacote["rotina"] = []): Pacote => ({
+    id: "pl",
+    nome: "Logo essencial",
+    descricao: "",
+    itensCliente: [],
+    rotina: [{ tipoEntregaId: "logo", quantidade: 1 }, ...extras],
+    entrada: [],
+    avulso: true,
+    padrao: false,
+    ativo: true,
+  });
+
+  it("preço do avulso sai do piso pela regra da sociedade e muda junto com ela", () => {
+    // 8 h × R$ 45 ÷ 30% = R$ 1.200
+    const p = precoDoPacote(soc(30), logo());
+    expect(p.avulso).toBe(true);
+    expect(p.mensalCentavos).toBe(120000);
+    expect(p.entradaCentavos).toBeNull();
+    // mudou a regra (ex.: 45%): 8 h × R$ 45 ÷ 45% = R$ 800
+    expect(precoDoPacote(soc(45), logo()).mensalCentavos).toBe(80000);
+  });
+
+  it("avulso paga a parte dele dos custos fixos e entra uma vez só no teto do ano", () => {
+    const p = precoDoPacote(soc(), logo());
+    expect(p.resultado.mes!.rateio.quotaCentavos).toBeGreaterThan(0);
+    // outros 12 × R$ 3.000 + o projeto uma vez
+    expect(p.resultado.teto!.anualCentavos).toBe(300000 * 12 + 120000);
+  });
+
+  it("extra entra pelas horas dele; prazo vem do projeto; parcelas pelo % configurado", () => {
+    const c = soc();
+    const comPdf = logo([{ tipoEntregaId: "pdf", quantidade: 1 }]);
+    // (8 + 6) h × R$ 45 ÷ 30%
+    expect(precoDoPacote(c, comPdf).mensalCentavos).toBe(210000);
+    expect(prazoDoProjeto(c, comPdf.rotina)).toBe(15);
+    expect(prazoDoProjeto(c, [...comPdf.rotina, { tipoEntregaId: "ivc", quantidade: 1 }])).toBe(25);
+    expect(parcelasDoProjeto(c, 120000)).toEqual({ sinalPct: 50, inicioCentavos: 60000, entregaCentavos: 60000 });
+    expect(parcelasDoProjeto({ ...c, empresa: { ...c.empresa, avulsoSinalPct: null } }, 120000)).toBeNull();
+  });
+
+  it("primeiro mês dos pacotes mensais segue a regra da sociedade", () => {
+    const c = soc();
+    const mensal: Pacote = { ...logo(), avulso: false, rotina: [{ tipoEntregaId: "pdf", quantidade: 1 }], entrada: [{ tipoEntregaId: "logo", quantidade: 1 }] };
+    // a entrada (8 h dela) custa 8 × R$ 45 ÷ 30%, não 8 × R$ 45
+    expect(precoDoPacote(c, mensal).entradaCentavos).toBe(120000);
+  });
+});
+
+describe("projetos que cabem (modo valor, paga uma vez)", () => {
+  it("lista os avulsos ativos do mais barato ao mais caro e diz se cabe", async () => {
+    const { projetosQueCabem } = await import("./pacotes");
+    const c = configVazia();
+    c.empresa = { reinvestimentoPct: 0, impostoPct: 0, taxaRecebimentoPct: 0, regraRateio: "igual", regime: "mei", impostoFixoMensalCentavos: 0 };
+    c.pessoas = [{ id: "m", nome: "M", socio: true, percentualPadrao: 100, pisoHoraCentavos: 5000, capacidadeHorasMes: 100, ativo: true }];
+    c.servicos = [{ id: "br", nome: "Branding", divisaoPadrao: { m: 100 }, ativo: true }];
+    c.tiposEntrega = [
+      { id: "a", nome: "Pequeno", servicoId: "br", horasPorUnidade: 10, projeto: true, prazoDias: 10, ativo: true },
+      { id: "b", nome: "Grande", servicoId: "br", horasPorUnidade: 30, projeto: true, prazoDias: 20, ativo: true },
+    ];
+    const pk = (id: string, tipo: string): Pacote => ({ id, nome: tipo, descricao: "", itensCliente: [], rotina: [{ tipoEntregaId: tipo, quantidade: 1 }], entrada: [], avulso: true, padrao: false, ativo: true });
+    c.pacotes = [pk("pg", "b"), pk("pp", "a"), { ...pk("mensal", "a"), avulso: false }];
+    const l = projetosQueCabem(c, 100000);
+    expect(l.map((x) => x.pacoteId)).toEqual(["pp", "pg"]);
+    // 10 h × R$ 50 = R$ 500 cabe em R$ 1.000; 30 h = R$ 1.500 não cabe
+    expect(l[0]).toMatchObject({ precoCentavos: 50000, cabe: true, folgaCentavos: 50000, prazoDiasUteis: 10 });
+    expect(l[0].porHora[0].valorHoraCentavos).toBe(10000);
+    expect(l[1]).toMatchObject({ cabe: false, folgaCentavos: -50000 });
+    expect(projetosQueCabem(c, null)[0].cabe).toBeNull();
   });
 });

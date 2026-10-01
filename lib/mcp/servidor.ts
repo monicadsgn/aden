@@ -20,7 +20,7 @@ import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, rotuloEtapa
 import { PAPEIS } from "../acesso";
 import { avisosDePublicacao, hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
-import { frasesParaCliente, pacoteParaCenario, pacotePadrao, precoDoPacote } from "../calculo/pacotes";
+import { frasesParaCliente, pacoteParaCenario, pacotePadrao, parcelasDoProjeto, prazoDoProjeto, precoDoPacote, projetosQueCabem, textoParcelas } from "../calculo/pacotes";
 import { ROTULO_PECA, estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, publicar, rotuloStatus, situacaoPeca, type Tarefa } from "../calculo/tarefas";
 import type { AtalhosPainel, Configuracao, Meta, Pacote } from "../calculo/tipos";
 import { datasDoPlanejamento, type DataComemorativa, type ItemDoPlanejamento } from "../calculo/datas";
@@ -258,6 +258,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         ),
         diferencaSugerirPct: opt(z.number(), "sugerir novo tempo quando a média medida diferir mais que este %"),
         followUpsMaximo: opt(z.number().int().positive(), "depois de quantos follow-ups do \"vou ver\" o sistema sugere marcar o lead como perdido"),
+        avulsoSinalPct: opt(z.number().min(0).max(100), "projeto avulso: % do valor pago no início (o resto na entrega); só grave o que os sócios decidirem"),
         prazoMinimoPedidoDiasUteis: opt(z.number().int().positive(), "prazo mínimo, em dias úteis, de tarefa pedida ao outro sócio (sem prazo entra sozinho; menor só como urgência)"),
         ofertaVerbaIndicadaDeReais: opt(z.number(), "oferta padrão: verba de mídia indicada ao cliente, a partir de (reais)"),
         ofertaVerbaIndicadaAteReais: opt(z.number(), "oferta padrão: verba de mídia indicada, até (reais)"),
@@ -632,6 +633,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const alvo = resolver(config.clientes, cliente, "Cliente");
         if (pacote) {
           const pk = resolver(config.pacotes ?? [], pacote, "Pacote");
+          if (pk.avulso) throw new Error(`${pk.nome} é projeto avulso (pago uma vez): não vira entregas do contrato mensal. Para fechar o projeto, use salvar_lead com o pacote e ganhar_lead.`);
           const base = pacoteParaCenario(pk);
           const cen = alvo.valorMensalCentavos ? { ...base, modo: "valor" as const, mensalidadeCentavos: alvo.valorMensalCentavos } : base;
           const r = await guardarEscopo(repo, config, alvo.id, { ...cen, clienteId: alvo.id });
@@ -786,7 +788,15 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     async ({ cenario }) =>
       executar(async () => {
         const config = await (await obterRepo()).carregarConfig();
-        return resultadoParaConversa(calcularCenario(config, cenarioParaInterno(cenario, config)));
+        const interno = cenarioParaInterno(cenario, config);
+        const r = resultadoParaConversa(calcularCenario(config, interno));
+        // projeto avulso no modo valor: os pacotes de projeto que cabem no valor (mesma conta de ver_projetos_que_cabem)
+        if (interno.avulso && interno.modo === "valor")
+          return {
+            ...r,
+            projetosQueCabem: projetosQueCabem(config, interno.mensalidadeCentavos).map((p) => ({ pacote: p.nome, valorMinimo: paraReais(p.precoCentavos), prazoDiasUteis: p.prazoDiasUteis, cabe: p.cabe })),
+          };
+        return r;
       }),
   );
 
@@ -1761,7 +1771,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Lead fechou: virar cliente",
       description:
-        "Marca o lead como ganho e cria o cliente, guardando o escopo a partir da proposta ligada (ou do pacote) com o valor estimado. Abaixo do piso de um sócio, o escopo vira pedido de exceção. Confirme com quem está conversando antes.",
+        "Marca o lead como ganho e cria o cliente, guardando o escopo a partir da proposta ligada (ou do pacote) com o valor estimado. Abaixo do piso de um sócio, o escopo vira pedido de exceção. Pacote de projeto avulso: o cliente nasce sem mensalidade, com o projeto fechado na ficha e uma tarefa por entrega do projeto (prazo em dias úteis). Confirme com quem está conversando antes.",
       inputSchema: { id: z.string().describe("id ou nome do lead") },
     },
     async ({ id }) =>
@@ -1775,6 +1785,14 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
             `${l.nome} ainda não tem proposta, pacote nem valor. Antes de fechar, grave com salvar_lead o pacote (pacote) e o valor combinado (valorEstimadoReais), ou ligue a proposta salva (simulacao).`,
           );
         const r = await ganharLead(repo, config, l);
+        if (r.tarefasDoProjeto)
+          return {
+            cliente: l.nome,
+            clienteId: r.clienteId,
+            projetoAvulso: "cliente sem mensalidade, com o projeto fechado guardado na ficha",
+            tarefasCriadas: r.tarefasDoProjeto.map((t) => ({ titulo: t.titulo, responsavel: config.pessoas.find((p) => p.id === t.responsavelId)?.nome ?? null, prazo: t.vencimento })),
+            contrato: "o contrato de valor único ainda não está pronto no Aden: avise quem está conversando",
+          };
         return {
           cliente: l.nome,
           clienteId: r.clienteId,
@@ -1862,7 +1880,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Pacotes e preços calculados",
       description:
-        "Pacotes fechados da negociação: frases que o cliente lê, entregas (rotina e primeiro mês) e os preços CALCULADOS (manutenção mensal e primeiro mês). Preço nunca é digitado.",
+        "Pacotes fechados da negociação: frases que o cliente lê, entregas (rotina e primeiro mês) e os preços CALCULADOS (manutenção mensal e primeiro mês). Pacote de projeto avulso (avulso=true): sem mensalidade, valor único do projeto, prazo em dias úteis e parcelas (% no início, resto na entrega). Preço nunca é digitado.",
       inputSchema: {},
     },
     async () =>
@@ -1871,9 +1889,26 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const nome = (id: string) => config.tiposEntrega.find((t) => t.id === id)?.nome ?? id;
         return (config.pacotes ?? []).map((p) => {
           const preco = precoDoPacote(config, p);
+          if (p.avulso) {
+            const parc = parcelasDoProjeto(config, preco.mensalCentavos);
+            return {
+              id: p.id,
+              nome: p.nome,
+              avulso: true,
+              ativo: p.ativo,
+              descricao: p.descricao,
+              oQueOClienteLe: frasesParaCliente(config, p, pacoteParaCenario(p)),
+              projetoEExtras: p.rotina.map((i) => ({ entrega: nome(i.tipoEntregaId), quantidade: i.quantidade })),
+              valorMinimoDoProjeto: paraReais(preco.mensalCentavos),
+              prazoDiasUteis: prazoDoProjeto(config, p.rotina),
+              pagamento: parc ? textoParcelas(parc) : "sem o % pago no início na configuração",
+              motivoSemPreco: preco.motivo,
+            };
+          }
           return {
             id: p.id,
             nome: p.nome,
+            avulso: false,
             padrao: p.padrao,
             ativo: p.ativo,
             descricao: p.descricao,
@@ -1893,7 +1928,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou alterar pacote",
       description:
-        "Pacote fechado para a negociação: nome, descrição para o cliente, frases do que está incluso e as entregas (rotina mensal e primeiro mês). NÃO existe campo de preço: sai do cálculo. Quantidade null = a confirmar. Listas enviadas substituem as antigas.",
+        "Pacote fechado para a negociação: nome, descrição para o cliente, frases do que está incluso e as entregas (rotina mensal e primeiro mês). avulso=true = projeto avulso sem mensalidade: as entregas do projeto (e os extras) vão em rotina, e primeiroMes fica vazio. NÃO existe campo de preço: sai do cálculo. Quantidade null = a confirmar. Listas enviadas substituem as antigas.",
       inputSchema: {
         id: z.string().optional().describe("id ou nome do pacote a alterar; vazio = novo"),
         nome: z.string().optional(),
@@ -1903,9 +1938,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         primeiroMes: z.array(z.object({ entrega: z.string(), quantidade: z.number().nonnegative().nullable() })).optional(),
         padrao: z.boolean().optional(),
         ativo: z.boolean().optional(),
+        avulso: z.boolean().optional().describe("true = projeto avulso (pago uma vez, sem mensalidade)"),
       },
     },
-    async ({ id, nome, descricao, frasesCliente, rotina, primeiroMes, padrao, ativo }) =>
+    async ({ id, nome, descricao, frasesCliente, rotina, primeiroMes, padrao, ativo, avulso }) =>
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
@@ -1924,11 +1960,43 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(primeiroMes && { entrada: itens(primeiroMes) }),
           ...(padrao != null && { padrao }),
           ...(ativo != null && { ativo }),
+          ...(avulso != null && { avulso }),
         };
+        if (novo.avulso) {
+          novo.entrada = [];
+          novo.padrao = false;
+        }
         const pacotes = alvo ? lista.map((p) => (p.id === alvo.id ? novo : novo.padrao ? { ...p, padrao: false } : p)) : [...lista.map((p) => (novo.padrao ? { ...p, padrao: false } : p)), novo];
         await salvarDiferenca(repo, antes, { ...antes, pacotes });
         const preco = precoDoPacote({ ...antes, pacotes }, novo);
+        if (novo.avulso) return { salvo: novo.nome, avulso: true, valorMinimoDoProjeto: paraReais(preco.mensalCentavos), prazoDiasUteis: prazoDoProjeto({ ...antes, pacotes }, novo.rotina) };
         return { salvo: novo.nome, manutencaoMensal: paraReais(preco.mensalCentavos), primeiroMes: preco.entradaAConfirmar ? "a confirmar" : paraReais(preco.entradaCentavos) };
+      }),
+  );
+
+  server.registerTool(
+    "ver_projetos_que_cabem",
+    {
+      title: "Projetos avulsos que cabem no valor do cliente",
+      description:
+        "Modo valor para projeto pago uma vez: com quanto o cliente pode pagar (reais), lista os pacotes de projeto avulso ativos do mais barato ao mais caro, o valor mínimo calculado de cada um, o prazo em dias úteis, se cabe, quanto sobra ou falta e o valor por hora de cada sócio nesse valor. Sem valor: só a lista com os preços.",
+      inputSchema: { valorReais: z.number().positive().optional().describe("quanto o cliente pode pagar pelo projeto, em reais") },
+    },
+    async ({ valorReais }) =>
+      executar(async () => {
+        const config = await (await obterRepo()).carregarConfig();
+        const lista = projetosQueCabem(config, valorReais != null ? paraCentavos(valorReais) : null);
+        if (!lista.length) return { projetos: [], aviso: "Nenhum pacote de projeto avulso ativo (Configurações → Pacotes)." };
+        return {
+          projetos: lista.map((p) => ({
+            pacote: p.nome,
+            valorMinimo: paraReais(p.precoCentavos),
+            prazoDiasUteis: p.prazoDiasUteis,
+            cabe: p.cabe,
+            ...(p.folgaCentavos != null && (p.folgaCentavos >= 0 ? { sobra: paraReais(p.folgaCentavos) } : { falta: paraReais(-p.folgaCentavos) })),
+            porHora: p.porHora.map((x) => ({ socio: x.nome, porHora: paraReais(x.valorHoraCentavos), abaixoDoPiso: x.abaixoPiso })),
+          })),
+        };
       }),
   );
 

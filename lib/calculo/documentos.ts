@@ -11,6 +11,7 @@ import type { Pagamento } from "./pagamentos";
 import type { Cenario, Configuracao, Id } from "./tipos";
 import { formatarMoeda } from "../formato";
 import { garantiaParaCliente, type GarantiaCliente } from "./apresentacao";
+import { parcelasDoProjeto, prazoDoProjeto, textoParcelas } from "./pacotes";
 
 const v0 = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? 0 : v);
 
@@ -53,6 +54,8 @@ export interface DocumentoProposta {
   observacao: string;
   /** tráfego com garantia: as frases da oferta (vazio = sem garantia) */
   garantia: string[];
+  /** projeto avulso: valor único (em valorMensalCentavos), prazo e parcelas; null = proposta mensal */
+  projeto: { prazoDiasUteis: number | null; parcelas: string | null } | null;
 }
 
 function agrupar(config: Configuracao, linhas: Cenario["entregas"]) {
@@ -76,6 +79,24 @@ export function documentoProposta(
 ): DocumentoProposta {
   const blocos = [...agrupar(config, cenario.entregas)].map(([servico, itens]) => ({ servico, itens }));
   const entrada = [...agrupar(config, cenario.entrada?.entregas ?? [])].flatMap(([, itens]) => itens);
+  if (cenario.avulso) {
+    const prazo = prazoDoProjeto(config, cenario.entregas);
+    const parc = parcelasDoProjeto(config, valorMensalCentavos);
+    return {
+      tipo: "proposta",
+      arquivo: nomeArquivo("proposta", opcoes.cliente, opcoes.competencia),
+      cliente: opcoes.cliente,
+      mesReferencia: mesPorExtenso(opcoes.competencia),
+      blocos,
+      entrada: [],
+      valorMensalCentavos,
+      incluiTrafego: false,
+      verbaMidiaCentavos: null,
+      observacao: `Valor único do projeto, sem mensalidade.${prazo != null ? ` Entrega em até ${prazo} dias úteis.` : ""}`,
+      garantia: [],
+      projeto: { prazoDiasUteis: prazo, parcelas: parc ? textoParcelas(parc) : null },
+    };
+  }
   return {
     tipo: "proposta",
     arquivo: nomeArquivo("proposta", opcoes.cliente, opcoes.competencia),
@@ -88,8 +109,10 @@ export function documentoProposta(
     verbaMidiaCentavos: opcoes.verbaMidiaCentavos,
     observacao: `Um valor só, com ${opcoes.incluiTrafego ? "gestão de tráfego, " : ""}produção, planejamento e todas as ferramentas incluídos. Sem cobranças separadas.${opcoes.verbaMidiaCentavos ? " A verba de anúncios é paga por vocês direto na plataforma." : ""}`,
     garantia: frasesDaGarantia(garantiaParaCliente(config, cenario)),
+    projeto: null,
   };
 }
+
 
 /** As frases da garantia, iguais às da tela da Proposta. */
 export function frasesDaGarantia(g: GarantiaCliente | null): string[] {

@@ -32,6 +32,17 @@ dias: não cabem em "minutos por entrega". Proposta levada à Moni (nada constru
 - C: medir em dias de trabalho. Precisa de mais um número (horas por dia) e não muda o resultado da A.
 O cronômetro (opcional) pode ser usado nos primeiros projetos para ajustar as horas totais.
 
+## Projeto avulso de branding (01/10/2026)
+
+- **Feito (migration 0038):** pacotes de projeto avulso (sem mensalidade), preço calculado pela regra da sociedade e
+  pela divisão dos custos fixos, prazo em dias úteis, 50% no início e 50% na entrega (configuração), Proposta e PDF
+  com valor único, calculadora "paga uma vez" com os projetos que cabem, conector (`ver_projetos_que_cabem`) e
+  fechamento criando o cliente sem mensalidade e as tarefas do projeto. O primeiro mês dos pacotes mensais passou a
+  seguir a regra da sociedade.
+- **Próxima etapa (pronta antes do primeiro cliente de branding):** contrato de valor único a partir de
+  `clientes.projeto_avulso` (valor, prazo em dias úteis, parcelas), no mesmo fluxo da Autentique.
+- **Depende do Áleff:** a nova divisão do branding entre os sócios. Quando mudar, o preço muda sozinho.
+
 ## M13: aviso ao cliente e relatório do mês (01/10/2026)
 
 - **Aviso (feito):** na tarefa que está esperando o cliente, "Avisar no WhatsApp" abre a conversa com o telefone da

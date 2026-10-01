@@ -11,7 +11,7 @@ import { Marca } from "@/components/Marca";
 import { Botao, CampoMoeda, CampoTexto, Interruptor, Selecao, cx } from "@/components/ui";
 import { alternarServico, garantiaParaCliente, pacoteQueCabe, vistaApresentacao, vistaPacote, type EstadoApresentacao } from "@/lib/calculo/apresentacao";
 import type { Lead } from "@/lib/calculo/crm";
-import { frasesParaCliente, pacoteParaCenario, precoDoPacote } from "@/lib/calculo/pacotes";
+import { frasesParaCliente, pacoteParaCenario, prazoDoProjeto, precoDoPacote } from "@/lib/calculo/pacotes";
 import { abaixoDoMinimoSocialTrafego, ajustarQuantidade, calcularCenario, temEntregaDeTrafego } from "@/lib/calculo/motor";
 import { configVazia, duplicarCenario, novoCenario, novoId } from "@/lib/calculo/novo";
 import type { Configuracao, Id } from "@/lib/calculo/tipos";
@@ -242,6 +242,8 @@ export default function Negociacao() {
               descricao: p.descricao,
               frases: frasesParaCliente(config, p, pacoteParaCenario(p)),
               mensalCentavos: precoDoPacote(config, p).mensalCentavos,
+              avulso: !!p.avulso,
+              prazoDiasUteis: p.avulso ? prazoDoProjeto(config, p.rotina) : null,
             }))}
             aoEscolher={escolherPacote}
             aoMontarDoZero={() => {
@@ -308,7 +310,11 @@ export default function Negociacao() {
               {liberado ? "Exportar PDF" : pendente ? "Esperando aprovação" : "Exportar PDF (precisa de aprovação)"}
             </Botao>
           </div>
-          <p className="-mt-1 text-[12px] leading-snug text-texto-suave">Só tenho: quanto o cliente diz que pode pagar por mês; o sistema monta o pacote que cabe nesse valor. Ex.: R$ 1.200.</p>
+          <p className="-mt-1 text-[12px] leading-snug text-texto-suave">
+            {cen.avulso
+              ? "Só tenho: quanto o cliente diz que pode pagar pelo projeto; o sistema tira extras até caber. Para trocar de projeto, use Trocar de pacote. Ex.: R$ 1.200."
+              : "Só tenho: quanto o cliente diz que pode pagar por mês; o sistema monta o pacote que cabe nesse valor. Ex.: R$ 1.200."}
+          </p>
           {aviso && <p className="text-xs font-semibold text-texto-suave">{aviso}</p>}
           {versoes.length > 0 && (
             <div className="flex flex-col gap-2">

@@ -155,6 +155,12 @@ export const GLOSSARIO: Termo[] = [
     exemplo: "Se a Moni tem 100 h no mês e os clientes já pedem 85 h, sobram só 15 h para um cliente novo.",
   },
   {
+    id: "projeto-avulso",
+    termo: "Projeto avulso",
+    frase: "Trabalho pago uma vez, sem mensalidade, com prazo de entrega em dias úteis. O valor mínimo sai do cálculo, igual ao da mensalidade.",
+    exemplo: "Um Logo essencial vendido sozinho: o cliente paga uma parte no início e o resto na entrega, e não vira mensalidade.",
+  },
+  {
     id: "rateio",
     termo: "Divisão dos custos fixos",
     frase: "Os custos fixos da empresa (ferramentas, imposto do MEI) divididos entre os clientes. Vão embutidos na mensalidade.",

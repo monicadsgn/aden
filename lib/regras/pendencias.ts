@@ -95,7 +95,7 @@ export function pendencias(c: Configuracao): Pendencias {
 
   for (const k of c.clientes.filter((x) => x.ativo)) {
     if (k.valorMensalCentavos == null && !k.interno) out.clientes.obrigatorio.push(`valor de ${k.nome || "cliente sem nome"}`);
-    if (!k.escopo) out.clientes.obrigatorio.push(`entregas do contrato de ${k.nome || "cliente sem nome"}`);
+    if (!k.escopo && !k.projetoAvulso) out.clientes.obrigatorio.push(`entregas do contrato de ${k.nome || "cliente sem nome"}`);
   }
   return out;
 }

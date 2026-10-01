@@ -443,6 +443,36 @@ describe("conector: terceiros, pacotes e metas", () => {
   });
 });
 
+describe("conector: projeto avulso (01/10/2026)", () => {
+  it("pacote avulso: preço pela regra da sociedade, o que cabe no valor e o fechamento cria as tarefas", async () => {
+    await chamar("salvar_socio", { nome: "Mônica", percentualPadrao: 50, pisoHoraReais: 45 });
+    await chamar("salvar_socio", { nome: "Áleff", percentualPadrao: 50, pisoHoraReais: 60 });
+    await chamar("definir_regras_sociedade", { socioDoPercentual: "Mônica", percentualDoSocio: 30, tetoDaViradaReais: 15000, socioDaSobra: "Áleff" });
+    await chamar("definir_percentuais_empresa", { regraRateio: "proporcional", reinvestimentoPct: 0, impostoPct: 0, taxaRecebimentoPct: 0, avulsoSinalPct: 50 });
+    await chamar("salvar_servico", { nome: "Branding", divisao: { Mônica: 100 } });
+    await chamar("salvar_tipo_entrega", { nome: "Logo essencial", servico: "Branding", projeto: true, horasDoProjeto: 8, prazoDias: 15 });
+    await chamar("salvar_tipo_entrega", { nome: "Identidade visual completa", servico: "Branding", projeto: true, horasDoProjeto: 24, prazoDias: 25 });
+    const p = await chamar("salvar_pacote", { nome: "Logo essencial", avulso: true, rotina: [{ entrega: "Logo essencial", quantidade: 1 }], primeiroMes: [{ entrega: "Logo essencial", quantidade: 1 }] });
+    // 8 h × R$ 45 ÷ 30% = R$ 1.200; primeiro mês não existe no avulso
+    expect(p).toMatchObject({ avulso: true, valorMinimoDoProjeto: 1200, prazoDiasUteis: 15 });
+    await chamar("salvar_pacote", { nome: "Identidade visual completa", avulso: true, rotina: [{ entrega: "Identidade visual completa", quantidade: 1 }] });
+    const vs = await chamar("ver_pacotes");
+    expect(vs[0]).toMatchObject({ avulso: true, pagamento: expect.stringMatching(/50% no início \(R\$\s?600,00\)/) });
+    const cabe = await chamar("ver_projetos_que_cabem", { valorReais: 2000 });
+    expect(cabe.projetos.map((x: { pacote: string; cabe: boolean }) => [x.pacote, x.cabe])).toEqual([
+      ["Logo essencial", true],
+      ["Identidade visual completa", false],
+    ]);
+    await chamar("salvar_lead", { nome: "Café Lume", pacote: "Logo essencial", valorEstimadoReais: 1500 });
+    const g = await chamar("ganhar_lead", { id: "Café Lume" });
+    expect(g.tarefasCriadas).toHaveLength(1);
+    expect(g.tarefasCriadas[0]).toMatchObject({ titulo: "Logo essencial · Café Lume", responsavel: "Mônica" });
+    const cli = banco.config.clientes.find((c) => c.nome === "Café Lume")!;
+    expect(cli).toMatchObject({ valorMensalCentavos: 0, participaRateio: false });
+    expect(cli.projetoAvulso).toMatchObject({ valorCentavos: 150000, prazoDiasUteis: 15, sinalPct: 50 });
+  });
+});
+
 describe("conector: CRM", () => {
   it("lead do começo ao fim: cria, conversa, fecha e vira cliente", async () => {
     await chamar("salvar_lead", { nome: "Loja Aurora", origem: "indicação", valorEstimadoReais: 1800, proximoContato: "2026-09-30" });
@@ -685,7 +715,7 @@ describe("conector: quem sou eu", () => {
     const r = await chamar("quem_sou_eu");
     expect(r).toMatchObject({ voce: "Mônica", papel: "sócio", outrosSocios: ["Áleff"] });
     // M14: a versão das ferramentas e o que mudou vêm junto, para o Claude avisar o sócio
-    expect(r.versaoFerramentas).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(r.versaoFerramentas).toMatch(/^\d{4}-\d{2}-\d{2}(\.\d+)?$/);
     expect(r.novidades.length).toBeGreaterThan(0);
   });
   it("aceita apelido quando só um nome bate (M14)", async () => {
