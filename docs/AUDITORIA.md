@@ -251,3 +251,22 @@ skills existem. Modo escuro sem cor fixa. A pasta do Drive não foi reaberta nes
 2. Graves com decisão: G4, G5.
 3. Médios [eu] em um bloco; médios [decidir] conforme as respostas.
 4. Detalhes.
+
+### Fase 3 · Execução (01/10/2026, versão de teste: branch `claude/epic-babbage-6qelvi`)
+
+Regras novas da Moni antes de começar: cronômetro opcional (vale o tempo cadastrado; nunca liga sozinho; o sistema não
+pede medições) e projetos de marca fora de "minutos" (proposta de como medir em `docs/ROADMAP.md`, esperando decisão).
+
+| Item | Situação | Print |
+|---|---|---|
+| G3 + cronômetro opcional | feito: o relógio já só ligava na mão; agora some da lista até alguém ligar, "Medir o tempo (opcional)" na tarefa, Mês e Aden pelo tempo cadastrado, Calibragem sem número de medições | `bloco1-depois-tarefa.png` |
+| G8, G9, G10 | feito no banco (migration 0034, testado com tudo desfeito): apagar protegido barrado, contador só com o financeiro, respostas do cliente só pelo painel; tela e conector com "Desativar" | — |
+| G1 | feito | antes `pc-hoje.png`, `cel-hoje.png`; depois `bloco2-depois-*-hoje.png` |
+| G2 | feito (Visão do dia e Tarefas) | antes `pc-tarefas.png`; depois `bloco2-depois-pc-tarefas.png` |
+| G6, G7 | feito | `bloco2-depois-fechamento.png` |
+| G4 | feito (migration 0035), conferido com dado real: 3 tarefas do Áleff "pedida por Mônica (pelo Claude)", com aviso | — |
+| G5 | feito | antes `pc-config.png`; depois `g5-depois-config.png`, `g5-depois-calendario-datas.png` |
+| M17 (parte) | cliente "teste" apagado; tarefas do Áleff: início do contrato da Olinda e da StadiumPlay, meta da garantia da StadiumPlay | — |
+| Vidro | só na Visão do dia, esperando o ok para espalhar | antes `vidro-antes-*.png`; depois `vidro-depois-*.png` |
+
+Encontrado no caminho (dado real, não mexido): tempo do Reels cadastrado como 2 min e da Estrutura visual como 0 min.

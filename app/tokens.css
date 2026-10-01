@@ -59,6 +59,14 @@
   --sombra: 0 1px 2px rgb(43 46 26 / 0.04), 0 8px 24px -12px rgb(43 46 26 / 0.12);
   --sombra-forte: 0 2px 4px rgb(43 46 26 / 0.06), 0 20px 40px -20px rgb(43 46 26 / 0.25);
 
+  /* vidro (aprovado em 01/10/2026; em teste só na Visão do dia): superfície translúcida + desfoque, sobre as formas
+     da marca. O texto fica sempre sobre camada de no mínimo ~60% de superfície: contraste ≥ 4,5:1 nos dois modos. */
+  --vidro: rgb(255 255 255 / 0.62);
+  --vidro-borda: rgb(255 255 255 / 0.75);
+  --vidro-desfoque: 18px;
+  --forma-1: rgb(121 124 70 / 0.24);   /* verde da marca, leve, atrás do vidro (texto suave fica ≥ 4,6:1) */
+  --forma-2: rgb(62 65 34 / 0.16);
+
   color-scheme: light;
 }
 
@@ -85,6 +93,10 @@
     --ok-suave: #1f3019;
     --info: #9dbfd2;
     --info-suave: #1a2a33;
+    --vidro: rgb(31 32 22 / 0.62);
+    --vidro-borda: rgb(255 255 255 / 0.08);
+    --forma-1: rgb(166 169 106 / 0.2);
+    --forma-2: rgb(124 128 82 / 0.14);
     color-scheme: dark;
   }
 }
@@ -109,5 +121,9 @@
   --ok-suave: #1f3019;
   --info: #9dbfd2;
   --info-suave: #1a2a33;
+  --vidro: rgb(31 32 22 / 0.62);
+  --vidro-borda: rgb(255 255 255 / 0.08);
+  --forma-1: rgb(166 169 106 / 0.2);
+  --forma-2: rgb(124 128 82 / 0.14);
   color-scheme: dark;
 }

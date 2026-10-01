@@ -46,6 +46,23 @@ body {
   font-feature-settings: "tnum" 0;
 }
 
+/* vidro: só por esta classe (nada de cor solta nos componentes) */
+.vidro {
+  background: var(--vidro);
+  border-color: var(--vidro-borda);
+  -webkit-backdrop-filter: blur(var(--vidro-desfoque)) saturate(1.2);
+  backdrop-filter: blur(var(--vidro-desfoque)) saturate(1.2);
+}
+/* quem pede menos transparência no aparelho (ou navegador sem desfoque) vê o cartão sólido de sempre */
+@media (prefers-reduced-transparency: reduce) {
+  .vidro { background: var(--superficie); -webkit-backdrop-filter: none; backdrop-filter: none; border-color: var(--linha); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vidro { background: var(--superficie); border-color: var(--linha); }
+}
+.forma-1 { background: var(--forma-1); }
+.forma-2 { background: var(--forma-2); }
+
 .numero {
   font-family: var(--fonte-numeros);
   font-variant-numeric: tabular-nums;
