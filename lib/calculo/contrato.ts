@@ -26,6 +26,12 @@ export interface ModeloContrato {
   disposicoes: string | null;
   /** quem assina pela Aden */
   signatariosAden: Signatario[];
+  /** contrato de projeto avulso (valor único): condições de prazo, aprovação e pagamento, texto dos sócios */
+  condicoesProjeto?: string | null;
+  /** contrato de projeto avulso: obrigações das partes, texto dos sócios */
+  obrigacoesProjeto?: string | null;
+  /** contrato de projeto avulso: disposições gerais (desistência, direitos, foro…), texto dos sócios */
+  disposicoesProjeto?: string | null;
 }
 
 export const MODELO_VAZIO: ModeloContrato = {
@@ -36,6 +42,9 @@ export const MODELO_VAZIO: ModeloContrato = {
   obrigacoes: null,
   disposicoes: null,
   signatariosAden: [],
+  condicoesProjeto: null,
+  obrigacoesProjeto: null,
+  disposicoesProjeto: null,
 };
 
 export interface ItemClausula {
@@ -181,6 +190,11 @@ export function montarContrato(
     return { n, add: (texto: string, sub?: boolean) => cl.itens.push({ marcador: sub ? "" : `${n}.${cl.itens.filter((i) => !i.sub).length + 1}`, texto, sub }) };
   };
 
+  let subtitulo = "";
+  if (c.projetoAvulso) {
+    contratoDoProjeto(config, c, modelo, nova, clausulas, faltando);
+    subtitulo = c.projetoAvulso.nome;
+  } else {
   // Objeto
   const objeto = objetoDoContrato(config, c);
   if (!objeto.length) faltando.push("Entregas do contrato do cliente (ficha → Personalizar entregas)");
@@ -189,6 +203,7 @@ export function montarContrato(
     if ((e.quantidade ?? 0) > 0 && t?.projeto && !t.prazoDias) faltando.push(`Prazo em dias úteis do projeto ${t.nome} (Configurações → Tipos de entrega)`);
   }
   const servicos = [...new Set(objeto.map((o) => o.rotulo.split(" · ")[0]).filter((x) => objeto.some((o) => o.rotulo.startsWith(`${x} · `))))];
+  subtitulo = servicos.join(" + ");
   const ob = nova("Objeto do contrato");
   ob.add(`O presente contrato tem por objeto a prestação de serviços${servicos.length ? ` de ${servicos.join(" e ")}` : ""} para a marca ${marca}, conforme a proposta aceita pelo CONTRATANTE.`);
   ob.add("Estão incluídos, por mês:");
@@ -236,6 +251,7 @@ export function montarContrato(
   else clausulas.push({ titulo: `${clausulas.length + 1}. Obrigações das partes`, itens: itensDoTexto(modelo.obrigacoes, clausulas.length + 1) });
   if (vazio(modelo.disposicoes)) faltando.push("Disposições gerais (Configurações → Contrato)");
   else clausulas.push({ titulo: `${clausulas.length + 1}. Disposições gerais`, itens: itensDoTexto(modelo.disposicoes, clausulas.length + 1) });
+  }
   if (k?.observacoes?.trim()) clausulas.push({ titulo: `${clausulas.length + 1}. Observações`, itens: itensDoTexto(k.observacoes, clausulas.length + 1) });
 
   // Assinaturas
@@ -259,7 +275,7 @@ export function montarContrato(
 
   return {
     titulo: `Contrato de prestação de serviços · Aden · ${marca}`,
-    subtitulo: servicos.join(" + "),
+    subtitulo,
     linhaTopo: `Contratante: ${contratante} • ${localData}`,
     partes,
     abertura:
@@ -273,6 +289,79 @@ export function montarContrato(
     arquivo: `Contrato_Aden_${nomeArquivo}_${opcoes.hoje.slice(0, 7)}`,
   };
 }
+
+type NovaClausula = (titulo: string) => { n: number; add: (texto: string, sub?: boolean) => void };
+
+/**
+ * Contrato de projeto avulso (valor único, decisões da Moni de 01/10/2026): objeto com o que o cliente leu na
+ * proposta e os extras; prazo em dias úteis que começa com o pagamento do início, o briefing e os materiais, e pausa
+ * esperando o cliente; rodadas de ajuste do pacote; valor total em duas partes. Condições, obrigações e disposições
+ * são o texto dos sócios para projeto (Configurações → Contrato).
+ */
+function contratoDoProjeto(config: Configuracao, c: ClienteBase, modelo: ModeloContrato, nova: NovaClausula, clausulas: Clausula[], faltando: string[]) {
+  const p = c.projetoAvulso!;
+  const marca = c.nome.trim();
+  const incluso = (p.incluso ?? []).map((f) => f.trim()).filter(Boolean);
+  const itens = incluso.length
+    ? incluso
+    : p.itens
+        .filter((i) => (i.quantidade ?? 0) > 0)
+        .map((i) => {
+          const t = config.tiposEntrega.find((x) => x.id === i.tipoEntregaId);
+          return t ? t.nomeCliente?.trim() || t.nome : null;
+        })
+        .filter((x): x is string => !!x);
+  if (!itens.length) faltando.push(`O que está incluso no pacote ${p.nome} (Configurações → Pacotes)`);
+
+  const ob = nova("Objeto do contrato");
+  ob.add(`O presente contrato tem por objeto a criação do projeto ${p.nome} da marca ${marca}, conforme a proposta aceita pelo CONTRATANTE.`);
+  ob.add("Estão incluídos:");
+  const subitens = [...itens, ...(p.extras ?? []).map((x) => `${x.nome}${x.quantidade > 1 ? ` (${x.quantidade})` : ""}, como extra combinado na proposta`)];
+  subitens.forEach((t, i) => clausulas[ob.n - 1].itens.push({ marcador: `${String.fromCharCode(97 + i)})`, texto: t, sub: true }));
+  ob.add("Qualquer item não listado acima é considerado extra e será orçado à parte, com prazo somado ao combinado.");
+
+  if (p.prazoDiasUteis == null) faltando.push(`Prazo em dias úteis do projeto ${p.nome} (Configurações → Tipos de entrega)`);
+  if (p.sinalPct == null) faltando.push("% pago no início do projeto (Configurações → Regras)");
+  if (p.rodadasAjuste == null) faltando.push(`Rodadas de ajuste do pacote ${p.nome} (Configurações → Pacotes)`);
+  const inicio = p.sinalPct != null ? `o pagamento dos ${pctTexto(p.sinalPct)} do início` : "o pagamento do início";
+  const pr = nova("Prazo e ajustes");
+  pr.add(
+    `O prazo de entrega é de até ${p.prazoDiasUteis ?? "—"} dias úteis e começa a contar quando três coisas estiverem completas: ${inicio}, o briefing feito e os materiais enviados pelo CONTRATANTE.`,
+  );
+  pr.add("Os prazos são em dias úteis, de segunda a sexta.");
+  pr.add("Enquanto a CONTRATADA aguarda aprovação ou material do CONTRATANTE, o prazo fica pausado.");
+  if (p.rodadasAjuste != null)
+    pr.add(
+      `Estão incluídas ${p.rodadasAjuste} ${p.rodadasAjuste === 1 ? "rodada" : "rodadas"} de ajuste, com os pedidos enviados juntos numa única mensagem. Rodadas extras, e mudança de direção depois da aprovação, são orçadas à parte.`,
+    );
+
+  const vp = nova("Valor e pagamento");
+  if (!p.valorCentavos) faltando.push("Valor do projeto (lead fechado)");
+  vp.add(
+    `Pelos serviços descritos neste contrato, o CONTRATANTE pagará à CONTRATADA o valor total de ${p.valorCentavos ? `${formatarMoeda(p.valorCentavos)} (${valorPorExtenso(p.valorCentavos)})` : "—"}.`,
+  );
+  if (p.sinalPct != null && p.valorCentavos) {
+    const ini = Math.round((p.valorCentavos * p.sinalPct) / 100);
+    if (p.sinalPct >= 100) vp.add(`O pagamento é feito no início do serviço (${formatarMoeda(ini)}).`);
+    else if (p.sinalPct <= 0) vp.add(`O pagamento é feito na entrega final (${formatarMoeda(p.valorCentavos)}).`);
+    else
+      vp.add(
+        `O pagamento será feito em duas partes: ${pctTexto(p.sinalPct)} no início do serviço (${formatarMoeda(ini)}) e ${pctTexto(100 - p.sinalPct)} na entrega final (${formatarMoeda(p.valorCentavos - ini)}).`,
+      );
+  }
+
+  const blocos: [string | null | undefined, string, string][] = [
+    [modelo.condicoesProjeto, "Condições do projeto", "Condições do projeto avulso (Configurações → Contrato)"],
+    [modelo.obrigacoesProjeto, "Obrigações das partes", "Obrigações das partes no projeto avulso (Configurações → Contrato)"],
+    [modelo.disposicoesProjeto, "Disposições gerais", "Disposições gerais do projeto avulso (Configurações → Contrato)"],
+  ];
+  for (const [texto, titulo, falta] of blocos) {
+    if (vazio(texto)) faltando.push(falta);
+    else clausulas.push({ titulo: `${clausulas.length + 1}. ${titulo}`, itens: itensDoTexto(texto, clausulas.length + 1) });
+  }
+}
+
+const pctTexto = (v: number) => `${Number(v.toFixed(2)).toLocaleString("pt-BR")}%`;
 
 /** Mensagem para o cliente mandar só o que o contrato precisa (WhatsApp). */
 export function mensagemPedirDados(c: Pick<ClienteBase, "contato" | "nome">): string {

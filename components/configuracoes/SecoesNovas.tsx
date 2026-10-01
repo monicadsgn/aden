@@ -231,6 +231,16 @@ export function SecaoPacotes({ rascunho, set }: Props) {
               { valor: "avulso", rotulo: "Projeto avulso (uma vez)" },
             ]}
           />
+          {p.avulso && (
+            <div className="max-w-xs">
+              <CampoNumero
+                rotulo="Rodadas de ajuste incluídas"
+                valor={p.rodadasAjuste ?? null}
+                aoMudar={(v) => setLista(atualizar(lista, p.id, { rodadasAjuste: v }))}
+              />
+              <p className="mt-1 text-[12px] leading-snug text-texto-suave">Vai para o contrato do projeto. Ex.: 2 rodadas, enviadas juntas numa mensagem só.</p>
+            </div>
+          )}
           {p.avulso ? (
             <ItensDoPacote
               titulo="Projeto e extras"

@@ -107,6 +107,8 @@ export interface Pacote {
    * (piso de cada sócio pela regra da sociedade e a parte dos custos fixos pela regra da divisão).
    */
   avulso?: boolean;
+  /** projeto avulso: rodadas de ajuste incluídas (vai para o contrato); vazio = falta preencher */
+  rodadasAjuste?: number | null;
   /** primeiro mês (entrada: onboarding, enxoval, estrutura visual) */
   entrada: ItemPacote[];
   /** o pacote de referência para "cabem mais N clientes" */
@@ -188,6 +190,12 @@ export interface ProjetoAvulsoFechado {
   valorCentavos: Centavos;
   prazoDiasUteis: number | null;
   sinalPct: Pct;
+  /** rodadas de ajuste do pacote no fechamento */
+  rodadasAjuste?: number | null;
+  /** o que o cliente leu na proposta (frases do pacote no fechamento) */
+  incluso?: string[];
+  /** extras somados na negociação (fora do pacote) */
+  extras?: { nome: string; quantidade: number }[];
   fechadoEm: string;
 }
 

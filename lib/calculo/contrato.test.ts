@@ -186,3 +186,64 @@ describe("projeto de marca no contrato (opção A, 01/10/2026)", () => {
     expect(montarContrato(c, "c", MODELO_VAZIO, opcoes).faltando.join(" ")).toContain("Prazo em dias úteis do projeto Logo");
   });
 });
+
+describe("contrato de projeto avulso (valor único, 01/10/2026)", () => {
+  const projeto = () => {
+    const c = config();
+    c.clientes[0] = {
+      ...c.clientes[0],
+      valorMensalCentavos: 0,
+      participaRateio: false,
+      escopo: null,
+      contrato: null,
+      projetoAvulso: {
+        pacoteId: "p",
+        nome: "Logo essencial",
+        itens: [{ tipoEntregaId: "t1", quantidade: 1 }],
+        valorCentavos: 120000,
+        prazoDiasUteis: 15,
+        sinalPct: 50,
+        rodadasAjuste: 1,
+        incluso: ["Um logo pensado pro seu negócio", "Arquivos em PNG e PDF"],
+        extras: [{ nome: "PDF de apresentação", quantidade: 1 }],
+        fechadoEm: "2026-10-01T10:00:00Z",
+      },
+    };
+    return c;
+  };
+  const comProjeto: ModeloContrato = { ...modelo, condicoesProjeto: "Pix ou cartão.", obrigacoesProjeto: "Executar o projeto.", disposicoesProjeto: "Foro de Recife." };
+
+  it("objeto, prazo que começa com início pago + briefing + materiais, rodadas e valor em duas partes", () => {
+    const d = montarContrato(projeto(), "c", comProjeto, opcoes);
+    expect(d.faltando).toEqual([]);
+    expect(d.subtitulo).toBe("Logo essencial");
+    const texto = d.clausulas.flatMap((c) => [c.titulo, ...c.itens.map((i) => i.texto)]).join(" ");
+    expect(texto).toContain("criação do projeto Logo essencial da marca Loja X");
+    expect(texto).toContain("Um logo pensado pro seu negócio");
+    expect(texto).toContain("PDF de apresentação, como extra combinado na proposta");
+    expect(texto).toContain("até 15 dias úteis e começa a contar quando três coisas estiverem completas: o pagamento dos 50% do início, o briefing feito e os materiais");
+    expect(texto).toContain("o prazo fica pausado");
+    expect(texto).toContain("1 rodada de ajuste");
+    expect(texto).toContain("valor total de R$ 1.200,00");
+    expect(texto).toMatch(/50% no início do serviço \(R\$\s?600,00\) e 50% na entrega final \(R\$\s?600,00\)/);
+    // nada do contrato mensal
+    expect(texto).not.toMatch(/por mês|valor mensal|Data de início/);
+    expect(d.clausulas.map((c) => c.titulo)).toEqual(["1. Objeto do contrato", "2. Prazo e ajustes", "3. Valor e pagamento", "4. Condições do projeto", "5. Obrigações das partes", "6. Disposições gerais"]);
+  });
+
+  it("sem os textos de projeto, sem rodadas ou sem o % do início: aparece em faltando e não usa o texto do mensal", () => {
+    const c = projeto();
+    c.clientes[0].projetoAvulso = { ...c.clientes[0].projetoAvulso!, rodadasAjuste: null, sinalPct: null };
+    const d = montarContrato(c, "c", modelo, opcoes);
+    expect(d.faltando).toEqual(
+      expect.arrayContaining([
+        "Rodadas de ajuste do pacote Logo essencial (Configurações → Pacotes)",
+        "% pago no início do projeto (Configurações → Regras)",
+        "Condições do projeto avulso (Configurações → Contrato)",
+        "Obrigações das partes no projeto avulso (Configurações → Contrato)",
+        "Disposições gerais do projeto avulso (Configurações → Contrato)",
+      ]),
+    );
+    expect(d.faltando.some((f) => /Valor mensal|Dia do pagamento|Data de início/.test(f))).toBe(false);
+  });
+});

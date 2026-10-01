@@ -49,6 +49,12 @@
   tarefa por entrega (sócio de maior % no serviço, prazo em dias úteis). Projeto pontual "cobrado à parte" da
   calculadora passou a pagar a parte dos custos fixos também. Primeiro mês dos pacotes mensais = mínimo(rotina +
   entrada) − mínimo(rotina), para seguir a regra da sociedade.
+- **Contrato de projeto avulso (migration 0039, `contratoDoProjeto` em `lib/calculo/contrato.ts`):** cliente com
+  `projeto_avulso` ganha cláusulas próprias: objeto (frases do pacote guardadas no fechamento + extras), prazo e
+  ajustes (dias úteis; começa com o pagamento do início, o briefing e os materiais; pausa esperando o cliente;
+  `rodadas_ajuste` do pacote), valor total em duas partes (`avulso_sinal_pct`) e os textos dos sócios
+  `condicoes_projeto`, `obrigacoes_projeto`, `disposicoes_projeto`. Nada do contrato mensal entra (início, dia do
+  pagamento, valor mensal).
 - **Prazo mínimo de pedido (migration 0037, `lib/regras/prazoPedido.ts`):** pedido ao outro sócio tem prazo mínimo
   de `configuracoes_empresa.prazo_minimo_pedido_dias_uteis` dias úteis (seg. a sex., sem feriados) a partir do pedido.
   Vale ao criar, ao passar a tarefa para outro sócio e quando quem pediu muda o prazo. Sem prazo, entra o mínimo; menor

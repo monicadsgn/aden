@@ -39,8 +39,10 @@ O cronômetro (opcional) pode ser usado nos primeiros projetos para ajustar as h
   com valor único, calculadora "paga uma vez" com os projetos que cabem, conector (`ver_projetos_que_cabem`) e
   fechamento criando o cliente sem mensalidade e as tarefas do projeto. O primeiro mês dos pacotes mensais passou a
   seguir a regra da sociedade.
-- **Próxima etapa (pronta antes do primeiro cliente de branding):** contrato de valor único a partir de
-  `clientes.projeto_avulso` (valor, prazo em dias úteis, parcelas), no mesmo fluxo da Autentique.
+- **Contrato de valor único (feito na versão de teste, migration 0039):** sai de `clientes.projeto_avulso` no mesmo
+  fluxo da Autentique. Rodadas fixas por pacote (1, 2 e 3). Condições, obrigações e disposições do projeto: rascunho
+  gravado em Configurações → Contrato, esperando a revisão da Moni e do Áleff. Exemplo em
+  `docs/exemplos/Contrato_projeto_avulso_rascunho.pdf`.
 - **Depende do Áleff:** a nova divisão do branding entre os sócios. Quando mudar, o preço muda sozinho.
 
 ## M13: aviso ao cliente e relatório do mês (01/10/2026)

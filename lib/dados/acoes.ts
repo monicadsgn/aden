@@ -253,11 +253,22 @@ export async function ganharLead(repo: Repositorio, config: Configuracao, lead: 
  * o projeto fechado (valor combinado, prazo, % no início) e cria uma tarefa por entrega do projeto, para o sócio que
  * faz aquele serviço, com o prazo do projeto em dias úteis a partir de hoje. O contrato de valor único é a etapa seguinte.
  */
-async function ganharProjetoAvulso(repo: Repositorio, config: Configuracao, lead: Lead, cenario: Cenario, pacote: Pacote | null): Promise<ResultadoGanho> {
+async function ganharProjetoAvulso(repo: Repositorio, config: Configuracao, lead: Lead, cenario: Cenario, doLead: Pacote | null): Promise<ResultadoGanho> {
   const hoje = hojeISO();
+  const pacote = doLead ?? (config.pacotes ?? []).find((x) => x.id === cenario.pacoteId) ?? null;
   const itens = cenario.entregas.filter((l) => l.tipoEntregaId && (l.quantidade ?? 0) > 0);
   const prazo = prazoDoProjeto(config, itens);
   const valor = lead.valorEstimadoCentavos ?? precoDoCenario(config, cenario).mensalCentavos ?? 0;
+  // extras: o que foi somado na negociação além do pacote (vai para o contrato como extra)
+  const doPacote = new Map<string, number>();
+  for (const i of pacote?.rotina ?? []) doPacote.set(i.tipoEntregaId, (doPacote.get(i.tipoEntregaId) ?? 0) + (i.quantidade ?? 0));
+  const extras = itens
+    .map((l) => {
+      const t = config.tiposEntrega.find((x) => x.id === l.tipoEntregaId);
+      const q = (l.quantidade ?? 0) - (doPacote.get(l.tipoEntregaId!) ?? 0);
+      return t && q > 0 ? { nome: t.nomeCliente?.trim() || t.nome, quantidade: q } : null;
+    })
+    .filter((x): x is { nome: string; quantidade: number } => !!x);
   const cliente: ClienteBase = {
     id: novoId(),
     nome: lead.nome,
@@ -279,6 +290,9 @@ async function ganharProjetoAvulso(repo: Repositorio, config: Configuracao, lead
       valorCentavos: valor,
       prazoDiasUteis: prazo,
       sinalPct: config.empresa.avulsoSinalPct ?? null,
+      rodadasAjuste: pacote?.rodadasAjuste ?? null,
+      incluso: pacote?.itensCliente ?? [],
+      extras,
       fechadoEm: new Date().toISOString(),
     },
   };

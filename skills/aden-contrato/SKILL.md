@@ -28,8 +28,13 @@ Autentique para o e-mail do cliente e de quem assina pela Aden. Você não escre
    Condições combinadas vão no mesmo lugar: `inicioContrato`, `diaPagamento` ou `venceUltimoDiaUtil`,
    `prazoMinimoMeses`, `avisoPrevioDias`, `limiteRodadas`, `limiteReunioesMes`, `garantiaResultado`.
 3. **Escopo:** se o cliente ainda não tem escopo, `definir_escopo_cliente` com o `pacote` combinado.
+   **Projeto avulso** (logo, identidade visual, pago uma vez): não tem escopo mensal. O contrato de valor único sai
+   do projeto fechado em `ganhar_lead` (o que o cliente leu na proposta, extras, valor, prazo em dias úteis, rodadas
+   do pacote e as duas parcelas); data de início e dia do pagamento não entram.
 4. **Conferir:** `ver_contrato` mostra o contrato inteiro e o que falta ("faltando"). Resuma para a pessoa:
-   partes, o que está incluso por mês, valor e vencimento, prazo. Se faltar algo, diga exatamente o quê.
+   partes, o que está incluso por mês, valor e vencimento, prazo. No projeto avulso: o que está incluso, o valor
+   total e as duas partes, o prazo em dias úteis (começa com o pagamento do início, o briefing e os materiais) e as
+   rodadas. Se faltar algo, diga exatamente o quê.
 5. **Enviar:** com o ok da pessoa, `enviar_contrato`. Se já houver um contrato esperando assinatura, só reenvie
    (`reenviar: true`) se a pessoa pedir.
 6. **Assinatura:** `conferir_contrato` diz quem já assinou. Assinado por todos, o passo "Contrato assinado" do

@@ -452,7 +452,14 @@ describe("conector: projeto avulso (01/10/2026)", () => {
     await chamar("salvar_servico", { nome: "Branding", divisao: { Mônica: 100 } });
     await chamar("salvar_tipo_entrega", { nome: "Logo essencial", servico: "Branding", projeto: true, horasDoProjeto: 8, prazoDias: 15 });
     await chamar("salvar_tipo_entrega", { nome: "Identidade visual completa", servico: "Branding", projeto: true, horasDoProjeto: 24, prazoDias: 25 });
-    const p = await chamar("salvar_pacote", { nome: "Logo essencial", avulso: true, rotina: [{ entrega: "Logo essencial", quantidade: 1 }], primeiroMes: [{ entrega: "Logo essencial", quantidade: 1 }] });
+    const p = await chamar("salvar_pacote", {
+      nome: "Logo essencial",
+      avulso: true,
+      rodadasAjuste: 1,
+      frasesCliente: ["Um logo pensado pro seu negócio"],
+      rotina: [{ entrega: "Logo essencial", quantidade: 1 }],
+      primeiroMes: [{ entrega: "Logo essencial", quantidade: 1 }],
+    });
     // 8 h × R$ 45 ÷ 30% = R$ 1.200; primeiro mês não existe no avulso
     expect(p).toMatchObject({ avulso: true, valorMinimoDoProjeto: 1200, prazoDiasUteis: 15 });
     await chamar("salvar_pacote", { nome: "Identidade visual completa", avulso: true, rotina: [{ entrega: "Identidade visual completa", quantidade: 1 }] });
@@ -469,7 +476,7 @@ describe("conector: projeto avulso (01/10/2026)", () => {
     expect(g.tarefasCriadas[0]).toMatchObject({ titulo: "Logo essencial · Café Lume", responsavel: "Mônica" });
     const cli = banco.config.clientes.find((c) => c.nome === "Café Lume")!;
     expect(cli).toMatchObject({ valorMensalCentavos: 0, participaRateio: false });
-    expect(cli.projetoAvulso).toMatchObject({ valorCentavos: 150000, prazoDiasUteis: 15, sinalPct: 50 });
+    expect(cli.projetoAvulso).toMatchObject({ valorCentavos: 150000, prazoDiasUteis: 15, sinalPct: 50, rodadasAjuste: 1, incluso: ["Um logo pensado pro seu negócio"], extras: [] });
   });
 });
 

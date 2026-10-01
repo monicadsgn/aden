@@ -52,7 +52,7 @@ export function SecaoContrato() {
     </label>
   );
 
-  const paragrafo = (k: "obrigacoes" | "disposicoes", rotulo: string, dica: string) => (
+  const paragrafo = (k: "obrigacoes" | "disposicoes" | "condicoesProjeto" | "obrigacoesProjeto" | "disposicoesProjeto", rotulo: string, dica: string) => (
     <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
       {rotulo}
       <span className="text-[12px] font-normal">{dica}</span>
@@ -124,6 +124,17 @@ export function SecaoContrato() {
 
       {paragrafo("obrigacoes", "Obrigações das partes", "O que a Aden faz e o que o cliente precisa fazer. Uma cláusula por linha: a numeração (4.1, 4.2…) é do contrato. Linhas começando com a), b)… viram subitens.")}
       {paragrafo("disposicoes", "Disposições gerais", "Rescisão, confidencialidade, foro etc. Uma cláusula por linha: a numeração é do contrato. Linhas começando com a), b)… viram subitens.")}
+
+      <div className="flex flex-col gap-3 rounded-bloco border border-linha p-3">
+        <strong className="text-sm">Contrato de projeto avulso (valor único)</strong>
+        <p className="text-[12px] text-texto-suave">
+          Para quem fecha um projeto pago uma vez (ex.: Logo essencial). O Aden escreve sozinho o objeto (o que o cliente leu na proposta), o prazo em dias úteis, as
+          rodadas de ajuste do pacote e o valor em duas partes. Estes três textos são de vocês.
+        </p>
+        {paragrafo("condicoesProjeto", "Condições do projeto", "Aprovação de etapas, cliente sem responder, urgência, forma de pagamento. Uma cláusula por linha.")}
+        {paragrafo("obrigacoesProjeto", "Obrigações das partes (projeto)", "O que a Aden faz e o que o cliente precisa fazer no projeto. Uma cláusula por linha; a), b)… viram subitens.")}
+        {paragrafo("disposicoesProjeto", "Disposições gerais (projeto)", "Desistência, direitos da marca, arquivos editáveis, registro no INPI, foro. Uma cláusula por linha.")}
+      </div>
 
       {erro && <p className="text-xs font-semibold text-erro">{erro}</p>}
       {salvo && !erro && <p className="text-xs text-texto-suave">Salvo.</p>}

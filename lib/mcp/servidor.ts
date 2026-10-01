@@ -1358,7 +1358,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Salvar o modelo do contrato",
       description:
-        "Guarda o que é igual em todo contrato da Aden: dados da contratada, quem assina pela Aden e o texto de obrigações e disposições gerais (uma cláusula por linha; a numeração é do contrato; linhas \"a)\" viram subitens). Só os campos enviados mudam. NUNCA escreva cláusula por conta própria: grave só o texto que os sócios passaram.",
+        "Guarda o que é igual em todo contrato da Aden: dados da contratada, quem assina pela Aden e o texto de obrigações e disposições gerais (e, para o contrato de projeto avulso, condições, obrigações e disposições próprias) (uma cláusula por linha; a numeração é do contrato; linhas \"a)\" viram subitens). Só os campos enviados mudam. NUNCA escreva cláusula por conta própria: grave só o texto que os sócios passaram.",
       inputSchema: {
         contratadaNome: z.string().nullable().optional(),
         contratadaDocumento: z.string().nullable().optional().describe("CNPJ"),
@@ -1366,6 +1366,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         cidade: z.string().nullable().optional().describe("cidade de assinatura, do cabeçalho e do rodapé (ex.: Recife - Pernambuco)"),
         obrigacoes: z.string().nullable().optional(),
         disposicoes: z.string().nullable().optional(),
+        condicoesProjeto: z.string().nullable().optional().describe("contrato de projeto avulso: condições (aprovação, urgência, pagamento)"),
+        obrigacoesProjeto: z.string().nullable().optional().describe("contrato de projeto avulso: obrigações das partes"),
+        disposicoesProjeto: z.string().nullable().optional().describe("contrato de projeto avulso: disposições gerais (desistência, direitos, foro)"),
         signatariosAden: z.array(z.object({ nome: z.string(), email: z.string().email() })).optional().describe("lista completa de quem assina pela Aden"),
       },
     },
@@ -1901,6 +1904,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               projetoEExtras: p.rotina.map((i) => ({ entrega: nome(i.tipoEntregaId), quantidade: i.quantidade })),
               valorMinimoDoProjeto: paraReais(preco.mensalCentavos),
               prazoDiasUteis: prazoDoProjeto(config, p.rotina),
+              rodadasAjuste: p.rodadasAjuste ?? null,
               pagamento: parc ? textoParcelas(parc) : "sem o % pago no início na configuração",
               motivoSemPreco: preco.motivo,
             };
@@ -1939,9 +1943,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         padrao: z.boolean().optional(),
         ativo: z.boolean().optional(),
         avulso: z.boolean().optional().describe("true = projeto avulso (pago uma vez, sem mensalidade)"),
+        rodadasAjuste: z.number().int().nonnegative().nullable().optional().describe("projeto avulso: rodadas de ajuste incluídas (vai para o contrato); só o que os sócios disseram"),
       },
     },
-    async ({ id, nome, descricao, frasesCliente, rotina, primeiroMes, padrao, ativo, avulso }) =>
+    async ({ id, nome, descricao, frasesCliente, rotina, primeiroMes, padrao, ativo, avulso, rodadasAjuste }) =>
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
@@ -1961,6 +1966,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(padrao != null && { padrao }),
           ...(ativo != null && { ativo }),
           ...(avulso != null && { avulso }),
+          ...(rodadasAjuste !== undefined && { rodadasAjuste }),
         };
         if (novo.avulso) {
           novo.entrada = [];

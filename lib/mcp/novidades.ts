@@ -2,9 +2,14 @@
 // muda de jeito, sobe a VERSAO e ganha uma linha em NOVIDADES. O quem_sou_eu devolve isso para o Claude avisar o sócio,
 // e a Visão do dia mostra um aviso aos dois sócios até cada um marcar que atualizou o conector no claude.ai.
 
-export const VERSAO_FERRAMENTAS = "2026-10-01.2";
+export const VERSAO_FERRAMENTAS = "2026-10-01.3";
 
 export const NOVIDADES: { versao: string; texto: string }[] = [
+  {
+    versao: "2026-10-01.3",
+    texto:
+      "Contrato de valor único para projeto avulso em ver_contrato e enviar_contrato (o que está incluso, prazo em dias úteis, rodadas do pacote e as duas parcelas); rodadasAjuste em salvar_pacote e ver_pacotes; textos do contrato de projeto (condicoesProjeto, obrigacoesProjeto, disposicoesProjeto) em salvar_modelo_contrato.",
+  },
   {
     versao: "2026-10-01.2",
     texto:
