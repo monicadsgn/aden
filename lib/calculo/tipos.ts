@@ -58,6 +58,13 @@ export interface TipoEntrega {
   terceiroId?: Id | null;
   /** como aparece no painel do cliente (ex.: "Post" para um criativo de tráfego estático); vazio = o nome */
   nomeCliente?: string | null;
+  /**
+   * Projeto de marca (logo, identidade visual, branding, estrutura visual; decisão de 01/10/2026): não se mede em
+   * minutos. horasPorUnidade = horas totais estimadas do projeto (1 unidade = 1 projeto); prazoDias vai para o contrato.
+   */
+  projeto?: boolean;
+  /** prazo de entrega do projeto, em dias (só para projeto) */
+  prazoDias?: number | null;
 }
 
 /** Serviço terceirizado cobrado por saída (ex.: audiovisual: vai ao cliente, grava, edita e entrega). */

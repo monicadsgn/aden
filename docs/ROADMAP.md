@@ -14,7 +14,12 @@ Plano guardado. **Nada daqui é para construir sem a Moni pedir.** Atualizado em
 - 30/09/2026: auditoria geral depois das Fases 1 a 6 (inventário, diagnóstico e relatório numerado G1–G10,
   M1–M18, D1–D11) em `docs/AUDITORIA.md`. Nada corrigido: a Moni aprova por número.
 
-## Em decisão: como medir ou precificar projetos de marca (01/10/2026)
+## Decidido: projetos de marca (01/10/2026, opção A, feita na migration 0036)
+
+A Moni escolheu a A. Logo e Estrutura visual já estão marcados como projeto; faltam as horas totais e o prazo de cada
+um (perguntar à Moni). Histórico da proposta:
+
+### Proposta levada à Moni
 
 Logo, identidade visual e branding levam dias ou semanas (estudo, pesquisa, rascunho, teste) e o prazo do contrato é em
 dias: não cabem em "minutos por entrega". Proposta levada à Moni (nada construído):

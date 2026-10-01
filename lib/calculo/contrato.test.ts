@@ -156,3 +156,15 @@ describe("situação da assinatura", () => {
     expect(situacaoDoContrato([a(null, { recusadoEm: "2026-10-02" })]).situacao).toBe("recusado");
   });
 });
+
+describe("projeto de marca no contrato (opção A, 01/10/2026)", () => {
+  it("sai como entrega única com prazo em dias; sem prazo, falta preencher", () => {
+    const c = config();
+    c.tiposEntrega.push({ id: "logo", nome: "Logo", servicoId: "s", horasPorUnidade: 30, ativo: true, projeto: true, prazoDias: 15 });
+    c.clientes[0].escopo!.entregas.push({ id: "e3", tipoEntregaId: "logo", quantidade: 1, horasPorUnidade: null });
+    const texto = JSON.stringify(montarContrato(c, "c", MODELO_VAZIO, opcoes));
+    expect(texto).toContain("1 projeto, com entrega em até 15 dias");
+    c.tiposEntrega = c.tiposEntrega.map((t) => (t.id === "logo" ? { ...t, prazoDias: null } : t));
+    expect(montarContrato(c, "c", MODELO_VAZIO, opcoes).faltando.join(" ")).toContain("Prazo em dias do projeto Logo");
+  });
+});

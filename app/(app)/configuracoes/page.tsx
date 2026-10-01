@@ -599,6 +599,20 @@ export default function Configuracoes() {
                     />
                     {t.audiovisual ? (
                       <div className="pt-6 text-center text-[11px] leading-tight font-semibold text-texto-suave">sem tempo dos sócios</div>
+                    ) : t.projeto ? (
+                      <Alvo campo="horasPorUnidade">
+                        <CampoNumero
+                          rotulo={
+                            <span className="inline-flex items-center gap-1">
+                              <Lock size={10} /> Horas do projeto
+                            </span>
+                          }
+                          sufixo="h"
+                          valor={t.horasPorUnidade}
+                          aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { horasPorUnidade: v }) })}
+                        />
+                        <Protegido pendente={itemPendente("horas_por_unidade", t.id)} />
+                      </Alvo>
                     ) : (
                       <Alvo campo="horasPorUnidade">
                         <CampoMinutos
@@ -619,6 +633,27 @@ export default function Configuracoes() {
                       </Botao>
                     ) : (
                       <Botao className="mt-5" variante="perigo" icone={Trash2} aria-label="Remover tipo" onClick={() => set({ tiposEntrega: rascunho.tiposEntrega.filter((x) => x.id !== t.id) })} />
+                    )}
+                    {!t.audiovisual && (
+                      <div className="col-span-full flex flex-wrap items-end gap-3">
+                        <Segmentado<"entrega" | "projeto">
+                          rotulo="Como mede"
+                          valor={t.projeto ? "projeto" : "entrega"}
+                          aoMudar={(v) => v && set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { projeto: v === "projeto", prazoDias: v === "projeto" ? t.prazoDias : null }) })}
+                          opcoes={[
+                            { valor: "entrega", rotulo: "Por entrega (minutos)" },
+                            { valor: "projeto", rotulo: "Projeto (horas e prazo)" },
+                          ]}
+                        />
+                        {t.projeto && (
+                          <CampoNumero className="w-40" rotulo="Prazo de entrega" sufixo="dias" valor={t.prazoDias ?? null} aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { prazoDias: v }) })} />
+                        )}
+                        <p className="min-w-0 flex-1 basis-60 pb-2 text-[12px] text-texto-suave">
+                          {t.projeto
+                            ? "Projeto de marca (logo, identidade, estrutura visual): horas totais estimadas do projeto inteiro, com estudo, pesquisa, rascunho e teste. Ex.: 30 h e 15 dias. O prazo vai para o contrato."
+                            : "Entrega do dia a dia (post, carrossel, roteiro): quanto leva uma unidade. Ex.: 20 min por post."}
+                        </p>
+                      </div>
                     )}
                     <CampoTexto
                       className="col-span-full sm:max-w-sm"

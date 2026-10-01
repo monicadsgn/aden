@@ -347,7 +347,9 @@ export function configParaConversa(c: Configuracao) {
       id: t.id,
       nome: t.nome,
       servico: nomeDe(c.servicos, t.servicoId),
-      minutosPorUnidade: t.horasPorUnidade == null ? null : Math.round(t.horasPorUnidade * 60 * 100) / 100,
+      ...(t.projeto
+        ? { projeto: true, horasDoProjeto: t.horasPorUnidade, prazoDias: t.prazoDias ?? null }
+        : { minutosPorUnidade: t.horasPorUnidade == null ? null : Math.round(t.horasPorUnidade * 60 * 100) / 100 }),
       audiovisual: !!t.audiovisual,
       ...(t.nomeCliente ? { nomeCliente: t.nomeCliente } : {}),
       ativo: t.ativo,

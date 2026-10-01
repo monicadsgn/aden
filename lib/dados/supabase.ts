@@ -285,6 +285,8 @@ export class RepositorioSupabase implements Repositorio {
         calibrarDesde: (t.calibrar_desde as string) ?? null,
         terceiroId: (t.terceiro_id as string) ?? null,
         nomeCliente: (t.nome_cliente as string) ?? null,
+        projeto: (t.projeto as boolean) ?? false,
+        prazoDias: num(t.prazo_dias),
       })),
       custosFixos: ((cus.data ?? []) as Linha[]).map((c) => ({
         id: c.id as string,
@@ -507,6 +509,8 @@ export class RepositorioSupabase implements Repositorio {
         calibrar_desde: t.calibrarDesde ?? null,
         terceiro_id: t.terceiroId ?? null,
         nome_cliente: t.nomeCliente?.trim() || null,
+        projeto: t.projeto ?? false,
+        prazo_dias: t.projeto ? (t.prazoDias ?? null) : null,
         ordem: i,
       })),
     );
@@ -1342,6 +1346,8 @@ export class RepositorioSupabase implements Repositorio {
       calibrarDesde: (t.calibrar_desde as string) ?? null,
       terceiroId: (t.terceiro_id as string) ?? null,
       nomeCliente: (t.nome_cliente as string) ?? null,
+      projeto: (t.projeto as boolean) ?? false,
+      prazoDias: num(t.prazo_dias),
     }));
     return c;
   }

@@ -365,7 +365,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou alterar tipo de entrega",
       description:
-        "Unidade de esforço da calculadora (ex.: post simples, carrossel, roteiro). Quem faz: os sócios (padrão, com tempo) ou um terceiro cadastrado (terceiro=nome): aí não conta horas dos sócios e vira custo do cliente pelo valor do terceiro. terceiro=null volta para os sócios.",
+        "Unidade de esforço da calculadora (ex.: post simples, carrossel, roteiro). Projeto de marca (logo, identidade visual, branding, estrutura visual): projeto=true, com horasDoProjeto (horas totais estimadas, nunca minutos) e prazoDias (vai para o contrato); só grave horas que os sócios disseram. Quem faz: os sócios (padrão, com tempo) ou um terceiro cadastrado (terceiro=nome): aí não conta horas dos sócios e vira custo do cliente pelo valor do terceiro. terceiro=null volta para os sócios.",
       inputSchema: {
         id: z.string().optional().describe("id ou nome do tipo a alterar; vazio = novo"),
         nome: z.string().optional(),
@@ -375,16 +375,20 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         audiovisual: z.boolean().optional().describe("não use: é definido por 'terceiro'"),
         terceiro: opt(z.string(), "quem faz: terceiro cadastrado (nome ou id), cada unidade = 1 saída; null = os sócios"),
         nomeCliente: opt(z.string(), "como aparece no painel do cliente (ex.: Post, Carrossel); null = o próprio nome"),
+        projeto: z.boolean().optional().describe("true = projeto de marca: mede em horas totais do projeto e prazo em dias, não em minutos"),
+        horasDoProjeto: opt(z.number().positive(), "horas totais estimadas do projeto (só para projeto; campo protegido)"),
+        prazoDias: opt(z.number().int().positive(), "prazo de entrega do projeto em dias (só para projeto; vai para o contrato)"),
         ativo: z.boolean().optional(),
       },
     },
-    async ({ id, servico, minutosPorUnidade, terceiro, ...resto }) =>
+    async ({ id, servico, minutosPorUnidade, terceiro, horasDoProjeto, ...resto }) =>
       executar(async () => {
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
         const patch = {
           ...resto,
           ...(minutosPorUnidade !== undefined ? { horasPorUnidade: minutosPorUnidade == null ? null : minutosPorUnidade / 60 } : {}),
+          ...(horasDoProjeto !== undefined ? { horasPorUnidade: horasDoProjeto } : {}),
           ...(servico !== undefined ? { servicoId: servico == null ? null : resolver(antes.servicos, servico, "Serviço").id } : {}),
           // "quem faz": terceiro escolhido = sem horas dos sócios; null = volta para os sócios
           ...(terceiro !== undefined

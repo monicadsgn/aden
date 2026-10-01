@@ -116,7 +116,11 @@ export function objetoDoContrato(config: Configuracao, c: ClienteBase): { rotulo
     if (!t) continue;
     const nome = t.nomeCliente?.trim() || t.nome;
     const servico = config.servicos.find((s) => s.id === t.servicoId)?.nome;
-    linhas.push({ rotulo: servico ? `${servico} · ${nome}` : nome, valor: `${q} por mês` });
+    // projeto de marca: entrega única com prazo em dias, não "por mês"
+    const valor = t.projeto
+      ? `${q === 1 ? "1 projeto" : `${q} projetos`}${t.prazoDias ? `, com entrega em até ${t.prazoDias} dias` : ""}`
+      : `${q} por mês`;
+    linhas.push({ rotulo: servico ? `${servico} · ${nome}` : nome, valor });
   }
   return linhas;
 }
@@ -180,6 +184,10 @@ export function montarContrato(
   // Objeto
   const objeto = objetoDoContrato(config, c);
   if (!objeto.length) faltando.push("Escopo do cliente (ficha → Personalizar escopo)");
+  for (const e of c.escopo?.entregas ?? []) {
+    const t = config.tiposEntrega.find((x) => x.id === e.tipoEntregaId);
+    if ((e.quantidade ?? 0) > 0 && t?.projeto && !t.prazoDias) faltando.push(`Prazo em dias do projeto ${t.nome} (Configurações → Tipos de entrega)`);
+  }
   const servicos = [...new Set(objeto.map((o) => o.rotulo.split(" · ")[0]).filter((x) => objeto.some((o) => o.rotulo.startsWith(`${x} · `))))];
   const ob = nova("Objeto do contrato");
   ob.add(`O presente contrato tem por objeto a prestação de serviços${servicos.length ? ` de ${servicos.join(" e ")}` : ""} para a marca ${marca}, conforme a proposta aceita pelo CONTRATANTE.`);

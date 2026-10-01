@@ -18,8 +18,9 @@ O preço sai do cálculo do Aden, nunca da sua cabeça. Esta skill conduz a conv
 - Audiovisual é extra, só se o cliente pedir.
 - Horas saem do **tempo cadastrado** de cada tipo de entrega. O cronômetro é opcional, nunca liga sozinho e o
   sistema não pede medições: só se usa quando ninguém sabe quanto uma entrega leva.
-- **Projetos de marca** (logo, identidade visual, branding) levam dias ou semanas e não se medem em minutos: nunca
-  proponha nem grave um tempo em minutos para eles; o jeito de medir ou precificar ainda está em decisão. Pergunte.
+- **Projetos de marca** (logo, identidade visual, branding, estrutura visual) não se medem em minutos: o tipo de
+  entrega é um projeto, com horas totais estimadas e prazo em dias (que vai para o contrato). O preço sai do cálculo.
+  Se faltar a hora ou o prazo, pergunte aos sócios; nunca invente.
 - Abaixo do piso de um sócio: não esconda. Mostre o que dá para fazer (pacote que cabe) ou diga que vira pedido de
   exceção, que o sócio afetado aprova no site.
 

@@ -50,6 +50,11 @@
   cadeado. Datas comemorativas viraram a aba "Datas comemorativas" do Calendário (`/calendario?aba=datas`, só sócio;
   `?secao=datas` redireciona). Calendário agora é tela com abas (`components/calendario/`).
 
+- **Projetos de marca (opção A, migration 0036):** tipo de entrega com "Como mede" = Projeto: horas totais estimadas
+  (no mesmo campo protegido `horas_por_unidade`, 1 unidade = 1 projeto, digitado em horas) e prazo em dias
+  (`prazo_dias`). No contrato sai "1 projeto, com entrega em até N dias" (sem prazo, falta preencher). Conector:
+  `salvar_tipo_entrega` com `projeto`, `horasDoProjeto`, `prazoDias`. Logo e Estrutura visual marcados como projeto.
+
 ## Stack
 
 Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + Tailwind v4 + Vercel.

@@ -66,7 +66,8 @@ Não existe bot de WhatsApp: pedido entre os sócios vira tarefa no Aden.
 - Nunca invente número de negócio (preço, piso, prazo, percentual, horas). Só grave o que foi dito.
 - Horas saem do **tempo cadastrado** de cada tipo de entrega. O cronômetro é opcional, nunca liga sozinho e o
   sistema não pede medições: só se usa quando ninguém sabe quanto uma entrega leva.
-- **Projetos de marca** (logo, identidade visual, branding) levam dias ou semanas e não se medem em minutos: nunca
-  proponha nem grave um tempo em minutos para eles; o jeito de medir ou precificar ainda está em decisão. Pergunte.
+- **Projetos de marca** (logo, identidade visual, branding, estrutura visual) não se medem em minutos: o tipo de
+  entrega é um projeto, com horas totais estimadas e prazo em dias (que vai para o contrato). O preço sai do cálculo.
+  Se faltar a hora ou o prazo, pergunte aos sócios; nunca invente.
 - Mudança em piso, percentual dos sócios, divisão de horas, tempo por entrega ou regra da sociedade que afete o outro
   sócio vira pedido de aprovação: diga isso e que ele aprova no site.
