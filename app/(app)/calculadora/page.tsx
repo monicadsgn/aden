@@ -303,7 +303,7 @@ export default function Calculadora() {
                 key={c.id}
                 className={cx(
                   "flex items-center gap-1 rounded-botao border py-1 pr-1 pl-1 transition-all",
-                  sel ? "border-marca bg-marca text-sobre-marca shadow-card" : "border-linha bg-superficie hover:border-marca/50",
+                  sel ? "border-marca bg-marca-cheio text-sobre-marca shadow-card" : "border-linha bg-superficie hover:border-marca/50",
                 )}
               >
                 <button type="button" role="tab" aria-selected={sel} onClick={() => setAtivoId(c.id)} className="flex items-center gap-2 py-1 pr-1 pl-1 text-sm font-bold">

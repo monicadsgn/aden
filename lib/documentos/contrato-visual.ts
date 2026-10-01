@@ -41,12 +41,12 @@ function capa(p: PDFPage, f: Fontes, doc: DocumentoContrato, marca: string): num
   p.drawSvgPath(`M ${W - 260} 0 C ${W - 220} 70, ${W - 120} 110, ${W} 96`, { x: 0, y: topo, borderColor: cor("branco"), borderWidth: 1.2, borderOpacity: 0.18 });
 
   logo(p, MX, topo - 44, 24, cor("branco"));
-  rotulo(p, "CONTRATO", { x: MX, y: topo - 104, tamanho: 8, fonte: f.semi, cor: cor("verdeMedio"), espacamento: 2.2 });
+  rotulo(p, "CONTRATO", { x: MX, y: topo - 104, tamanho: 8, fonte: f.semi, cor: cor("branco"), espacamento: 2.2 });
   let y = topo - 114;
   y = desenharLinhas(p, quebrar([{ texto: "Contrato de prestação de serviços", fonte: "forte" }], f, 25, LARG), f, { x: MX, y, tamanho: 25, cor: cor("branco"), entrelinha: 1.2 });
   y -= 2;
-  y = desenharLinhas(p, quebrar([{ texto: `Aden · ${marca}`, fonte: "semi" }], f, 13, LARG), f, { x: MX, y, tamanho: 13, cor: cor("verdeClaro"), entrelinha: 1.3 });
-  if (doc.subtitulo) y = desenharLinhas(p, quebrar([{ texto: doc.subtitulo }], f, 9.5, LARG), f, { x: MX, y: y - 1, tamanho: 9.5, cor: cor("verdeMedio"), entrelinha: 1.4 });
+  y = desenharLinhas(p, quebrar([{ texto: `Aden · ${marca}`, fonte: "semi" }], f, 13, LARG), f, { x: MX, y, tamanho: 13, cor: cor("branco"), entrelinha: 1.3 });
+  if (doc.subtitulo) y = desenharLinhas(p, quebrar([{ texto: doc.subtitulo }], f, 9.5, LARG), f, { x: MX, y: y - 1, tamanho: 9.5, cor: cor("branco"), entrelinha: 1.4 });
   // linha do contratante numa pílula clara
   const linha = limparTexto(doc.linhaTopo);
   const wl = Math.min(largura(f.semi, linha, 8) + 24, LARG);

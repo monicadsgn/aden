@@ -175,7 +175,7 @@ export function Comparacao({
                     onClick={() => aoSelecionar(c.id)}
                     className={cx(
                       "rounded-botao px-3 py-1 text-xs font-bold transition-colors",
-                      c.id === ativoId ? "bg-marca text-sobre-marca" : "bg-superficie-2 hover:bg-marca-suave",
+                      c.id === ativoId ? "bg-marca-cheio text-sobre-marca" : "bg-superficie-2 hover:bg-marca-suave",
                     )}
                   >
                     {c.nome}

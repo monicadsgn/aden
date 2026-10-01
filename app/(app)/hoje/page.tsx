@@ -256,7 +256,7 @@ export default function VisaoDoDia() {
     <div className="pb-16">
       <div className="relative overflow-hidden border-b border-linha bg-marca-tinta/60">
         <div className="relative mx-auto flex max-w-[1300px] flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-bloco bg-marca text-sobre-marca shadow-card sm:size-12">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-bloco bg-marca-cheio text-sobre-marca shadow-card sm:size-12">
             <Sun size={20} />
           </span>
           <div className="min-w-0 flex-1 basis-40">

@@ -40,7 +40,7 @@ export function RelogioRodando() {
   if (!rodando) return null;
   const naPropriaTela = caminho === "/tarefas";
   return (
-    <div className="nao-imprimir fixed right-4 bottom-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-botao bg-marca py-1.5 pr-1.5 pl-4 text-sobre-marca shadow-forte">
+    <div className="nao-imprimir fixed right-4 bottom-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-botao bg-marca-cheio py-1.5 pr-1.5 pl-4 text-sobre-marca shadow-forte">
       <Timer size={15} className="shrink-0 animate-pulse" aria-hidden />
       <Link
         href={rodando.t ? `/tarefas?tarefa=${rodando.t.id}` : "/tarefas"}

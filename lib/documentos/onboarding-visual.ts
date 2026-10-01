@@ -38,13 +38,13 @@ function capa(p: PDFPage, f: Fontes, doc: DocumentoOnboarding) {
   p.drawSvgPath(`M0 ${H - 120} C ${W * 0.3} ${H - 165}, ${W * 0.62} ${H - 70}, ${W} ${H - 135} V ${H} H 0 Z`, { x: 0, y: H, color: cor("verdeProfundo") });
 
   logo(p, MX, H - 56, 28, cor("branco"));
-  rotulo(p, "ONBOARDING", { x: MX, y: H - 330, tamanho: 9, fonte: f.semi, cor: cor("verdeMedio"), espacamento: 3.2 });
+  rotulo(p, "ONBOARDING", { x: MX, y: H - 330, tamanho: 9, fonte: f.semi, cor: cor("branco"), espacamento: 3.2 });
   let y = H - 344;
   y = desenharLinhas(p, quebrar([{ texto: "Olá,", fonte: "regular" }, { texto: `${doc.saudacao}!`, fonte: "forte" }], f, 46, LARG), f, { x: MX, y, tamanho: 46, cor: cor("branco"), entrelinha: 1.15 });
   y -= 6;
   y = desenharLinhas(p, quebrar([{ texto: "Boas-vindas à Aden", fonte: "semi" }], f, 15, LARG), f, { x: MX, y, tamanho: 15, cor: cor("verdeClaro") });
-  if (doc.subtitulo) desenharLinhas(p, quebrar([{ texto: doc.subtitulo }], f, 10.5, LARG), f, { x: MX, y: y - 2, tamanho: 10.5, cor: cor("verdeMedio") });
-  rotulo(p, doc.cliente.toUpperCase(), { x: MX, y: 60, tamanho: 7.5, fonte: f.semi, cor: cor("verdeMedio"), espacamento: 1.6 });
+  if (doc.subtitulo) desenharLinhas(p, quebrar([{ texto: doc.subtitulo }], f, 10.5, LARG), f, { x: MX, y: y - 2, tamanho: 10.5, cor: cor("branco") });
+  rotulo(p, doc.cliente.toUpperCase(), { x: MX, y: 60, tamanho: 7.5, fonte: f.semi, cor: cor("branco"), espacamento: 1.6 });
 }
 
 function contato(p: PDFPage, f: Fontes, doc: DocumentoOnboarding, s: SecaoPronta, n: number) {

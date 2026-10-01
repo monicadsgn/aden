@@ -93,7 +93,7 @@ export function BotaoRelogio({ t, a, pequeno }: { t: Tarefa; a: AcoesTarefas; pe
       className={cx(
         "inline-flex items-center gap-1.5 rounded-botao font-semibold tabular-nums transition-colors",
         pequeno ? "h-7 px-2 text-[11px]" : "h-8 px-3 text-xs",
-        rodando ? "bg-marca text-sobre-marca" : "bg-superficie-2 text-texto hover:bg-linha",
+        rodando ? "bg-marca-cheio text-sobre-marca" : "bg-superficie-2 text-texto hover:bg-linha",
       )}
       aria-label={rodando ? `Pausar o tempo de ${t.titulo}` : `Começar a contar o tempo de ${t.titulo}`}
       title={rodando ? "Pausar" : "Opcional: só se não souber quanto esta entrega leva"}

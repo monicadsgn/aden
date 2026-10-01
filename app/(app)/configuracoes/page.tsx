@@ -337,8 +337,8 @@ export default function Configuracoes() {
                         aria-selected={sel}
                         onClick={() => irPara(s.id)}
                         className={cx(
-                          "flex shrink-0 items-center gap-1.5 rounded-botao border px-3.5 py-2 text-xs font-bold transition-all",
-                          sel ? "border-marca bg-marca text-sobre-marca shadow-card" : "border-linha bg-superficie text-texto hover:border-marca/50",
+                          "flex min-h-10 shrink-0 items-center gap-1.5 rounded-botao border px-3.5 py-2 text-xs font-bold transition-all pointer-coarse:min-h-11",
+                          sel ? "border-marca bg-marca-cheio text-sobre-marca shadow-card" : "border-linha bg-superficie text-texto hover:border-marca/50",
                         )}
                       >
                         {g.ordem.includes(s.id) ? (

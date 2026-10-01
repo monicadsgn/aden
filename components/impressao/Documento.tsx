@@ -40,7 +40,7 @@ export function Documento({ arquivo, children }: { arquivo: string; children: Re
         <button
           type="button"
           onClick={() => window.print()}
-          className="inline-flex h-9 items-center gap-1.5 rounded-botao bg-marca px-4 text-sm font-semibold text-sobre-marca hover:bg-marca-forte"
+          className="inline-flex h-9 items-center gap-1.5 rounded-botao bg-marca-cheio px-4 text-sm font-semibold text-sobre-marca hover:bg-marca-cheio-hover"
         >
           <FileDown size={16} /> Salvar em PDF
         </button>
@@ -76,7 +76,7 @@ export function BlocoDoc({ titulo, children, className }: { titulo: string; chil
 
 export function NumeroGrande({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
   return (
-    <div className={cx("rounded-bloco p-5", destaque ? "bg-marca text-sobre-marca" : "bg-marca-tinta")}>
+    <div className={cx("rounded-bloco p-5", destaque ? "bg-marca-cheio text-sobre-marca" : "bg-marca-tinta")}>
       <p className={cx("text-xs font-semibold", destaque ? "opacity-85" : "text-texto-suave")}>{rotulo}</p>
       <p className="numero mt-1 text-3xl font-extrabold tracking-tight">{valor}</p>
     </div>

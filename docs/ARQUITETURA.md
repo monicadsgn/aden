@@ -72,6 +72,12 @@
   (não "rateio"); onboarding, kickoff, briefing e follow-up ficam em inglês dentro do sistema; o cliente nunca vê
   "briefing" nem "kickoff" (teste em `components/apresentacao/render.test.tsx`).
 
+- **Toque e contraste (M9, M10):** no toque (`pointer: coarse`) todo botão, aba, chave, seletor e link-botão tem no
+  mínimo 44 px (regra em `globals.css` + `pointer-coarse:` nos componentes de base); no computador, botão normal e campo
+  com 44 px, botão pequeno com 36 px, menu e abas com 40 px. Botão cheio, menu e aba ativos usam `--marca-cheio`
+  (#5c5f33 no claro: branco em cima a 6,8:1; no escuro, o verde claro de sempre). Nos PDFs, os textos pequenos da capa
+  passaram a branco (de 3,1:1 para 4,4:1), sem mudar o verde da capa.
+
 ## Stack
 
 Next.js 16 (App Router) + Supabase (Postgres, Auth, RLS) + Tailwind v4 + Vercel.

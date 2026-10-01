@@ -238,7 +238,7 @@ export default function PainelDoCliente() {
       )}
 
       {recebido && (
-        <p role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto max-w-md rounded-card bg-marca px-4 py-3 text-center text-sm font-semibold text-sobre-marca shadow-forte">
+        <p role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto max-w-md rounded-card bg-marca-cheio px-4 py-3 text-center text-sm font-semibold text-sobre-marca shadow-forte">
           {recebido}
         </p>
       )}
@@ -247,7 +247,7 @@ export default function PainelDoCliente() {
         type="button"
         aria-label="Como funciona este painel"
         onClick={() => setPasso(0)}
-        className="fixed right-5 bottom-5 flex size-11 items-center justify-center rounded-full bg-marca text-sobre-marca shadow-forte"
+        className="fixed right-5 bottom-5 flex size-11 items-center justify-center rounded-full bg-marca-cheio text-sobre-marca shadow-forte"
       >
         <HelpCircle size={20} />
       </button>
@@ -271,7 +271,7 @@ export default function PainelDoCliente() {
                 type="button"
                 disabled={enviando}
                 onClick={() => void responder("aprovar")}
-                className="shrink-0 rounded-botao bg-marca px-4 py-1.5 text-xs font-semibold text-sobre-marca disabled:opacity-40"
+                className="shrink-0 rounded-botao bg-marca-cheio px-4 py-1.5 text-xs font-semibold text-sobre-marca disabled:opacity-40"
               >
                 Aprovar
               </button>
@@ -374,7 +374,7 @@ export default function PainelDoCliente() {
                       type="button"
                       disabled={enviando || !ajuste.texto.trim()}
                       onClick={() => void responder("ajustar")}
-                      className="rounded-botao bg-marca px-4 py-1.5 text-xs font-semibold text-sobre-marca disabled:opacity-40"
+                      className="rounded-botao bg-marca-cheio px-4 py-1.5 text-xs font-semibold text-sobre-marca disabled:opacity-40"
                     >
                       Enviar
                     </button>
@@ -453,7 +453,7 @@ export default function PainelDoCliente() {
               <button
                 type="button"
                 onClick={() => (passoAtual === tutorial.length - 1 ? fecharTutorial() : setPasso(passoAtual + 1))}
-                className="rounded-botao bg-marca px-4 py-1.5 text-xs font-semibold text-sobre-marca"
+                className="rounded-botao bg-marca-cheio px-4 py-1.5 text-xs font-semibold text-sobre-marca"
               >
                 {passoAtual === tutorial.length - 1 ? "Entendi" : "Próximo"}
               </button>
@@ -512,7 +512,7 @@ function CardPeca({ p, acao, ajuste, aoAbrir }: { p: Peca; acao: string; ajuste:
           <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-superficie-2">
             {/* eslint-disable-next-line @next/next/no-img-element -- arte da peça */}
             <img src={img.url} alt="" loading="lazy" className="size-full object-cover" />
-            {data && <span className="absolute inset-x-0 bottom-0 bg-marca/90 px-2.5 py-1 text-center text-[11px] font-semibold tracking-wide text-sobre-marca uppercase">{data}</span>}
+            {data && <span className="absolute inset-x-0 bottom-0 bg-marca-cheio/90 px-2.5 py-1 text-center text-[11px] font-semibold tracking-wide text-sobre-marca uppercase">{data}</span>}
           </div>
           <div className="flex items-center gap-2 px-4 py-3">
             <div className="min-w-0 flex-1">

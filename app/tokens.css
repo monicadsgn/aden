@@ -24,6 +24,8 @@
   --marca-suave: #e6e8d6;    /* fundos tingidos, badges */
   --marca-tinta: #f1f2e8;    /* fundos bem leves */
   --sobre-marca: #ffffff;    /* texto sobre a cor da marca */
+  --marca-cheio: #5c5f33;    /* M10 (01/10/2026): fundo de botão cheio, um tom mais escuro (branco em cima: 6,8:1) */
+  --marca-cheio-hover: #4a4d29;
   --destaque: #3e4122;       /* verde profundo: acento das formas decorativas */
   --creme: #fcf9f1;          /* creme da marca: só no ícone quadrado ("a" creme no verde ou fundo creme) */
   --verde-aden: #797c46;     /* verde da marca que não muda no modo escuro: só no ícone quadrado */
@@ -85,6 +87,10 @@
     --marca-suave: #34361f;
     --marca-tinta: #25261a;
     --sobre-marca: #17180f;
+  --marca-cheio: #a6a96a;
+  --marca-cheio-hover: #b7ba7c;
+    --marca-cheio: #a6a96a;
+    --marca-cheio-hover: #b7ba7c;
     --destaque: #7c8052;
     --fundo: #16170f;
     --superficie: #1f2016;
@@ -118,6 +124,8 @@
   --marca-suave: #34361f;
   --marca-tinta: #25261a;
   --sobre-marca: #17180f;
+  --marca-cheio: #a6a96a;
+  --marca-cheio-hover: #b7ba7c;
   --destaque: #7c8052;
   --fundo: #16170f;
   --superficie: #1f2016;

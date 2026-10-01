@@ -268,7 +268,7 @@ export function SecaoMetas({ rascunho, set }: Props) {
       {lista.map((m, i) => (
         <div key={m.id} className="flex flex-col gap-3 rounded-bloco bg-superficie-2/60 p-3">
           <div className="flex items-center gap-2">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-marca text-xs font-bold text-sobre-marca">{i + 1}</span>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-marca-cheio text-xs font-bold text-sobre-marca">{i + 1}</span>
             <CampoTexto className="flex-1" ariaLabel="Nome do degrau" placeholder="Nome do degrau" valor={m.nome} aoMudar={(v) => setLista(atualizar(lista, m.id, { nome: v }))} />
             {m.conquistadaEm && (
               <Badge tom="ok" icone={Star}>

@@ -156,7 +156,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
               aria-expanded={aberto}
               onClick={() => alternar(g.titulo)}
               className={cx(
-                "flex w-full items-center gap-2 rounded-item px-3 py-2 text-left text-[12px] font-bold tracking-[0.08em] uppercase transition-colors",
+                "flex min-h-10 w-full items-center gap-2 rounded-item px-3 py-2 text-left text-[12px] font-bold tracking-[0.08em] uppercase transition-colors pointer-coarse:min-h-11",
                 temAtivo ? "text-marca-forte" : "text-texto-suave hover:text-texto",
               )}
             >
@@ -177,8 +177,8 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
                         href={i.href}
                         onClick={aoNavegar}
                         className={cx(
-                          "flex items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-semibold transition-colors",
-                          ativo ? "bg-marca text-sobre-marca shadow-card" : i.destaque ? "bg-marca-suave text-marca-forte hover:bg-marca-suave/70" : "text-texto hover:bg-marca-suave/60",
+                          "flex min-h-10 items-center gap-2.5 rounded-item px-3 py-2 text-[13px] font-semibold transition-colors pointer-coarse:min-h-11",
+                          ativo ? "bg-marca-cheio text-sobre-marca shadow-card" : i.destaque ? "bg-marca-suave text-marca-forte hover:bg-marca-suave/70" : "text-texto hover:bg-marca-suave/60",
                         )}
                       >
                         <Ic size={17} strokeWidth={2} />
@@ -221,7 +221,7 @@ function AlternarTema() {
     } catch {}
   };
   return (
-    <button type="button" onClick={trocar} aria-label="Alternar tema claro/escuro" className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto">
+    <button type="button" onClick={trocar} aria-label="Alternar tema claro/escuro" className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11">
       {escuro ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
@@ -276,7 +276,7 @@ export function Shell({ children }: { children: ReactNode }) {
         type="button"
         aria-label="Rever o tour do sistema"
         title="Rever o tour do sistema"
-        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11"
         onClick={abrirTour}
       >
         <HelpCircle size={17} />
@@ -285,7 +285,7 @@ export function Shell({ children }: { children: ReactNode }) {
         href="/glossario"
         aria-label="Glossário: o que quer dizer cada palavra"
         title="Glossário: o que quer dizer cada palavra"
-        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+        className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11"
       >
         <BookOpen size={17} />
       </Link>
@@ -294,7 +294,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <button
           type="button"
           aria-label="Sair"
-          className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+          className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11"
           onClick={async () => {
             await repo.sair();
             await atualizarUsuario();
@@ -323,7 +323,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="nao-imprimir sticky top-0 z-30 flex items-center justify-between border-b border-linha bg-fundo/90 px-4 py-3 backdrop-blur lg:hidden">
           <Marca compacta />
-          <button type="button" aria-label="Abrir menu" onClick={() => setMenuAberto(true)} className="flex size-10 items-center justify-center rounded-item hover:bg-superficie-2">
+          <button type="button" aria-label="Abrir menu" onClick={() => setMenuAberto(true)} className="flex size-11 items-center justify-center rounded-item hover:bg-superficie-2">
             <Menu size={20} />
           </button>
         </header>
@@ -333,7 +333,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 overflow-y-auto bg-superficie px-3 py-5 shadow-forte">
               <div className="flex items-center justify-between px-2">
                 <Marca />
-                <button aria-label="Fechar menu" onClick={() => setMenuAberto(false)} className="flex size-9 items-center justify-center rounded-item hover:bg-superficie-2">
+                <button aria-label="Fechar menu" onClick={() => setMenuAberto(false)} className="flex size-11 items-center justify-center rounded-item hover:bg-superficie-2">
                   <X size={18} />
                 </button>
               </div>
@@ -389,7 +389,7 @@ export function CabecalhoPagina({
       <span className="pointer-events-none absolute right-48 -bottom-10 size-24 rounded-full bg-destaque/15" aria-hidden />
       {/* no celular: ícone, título e "?" numa linha; a frase e as ações ocupam a largura inteira embaixo */}
       <div className="relative mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-bloco bg-marca text-sobre-marca shadow-card sm:size-12">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-bloco bg-marca-cheio text-sobre-marca shadow-card sm:size-12">
           <Icone size={20} />
         </span>
         <div className="min-w-0 flex-1 basis-40">

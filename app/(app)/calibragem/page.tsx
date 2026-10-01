@@ -83,7 +83,7 @@ export default function Calibragem() {
         titulo="Calibragem das horas"
         descricao="Vale o tempo cadastrado em cada entrega. O cronômetro é opcional: quando alguém mede uma entrega que não sabia quanto levava, a média aparece aqui e vocês decidem se atualizam o tempo."
         acoes={
-          <Link href="/tarefas" className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-marca px-4 text-sm font-semibold text-sobre-marca">
+          <Link href="/tarefas" className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-marca-cheio px-4 text-sm font-semibold text-sobre-marca">
             <Timer size={16} /> Ir para as tarefas
           </Link>
         }

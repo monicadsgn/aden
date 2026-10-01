@@ -29,7 +29,7 @@ export function VistaCliente({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="relative overflow-hidden rounded-card bg-marca p-6 text-sobre-marca shadow-forte">
+      <div className="relative overflow-hidden rounded-card bg-marca-cheio p-6 text-sobre-marca shadow-forte">
         <p className="text-xs font-bold tracking-[0.14em] uppercase opacity-80">Investimento mensal</p>
         <p className="numero mt-1 text-5xl font-extrabold tracking-tight sm:text-6xl">{vista.valorCentavos != null ? formatarMoeda(vista.valorCentavos) : "—"}</p>
         {vista.valorCentavos == null ? (
@@ -85,7 +85,7 @@ export function VistaCliente({
                         type="button"
                         aria-label={`Mais ${i.nome}`}
                         onClick={() => aoMudarQuantidade(i.tipoEntregaId, 1)}
-                        className="flex size-11 items-center justify-center rounded-full bg-marca text-sobre-marca hover:bg-marca-forte"
+                        className="flex size-11 items-center justify-center rounded-full bg-marca-cheio text-sobre-marca hover:bg-marca-cheio-hover"
                       >
                         <Plus size={20} />
                       </button>

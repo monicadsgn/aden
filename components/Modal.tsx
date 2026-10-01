@@ -83,7 +83,7 @@ export function Modal({
           {expandivel && (
             <button
               type="button"
-              className="flex size-8 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+              className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11"
               aria-label={cheia ? "Voltar ao tamanho normal" : "Abrir em tela cheia"}
               title={cheia ? "Voltar ao tamanho normal" : "Abrir em tela cheia"}
               onClick={() => setCheia(!cheia)}
@@ -93,7 +93,7 @@ export function Modal({
           )}
           <button
             type="button"
-            className="flex size-8 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto"
+            className="flex size-9 items-center justify-center rounded-item text-texto-suave hover:bg-superficie-2 hover:text-texto pointer-coarse:size-11"
             aria-label="Fechar"
             onClick={aoFechar}
           >

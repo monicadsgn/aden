@@ -96,7 +96,7 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
               <button
                 type="button"
                 aria-label={`Tirar ${f.nome}`}
-                className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-superficie/90 text-erro opacity-0 group-hover:opacity-100 focus:opacity-100"
+                className="absolute top-1 right-1 flex size-7 items-center justify-center rounded-full bg-superficie/90 text-erro opacity-0 group-hover:opacity-100 focus:opacity-100 pointer-coarse:size-11 pointer-coarse:opacity-100"
                 onClick={() => void a.salvar({ ...t, arquivos: arquivos.filter((_, j) => j !== i) })}
               >
                 <Trash2 size={12} />

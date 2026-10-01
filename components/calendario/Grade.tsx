@@ -121,7 +121,7 @@ export default function Calendario() {
                   <span
                     className={cx(
                       "flex size-6 items-center justify-center rounded-full text-xs font-semibold",
-                      d === hoje && "bg-marca text-sobre-marca",
+                      d === hoje && "bg-marca-cheio text-sobre-marca",
                     )}
                   >
                     {Number(d.slice(8))}

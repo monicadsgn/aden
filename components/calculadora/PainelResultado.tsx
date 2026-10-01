@@ -94,7 +94,7 @@ function Destaque({
   const Ic = icone;
   const [aberto, setAberto] = useState(false);
   return (
-    <div className="relative overflow-hidden rounded-card bg-marca p-5 text-sobre-marca shadow-forte">
+    <div className="relative overflow-hidden rounded-card bg-marca-cheio p-5 text-sobre-marca shadow-forte">
       <Forma className="-top-16 -right-12 size-52 text-sobre-marca/10" variante={2} />
       <Forma className="-bottom-20 left-1/3 size-40 text-destaque/25" variante={3} />
       <div className="relative">
@@ -474,7 +474,7 @@ function BlocoHorizonte({ h }: { h: ResultadoHorizonte }) {
             return (
               <div key={o} className={cx("flex flex-col gap-2 rounded-bloco border p-3", escolhida ? "border-marca bg-marca-tinta" : "border-linha")}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-marca text-[11px] font-bold text-sobre-marca">{ROTULO_SUSPENSAO[o].letra}</span>
+                  <span className="flex size-6 items-center justify-center rounded-full bg-marca-cheio text-[11px] font-bold text-sobre-marca">{ROTULO_SUSPENSAO[o].letra}</span>
                   <span className="text-[13px] font-bold">{ROTULO_SUSPENSAO[o].texto}</span>
                   {escolhida && (
                     <Badge tom="marca" icone={CheckCircle2}>

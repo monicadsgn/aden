@@ -67,7 +67,7 @@ function sinalDoCliente(s: SaudeCliente) {
 
 function Abrir({ c, nome, aoAbrir }: { c: Cenario; nome: string; aoAbrir: (c: Cenario, nome: string) => void }) {
   return (
-    <button type="button" onClick={() => aoAbrir(c, nome)} className="inline-flex shrink-0 items-center gap-1 rounded-botao bg-marca px-2.5 py-1 text-[11px] font-bold text-sobre-marca hover:bg-marca-forte">
+    <button type="button" onClick={() => aoAbrir(c, nome)} className="inline-flex shrink-0 items-center gap-1 rounded-botao bg-marca-cheio px-2.5 py-1 text-[11px] font-bold text-sobre-marca hover:bg-marca-cheio-hover">
       Abrir na calculadora <ArrowRight size={12} />
     </button>
   );

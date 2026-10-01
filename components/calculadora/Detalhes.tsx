@@ -47,7 +47,7 @@ export function Detalhe({
             <Link
               key={a.rotulo}
               href={linkConfig(a.secao, a.campo)}
-              className="inline-flex items-center gap-1 rounded-botao bg-marca px-3 py-1.5 text-xs font-semibold text-sobre-marca hover:bg-marca-forte"
+              className="inline-flex items-center gap-1 rounded-botao bg-marca-cheio px-3 py-1.5 text-xs font-semibold text-sobre-marca hover:bg-marca-cheio-hover"
             >
               {a.rotulo} <ArrowRight size={12} />
             </Link>

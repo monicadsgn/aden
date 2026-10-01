@@ -25,7 +25,7 @@ function CampoMes({ valor, aoMudar }: { valor: string; aoMudar: (v: string) => v
   );
 }
 
-const botao = "inline-flex h-10 items-center gap-1.5 rounded-botao bg-marca px-4 text-sm font-semibold text-sobre-marca hover:bg-marca-forte";
+const botao = "inline-flex h-10 items-center gap-1.5 rounded-botao bg-marca-cheio px-4 text-sm font-semibold text-sobre-marca hover:bg-marca-cheio-hover";
 
 export default function Pdfs() {
   const { repo, usuario } = useDados();
