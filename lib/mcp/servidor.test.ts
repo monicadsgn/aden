@@ -12,6 +12,7 @@ import type { AlteracoesConfig, AvisoSocio, DadosExcecao, NotaContexto, NovoAvis
 import type { RepositorioSupabase } from "../dados/supabase";
 import { PAINEL_CLIENTE_ATIVO } from "../recursos";
 import { criarServidorMcp } from "./servidor";
+import { motivoSemAprovacaoFora } from "../calculo/tarefas";
 
 function aplicar<T extends { id: string }>(lista: T[], d: { salvar: T[]; remover: string[] }) {
   let out = [...lista];
@@ -211,6 +212,18 @@ class BancoFalso {
   }
   async removerTarefa(id: string) {
     this.tarefas = this.tarefas.filter((x) => x.id !== id);
+  }
+  enviadasAoCliente = 0;
+  // espelho de registrar_aprovacao_fora (migration 0040)
+  async registrarAprovacaoFora(ids: string[], onde: string, agendar: boolean) {
+    return ids.map((id) => {
+      const t = this.tarefas.find((x) => x.id === id);
+      const motivo = t ? motivoSemAprovacaoFora(t, agendar) : "Peça não encontrada.";
+      if (!t || motivo) return { id, titulo: t?.titulo ?? null, mudou: false, motivo: motivo ?? undefined };
+      const nova = { ...t, clienteAprovouEm: "agora", aprovadaForaOnde: onde, aprovadaForaPor: "Mônica (pelo Claude)", agendadaEm: agendar ? (t.agendadaEm ?? "agora") : t.agendadaEm };
+      this.tarefas = this.tarefas.map((x) => (x.id === id ? nova : x));
+      return { id, titulo: t.titulo, mudou: true, etapa: nova.agendadaEm ? ("agendada" as const) : ("aprovada" as const) };
+    });
   }
   async listarMedicoes() {
     return this.medicoes;
@@ -778,5 +791,38 @@ describe("conector: painel do cliente", () => {
     expect(banco.tarefas[0]).toMatchObject({ status: "revisao", visivelCliente: true, legenda: "Oi!" });
     const [lt] = await chamar("listar_tarefas");
     expect(lt.noPainelDoCliente).toBe("aguardando");
+  });
+});
+
+describe("conector: aprovação fora do painel", () => {
+  it("agendada sem aprovação dá erro claro e não muda nada", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    const t = await chamar("salvar_tarefa", { titulo: "Demonstração Jack", cliente: "Olinda", publicarEm: "2026-10-06 17:30" });
+    await expect(chamar("salvar_tarefa", { id: t.id, agendada: true })).rejects.toThrow(/ainda não foi aprovada.*registrar_aprovacao_fora_do_painel/);
+    expect(banco.tarefas[0].agendadaEm ?? null).toBeNull();
+  });
+
+  it("várias peças de uma vez vão para agendada, com o lugar padrão, sem enviar ao cliente", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    const a = await chamar("salvar_tarefa", { titulo: "Demonstração Jack", cliente: "Olinda", publicarEm: "2026-10-06 17:30", mostrarAoCliente: true });
+    const b = await chamar("salvar_tarefa", { titulo: "Macete", cliente: "Olinda", publicarEm: "2026-10-10 12:00", mostrarAoCliente: true });
+    const semData = await chamar("salvar_tarefa", { titulo: "Sem data", cliente: "Olinda" });
+    const r = await chamar("registrar_aprovacao_fora_do_painel", { ids: [a.id, b.id, semData.id] });
+    expect(r.mudaram).toEqual([
+      { peca: "Demonstração Jack", etapa: "agendada" },
+      { peca: "Macete", etapa: "agendada" },
+    ]);
+    expect(r.naoMudaram[0]).toMatchObject({ peca: "Sem data", motivo: expect.stringMatching(/Sem data para ir ao ar/) });
+    expect(r.clienteAvisado).toBe(false);
+    const lista = await chamar("listar_tarefas");
+    const jack = lista.find((x: { titulo: string }) => x.titulo === "Demonstração Jack");
+    expect(jack).toMatchObject({ etapaDaPeca: "agendada", noPainelDoCliente: "agendada" });
+    expect(jack.aprovadaForaDoPainel).toMatch(/^grupo do WhatsApp/);
+    expect(banco.tarefas.find((x) => x.id === a.id)?.enviadaClienteEm ?? null).toBeNull();
+    // de novo: nada muda e o erro diz por quê
+    await expect(chamar("registrar_aprovacao_fora_do_painel", { ids: [a.id] })).rejects.toThrow(/Já estava aprovada \(grupo do WhatsApp\)/);
+    // já aprovada: agendada no salvar_tarefa passa a valer
+    await chamar("salvar_tarefa", { id: a.id, agendada: false });
+    await chamar("salvar_tarefa", { id: a.id, agendada: true });
   });
 });

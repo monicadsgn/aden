@@ -48,6 +48,10 @@ export interface Tarefa {
   feedbackCliente?: string | null;
   feedbackEm?: string | null;
   clienteAprovouEm?: string | null;
+  /** aprovação que veio de fora do painel (ex.: "grupo do WhatsApp"); vazio = pelo painel. Só o banco escreve (0040) */
+  aprovadaForaOnde?: string | null;
+  /** quem registrou a aprovação de fora ("Mônica (pelo Claude)") */
+  aprovadaForaPor?: string | null;
   respostasCliente?: RespostaCliente[];
   // ─── publicação (Fase 3) ───
   /** quando a peça vai ao ar (data e hora do calendário) */
@@ -96,6 +100,31 @@ export function situacaoPeca(
   if (t.feedbackEm && (!t.enviadaClienteEm || t.feedbackEm > t.enviadaClienteEm)) return "ajuste";
   if (t.status === "a_fazer" && t.publicarEm) return "planejado";
   return "producao";
+}
+
+/** Sugestão de onde o cliente aprovou fora do painel (a pessoa só confirma ou troca). */
+export const ONDE_APROVACAO_PADRAO = "grupo do WhatsApp";
+
+/**
+ * Por que esta peça não pode ser registrada como aprovada fora do painel (null = pode).
+ * Espelha registrar_aprovacao_fora (migration 0040): mudou aqui, muda lá.
+ */
+export function motivoSemAprovacaoFora(
+  t: Pick<Tarefa, "status" | "clienteId" | "clienteAprovouEm"> & Partial<Pick<Tarefa, "publicadaEm" | "publicarEm" | "aprovadaForaOnde">>,
+  agendar = true,
+): string | null {
+  if (!t.clienteId) return "Não é peça de cliente.";
+  if (t.publicadaEm) return "Já foi publicada.";
+  if (t.clienteAprovouEm) return `Já estava aprovada (${t.aprovadaForaOnde ?? "pelo painel"}).`;
+  if (t.status === "concluida") return "Tarefa já concluída.";
+  if (agendar && !t.publicarEm) return "Sem data para ir ao ar: preencha quando vai ao ar antes de agendar.";
+  return null;
+}
+
+/** "agendada" só existe depois da aprovação: sem ela, marcar agendada não muda a etapa. Devolve o erro claro (ou null). */
+export function erroAgendarSemAprovacao(t: Pick<Tarefa, "clienteAprovouEm" | "publicadaEm">, agendada: boolean | undefined): string | null {
+  if (!agendada || t.clienteAprovouEm || t.publicadaEm) return null;
+  return 'A peça ainda não foi aprovada, então não dá para marcar "agendada" (nada mudou). Se o cliente aprovou fora do painel (ex.: no grupo do WhatsApp), use registrar_aprovacao_fora_do_painel: ela aprova e agenda de uma vez.';
 }
 
 /** Como cada etapa aparece na tela (equipe e cliente). */

@@ -21,7 +21,19 @@ import { PAPEIS } from "../acesso";
 import { avisosDePublicacao, hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
 import { frasesParaCliente, pacoteParaCenario, pacotePadrao, parcelasDoProjeto, prazoDoProjeto, precoDoPacote, projetosQueCabem, textoParcelas } from "../calculo/pacotes";
-import { ROTULO_PECA, estimativaHoras, medicaoDaTarefa, mudarStatus, novaTarefa, publicar, rotuloStatus, situacaoPeca, type Tarefa } from "../calculo/tarefas";
+import {
+  ONDE_APROVACAO_PADRAO,
+  ROTULO_PECA,
+  erroAgendarSemAprovacao,
+  estimativaHoras,
+  medicaoDaTarefa,
+  mudarStatus,
+  novaTarefa,
+  publicar,
+  rotuloStatus,
+  situacaoPeca,
+  type Tarefa,
+} from "../calculo/tarefas";
 import type { AtalhosPainel, Configuracao, Meta, Pacote } from "../calculo/tipos";
 import { datasDoPlanejamento, type DataComemorativa, type ItemDoPlanejamento } from "../calculo/datas";
 import { montarFechamento } from "../calculo/fechamento";
@@ -99,7 +111,9 @@ Regras que você deve seguir:
 - Projetos de marca (logo, identidade visual, branding) levam dias ou semanas e não se medem em minutos: nunca invente
   um tempo em minutos para eles; pergunte aos sócios.
 - Peças de conteúdo são tarefas: legenda e publicarEm (salvar_tarefa) dão a etapa planejado → produção → esperando
-  aprovação → aprovada → agendada → publicada (marcar_publicada, que conclui a tarefa).
+  aprovação → aprovada → agendada → publicada (marcar_publicada, que conclui a tarefa). Cliente aprovou fora do painel
+  (ex.: no grupo do WhatsApp): registrar_aprovacao_fora_do_painel com a lista de peças leva direto para agendada, sem
+  avisar o cliente. "agendada" no salvar_tarefa só vale para peça já aprovada (senão dá erro).
 - Pacotes: ver_pacotes mostra os preços CALCULADOS (nunca digitados). salvar_pacote só guarda o que é entregue.
 - Terceiros (salvar_terceiro): custo por saída + deslocamento, só do cliente que recebe; o cliente nunca vê o valor.
 - Metas (ver_metas, salvar_meta): trilha de crescimento em degraus. Só cadastre metas que os sócios definiram.
@@ -2217,6 +2231,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
                 vaiAoArEm: t.publicarEm ?? null,
                 publicadaEm: t.publicadaEm ?? null,
               }),
+              ...(t.aprovadaForaOnde && { aprovadaForaDoPainel: `${t.aprovadaForaOnde} (registrado por ${t.aprovadaForaPor ?? "um sócio"})` }),
               ...(t.visivelCliente && {
                 noPainelDoCliente: situacaoPeca(t),
                 pedidoDoCliente: situacaoPeca(t) === "ajuste" ? t.feedbackCliente : null,
@@ -2251,7 +2266,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         checklist: z.array(z.object({ titulo: z.string(), feita: z.boolean().optional() })).optional(),
         legenda: z.string().optional().describe("texto que vai junto com a peça (legenda do post)"),
         textoArte: z.string().optional().describe("o que vai escrito dentro da arte (o cliente lê antes da legenda)"),
-        agendada: z.boolean().optional().describe("true = o post já foi programado (aprovada → agendada); false desfaz"),
+        agendada: z
+          .boolean()
+          .optional()
+          .describe("true = o post já foi programado (aprovada → agendada); false desfaz. Só para peça já aprovada: aprovação fora do painel é registrar_aprovacao_fora_do_painel"),
         publicarEm: z.string().nullable().optional().describe("quando a peça vai ao ar: AAAA-MM-DD HH:MM (horário de Brasília); null tira"),
         rede: z.string().nullable().optional().describe("rede onde vai sair (ex.: instagram); interno, o cliente não vê"),
         lote: z.string().nullable().optional().describe("calendário que agrupa as peças (ex.: Calendário Outubro — Olinda); interno"),
@@ -2272,6 +2290,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           return v;
         };
         const base = antes ?? novaTarefa(novoId(), e.titulo!);
+        const semAprovar = erroAgendarSemAprovacao(base, e.agendada);
+        if (semAprovar) throw new Error(semAprovar);
         const t: Tarefa = {
           ...base,
           ...(e.titulo != null && { titulo: e.titulo }),
@@ -2379,6 +2399,33 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           criadas: novas.length,
           pecas: novas.map((t) => ({ id: t.id, titulo: t.titulo, vaiAoArEm: t.publicarEm, etapa: ROTULO_PECA[situacaoPeca(t)] })),
           painelDoCliente: c.painelToken ? "aparecem em 'Vem por aí'" : "este cliente ainda não tem link do painel",
+        };
+      }),
+  );
+
+  server.registerTool(
+    "registrar_aprovacao_fora_do_painel",
+    {
+      title: "Registrar que o cliente aprovou fora do painel",
+      description:
+        'O cliente aprovou fora do painel (ex.: no grupo do WhatsApp): as peças vão direto para "agendada" (ou "aprovada", com agendar=false), sem passar por "esperando aprovação" e sem avisar o cliente. No painel dele aparece "Aprovado em [data] pelo grupo do WhatsApp". Aceita várias peças de uma vez. Cada peça volta com a etapa nova ou o motivo de não ter mudado (já publicada, já aprovada, sem data para ir ao ar…). Confirme com quem está conversando antes.',
+      inputSchema: {
+        ids: z.array(z.string()).min(1).describe("ids das peças (de listar_tarefas)"),
+        onde: z.string().optional().describe(`onde o cliente aprovou; padrão "${ONDE_APROVACAO_PADRAO}"`),
+        agendar: z.boolean().optional().describe("padrão true: aprova e agenda (precisa da data de ir ao ar); false = só aprovada"),
+      },
+    },
+    async ({ ids, onde, agendar }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const r = await repo.registrarAprovacaoFora(ids, onde?.trim() || ONDE_APROVACAO_PADRAO, agendar ?? true);
+        const mudaram = r.filter((x) => x.mudou);
+        const naoMudaram = r.filter((x) => !x.mudou);
+        if (mudaram.length === 0) throw new Error(`Nenhuma peça mudou. ${naoMudaram.map((x) => `${x.titulo ?? x.id}: ${x.motivo}`).join(" ")}`);
+        return {
+          mudaram: mudaram.map((x) => ({ peca: x.titulo, etapa: x.etapa })),
+          ...(naoMudaram.length > 0 && { naoMudaram: naoMudaram.map((x) => ({ peca: x.titulo ?? x.id, motivo: x.motivo })) }),
+          clienteAvisado: false,
         };
       }),
   );

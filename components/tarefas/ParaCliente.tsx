@@ -10,6 +10,7 @@ import { aprovarAte } from "@/lib/calculo/painel";
 import { linkWhatsapp, mensagemPecaNoPainel } from "@/lib/calculo/avisoCliente";
 import { ROTULO_PECA, situacaoPeca, type Tarefa } from "@/lib/calculo/tarefas";
 import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
+import { AprovadoFora } from "./AprovadoFora";
 import type { AcoesTarefas } from "./useTarefas";
 
 /** ISO → valor do campo datetime-local, na hora local */
@@ -196,20 +197,31 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
             </>
           ) : (
             <>
-              <Botao
-                pequeno
-                icone={CalendarClock}
-                variante={t.agendadaEm ? "primario" : undefined}
-                onClick={() => (t.agendadaEm || confirmarSemAprovar("Marcar como agendada")) && void a.salvar({ ...t, agendadaEm: t.agendadaEm ? null : new Date().toISOString() })}
-              >
-                {t.agendadaEm ? "Agendada (desfazer)" : "Marcar como agendada"}
-              </Botao>
+              {/* sem aprovação, "agendada" não muda a etapa: o caminho é registrar a aprovação de fora (já agenda) */}
+              {semAprovar ? (
+                <AprovadoFora pecas={[t]} a={a} />
+              ) : (
+                <Botao
+                  pequeno
+                  icone={CalendarClock}
+                  variante={t.agendadaEm ? "primario" : undefined}
+                  onClick={() => void a.salvar({ ...t, agendadaEm: t.agendadaEm ? null : new Date().toISOString() })}
+                >
+                  {t.agendadaEm ? "Agendada (desfazer)" : "Marcar como agendada"}
+                </Botao>
+              )}
               <Botao pequeno icone={Megaphone} onClick={() => confirmarSemAprovar("Marcar como publicada") && void a.marcarPublicada(t, true)}>
                 Marcar como publicada
               </Botao>
             </>
           )}
         </div>
+        {t.aprovadaForaOnde && t.clienteAprovouEm && (
+          <p className="mt-2 text-[12px] font-semibold text-ok">
+            Aprovado em {dataBr(t.clienteAprovouEm)} pelo {t.aprovadaForaOnde}
+            {t.aprovadaForaPor ? ` (registrado por ${t.aprovadaForaPor})` : ""}.
+          </p>
+        )}
         <p className="mt-1 text-[12px] text-texto-suave">
           Com a data, a peça aparece como planejada antes de aprovar. Depois de aprovada, “agendada” é quando vocês já programaram o post. Publicada conclui a tarefa.
         </p>

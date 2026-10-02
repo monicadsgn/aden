@@ -158,6 +158,27 @@ export function useTarefas() {
       avisarRelogio();
     });
 
+  /**
+   * O cliente aprovou fora do painel (ex.: no grupo do WhatsApp): as peças vão direto para "agendada" (as sem data
+   * de ir ao ar, para "aprovada"). Não avisa o cliente. Devolve quantas mudaram; o que não mudou vira erro na tela.
+   */
+  const aprovadoFora = async (pecas: Tarefa[], onde: string): Promise<number> => {
+    let mudaram = 0;
+    await tentar(async () => {
+      const comData = pecas.filter((t) => t.publicarEm).map((t) => t.id);
+      const semData = pecas.filter((t) => !t.publicarEm).map((t) => t.id);
+      const r = [
+        ...(comData.length ? await repo.registrarAprovacaoFora(comData, onde, true) : []),
+        ...(semData.length ? await repo.registrarAprovacaoFora(semData, onde, false) : []),
+      ];
+      mudaram = r.filter((x) => x.mudou).length;
+      await recarregar();
+      const falhas = r.filter((x) => !x.mudou);
+      if (falhas.length) setErro(`Não mudou: ${falhas.map((x) => `${x.titulo ?? "peça"} (${x.motivo})`).join("; ")}`);
+    });
+    return mudaram;
+  };
+
   /** Sobe as artes e junta na peça. */
   const anexarArquivos = (t: Tarefa, arquivos: File[]) =>
     tentar(async () => {
@@ -168,7 +189,7 @@ export function useTarefas() {
       await repo.salvarTarefa(nova);
     });
 
-  return { config, tarefas, medicoes, carregado, erro, setErro, salvar, start, pausarTarefa, status, marcarPublicada, remover, zerarTempo, enviarParaCliente, anexarArquivos, recarregar, usuario };
+  return { config, tarefas, medicoes, carregado, erro, setErro, salvar, start, pausarTarefa, status, marcarPublicada, remover, zerarTempo, enviarParaCliente, aprovadoFora, anexarArquivos, recarregar, usuario };
 }
 
 export type AcoesTarefas = ReturnType<typeof useTarefas>;

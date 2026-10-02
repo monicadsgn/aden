@@ -415,6 +415,27 @@ ajuste → aprovada → agendada (aprovada, com data) → publicada. `publicar()
 - Conector: `salvar_tarefa` com `legenda` e `publicarEm` (AAAA-MM-DD HH:MM, Brasília), `marcar_publicada`, etapa da
   peça em `listar_tarefas` e `ver_visao_do_dia.publicacao`. Testes em `lib/calculo/publicacao.test.ts`.
 
+## Aprovação fora do painel (02/10/2026, migration 0040)
+
+Quando o cliente aprova fora do painel (ex.: no grupo do WhatsApp), o sócio registra isso e a peça vai direto de
+planejado/produção para "agendada" (ou "aprovada", sem data de ir ao ar), sem passar por "esperando aprovação" e sem
+nada ir ao cliente. A etapa continua saindo de `situacaoPeca` (aprovação + `agendada_em` = agendada).
+- Banco: `tarefas.aprovacao_fora_onde` (onde) e `aprovacao_fora_por` (quem registrou, com "(pelo Claude)"); só a função
+  `registrar_aprovacao_fora(ids[], onde, agendar)` escreve (sócio, várias peças de uma vez; cada peça volta com a
+  etapa ou o motivo de não ter mudado). Trigger `proteger_aprovacao_fora` barra escrita direta e limpa a origem quando a
+  aprovação é zerada (reenviar ao cliente). A trava da 0034 continua: `cliente_aprovou_em` só pelas funções.
+- Regra espelhada em `motivoSemAprovacaoFora` (lib/calculo/tarefas.ts): já publicada, já aprovada, concluída, sem
+  cliente, ou agendar sem data para ir ao ar. "agendada" sem aprovação é erro (`erroAgendarSemAprovacao`), nunca
+  "salva" calado.
+- Tela: no detalhe da peça, "Cliente aprovou fora do painel" no lugar de "Marcar como agendada" enquanto não há
+  aprovação; no card do calendário, o mesmo botão com as peças que dá para marcar já escolhidas. O lugar vem preenchido
+  com "grupo do WhatsApp" (`ONDE_APROVACAO_PADRAO`); é só confirmar.
+- Painel do cliente: `painel_cliente` devolve `aprovadaOnde` (só o lugar); a peça mostra "Aprovado em [data] pelo
+  grupo do WhatsApp".
+- Conector: `registrar_aprovacao_fora_do_painel` (lista de ids, `onde` padrão "grupo do WhatsApp", `agendar` padrão
+  true); `salvar_tarefa` com `agendada: true` em peça não aprovada dá erro apontando essa ferramenta;
+  `listar_tarefas` mostra `aprovadaForaDoPainel`.
+
 ## Painel do cliente em quadro (Fase 3, 30/09/2026)
 
 `/c/[token]`: colunas que deslizam para o lado, na ordem do caminho do post (`montarQuadro` em `lib/calculo/painel.ts`):

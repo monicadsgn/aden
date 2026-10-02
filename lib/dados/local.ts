@@ -11,7 +11,7 @@ import { MODELO_VAZIO, type ContratoEnviado, type ModeloContrato } from "../calc
 import { MODELO_ONBOARDING_VAZIO, type ModeloOnboarding } from "../calculo/onboarding";
 import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
-import type { Tarefa } from "../calculo/tarefas";
+import { motivoSemAprovacaoFora, type Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import { aplicarResposta, montarPainel } from "../calculo/painel";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -35,6 +35,7 @@ import type {
   StatusPedido,
   TipoContexto,
   Usuario,
+  ResultadoAprovacaoFora,
 } from "./repositorio";
 
 const CHAVE = "aden:local:v1";
@@ -699,6 +700,24 @@ export class RepositorioLocal implements Repositorio {
       t.id === tarefaId ? { ...t, status: "revisao" as const, visivelCliente: true, enviadaClienteEm: new Date().toISOString(), clienteAprovouEm: null } : t,
     );
     gravar(b);
+  }
+
+  async registrarAprovacaoFora(tarefaIds: string[], onde: string, agendar: boolean): Promise<ResultadoAprovacaoFora[]> {
+    const lugar = onde.trim();
+    if (!lugar) throw new Error("Diga onde o cliente aprovou (ex.: grupo do WhatsApp).");
+    if (tarefaIds.length === 0) throw new Error("Nenhuma peça escolhida.");
+    const b = ler();
+    const agora = new Date().toISOString();
+    return tarefaIds.map((id) => {
+      const t = (b.tarefas ?? []).find((x) => x.id === id);
+      const motivo = t ? motivoSemAprovacaoFora(t, agendar) : "Peça não encontrada.";
+      if (!t || motivo) return { id, titulo: t?.titulo ?? null, mudou: false, motivo: motivo ?? undefined };
+      const nova = { ...t, clienteAprovouEm: agora, aprovadaForaOnde: lugar.slice(0, 200), aprovadaForaPor: "você", agendadaEm: agendar ? (t.agendadaEm ?? agora) : t.agendadaEm };
+      registrar(b, "tarefas", t.id, t, nova);
+      b.tarefas = (b.tarefas ?? []).map((x) => (x.id === t.id ? nova : x));
+      gravar(b);
+      return { id, titulo: t.titulo, mudou: true, etapa: nova.agendadaEm ? ("agendada" as const) : ("aprovada" as const) };
+    });
   }
 
   async enviarArquivoPeca(_tarefaId: string, arquivo: File) {
