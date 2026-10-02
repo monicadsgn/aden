@@ -38,6 +38,7 @@ import type {
   TipoContexto,
   UsoDoConector,
   Usuario,
+  ResultadoAprovacaoFora,
 } from "./repositorio";
 
 type Linha = Record<string, unknown>;
@@ -992,6 +993,8 @@ export class RepositorioSupabase implements Repositorio {
       feedbackCliente: (t.feedback_cliente as string) ?? null,
       feedbackEm: (t.feedback_em as string) ?? null,
       clienteAprovouEm: (t.cliente_aprovou_em as string) ?? null,
+      aprovadaForaOnde: (t.aprovacao_fora_onde as string) ?? null,
+      aprovadaForaPor: (t.aprovacao_fora_por as string) ?? null,
       respostasCliente: Array.isArray(t.respostas_cliente) ? (t.respostas_cliente as RespostaCliente[]) : [],
       publicarEm: (t.publicar_em as string) ?? null,
       publicadaEm: (t.publicada_em as string) ?? null,
@@ -1534,6 +1537,12 @@ export class RepositorioSupabase implements Repositorio {
       .update({ status: "revisao", visivel_cliente: true, enviada_cliente_em: new Date().toISOString(), cliente_aprovou_em: null })
       .eq("id", tarefaId);
     erro(error);
+  }
+
+  async registrarAprovacaoFora(tarefaIds: string[], onde: string, agendar: boolean): Promise<ResultadoAprovacaoFora[]> {
+    const { data, error } = await this.sb.rpc("registrar_aprovacao_fora", { p_tarefas: tarefaIds, p_onde: onde, p_agendar: agendar });
+    erro(error);
+    return (data as ResultadoAprovacaoFora[]) ?? [];
   }
 
   async enviarArquivoPeca(tarefaId: string, arquivo: File): Promise<ArquivoPeca> {

@@ -166,6 +166,8 @@ export interface PainelCliente {
     feedback: string | null;
     feedbackEm: string | null;
     aprovadaEm: string | null;
+    /** onde o cliente aprovou, quando foi fora do painel (ex.: "grupo do WhatsApp") */
+    aprovadaOnde?: string | null;
     respostas: RespostaCliente[];
     /** quando vai ao ar e quando foi (Fase 3) */
     publicarEm?: string | null;
@@ -369,6 +371,12 @@ export interface Repositorio {
   responderPeca(token: string, tarefaId: string, decisao: "aprovar" | "ajustar", texto: string): Promise<void>;
   /** Manda a peça para o cliente aprovar (status "com o cliente", aparece no painel). */
   enviarParaCliente(tarefaId: string): Promise<void>;
+  /**
+   * O cliente aprovou fora do painel (ex.: no grupo do WhatsApp): uma ou várias peças vão direto para "agendada"
+   * (ou "aprovada", com agendar=false), sem pedido de aprovação e sem aviso ao cliente. Cada peça volta com a etapa
+   * nova ou o motivo de não ter mudado.
+   */
+  registrarAprovacaoFora(tarefaIds: string[], onde: string, agendar: boolean): Promise<ResultadoAprovacaoFora[]>;
   /** Sobe uma arte da peça e devolve o endereço. */
   enviarArquivoPeca(tarefaId: string, arquivo: File): Promise<ArquivoPeca>;
 
@@ -409,4 +417,13 @@ export function temAlteracoes(a: AlteracoesConfig): boolean {
       .filter((d) => !!d)
       .some((d) => d!.salvar.length > 0 || d!.remover.length > 0)
   );
+}
+
+/** Resultado de registrarAprovacaoFora, peça por peça. */
+export interface ResultadoAprovacaoFora {
+  id: string;
+  titulo: string | null;
+  mudou: boolean;
+  etapa?: "agendada" | "aprovada";
+  motivo?: string;
 }

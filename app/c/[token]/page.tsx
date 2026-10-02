@@ -324,7 +324,8 @@ export default function PainelDoCliente() {
             )}
             {(sit === "aprovada" || sit === "agendada") && (
               <p className="rounded-bloco bg-ok-suave px-3 py-2 text-sm text-ok">
-                Você aprovou em {diaCurto(peca.aprovadaEm)}.{sit === "agendada" && peca.publicarEm ? ` Entra dia ${diaCurto(peca.publicarEm)}.` : ""}
+                {peca.aprovadaOnde ? `Aprovado em ${diaCurto(peca.aprovadaEm)} pelo ${peca.aprovadaOnde}.` : `Você aprovou em ${diaCurto(peca.aprovadaEm)}.`}
+                {sit === "agendada" && peca.publicarEm ? ` Entra dia ${diaCurto(peca.publicarEm)}.` : ""}
               </p>
             )}
             {sit === "aguardando" && (prazo || painel.limiteRodadas != null) && (

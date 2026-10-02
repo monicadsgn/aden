@@ -17,6 +17,8 @@ export interface PecaPainel {
   feedback: string | null;
   feedbackEm: string | null;
   aprovadaEm: string | null;
+  /** onde o cliente aprovou, quando foi fora do painel (ex.: "grupo do WhatsApp") */
+  aprovadaOnde?: string | null;
   respostas: NonNullable<Tarefa["respostasCliente"]>;
   publicarEm: string | null;
   publicadaEm: string | null;
@@ -68,6 +70,7 @@ export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = ne
       feedback: t.feedbackCliente ?? null,
       feedbackEm: t.feedbackEm ?? null,
       aprovadaEm: t.clienteAprovouEm ?? null,
+      aprovadaOnde: t.aprovadaForaOnde ?? null,
       respostas: t.respostasCliente ?? [],
       publicarEm: t.publicarEm ?? null,
       publicadaEm: t.publicadaEm ?? null,

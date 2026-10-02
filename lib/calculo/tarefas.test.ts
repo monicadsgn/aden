@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calcularCalibragem, segundosDaMedicao, type Medicao } from "./calibragem";
 import { configVazia } from "./novo";
-import { agruparPorPrazo, darStart, estimativaHoras, mudarStatus, novaTarefa, relogio } from "./tarefas";
+import { agruparPorPrazo, darStart, erroAgendarSemAprovacao, estimativaHoras, motivoSemAprovacaoFora, mudarStatus, novaTarefa, relogio, situacaoPeca } from "./tarefas";
 import type { Configuracao } from "./tipos";
 
 const cfg = (): Configuracao => {
@@ -61,5 +61,28 @@ describe("tarefas com cronômetro", () => {
   it("relógio", () => {
     expect(relogio(65)).toBe("1:05");
     expect(relogio(3725)).toBe("1:02:05");
+  });
+});
+
+describe("aprovação fora do painel", () => {
+  const base = { status: "em_producao" as const, clienteId: "c", clienteAprovouEm: null, publicarEm: "2026-10-06T20:30:00Z" };
+  it("aprovada fora do painel com agendada = agendada, sem passar por esperando aprovação", () => {
+    expect(situacaoPeca({ ...base, feedbackEm: null, enviadaClienteEm: null, clienteAprovouEm: "2026-10-02T22:00:00Z", agendadaEm: "2026-10-02T22:00:00Z" })).toBe("agendada");
+  });
+  it("diz por que não dá (espelho da 0040)", () => {
+    expect(motivoSemAprovacaoFora(base)).toBeNull();
+    expect(motivoSemAprovacaoFora({ ...base, publicarEm: null })).toMatch(/Sem data/);
+    expect(motivoSemAprovacaoFora({ ...base, publicarEm: null }, false)).toBeNull();
+    expect(motivoSemAprovacaoFora({ ...base, clienteAprovouEm: "x" })).toMatch(/pelo painel/);
+    expect(motivoSemAprovacaoFora({ ...base, clienteAprovouEm: "x", aprovadaForaOnde: "grupo do WhatsApp" })).toMatch(/grupo do WhatsApp/);
+    expect(motivoSemAprovacaoFora({ ...base, publicadaEm: "x" })).toMatch(/publicada/);
+    expect(motivoSemAprovacaoFora({ ...base, status: "concluida" })).toMatch(/concluída/);
+    expect(motivoSemAprovacaoFora({ ...base, clienteId: null })).toMatch(/cliente/);
+  });
+  it("agendada sem aprovação é erro, nunca 'salva' calado", () => {
+    expect(erroAgendarSemAprovacao({ clienteAprovouEm: null }, true)).toMatch(/registrar_aprovacao_fora_do_painel/);
+    expect(erroAgendarSemAprovacao({ clienteAprovouEm: "x" }, true)).toBeNull();
+    expect(erroAgendarSemAprovacao({ clienteAprovouEm: null }, false)).toBeNull();
+    expect(erroAgendarSemAprovacao({ clienteAprovouEm: null }, undefined)).toBeNull();
   });
 });

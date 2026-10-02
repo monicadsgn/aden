@@ -9,6 +9,7 @@ import { cx } from "../ui";
 import { STATUS, type Tarefa } from "@/lib/calculo/tarefas";
 import { agruparPorCalendario, prontasDoCalendario } from "@/lib/calculo/lotes";
 import { coresDosClientes } from "@/lib/calculo/cores";
+import { AprovadoFora } from "./AprovadoFora";
 import { BotaoRelogio, COR_STATUS } from "./DetalheTarefa";
 import type { AcoesTarefas } from "./useTarefas";
 
@@ -161,6 +162,11 @@ function CardCalendario({ nome, pecas, a, abrir }: { nome: string; pecas: Tarefa
       </button>
       {aberto && (
         <div className="ml-4 border-l border-linha pl-2">
+          {cliente && !cliente.interno && (
+            <div className="px-2 py-1.5">
+              <AprovadoFora pecas={pecas} a={a} rotulo="Cliente aprovou fora do painel (escolher peças)" />
+            </div>
+          )}
           {pecas.map((t) => (
             <LinhaTarefa key={t.id} t={t} a={a} abrir={() => abrir(t.id)} />
           ))}

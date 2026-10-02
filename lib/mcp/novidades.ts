@@ -2,9 +2,14 @@
 // muda de jeito, sobe a VERSAO e ganha uma linha em NOVIDADES. O quem_sou_eu devolve isso para o Claude avisar o sócio,
 // e a Visão do dia mostra um aviso aos dois sócios até cada um marcar que atualizou o conector no claude.ai.
 
-export const VERSAO_FERRAMENTAS = "2026-10-01.2";
+export const VERSAO_FERRAMENTAS = "2026-10-02";
 
 export const NOVIDADES: { versao: string; texto: string }[] = [
+  {
+    versao: "2026-10-02",
+    texto:
+      'registrar_aprovacao_fora_do_painel: o cliente aprovou fora do painel (ex.: no grupo do WhatsApp), as peças vão direto para "agendada", várias de uma vez, sem avisar o cliente. salvar_tarefa com agendada numa peça ainda não aprovada agora dá erro em vez de "salva".',
+  },
   {
     versao: "2026-10-01.2",
     texto:
