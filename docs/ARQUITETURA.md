@@ -348,10 +348,10 @@ do aviso prévio); último dia do aviso prévio quando cai neste mês. Sem núme
 
 ## Painel do cliente (26/09/2026)
 
-**Desligado** (`PAINEL_CLIENTE_ATIVO = false` em `lib/recursos.ts`, decisão da Moni em 26/09/2026): por enquanto a
-aprovação de conteúdo (Olinda, StadiumPlay) fica no SoftMoni. Com a chave desligada somem o link na ficha, o "Para o
-cliente" na tarefa e as duas ferramentas do conector, e nenhum link `/c/…` abre. Banco, funções e código continuam.
-Se os sócios decidirem migrar, a ideia é trazer as etapas (planejado, agendada, publicada) e os avisos do SoftMoni.
+Ligado na Fase 3 (30/09/2026, `PAINEL_CLIENTE_ATIVO = true` em `lib/recursos.ts`), cliente por cliente: só quem tem link
+criado na ficha vê peças. (Entre 26 e 30/09 ficou desligado por decisão da Moni; com a chave desligada somem o link na
+ficha, o "Para o cliente" na tarefa e as duas ferramentas do conector, e nenhum link `/c/…` abre. Banco, funções e
+código continuam.)
 
 Link só do cliente (`/c/<código>`), sem login. O código é aleatório (48 caracteres) e fica em `clientes.painel_token`;
 "gerar outro" revoga o antigo. O cliente só chega aos dados por duas funções do banco (`painel_cliente`,
@@ -435,6 +435,34 @@ nada ir ao cliente. A etapa continua saindo de `situacaoPeca` (aprovação + `ag
 - Conector: `registrar_aprovacao_fora_do_painel` (lista de ids, `onde` padrão "grupo do WhatsApp", `agendar` padrão
   true); `salvar_tarefa` com `agendada: true` em peça não aprovada dá erro apontando essa ferramenta;
   `listar_tarefas` mostra `aprovadaForaDoPainel`.
+
+## Peça agendada (11/10/2026, migration 0041)
+
+"Agendada" (o post já está programado, ainda não foi ao ar) agora tem botão: na janela da tarefa, ao lado dos status
+(só para peça de conteúdo, `ehPeca`), na coluna "Agendada" do Quadro e no conector. Não é um status novo do banco
+(`tarefas.status` segue com 4 valores, o painel e `responder_peca` não mudam): é a etapa da peça, `situacaoPeca(t,
+passaPelaAprovacao)`, mostrada junto dos status por `etapaDaTela` / `etapasDaTela` (`lib/calculo/tarefas.ts`).
+- **Quem espera a aprovação:** só cliente com painel ligado, link criado e que não é a própria Aden
+  (`passaPelaAprovacao`). Nele, agendada continua exigindo `cliente_aprovou_em` (pelo painel ou por "aprovou fora do
+  painel", que já agenda). Peça da própria Aden, de cliente sem link ou sem cliente: marcou agendada, está agendada.
+  Antes disso o botão "Marcar como agendada" gravava `agendada_em` e a etapa não mudava.
+- `irParaEtapa` leva a tarefa para uma etapa: sair de agendada para outro status desfaz o agendamento; concluir não
+  (o post segue programado até ser marcado como publicado); concluída que vira agendada volta para produção; peça já
+  publicada ou sem cliente não agenda.
+- **Painel do cliente:** nada muda. Ele usa `situacaoPeca` sempre com a regra da aprovação, então peça marcada agendada
+  pela equipe sem o cliente ter aprovado continua em "Vem por aí" / "Em produção" para ele (teste em `publicacao.test.ts`),
+  e os campos que saem de `painel_cliente` estão travados por teste (`painel.test.ts`).
+- **Banco:** migration 0041 só troca `porta_tarefa_json` para a etapa da porta genérica seguir a mesma regra.
+- **Conector:** `marcar_agendada` (várias peças, `agendada=false` desfaz), `mudar_status_tarefa` aceita "agendada",
+  `concluir_tarefa`; `listar_tarefas` filtra por `responsavel` e `etapa`; versão das ferramentas 2026-10-11.
+
+## Tela de tarefas mais enxuta (11/10/2026)
+
+Primeiro o campo de tarefa rápida, depois Visão e Mostrar; cliente, responsável, área e calendário ficam atrás do botão
+"Filtros" (abre sozinho quando algum está ligado). Na janela da tarefa: Status, Datas, Medir o tempo, Responsável,
+Cliente e Prioridade na frente; tipo de entrega, quantidade e estimativa em "Mais detalhes" (fechado, abre sozinho se
+falta o tipo). No bloco da peça, rede e calendário (internos) ficam recolhidos. O cronômetro e o plano de etapas do
+cliente não mudaram.
 
 ## Painel do cliente em quadro (Fase 3, 30/09/2026)
 

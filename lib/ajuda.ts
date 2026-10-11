@@ -54,7 +54,7 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
   "/tarefas": {
     titulo: "Tarefas",
     texto:
-      "Tudo o que está em produção, agrupado por prazo. As horas de cada entrega saem do tempo cadastrado em Configurações → Tipos de entrega. Se não souber quanto uma entrega leva, abra a tarefa e use \"Medir o tempo\" (opcional): ele nunca liga sozinho.",
+      "Tudo o que está em produção, agrupado por prazo. Peça de conteúdo tem a etapa Agendada, para o post que já está programado. As horas saem do tempo cadastrado de cada entrega; medir o tempo é opcional, dentro da tarefa.",
     termos: ["tempo-por-entrega", "calibragem"],
   },
   "/mes#resumo": {

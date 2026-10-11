@@ -27,24 +27,27 @@ import { Modal } from "../Modal";
 import { Botao, cx, Passo } from "../ui";
 import { novoId } from "@/lib/calculo/novo";
 import {
+  ehPeca,
   estimativaHoras,
+  etapaDaTela,
+  etapasDaTela,
   medicaoDaTarefa,
   PRIORIDADES,
   relogio,
-  STATUS,
   tempoGasto,
   temCronometro,
-  type StatusTarefa,
+  type EtapaDaTela,
   type Tarefa,
 } from "@/lib/calculo/tarefas";
 import { formatarDuracao } from "@/lib/formato";
 import { ParaCliente } from "./ParaCliente";
 import type { AcoesTarefas } from "./useTarefas";
 
-export const COR_STATUS: Record<StatusTarefa, string> = {
+export const COR_STATUS: Record<EtapaDaTela, string> = {
   a_fazer: "bg-superficie-2 text-texto",
   em_producao: "bg-info text-superficie",
   revisao: "bg-aviso text-superficie",
+  agendada: "bg-marca-cheio text-sobre-marca",
   concluida: "bg-ok text-superficie",
 };
 
@@ -109,12 +112,15 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
   const [descricao, setDescricao] = useState("");
   const [novaEtapa, setNovaEtapa] = useState("");
   const [confirmarApagar, setConfirmarApagar] = useState(false);
+  // "Mais detalhes" (tipo de entrega, quantidade, estimativa) fica fechado, a menos que falte escolher o tipo
+  const [mais, setMais] = useState(false);
   const id = tarefa?.id;
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- rascunho dos campos de texto ao trocar de tarefa
     setTitulo(tarefa?.titulo ?? "");
     setDescricao(tarefa?.descricao ?? "");
     setConfirmarApagar(false);
+    setMais(!tarefa?.tipoEntregaId);
     // só ao trocar de tarefa: o texto que a pessoa está digitando não é sobrescrito
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -131,6 +137,8 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
   const socios = cfg.pessoas.filter((p) => p.ativo);
   const resp = cfg.pessoas.find((p) => p.id === t.responsavelId);
   const feitas = t.etapas.filter((e) => e.feita).length;
+  const peca = ehPeca(t);
+  const etapaAtual = etapaDaTela(t, a.passa(t));
 
   return (
     <Modal
@@ -188,16 +196,16 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
         <div>
           <Linha icone={Layers} rotulo="Status">
             <div className="flex flex-wrap gap-1">
-              {STATUS.map((s) => (
+              {etapasDaTela(peca).map((s) => (
                 <button
                   key={s.valor}
                   type="button"
-                  onClick={() => s.valor !== t.status && void a.status(t, s.valor)}
+                  onClick={() => s.valor !== etapaAtual && void a.etapa(t, s.valor)}
                   className={cx(
                     "rounded-botao px-2.5 py-1 text-[11px] font-bold uppercase transition-opacity",
-                    s.valor === t.status ? COR_STATUS[s.valor] : "bg-superficie-2/60 text-texto-suave opacity-70 hover:opacity-100",
+                    s.valor === etapaAtual ? COR_STATUS[s.valor] : "bg-superficie-2/60 text-texto-suave opacity-70 hover:opacity-100",
                   )}
-                  aria-pressed={s.valor === t.status}
+                  aria-pressed={s.valor === etapaAtual}
                 >
                   {s.rotulo}
                 </button>
@@ -210,11 +218,6 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
               <span className="text-texto-suave">→</span>
               <input type="date" aria-label="Vencimento" className={campoLeve} value={t.vencimento ?? ""} onChange={(e) => set({ vencimento: e.target.value || null })} />
             </div>
-          </Linha>
-          <Linha icone={Hourglass} rotulo="Estimativa de tempo">
-            <span className="px-2" title="Tempo por entrega (em Configurações → Tipos de entrega) × quantidade">
-              {est != null ? formatarDuracao(est) : tipo?.audiovisual ? "feito por terceiro: sem horas dos sócios" : tipo ? "tipo sem tempo cadastrado" : "escolha o tipo de entrega"}
-            </span>
           </Linha>
           <Linha icone={Timer} rotulo="Medir o tempo (opcional)">
             {temCronometro(t, cfg) ? (
@@ -241,7 +244,7 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
                 {m?.estado === "concluido" && <span className="text-[12px] text-ok">guardado na Calibragem</span>}
               </div>
             ) : (
-              <span className="px-2 text-texto-suave">{tipo?.audiovisual ? "vídeo é de terceiro: não conta horas" : "escolha o tipo de entrega"}</span>
+              <span className="px-2 text-texto-suave">{tipo?.audiovisual ? "vídeo é de terceiro: não conta horas" : "escolha o tipo de entrega em “Mais detalhes”"}</span>
             )}
           </Linha>
         </div>
@@ -259,6 +262,18 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
               </select>
             </div>
           </Linha>
+          <Linha icone={Users} rotulo="Cliente">
+            <select className={campoLeve} value={t.clienteId ?? ""} onChange={(e) => set({ clienteId: e.target.value || null })} aria-label="Cliente">
+              <option value="">Sem cliente</option>
+              {cfg.clientes
+                .filter((c) => c.ativo || c.id === t.clienteId)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
+            </select>
+          </Linha>
           <Linha icone={Flag} rotulo="Prioridade">
             <select
               className={cx(campoLeve, t.prioridade && COR_PRIORIDADE[t.prioridade], "font-semibold")}
@@ -274,45 +289,54 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
               ))}
             </select>
           </Linha>
-          <Linha icone={Users} rotulo="Cliente">
-            <select className={campoLeve} value={t.clienteId ?? ""} onChange={(e) => set({ clienteId: e.target.value || null })} aria-label="Cliente">
-              <option value="">Sem cliente</option>
-              {cfg.clientes
-                .filter((c) => c.ativo || c.id === t.clienteId)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-            </select>
-          </Linha>
-          <Linha icone={Layers} rotulo="Tipo de entrega">
-            <select
-              className={campoLeve}
-              value={t.tipoEntregaId ?? ""}
-              onChange={(e) => set({ tipoEntregaId: e.target.value || null })}
-              aria-label="Tipo de entrega"
-              disabled={!!m && seg > 0}
-              title={m && seg > 0 ? "Já tem tempo medido: para trocar o tipo, zere o tempo antes." : undefined}
-            >
-              <option value="">Escolha</option>
-              {cfg.tiposEntrega
-                .filter((x) => x.ativo || x.id === t.tipoEntregaId)
-                .map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.nome}
-                  </option>
-                ))}
-            </select>
-          </Linha>
-          <Linha icone={Hash} rotulo="Quantidade">
-            <div className="flex items-center gap-2">
-              <Passo valor={t.quantidade} aoMudar={(v) => set({ quantidade: Math.max(1, v ?? 1) })} ariaLabel="Quantidade de entregas" />
-              <span className="text-[11px] text-texto-suave">{tipo ? `${tipo.nome.toLowerCase()}(s) nesta tarefa` : ""}</span>
-            </div>
-          </Linha>
         </div>
       </div>
+
+      <details open={mais} onToggle={(e) => setMais(e.currentTarget.open)} className="mt-2">
+        <summary className="flex min-h-9 cursor-pointer items-center gap-2 rounded-item px-1 text-xs font-semibold text-texto-suave hover:text-texto">
+          Mais detalhes
+          <span className="font-normal">
+            {tipo ? `· ${tipo.nome} × ${Math.max(1, t.quantidade)}` : "· escolha o tipo de entrega"}
+            {est != null ? ` · ${formatarDuracao(est)} estimado` : ""}
+          </span>
+        </summary>
+        <div className="grid gap-x-8 md:grid-cols-2">
+          <div>
+            <Linha icone={Layers} rotulo="Tipo de entrega">
+              <select
+                className={campoLeve}
+                value={t.tipoEntregaId ?? ""}
+                onChange={(e) => set({ tipoEntregaId: e.target.value || null })}
+                aria-label="Tipo de entrega"
+                disabled={!!m && seg > 0}
+                title={m && seg > 0 ? "Já tem tempo medido: para trocar o tipo, zere o tempo antes." : undefined}
+              >
+                <option value="">Escolha</option>
+                {cfg.tiposEntrega
+                  .filter((x) => x.ativo || x.id === t.tipoEntregaId)
+                  .map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.nome}
+                    </option>
+                  ))}
+              </select>
+            </Linha>
+            <Linha icone={Hash} rotulo="Quantidade">
+              <div className="flex items-center gap-2">
+                <Passo valor={t.quantidade} aoMudar={(v) => set({ quantidade: Math.max(1, v ?? 1) })} ariaLabel="Quantidade de entregas" />
+                <span className="text-[11px] text-texto-suave">{tipo ? `${tipo.nome.toLowerCase()}(s) nesta tarefa` : ""}</span>
+              </div>
+            </Linha>
+          </div>
+          <div>
+            <Linha icone={Hourglass} rotulo="Estimativa de tempo">
+              <span className="px-2" title="Tempo por entrega (em Configurações → Tipos de entrega) × quantidade">
+                {est != null ? formatarDuracao(est) : tipo?.audiovisual ? "feito por terceiro: sem horas dos sócios" : tipo ? "tipo sem tempo cadastrado" : "escolha o tipo de entrega"}
+              </span>
+            </Linha>
+          </div>
+        </div>
+      </details>
 
       {t.clienteId && <ParaCliente t={t} a={a} />}
 

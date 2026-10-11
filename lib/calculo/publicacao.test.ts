@@ -106,6 +106,13 @@ describe("quadro do painel do cliente", () => {
     expect(montarQuadro([]).map((c) => c.id)).toEqual(["aguardando", "publicada"]);
   });
 
+  it("o painel nunca mostra como agendada a peça que o cliente não aprovou (mesmo marcada agendada na equipe)", () => {
+    const sem = { ...base, id: "sem", status: "em_producao" as const, agendadaEm: "2026-10-01T13:00:00Z", publicarEm: "2026-10-06T15:00:00Z" };
+    const q = montarQuadro([sem]);
+    expect(q.find((c) => c.id === "agendada")).toBeUndefined();
+    expect(q.find((c) => c.id === "producao")?.pecas.map((p) => p.id)).toEqual(["sem"]);
+  });
+
   it("resumo do mês: publicados, agendados, em andamento, ajustes e formatos", () => {
     expect(resumoDoMes(pecas, "2026-10")).toEqual({
       publicados: 1,

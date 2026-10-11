@@ -1,7 +1,6 @@
 // Números aqui são só fixtures de teste.
 import { describe, expect, it } from "vitest";
 import { calcularSaudeCliente, calcularVisaoMes } from "./mes";
-import type { Medicao } from "./calibragem";
 import { calcularCenario, calcularComReceita, calcularMinimo, prepararMes } from "./motor";
 import { configVazia, novoCenario } from "./novo";
 import type { Cenario, Configuracao } from "./tipos";

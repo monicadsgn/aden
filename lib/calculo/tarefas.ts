@@ -86,20 +86,39 @@ export interface RespostaCliente {
  * Etapa da peça (a mesma para a equipe e para o cliente), calculada sem mudar o status da tarefa:
  * planejado → produção → esperando aprovação (ou ajuste) → aprovada → agendada (programada) → publicada.
  * "entregue" = tarefa concluída sem data de publicação (ex.: um PDF).
+ *
+ * `passaPelaAprovacao`: a peça só vira "agendada" depois da aprovação do cliente quando ele aprova pelo painel
+ * (cliente com link). Peça da própria Aden, de cliente sem link ou com o painel desligado não tem esse passo:
+ * marcou como agendada, está agendada. O painel do cliente usa sempre o padrão (true): lá só existe cliente com link.
  */
 export type SituacaoPeca = "planejado" | "producao" | "aguardando" | "ajuste" | "aprovada" | "agendada" | "publicada" | "entregue";
 
 export function situacaoPeca(
   t: Pick<Tarefa, "status" | "clienteAprovouEm" | "feedbackEm" | "enviadaClienteEm"> & Partial<Pick<Tarefa, "publicarEm" | "publicadaEm" | "agendadaEm">>,
+  passaPelaAprovacao = true,
 ): SituacaoPeca {
   if (t.publicadaEm) return "publicada";
-  if (t.clienteAprovouEm) return t.agendadaEm ? "agendada" : "aprovada";
+  if (t.agendadaEm && (t.clienteAprovouEm || !passaPelaAprovacao)) return "agendada";
+  if (t.clienteAprovouEm) return "aprovada";
   if (t.status === "revisao") return "aguardando";
   if (t.status === "concluida") return "entregue";
   // voltou para produção depois de um pedido de ajuste do cliente
   if (t.feedbackEm && (!t.enviadaClienteEm || t.feedbackEm > t.enviadaClienteEm)) return "ajuste";
   if (t.status === "a_fazer" && t.publicarEm) return "planejado";
   return "producao";
+}
+
+/**
+ * A aprovação desta peça passa pelo painel do cliente? Só com painel ligado, cliente de fora e link criado na ficha.
+ * (A própria Aden, cliente sem link ou painel desligado: sem passo de aprovação no sistema.)
+ */
+export function passaPelaAprovacao(cliente: { interno?: boolean; painelToken?: string | null } | null | undefined, painelAtivo: boolean): boolean {
+  return !!cliente && painelAtivo && !cliente.interno && !!cliente.painelToken;
+}
+
+/** Tarefa de cliente que é uma peça de conteúdo (legenda, arte, data de ir ao ar, calendário ou painel). */
+export function ehPeca(t: Pick<Tarefa, "clienteId"> & Partial<Pick<Tarefa, "visivelCliente" | "arquivos" | "legenda" | "textoArte" | "publicarEm" | "publicadaEm" | "agendadaEm" | "lote">>): boolean {
+  return !!t.clienteId && !!(t.visivelCliente || (t.arquivos?.length ?? 0) > 0 || t.legenda || t.textoArte || t.publicarEm || t.publicadaEm || t.agendadaEm || t.lote);
 }
 
 /** Sugestão de onde o cliente aprovou fora do painel (a pessoa só confirma ou troca). */
@@ -121,9 +140,16 @@ export function motivoSemAprovacaoFora(
   return null;
 }
 
-/** "agendada" só existe depois da aprovação: sem ela, marcar agendada não muda a etapa. Devolve o erro claro (ou null). */
-export function erroAgendarSemAprovacao(t: Pick<Tarefa, "clienteAprovouEm" | "publicadaEm">, agendada: boolean | undefined): string | null {
-  if (!agendada || t.clienteAprovouEm || t.publicadaEm) return null;
+/**
+ * "agendada" só existe depois da aprovação quando a aprovação passa pelo painel: sem ela, marcar agendada não muda a
+ * etapa. Devolve o erro claro (ou null). Peça sem passo de aprovação (`passaPelaAprovacao` false) agenda direto.
+ */
+export function erroAgendarSemAprovacao(
+  t: Pick<Tarefa, "clienteAprovouEm" | "publicadaEm">,
+  agendada: boolean | undefined,
+  passaPelaAprovacao = true,
+): string | null {
+  if (!agendada || !passaPelaAprovacao || t.clienteAprovouEm || t.publicadaEm) return null;
   return 'A peça ainda não foi aprovada, então não dá para marcar "agendada" (nada mudou). Se o cliente aprovou fora do painel (ex.: no grupo do WhatsApp), use registrar_aprovacao_fora_do_painel: ela aprova e agenda de uma vez.';
 }
 
@@ -155,6 +181,24 @@ export const STATUS: { valor: StatusTarefa; rotulo: string }[] = [
   { valor: "concluida", rotulo: "Concluída" },
 ];
 export const rotuloStatus = (s: StatusTarefa) => STATUS.find((x) => x.valor === s)?.rotulo ?? s;
+
+/**
+ * Onde a tarefa aparece na tela (botões de status e colunas do quadro). "Agendada" não é um status do banco: é a etapa
+ * da peça (ver `situacaoPeca`), mostrada ao lado dos status para a equipe achar fácil.
+ */
+export type EtapaDaTela = StatusTarefa | "agendada";
+export const ETAPA_AGENDADA: { valor: "agendada"; rotulo: string } = { valor: "agendada", rotulo: "Agendada" };
+/** Status e, só para peça de conteúdo, a etapa "Agendada" antes de "Concluída". */
+export function etapasDaTela(peca: boolean): { valor: EtapaDaTela; rotulo: string }[] {
+  if (!peca) return STATUS;
+  return [...STATUS.slice(0, 3), ETAPA_AGENDADA, STATUS[3]];
+}
+/** Em qual etapa a tarefa está na tela: concluída fica em concluída; peça agendada (e não concluída) fica em agendada. */
+export function etapaDaTela(t: Tarefa, passa = true): EtapaDaTela {
+  if (t.status !== "concluida" && ehPeca(t) && situacaoPeca(t, passa) === "agendada") return "agendada";
+  return t.status;
+}
+export const rotuloEtapaDaTela = (e: EtapaDaTela) => (e === "agendada" ? ETAPA_AGENDADA.rotulo : rotuloStatus(e));
 
 export const PRIORIDADES: { valor: Prioridade; rotulo: string }[] = [
   { valor: "urgente", rotulo: "Urgente" },
@@ -221,6 +265,31 @@ export function mudarStatus(t: Tarefa, status: StatusTarefa, m: Medicao | null, 
   if (status === "concluida") return { tarefa, medicao: pararMedicao({ ...m, unidades: Math.max(1, t.quantidade) }, agora) };
   if (m.estado === "concluido") return { tarefa, medicao: { ...m, estado: "pausado", fim: null } };
   return { tarefa, medicao: m };
+}
+
+/**
+ * Leva a tarefa para uma etapa da tela. "Agendada": o post foi programado (peça de cliente, ainda não publicada; se a
+ * aprovação passa pelo painel, só depois de aprovada). Tarefa concluída que é agendada volta para produção.
+ * Sair de "agendada" para outro status desfaz o agendamento; concluir não desfaz (o post segue programado até ser
+ * marcado como publicado). Erra com frase clara quando não pode.
+ */
+export function irParaEtapa(
+  t: Tarefa,
+  destino: EtapaDaTela,
+  m: Medicao | null,
+  agora: Date,
+  passa = true,
+): { tarefa: Tarefa; medicao: Medicao | null } {
+  if (destino !== "agendada") {
+    const r = mudarStatus(t, destino, m, agora);
+    return destino !== "concluida" && r.tarefa.agendadaEm ? { tarefa: { ...r.tarefa, agendadaEm: null }, medicao: r.medicao } : r;
+  }
+  if (!t.clienteId) throw new Error("Só peça de cliente pode ser agendada. Escolha o cliente da tarefa.");
+  if (t.publicadaEm) throw new Error("Esta peça já foi publicada.");
+  const erro = erroAgendarSemAprovacao(t, true, passa);
+  if (erro) throw new Error(erro.replace("use registrar_aprovacao_fora_do_painel:", 'use "Cliente aprovou fora do painel" (ou registrar_aprovacao_fora_do_painel no conector):'));
+  const base = t.status === "concluida" ? mudarStatus(t, "em_producao", m, agora) : { tarefa: t, medicao: m };
+  return { tarefa: { ...base.tarefa, agendadaEm: t.agendadaEm ?? agora.toISOString() }, medicao: base.medicao };
 }
 
 export const tempoGasto = (m: Medicao | null, agora: Date) => (m ? segundosDaMedicao(m, agora) : 0);

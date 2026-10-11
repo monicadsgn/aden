@@ -2,9 +2,14 @@
 // muda de jeito, sobe a VERSAO e ganha uma linha em NOVIDADES. O quem_sou_eu devolve isso para o Claude avisar o sócio,
 // e a Visão do dia mostra um aviso aos dois sócios até cada um marcar que atualizou o conector no claude.ai.
 
-export const VERSAO_FERRAMENTAS = "2026-10-02";
+export const VERSAO_FERRAMENTAS = "2026-10-11";
 
 export const NOVIDADES: { versao: string; texto: string }[] = [
+  {
+    versao: "2026-10-11",
+    texto:
+      'Peça agendada: marcar_agendada (várias de uma vez, desfaz com agendada=false) e "agendada" em mudar_status_tarefa; a própria Aden e cliente sem link agendam direto, cliente com link só depois de aprovar. concluir_tarefa. listar_tarefas filtra por responsavel e etapa. Descrições das ferramentas de tarefa mais curtas.',
+  },
   {
     versao: "2026-10-02",
     texto:

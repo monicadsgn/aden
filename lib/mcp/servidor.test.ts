@@ -795,8 +795,9 @@ describe("conector: painel do cliente", () => {
 });
 
 describe("conector: aprovação fora do painel", () => {
-  it("agendada sem aprovação dá erro claro e não muda nada", async () => {
+  it("agendada sem aprovação dá erro claro e não muda nada (cliente com link do painel)", async () => {
     await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await chamar("link_painel_cliente", { cliente: "Olinda" });
     const t = await chamar("salvar_tarefa", { titulo: "Demonstração Jack", cliente: "Olinda", publicarEm: "2026-10-06 17:30" });
     await expect(chamar("salvar_tarefa", { id: t.id, agendada: true })).rejects.toThrow(/ainda não foi aprovada.*registrar_aprovacao_fora_do_painel/);
     expect(banco.tarefas[0].agendadaEm ?? null).toBeNull();
@@ -824,5 +825,63 @@ describe("conector: aprovação fora do painel", () => {
     // já aprovada: agendada no salvar_tarefa passa a valer
     await chamar("salvar_tarefa", { id: a.id, agendada: false });
     await chamar("salvar_tarefa", { id: a.id, agendada: true });
+  });
+});
+
+describe("conector: peça agendada", () => {
+  it("expõe marcar_agendada e concluir_tarefa", async () => {
+    const nomes = (await cliente.listTools()).tools.map((t) => t.name);
+    expect(nomes).toContain("marcar_agendada");
+    expect(nomes).toContain("concluir_tarefa");
+  });
+
+  it("cliente sem link do painel agenda direto, várias de uma vez, e desfaz", async () => {
+    await chamar("salvar_cliente", { nome: "Loja", valorMensalReais: 1500 });
+    const a = await chamar("salvar_tarefa", { titulo: "Post A", cliente: "Loja", publicarEm: "2026-10-12 12:00" });
+    const b = await chamar("salvar_tarefa", { titulo: "Post B", cliente: "Loja" });
+    const r = await chamar("marcar_agendada", { ids: [a.id, b.id] });
+    expect(r.mudaram).toEqual([
+      { peca: "Post A", etapa: "agendada" },
+      { peca: "Post B", etapa: "agendada" },
+    ]);
+    const lista = await chamar("listar_tarefas", { etapa: "agendada" });
+    expect(lista.map((x: { titulo: string }) => x.titulo).sort()).toEqual(["Post A", "Post B"]);
+    expect(lista[0].etapaDaPeca).toBe("agendada");
+    // não é publicada: a tarefa segue aberta
+    expect(banco.tarefas.every((t) => t.status !== "concluida" && !t.publicadaEm)).toBe(true);
+    const d = await chamar("marcar_agendada", { ids: [a.id], agendada: false });
+    expect(d.mudaram[0].etapa).not.toBe("agendada");
+    expect(banco.tarefas.find((t) => t.id === a.id)?.agendadaEm ?? null).toBeNull();
+  });
+
+  it("cliente com link só agenda depois de aprovar; o erro diz o caminho e nada muda", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await chamar("link_painel_cliente", { cliente: "Olinda" });
+    const t = await chamar("salvar_tarefa", { titulo: "Post", cliente: "Olinda", publicarEm: "2026-10-12 12:00" });
+    await expect(chamar("marcar_agendada", { ids: [t.id] })).rejects.toThrow(/ainda não foi aprovada.*registrar_aprovacao_fora_do_painel/);
+    await expect(chamar("mudar_status_tarefa", { id: t.id, status: "agendada" })).rejects.toThrow(/ainda não foi aprovada/);
+    expect(banco.tarefas[0].agendadaEm ?? null).toBeNull();
+    await chamar("registrar_aprovacao_fora_do_painel", { ids: [t.id], agendar: false });
+    const r = await chamar("mudar_status_tarefa", { id: t.id, status: "agendada" });
+    expect(r.status).toBe("Agendada");
+    expect(banco.tarefas[0].agendadaEm).toBeTruthy();
+  });
+
+  it("a própria Aden agenda direto; tarefa sem cliente não é peça", async () => {
+    await chamar("salvar_cliente", { nome: "Aden", interno: true });
+    const t = await chamar("salvar_tarefa", { titulo: "Post institucional", cliente: "Aden", agendada: true });
+    expect(banco.tarefas.find((x) => x.id === t.id)?.agendadaEm).toBeTruthy();
+    const solta = await chamar("salvar_tarefa", { titulo: "Ligar para o contador" });
+    await expect(chamar("marcar_agendada", { ids: [solta.id] })).rejects.toThrow(/peça de cliente/);
+  });
+
+  it("sair de agendada desfaz o agendamento; concluir_tarefa conclui", async () => {
+    await chamar("salvar_cliente", { nome: "Loja", valorMensalReais: 1500 });
+    const t = await chamar("salvar_tarefa", { titulo: "Post", cliente: "Loja", publicarEm: "2026-10-12 12:00" });
+    await chamar("marcar_agendada", { ids: [t.id] });
+    await chamar("mudar_status_tarefa", { id: t.id, status: "em_producao" });
+    expect(banco.tarefas[0]).toMatchObject({ status: "em_producao", agendadaEm: null });
+    await chamar("concluir_tarefa", { id: t.id });
+    expect(banco.tarefas[0].status).toBe("concluida");
   });
 });

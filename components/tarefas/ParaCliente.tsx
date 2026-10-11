@@ -8,8 +8,7 @@ import { useRef, useState } from "react";
 import { Badge, Botao, cx } from "../ui";
 import { aprovarAte } from "@/lib/calculo/painel";
 import { linkWhatsapp, mensagemPecaNoPainel } from "@/lib/calculo/avisoCliente";
-import { ROTULO_PECA, situacaoPeca, type Tarefa } from "@/lib/calculo/tarefas";
-import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
+import { ehPeca, ROTULO_PECA, situacaoPeca, type Tarefa } from "@/lib/calculo/tarefas";
 import { AprovadoFora } from "./AprovadoFora";
 import type { AcoesTarefas } from "./useTarefas";
 
@@ -28,21 +27,22 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
   const [aberto, setAberto] = useState(false);
   const cliente = a.config.clientes.find((c) => c.id === t.clienteId);
   if (!cliente) return null;
-  const sit = situacaoPeca(t);
-  // sem painel (a própria Aden, painel desligado ou cliente ainda sem link): só legenda, artes e publicação
-  const interno = cliente.interno || !PAINEL_CLIENTE_ATIVO || !cliente.painelToken;
+  // sem painel (a própria Aden, painel desligado ou cliente ainda sem link): só legenda, artes e publicação,
+  // e "agendada" não espera aprovação
+  const interno = !a.passa(t);
+  const sit = situacaoPeca(t, !interno);
   const limite = cliente.contrato?.limiteRodadas ?? null;
   const rodadas = t.rodadas ?? 0;
   const prazo = sit === "aguardando" ? aprovarAte(t.enviadaClienteEm ?? null, cliente.contrato?.prazoAprovacaoDias ?? null) : null;
   const arquivos = t.arquivos ?? [];
   // M12: tarefa de um calendário do planejamento já é peça: o bloco abre sozinho
-  const ehPeca = aberto || !!(t.visivelCliente || arquivos.length > 0 || t.legenda || t.textoArte || t.publicarEm || t.publicadaEm || t.lote);
+  const ehPecaAberta = aberto || ehPeca(t);
   // com painel, a peça passa pela aprovação do cliente antes de agendar ou publicar
   const semAprovar = !interno && !t.clienteAprovouEm;
   const confirmarSemAprovar = (acao: string) =>
     !semAprovar || confirm(`${cliente.nome} ainda não aprovou esta peça pelo painel. ${acao} mesmo assim? (Use se a aprovação veio por outro caminho.)`);
 
-  if (!ehPeca)
+  if (!ehPecaAberta)
     return (
       <Botao className="mt-4" pequeno icone={Megaphone} onClick={() => setAberto(true)}>
         É uma peça de conteúdo: pôr legenda, arte e o dia de ir ao ar
@@ -150,26 +150,29 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
           </p>
         )}
 
-        {/* planejamento: rede e lote (internos, o cliente não vê) */}
-        <div className="mt-3 flex flex-wrap items-end gap-3">
-          {(
-            [
-              ["rede", "Rede (interno)", "ex.: instagram"],
-              ["lote", "Calendário do planejamento (interno)", "ex.: Calendário Outubro — Olinda"],
-            ] as const
-          ).map(([k, rotulo, dica]) => (
-            <label key={k} className="flex min-w-40 flex-1 flex-col gap-1 text-xs font-semibold text-texto-suave">
-              {rotulo}
-              <input
-                key={`${t.id}-${k}-${t[k] ?? ""}`}
-                className="h-9 rounded-campo border border-linha bg-superficie px-2 text-sm font-normal text-texto focus:border-marca focus:outline-none"
-                placeholder={dica}
-                defaultValue={t[k] ?? ""}
-                onBlur={(e) => e.target.value.trim() !== (t[k] ?? "") && void a.salvar({ ...t, [k]: e.target.value.trim() || null })}
-              />
-            </label>
-          ))}
-        </div>
+        {/* planejamento: rede e calendário (internos, o cliente não vê); recolhido, abre sozinho se já tem dado */}
+        <details className="mt-3" open={!!(t.rede || t.lote)}>
+          <summary className="flex min-h-9 cursor-pointer items-center text-xs font-semibold text-texto-suave hover:text-texto">Dados internos do planejamento (rede e calendário)</summary>
+          <div className="flex flex-wrap items-end gap-3">
+            {(
+              [
+                ["rede", "Rede (interno)", "ex.: instagram"],
+                ["lote", "Calendário do planejamento (interno)", "ex.: Calendário Outubro — Olinda"],
+              ] as const
+            ).map(([k, rotulo, dica]) => (
+              <label key={k} className="flex min-w-40 flex-1 flex-col gap-1 text-xs font-semibold text-texto-suave">
+                {rotulo}
+                <input
+                  key={`${t.id}-${k}-${t[k] ?? ""}`}
+                  className="h-9 rounded-campo border border-linha bg-superficie px-2 text-sm font-normal text-texto focus:border-marca focus:outline-none"
+                  placeholder={dica}
+                  defaultValue={t[k] ?? ""}
+                  onBlur={(e) => e.target.value.trim() !== (t[k] ?? "") && void a.salvar({ ...t, [k]: e.target.value.trim() || null })}
+                />
+              </label>
+            ))}
+          </div>
+        </details>
 
         {/* publicação: quando vai ao ar e quando foi */}
         <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -205,7 +208,7 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
                   pequeno
                   icone={CalendarClock}
                   variante={t.agendadaEm ? "primario" : undefined}
-                  onClick={() => void a.salvar({ ...t, agendadaEm: t.agendadaEm ? null : new Date().toISOString() })}
+                  onClick={() => void (t.agendadaEm ? a.salvar({ ...t, agendadaEm: null }) : a.etapa(t, "agendada"))}
                 >
                   {t.agendadaEm ? "Agendada (desfazer)" : "Marcar como agendada"}
                 </Botao>
@@ -223,7 +226,7 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
           </p>
         )}
         <p className="mt-1 text-[12px] text-texto-suave">
-          Com a data, a peça aparece como planejada antes de aprovar. Depois de aprovada, “agendada” é quando vocês já programaram o post. Publicada conclui a tarefa.
+          {interno ? "Agendada é quando o post já está programado. Publicada conclui a tarefa." : "Agendada é quando o post aprovado já está programado. Publicada conclui a tarefa."}
         </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">

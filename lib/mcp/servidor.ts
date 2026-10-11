@@ -26,9 +26,12 @@ import {
   ROTULO_PECA,
   erroAgendarSemAprovacao,
   estimativaHoras,
+  etapaDaTela,
+  irParaEtapa,
   medicaoDaTarefa,
   mudarStatus,
   novaTarefa,
+  passaPelaAprovacao,
   publicar,
   rotuloStatus,
   situacaoPeca,
@@ -102,8 +105,8 @@ Regras que você deve seguir:
 - Clientes: ver_cliente (ficha completa) e salvar_ficha_cliente (contato e condições do contrato).
 - Leads: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
 - O Aden é a central da agência (tarefas, calendário, comercial, financeiro, metas). "O que tenho pra hoje?" → ver_visao_do_dia.
-- Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist)
-  e mudar_status_tarefa. As horas vêm do TEMPO CADASTRADO de cada tipo de entrega. O cronômetro é OPCIONAL
+- Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist),
+  concluir_tarefa, marcar_agendada e mudar_status_tarefa. As horas vêm do TEMPO CADASTRADO de cada tipo de entrega. O cronômetro é OPCIONAL
   (botão "Medir o tempo" dentro da tarefa no site), nunca liga sozinho e o sistema não pede medições: serve só para
   quando ninguém sabe quanto uma entrega leva. Você não liga relógio; pode registrar um tempo que a pessoa disse com
   registrar_medicao. ver_calibragem mostra a média medida, que nunca entra sozinha nas contas.
@@ -113,7 +116,8 @@ Regras que você deve seguir:
 - Peças de conteúdo são tarefas: legenda e publicarEm (salvar_tarefa) dão a etapa planejado → produção → esperando
   aprovação → aprovada → agendada → publicada (marcar_publicada, que conclui a tarefa). Cliente aprovou fora do painel
   (ex.: no grupo do WhatsApp): registrar_aprovacao_fora_do_painel com a lista de peças leva direto para agendada, sem
-  avisar o cliente. "agendada" no salvar_tarefa só vale para peça já aprovada (senão dá erro).
+  avisar o cliente. Post já programado: marcar_agendada (ou mudar_status_tarefa com "agendada"). Cliente que aprova pelo
+  painel (link criado na ficha) só agenda depois de aprovar (senão dá erro); a própria Aden e cliente sem link agendam direto.
 - Pacotes: ver_pacotes mostra os preços CALCULADOS (nunca digitados). salvar_pacote só guarda o que é entregue.
 - Terceiros (salvar_terceiro): custo por saída + deslocamento, só do cliente que recebe; o cliente nunca vê o valor.
 - Metas (ver_metas, salvar_meta): trilha de crescimento em degraus. Só cadastre metas que os sócios definiram.
@@ -198,6 +202,10 @@ function acharData(datas: DataComemorativa[], ref: string): DataComemorativa {
   if (porNome.length > 1) throw new Error(`Há mais de uma "${ref}": use o id ou "Nome AAAA-MM-DD" (${porNome.map((d) => d.data).join(", ")}).`);
   throw new Error(`Data comemorativa não encontrada: ${ref}. Cadastre com salvar_data_comemorativa.`);
 }
+
+/** A aprovação desta tarefa passa pelo painel do cliente? (senão "agendada" não espera aprovação) */
+const passaDe = (config: Configuracao, t: Pick<Tarefa, "clienteId">) =>
+  passaPelaAprovacao(config.clientes.find((c) => c.id === t.clienteId), PAINEL_CLIENTE_ATIVO);
 
 const ROTULO_CONTEXTO: Record<TipoContexto, string> = { decisao: "decisão", preferencia: "preferência", pendencia: "pendência", nota: "nota" };
 
@@ -2137,7 +2145,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Visão do dia",
       description:
-        "O que uma pessoa tem para resolver: tarefas de hoje, atrasadas, próximos 7 dias, sem prazo (em produção ou pedidas por outro sócio, com pedidaPor), com o cliente e concluídas hoje; o que vai ao ar hoje e peças que o cliente não aprovou no prazo; mais aprovações pendentes que dependem dela. Sem 'socio' = de todo mundo. Use para responder 'o que eu tenho pra hoje?'.",
+        "O que tem para resolver hoje: tarefas de hoje e atrasadas, próximos 7 dias, sem prazo, com o cliente, o que vai ao ar hoje e as aprovações que dependem do sócio. Sem 'socio' = de todo mundo. Use para \"o que eu tenho pra hoje?\".",
       inputSchema: { socio: z.string().optional().describe("sócio (nome ou id); vazio = todo mundo") },
     },
     async ({ socio }) =>
@@ -2177,30 +2185,39 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "listar_tarefas",
     {
       title: "Listar tarefas",
-      description: "Tarefas com status, cliente, entrega, responsável, prazo, checklist e tempo já medido. Por padrão só as abertas.",
+      description: "Lista as tarefas (só as abertas, a menos que peça as concluídas) com cliente, responsável, prazo e, nas peças, a etapa.",
       inputSchema: {
-        cliente: z.string().optional().describe("filtrar por cliente (nome ou id)"),
-        lote: z.string().optional().describe("filtrar por lote do planejamento (ex.: Calendário Outubro — Olinda)"),
+        cliente: z.string().optional().describe("só deste cliente (nome ou id)"),
+        responsavel: z.string().optional().describe("só deste sócio (nome ou id)"),
+        etapa: z
+          .enum(["a_fazer", "em_producao", "revisao", "agendada", "concluida"])
+          .optional()
+          .describe("só desta etapa (agendada = peça já programada)"),
+        lote: z.string().optional().describe("só deste calendário do planejamento (ex.: Calendário Outubro — Olinda)"),
         incluirConcluidas: z.boolean().optional(),
       },
     },
-    async ({ cliente, lote, incluirConcluidas }) =>
+    async ({ cliente, responsavel, etapa, lote, incluirConcluidas }) =>
       executar(async () => {
         const repo = await obterRepo();
         const config = await repo.carregarConfig();
         const [tarefas, medicoes] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes()]);
         const cid = cliente ? resolver(config.clientes, cliente, "Cliente").id : null;
+        const rid = responsavel ? resolver(config.pessoas, responsavel, "Sócio").id : null;
         const nome = <T extends { id: string; nome: string }>(l: T[], id: string | null) => (id ? (l.find((x) => x.id === id)?.nome ?? null) : null);
         return tarefas
           .filter(
             (t) =>
-              (incluirConcluidas || t.status !== "concluida") &&
+              (incluirConcluidas || etapa === "concluida" || t.status !== "concluida") &&
               (!cid || t.clienteId === cid) &&
+              (!rid || t.responsavelId === rid) &&
+              (!etapa || etapaDaTela(t, passaDe(config, t)) === etapa) &&
               (!lote || (t.lote ?? "").toLowerCase() === lote.trim().toLowerCase()),
           )
           .map((t) => {
             const m = medicaoDaTarefa(t, medicoes);
             const est = estimativaHoras(t, config);
+            const passa = passaDe(config, t);
             return {
               id: t.id,
               titulo: t.titulo,
@@ -2226,8 +2243,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               estimativaMin: est == null ? null : Math.round(est * 60),
               tempoMedidoMin: m ? Math.round(segundosDaMedicao(m) / 60) : 0,
               relogio: m?.estado ?? "nunca ligado",
-              ...((t.visivelCliente || t.publicarEm || t.publicadaEm) && {
-                etapaDaPeca: ROTULO_PECA[situacaoPeca(t)],
+              ...((t.visivelCliente || t.publicarEm || t.publicadaEm || t.agendadaEm) && {
+                etapaDaPeca: ROTULO_PECA[situacaoPeca(t, passa)],
                 vaiAoArEm: t.publicarEm ?? null,
                 publicadaEm: t.publicadaEm ?? null,
               }),
@@ -2247,7 +2264,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Criar ou editar tarefa",
       description:
-        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. Pedido ao outro sócio (responsavel = o outro): tem prazo mínimo em dias úteis (configuração); sem vencimento, entra sozinho com o mínimo; vencimento menor que o mínimo só como urgência: pergunte antes se é urgente e, se for, mande prioridade \"urgente\". checklist substitui a lista inteira. Peça de conteúdo: textoArte, legenda, publicarEm (quando vai ao ar) e agendada (já programada). Com data, fica 'planejado' antes de aprovar; aprovada vira 'agendada' quando marcada como programada.",
+        "Cria uma tarefa (sem id) ou edita (com id). Só os campos enviados mudam. Datas em AAAA-MM-DD. Pedido ao outro sócio: prazo mínimo em dias úteis, menor só como urgência (pergunte antes). Peça de conteúdo: legenda, textoArte, publicarEm.",
       inputSchema: {
         id: z.string().optional(),
         titulo: z.string().optional(),
@@ -2263,13 +2280,13 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         inicio: z.string().nullable().optional(),
         vencimento: z.string().nullable().optional(),
         descricao: z.string().optional(),
-        checklist: z.array(z.object({ titulo: z.string(), feita: z.boolean().optional() })).optional(),
+        checklist: z.array(z.object({ titulo: z.string(), feita: z.boolean().optional() })).optional().describe("troca a lista inteira"),
         legenda: z.string().optional().describe("texto que vai junto com a peça (legenda do post)"),
         textoArte: z.string().optional().describe("o que vai escrito dentro da arte (o cliente lê antes da legenda)"),
         agendada: z
           .boolean()
           .optional()
-          .describe("true = o post já foi programado (aprovada → agendada); false desfaz. Só para peça já aprovada: aprovação fora do painel é registrar_aprovacao_fora_do_painel"),
+          .describe("true = o post já foi programado (o mesmo que marcar_agendada); false desfaz"),
         publicarEm: z.string().nullable().optional().describe("quando a peça vai ao ar: AAAA-MM-DD HH:MM (horário de Brasília); null tira"),
         rede: z.string().nullable().optional().describe("rede onde vai sair (ex.: instagram); interno, o cliente não vê"),
         lote: z.string().nullable().optional().describe("calendário que agrupa as peças (ex.: Calendário Outubro — Olinda); interno"),
@@ -2290,8 +2307,6 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           return v;
         };
         const base = antes ?? novaTarefa(novoId(), e.titulo!);
-        const semAprovar = erroAgendarSemAprovacao(base, e.agendada);
-        if (semAprovar) throw new Error(semAprovar);
         const t: Tarefa = {
           ...base,
           ...(e.titulo != null && { titulo: e.titulo }),
@@ -2312,6 +2327,10 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.lote !== undefined && { lote: e.lote?.trim() || null }),
           ...(e.mostrarAoCliente != null && { visivelCliente: e.mostrarAoCliente }),
         };
+        // "agendada": peça de cliente; se a aprovação passa pelo painel, só depois de aprovada (nada muda em silêncio)
+        if (e.agendada && !t.clienteId) throw new Error("Só peça de cliente pode ser agendada: informe o cliente da tarefa.");
+        const semAprovar = erroAgendarSemAprovacao(base, e.agendada, passaDe(config, t));
+        if (semAprovar) throw new Error(semAprovar);
         // pedido ao outro sócio: prazo mínimo em dias úteis (sem prazo entra sozinho; menor só como urgência)
         const eu = await repo.usuarioAtual();
         const prazo = conferirPrazoDoPedido({ config, antes, depois: t, eu: eu?.pessoaId, hoje: dataDeBrasilia(new Date().toISOString()) });
@@ -2335,7 +2354,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Importar o planejamento mensal",
       description:
-        "Cria as peças de um planejamento que a Moni já fechou com o cliente, todas de uma vez, na etapa 'planejado' (o cliente já vê em 'Vem por aí' no painel dele). Use o nome do tipo de entrega do Aden em 'tipo' (ex.: Post simples, Reels, Carrossel, Stories, Card de jogo). Preencha textoArte e publicarEm sempre que o plano trouxer; lote agrupa o calendário (ex.: Calendário Outubro — Olinda). Rede e lote são internos. Se uma peça tiver erro, nenhuma é gravada.",
+        "Cria de uma vez as peças de um planejamento já fechado com o cliente, na etapa planejado (o cliente vê em 'Vem por aí'). 'tipo' é o nome do tipo de entrega do Aden. Se uma peça tiver erro, nenhuma é gravada.",
       inputSchema: {
         cliente: z.string().describe("nome ou id"),
         lote: z.string().describe("nome curto do calendário, ex.: Calendário Outubro — Olinda"),
@@ -2397,7 +2416,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           cliente: c.nome,
           lote: lote.trim(),
           criadas: novas.length,
-          pecas: novas.map((t) => ({ id: t.id, titulo: t.titulo, vaiAoArEm: t.publicarEm, etapa: ROTULO_PECA[situacaoPeca(t)] })),
+          pecas: novas.map((t) => ({ id: t.id, titulo: t.titulo, vaiAoArEm: t.publicarEm, etapa: ROTULO_PECA[situacaoPeca(t, passaDe(config, t))] })),
           painelDoCliente: c.painelToken ? "aparecem em 'Vem por aí'" : "este cliente ainda não tem link do painel",
         };
       }),
@@ -2408,7 +2427,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Registrar que o cliente aprovou fora do painel",
       description:
-        'O cliente aprovou fora do painel (ex.: no grupo do WhatsApp): as peças vão direto para "agendada" (ou "aprovada", com agendar=false), sem passar por "esperando aprovação" e sem avisar o cliente. No painel dele aparece "Aprovado em [data] pelo grupo do WhatsApp". Aceita várias peças de uma vez. Cada peça volta com a etapa nova ou o motivo de não ter mudado (já publicada, já aprovada, sem data para ir ao ar…). Confirme com quem está conversando antes.',
+        'O cliente aprovou fora do painel (ex.: no grupo do WhatsApp): as peças vão direto para agendada (ou aprovada, com agendar=false), sem avisar o cliente. Aceita várias de uma vez; cada peça volta com a etapa nova ou o motivo de não ter mudado. Confirme antes com quem está conversando.',
       inputSchema: {
         ids: z.array(z.string()).min(1).describe("ids das peças (de listar_tarefas)"),
         onde: z.string().optional().describe(`onde o cliente aprovou; padrão "${ONDE_APROVACAO_PADRAO}"`),
@@ -2434,19 +2453,79 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "marcar_publicada",
     {
       title: "Marcar peça como publicada",
-      description: "A peça foi ao ar: fica 'publicada' e a tarefa é concluída (o relógio para). publicada=false desfaz.",
+      description: "A peça foi ao ar: fica publicada e a tarefa é concluída. publicada=false desfaz.",
       inputSchema: { id: z.string(), publicada: z.boolean().optional().describe("padrão true") },
     },
     async ({ id, publicada }) =>
       executar(async () => {
         const repo = await obterRepo();
-        const [tarefas, medicoes] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes()]);
+        const [tarefas, medicoes, config] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes(), repo.carregarConfig()]);
         const t = tarefas.find((x) => x.id === id);
         if (!t) throw new Error("Tarefa não encontrada.");
         const r = publicar(t, medicaoDaTarefa(t, medicoes), new Date(), publicada ?? true);
         await repo.salvarTarefa(r.tarefa);
         if (r.medicao) await repo.salvarMedicao(r.medicao);
-        return { tarefa: t.titulo, etapa: ROTULO_PECA[situacaoPeca(r.tarefa)] };
+        return { tarefa: t.titulo, etapa: ROTULO_PECA[situacaoPeca(r.tarefa, passaDe(config, r.tarefa))] };
+      }),
+  );
+
+  server.registerTool(
+    "marcar_agendada",
+    {
+      title: "Marcar peça como agendada",
+      description:
+        "O post já está programado (ainda não foi ao ar). Aceita várias peças de uma vez. agendada=false desfaz. Cliente que aprova pelo painel só agenda depois de aprovar; se aprovou fora do painel, use registrar_aprovacao_fora_do_painel.",
+      inputSchema: {
+        ids: z.array(z.string()).min(1).describe("ids das peças (de listar_tarefas)"),
+        agendada: z.boolean().optional().describe("padrão true; false desfaz o agendamento"),
+      },
+    },
+    async ({ ids, agendada }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [tarefas, medicoes, config] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes(), repo.carregarConfig()]);
+        const mudaram: { peca: string; etapa: string }[] = [];
+        const naoMudaram: { peca: string; motivo: string }[] = [];
+        for (const id of ids) {
+          const t = tarefas.find((x) => x.id === id);
+          if (!t) {
+            naoMudaram.push({ peca: id, motivo: "Tarefa não encontrada." });
+            continue;
+          }
+          try {
+            const r =
+              agendada === false
+                ? { tarefa: { ...t, agendadaEm: null }, medicao: null }
+                : irParaEtapa(t, "agendada", medicaoDaTarefa(t, medicoes), new Date(), passaDe(config, t));
+            await repo.salvarTarefa(r.tarefa);
+            if (r.medicao) await repo.salvarMedicao(r.medicao);
+            mudaram.push({ peca: t.titulo, etapa: ROTULO_PECA[situacaoPeca(r.tarefa, passaDe(config, r.tarefa))] });
+          } catch (e) {
+            naoMudaram.push({ peca: t.titulo, motivo: e instanceof Error ? e.message : String(e) });
+          }
+        }
+        if (mudaram.length === 0) throw new Error(`Nenhuma peça mudou. ${naoMudaram.map((x) => `${x.peca}: ${x.motivo}`).join(" ")}`);
+        return { mudaram, ...(naoMudaram.length > 0 && { naoMudaram }) };
+      }),
+  );
+
+  server.registerTool(
+    "concluir_tarefa",
+    {
+      title: "Concluir tarefa",
+      description: "Marca a tarefa como concluída (reabrir = mudar_status_tarefa com em_producao). Se alguém estava medindo o tempo, o relógio para.",
+      inputSchema: { id: z.string() },
+    },
+    async ({ id }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [tarefas, medicoes] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes()]);
+        const t = tarefas.find((x) => x.id === id);
+        if (!t) throw new Error("Tarefa não encontrada.");
+        const r = mudarStatus(t, "concluida", medicaoDaTarefa(t, medicoes), new Date());
+        await repo.salvarTarefa(r.tarefa);
+        if (r.medicao) await repo.salvarMedicao(r.medicao);
+        return { tarefa: t.titulo, status: rotuloStatus("concluida") };
       }),
   );
 
@@ -2454,19 +2533,20 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "mudar_status_tarefa",
     {
       title: "Mudar o status de uma tarefa",
-      description: "a_fazer, em_producao, revisao (com o cliente, esperando a aprovação dele) ou concluida. Concluir encerra o tempo medido, se alguém estava medindo (cronômetro opcional).",
-      inputSchema: { id: z.string(), status: z.enum(["a_fazer", "em_producao", "revisao", "concluida"]) },
+      description:
+        "a_fazer, em_producao, revisao (com o cliente, esperando a aprovação dele), agendada (peça já programada) ou concluida. Sair de agendada desfaz o agendamento.",
+      inputSchema: { id: z.string(), status: z.enum(["a_fazer", "em_producao", "revisao", "agendada", "concluida"]) },
     },
     async ({ id, status }) =>
       executar(async () => {
         const repo = await obterRepo();
-        const [tarefas, medicoes] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes()]);
+        const [tarefas, medicoes, config] = await Promise.all([repo.listarTarefas(), repo.listarMedicoes(), repo.carregarConfig()]);
         const t = tarefas.find((x) => x.id === id);
         if (!t) throw new Error("Tarefa não encontrada.");
-        const r = mudarStatus(t, status, medicaoDaTarefa(t, medicoes), new Date());
+        const r = irParaEtapa(t, status, medicaoDaTarefa(t, medicoes), new Date(), passaDe(config, t));
         await repo.salvarTarefa(r.tarefa);
         if (r.medicao) await repo.salvarMedicao(r.medicao);
-        return { tarefa: t.titulo, status: rotuloStatus(status) };
+        return { tarefa: t.titulo, status: status === "agendada" ? "Agendada" : rotuloStatus(status) };
       }),
   );
 

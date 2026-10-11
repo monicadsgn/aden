@@ -21,6 +21,25 @@ describe("painel do cliente", () => {
     expect(texto).not.toMatch(/150000|horas|responsavel|valor/i);
   });
 
+  it("cada peça leva só os campos combinados: marcar agendada, rede, calendário, quem pediu e quem registrou ficam por dentro", () => {
+    const t = novaTarefa("1", "Post", {
+      clienteId: "c",
+      visivelCliente: true,
+      descricao: "nota interna",
+      rede: "instagram",
+      lote: "Calendário Outubro",
+      pedidaPorNome: "Áleff",
+      aprovadaForaOnde: "grupo do WhatsApp",
+      aprovadaForaPor: "Mônica (pelo Claude)",
+      agendadaEm: "2026-09-25T12:00:00Z",
+    });
+    const [peca] = montarPainel(cli, [t], agora).pecas;
+    expect(Object.keys(peca).sort()).toEqual(
+      ["agendadaEm", "aprovadaEm", "aprovadaOnde", "arquivos", "enviadaEm", "feedback", "feedbackEm", "id", "legenda", "publicadaEm", "publicarEm", "respostas", "rodadas", "status", "tipo", "textoArte", "titulo", "vencimento"].sort(),
+    );
+    expect(JSON.stringify(peca)).not.toMatch(/nota interna|instagram|Calendário|Áleff|pelo Claude/);
+  });
+
   it("aprovar e pedir ajuste", () => {
     const t = novaTarefa("1", "Post", { clienteId: "c", visivelCliente: true, status: "revisao", enviadaClienteEm: "2026-09-25T12:00:00Z" });
     expect(situacaoPeca(t)).toBe("aguardando");

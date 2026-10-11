@@ -5,10 +5,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Medicao } from "@/lib/calculo/calibragem";
 import { configVazia, novoId } from "@/lib/calculo/novo";
-import { darStart, medicaoDaTarefa, mudarStatus, pausar, publicar, type StatusTarefa, type Tarefa } from "@/lib/calculo/tarefas";
+import { darStart, irParaEtapa, medicaoDaTarefa, mudarStatus, passaPelaAprovacao, pausar, publicar, type EtapaDaTela, type StatusTarefa, type Tarefa } from "@/lib/calculo/tarefas";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { useDados } from "@/lib/dados/contexto";
 import { hojeISO } from "@/lib/calculo/dia";
+import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
 import { conferirPrazoDoPedido } from "@/lib/regras/prazoPedido";
 
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -124,6 +125,16 @@ export function useTarefas() {
       await gravarPar(r.tarefa, r.medicao, true);
     });
 
+  /** A aprovação desta peça passa pelo painel do cliente? (senão agenda direto, sem esperar aprovação) */
+  const passa = (t: Tarefa) => passaPelaAprovacao(config.clientes.find((c) => c.id === t.clienteId), PAINEL_CLIENTE_ATIVO);
+
+  /** Leva a tarefa para uma etapa da tela: os status e "Agendada" (peça já programada). */
+  const etapa = (t: Tarefa, destino: EtapaDaTela) =>
+    tentar(async () => {
+      const r = irParaEtapa(t, destino, medicaoDaTarefa(t, medicoes), new Date(), passa(t));
+      await gravarPar(r.tarefa, r.medicao, true);
+    });
+
   const marcarPublicada = (t: Tarefa, publicada: boolean) =>
     tentar(async () => {
       const r = publicar(t, medicaoDaTarefa(t, medicoes), new Date(), publicada);
@@ -189,7 +200,7 @@ export function useTarefas() {
       await repo.salvarTarefa(nova);
     });
 
-  return { config, tarefas, medicoes, carregado, erro, setErro, salvar, start, pausarTarefa, status, marcarPublicada, remover, zerarTempo, enviarParaCliente, aprovadoFora, anexarArquivos, recarregar, usuario };
+  return { config, tarefas, medicoes, carregado, erro, setErro, salvar, start, pausarTarefa, status, etapa, passa, marcarPublicada, remover, zerarTempo, enviarParaCliente, aprovadoFora, anexarArquivos, recarregar, usuario };
 }
 
 export type AcoesTarefas = ReturnType<typeof useTarefas>;

@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Columns3, List, ListChecks, Plus } from "lucide-react";
+import { CalendarDays, Columns3, List, ListChecks, Plus, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Grade from "@/components/calendario/Grade";
 import { CabecalhoPagina, Embutida } from "@/components/Shell";
@@ -10,18 +10,20 @@ import { useTarefas, type AcoesTarefas } from "@/components/tarefas/useTarefas";
 import { Botao, Card, Segmentado, Selecao, Vazio, cx } from "@/components/ui";
 import { podeCriarTarefa } from "@/lib/acesso";
 import { novoId } from "@/lib/calculo/novo";
-import { agruparPorPrazo, novaTarefa, ROTULO_GRUPO, STATUS, type StatusTarefa, type Tarefa } from "@/lib/calculo/tarefas";
+import { agruparPorPrazo, ehPeca, etapaDaTela, etapasDaTela, novaTarefa, ROTULO_GRUPO, type EtapaDaTela, type Tarefa } from "@/lib/calculo/tarefas";
 
 type Visao = "lista" | "quadro" | "calendario";
 type Situacao = "abertas" | "concluidas" | "todas";
 const CHAVE_VISAO = "aden:tarefas:visao";
 
 function Quadro({ tarefas, a, abrir }: { tarefas: Tarefa[]; a: AcoesTarefas; abrir: (id: string) => void }) {
-  const [sobre, setSobre] = useState<StatusTarefa | null>(null);
+  const [sobre, setSobre] = useState<EtapaDaTela | null>(null);
+  // a coluna "Agendada" só aparece quando há peça de conteúdo no quadro
+  const colunas = etapasDaTela(tarefas.some((t) => ehPeca(t)));
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      {STATUS.map((s) => {
-        const col = tarefas.filter((t) => t.status === s.valor);
+    <div className={cx("grid gap-3 md:grid-cols-2", colunas.length > 4 ? "xl:grid-cols-5" : "xl:grid-cols-4")}>
+      {colunas.map((s) => {
+        const col = tarefas.filter((t) => etapaDaTela(t, a.passa(t)) === s.valor);
         return (
           <div
             key={s.valor}
@@ -34,7 +36,7 @@ function Quadro({ tarefas, a, abrir }: { tarefas: Tarefa[]; a: AcoesTarefas; abr
               e.preventDefault();
               setSobre(null);
               const t = tarefas.find((x) => x.id === e.dataTransfer.getData("text/plain"));
-              if (t && t.status !== s.valor) void a.status(t, s.valor);
+              if (t && etapaDaTela(t, a.passa(t)) !== s.valor) void a.etapa(t, s.valor);
             }}
             className={cx("flex min-h-40 flex-col gap-2 rounded-bloco bg-superficie-2/60 p-2 transition-colors", sobre === s.valor && "bg-marca-suave")}
           >
@@ -82,6 +84,8 @@ export default function Tarefas() {
   // M6 da auditoria (01/10/2026): filtros da referência (abertas, concluídas, todas; cliente; área = serviço)
   const [situacao, setSituacao] = useState<Situacao>("abertas");
   const [area, setArea] = useState<string | null>(null);
+  // os filtros extras ficam recolhidos; abrem sozinhos quando algum está ligado
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   useEffect(() => {
     try {
@@ -134,6 +138,8 @@ export default function Tarefas() {
     if (abrirDepois) abrir(t.id);
   };
 
+  const filtrosLigados = [cliente, resp, lote, area].filter(Boolean).length;
+  const mostrarFiltros = filtrosAbertos || filtrosLigados > 0;
   const tarefaAberta = a.tarefas.find((t) => t.id === aberta) ?? null;
   const podeCriar = podeCriarTarefa(a.usuario?.papel ?? "admin");
 
@@ -145,7 +151,7 @@ export default function Tarefas() {
         icone={ListChecks}
         selo="Dia a dia"
         titulo="Tarefas"
-        descricao="O que está em produção, por prazo. As horas saem do tempo cadastrado de cada entrega; medir o tempo é opcional, dentro da tarefa."
+        descricao="O que está em produção, por prazo. Abra uma tarefa para ver os detalhes."
         acoes={
           podeCriar ? (
             <Botao variante="primario" icone={Plus} onClick={() => void criar("Nova tarefa", true)}>
@@ -156,6 +162,19 @@ export default function Tarefas() {
       />
       <div className="mx-auto flex max-w-[1300px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
         {a.erro && !tarefaAberta && <p className="rounded-card bg-erro-suave px-4 py-3 text-sm text-erro">{a.erro}</p>}
+
+        {podeCriar && <input
+          className="h-11 w-full rounded-botao border border-linha bg-superficie px-4 text-sm placeholder:text-texto-suave focus:border-marca focus:ring-2 focus:ring-marca/20 focus:outline-none"
+          placeholder="Nova tarefa rápida: escreva e aperte Enter"
+          value={rapida}
+          onChange={(e) => setRapida(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && rapida.trim()) {
+              void criar(rapida.trim(), false);
+              setRapida("");
+            }
+          }}
+        />}
 
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-full sm:w-80">
@@ -184,54 +203,56 @@ export default function Tarefas() {
               />
             </div>
           )}
-          <Selecao
-            className="w-full sm:w-52"
-            ariaLabel="Filtrar por cliente"
-            valor={cliente}
-            vazio="Todos os clientes"
-            opcoes={a.config.clientes.filter((c) => c.ativo).map((c) => ({ valor: c.id, rotulo: c.nome }))}
-            aoMudar={setCliente}
-          />
-          <Selecao
-            className="w-full sm:w-44"
-            ariaLabel="Filtrar por responsável"
-            valor={resp}
-            vazio="Todo mundo"
-            opcoes={a.config.pessoas.filter((p) => p.ativo).map((p) => ({ valor: p.id, rotulo: p.nome }))}
-            aoMudar={setResp}
-          />
-          <Selecao
-            className="w-full sm:w-48"
-            ariaLabel="Filtrar por área"
-            valor={area}
-            vazio="Todas as áreas"
-            opcoes={a.config.servicos.filter((s) => s.ativo).map((s) => ({ valor: s.id, rotulo: s.nome }))}
-            aoMudar={setArea}
-          />
-          {lotes.length > 0 && (
-            <Selecao
-              className="w-full sm:w-60"
-              ariaLabel="Filtrar por calendário do planejamento"
-              valor={lote}
-              vazio="Todos os calendários"
-              opcoes={lotes.map((l) => ({ valor: l, rotulo: l }))}
-              aoMudar={setLote}
-            />
+          {visao !== "calendario" && (
+            <Botao
+              icone={SlidersHorizontal}
+              variante={filtrosLigados > 0 ? "primario" : undefined}
+              onClick={() => setFiltrosAbertos(!mostrarFiltros)}
+              aria-expanded={mostrarFiltros}
+            >
+              {filtrosLigados > 0 ? `Filtros (${filtrosLigados})` : "Filtros"}
+            </Botao>
           )}
         </div>
 
-        {podeCriar && <input
-          className="h-11 w-full rounded-botao border border-linha bg-superficie px-4 text-sm placeholder:text-texto-suave focus:border-marca focus:ring-2 focus:ring-marca/20 focus:outline-none"
-          placeholder="Nova tarefa rápida: escreva e aperte Enter"
-          value={rapida}
-          onChange={(e) => setRapida(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && rapida.trim()) {
-              void criar(rapida.trim(), false);
-              setRapida("");
-            }
-          }}
-        />}
+        {visao !== "calendario" && mostrarFiltros && (
+          <div className="flex flex-wrap items-end gap-3">
+            <Selecao
+              className="w-full sm:w-52"
+              ariaLabel="Filtrar por cliente"
+              valor={cliente}
+              vazio="Todos os clientes"
+              opcoes={a.config.clientes.filter((c) => c.ativo).map((c) => ({ valor: c.id, rotulo: c.nome }))}
+              aoMudar={setCliente}
+            />
+            <Selecao
+              className="w-full sm:w-44"
+              ariaLabel="Filtrar por responsável"
+              valor={resp}
+              vazio="Todo mundo"
+              opcoes={a.config.pessoas.filter((p) => p.ativo).map((p) => ({ valor: p.id, rotulo: p.nome }))}
+              aoMudar={setResp}
+            />
+            <Selecao
+              className="w-full sm:w-48"
+              ariaLabel="Filtrar por área"
+              valor={area}
+              vazio="Todas as áreas"
+              opcoes={a.config.servicos.filter((s) => s.ativo).map((s) => ({ valor: s.id, rotulo: s.nome }))}
+              aoMudar={setArea}
+            />
+            {lotes.length > 0 && (
+              <Selecao
+                className="w-full sm:w-60"
+                ariaLabel="Filtrar por calendário do planejamento"
+                valor={lote}
+                vazio="Todos os calendários"
+                opcoes={lotes.map((l) => ({ valor: l, rotulo: l }))}
+                aoMudar={setLote}
+              />
+            )}
+          </div>
+        )}
 
         {visao === "calendario" ? (
           // a mesma grade da tela Calendário, dentro de Tarefas (o filtro de pessoa fica na própria grade)

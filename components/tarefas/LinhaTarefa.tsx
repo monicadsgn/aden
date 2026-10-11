@@ -6,7 +6,7 @@ import { CalendarDays, CheckSquare, ChevronDown, Flag, Layers, ListChecks } from
 import { useState } from "react";
 import { Avatar } from "../Avatar";
 import { cx } from "../ui";
-import { STATUS, type Tarefa } from "@/lib/calculo/tarefas";
+import { etapaDaTela, rotuloEtapaDaTela, type Tarefa } from "@/lib/calculo/tarefas";
 import { agruparPorCalendario, prontasDoCalendario } from "@/lib/calculo/lotes";
 import { coresDosClientes } from "@/lib/calculo/cores";
 import { AprovadoFora } from "./AprovadoFora";
@@ -77,6 +77,7 @@ export function MetaTarefa({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
 
 export function LinhaTarefa({ t, a, abrir }: { t: Tarefa; a: AcoesTarefas; abrir: () => void }) {
   const feita = t.status === "concluida";
+  const etapa = etapaDaTela(t, a.passa(t));
   return (
     <div
       role="button"
@@ -106,10 +107,10 @@ export function LinhaTarefa({ t, a, abrir }: { t: Tarefa; a: AcoesTarefas; abrir
       </button>
       <span className={cx("min-w-0 flex-1 basis-40 truncate text-[13px] font-medium", feita && "text-texto-suave line-through")}>{t.titulo}</span>
       {/* aprovada pelo cliente: o selo diz isso, em vez de "com o cliente" (M12) */}
-      {t.status === "revisao" && t.clienteAprovouEm ? (
+      {t.status === "revisao" && t.clienteAprovouEm && etapa !== "agendada" ? (
         <span className="rounded-botao bg-ok-suave px-2 py-0.5 text-[10px] font-bold text-ok uppercase">aprovada</span>
       ) : (
-        <span className={cx("rounded-botao px-2 py-0.5 text-[10px] font-bold uppercase", COR_STATUS[t.status])}>{STATUS.find((s) => s.valor === t.status)?.rotulo}</span>
+        <span className={cx("rounded-botao px-2 py-0.5 text-[10px] font-bold uppercase", COR_STATUS[etapa])}>{rotuloEtapaDaTela(etapa)}</span>
       )}
       <MetaTarefa t={t} a={a} />
       <BotaoRelogio t={t} a={a} pequeno />
