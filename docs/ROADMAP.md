@@ -54,6 +54,16 @@ O cronômetro (opcional) pode ser usado nos primeiros projetos para ajustar as h
   **Guardado (Moni, 01/10/2026):** fica para depois. Os números serão puxados à mão (sem Supermetrics); o Áleff sugere
   os de tráfego (tarefa dele "Números do relatório do mês do cliente"). Nada se constrói antes disso.
 
+## E-mail de aviso ao cliente: em espera (11/10/2026)
+
+- **Pronto, desligado:** branch `claude/aviso-email-cliente` (rascunho, não entrou no principal). Modelo do e-mail aprovado pela Moni, rotina diária às 8h (`/api/avisos`), migration 0043 (testada numa cópia, não aplicada), envio pelo Gmail da Aden.
+- **Regra:** um e-mail por cliente por dia, de manhã, só se houve peça enviada para aprovar ou ajuste devolvido. Sem novidade, não sai nada.
+- **Travado:** o Google não deixou criar a senha de app do Gmail da Aden (conta nova, pede confirmação de identidade). Tentar de novo depois de dois ou três dias de uso normal da conta, no celular e na rede de casa.
+- **Para ligar:** (1) senha de app; (2) `AVISO_GMAIL_USUARIO`, `AVISO_GMAIL_SENHA_APP` e `CRON_SECRET` na Vercel; (3) aplicar a 0043; (4) teste com o e-mail da Moni antes de qualquer cliente; (5) e-mails dos clientes na ficha; (6) "Como o cliente vê" do "Post simples" = "Estático".
+- **Plano B:** domínio barato (em torno de R$ 40 por ano) se o Gmail seguir barrando.
+- **Enquanto isso:** o aviso segue pelo botão "Avisar no WhatsApp" da peça aguardando aprovação.
+- **Ainda sem:** botão na ficha para pausar o aviso de um cliente.
+
 ## Pendências da Moni (fora do código)
 
 - Supabase → Authentication: deixar ligado o cadastro de novos usuários (senão o "Primeiro acesso" dá erro), conferir a
