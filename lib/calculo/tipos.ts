@@ -198,6 +198,8 @@ export interface AtalhosPainel {
   /** texto do botão, ex.: "Planejamento de outubro" */
   planejamentoRotulo: string | null;
   fotosUrl: string | null;
+  /** pasta JOGOS do mês no Drive (cards de jogo, feed e story); muda todo mês */
+  cardsJogoUrl: string | null;
   identidadeUrl: string | null;
   /** "O que está incluso" (o que o serviço cobre e o que é extra), texto simples */
   inclusoTexto: string | null;

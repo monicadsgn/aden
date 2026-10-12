@@ -1167,12 +1167,13 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Atalhos do painel do cliente",
       description:
-        "O que o cliente abre no painel dele: PDF do planejamento do mês (com o texto do botão, ex.: 'Planejamento de outubro'), pasta de fotos no Drive, pasta da identidade visual e o texto 'O que está incluso' (o que o serviço cobre e o que é extra; quebras de linha são mantidas). Só os campos enviados mudam; texto vazio limpa. Links precisam começar com https://. Todo mês, troque o planejamento.",
+        "O que o cliente abre no painel dele: PDF do planejamento do mês (com o texto do botão, ex.: 'Planejamento de outubro'), pasta de fotos no Drive, pasta dos cards de jogo do mês (botão 'Cards de jogo', troca todo mês; não substitui as fotos), pasta da identidade visual e o texto 'O que está incluso' (o que o serviço cobre e o que é extra; quebras de linha são mantidas). Só os campos enviados mudam; texto vazio limpa. Links precisam começar com https://. Todo mês, troque o planejamento e, se o cliente tiver cards de jogo, a pasta JOGOS do mês.",
       inputSchema: {
         cliente: z.string().describe("nome ou id"),
         planejamentoUrl: z.string().optional(),
         planejamentoRotulo: z.string().optional(),
         fotosUrl: z.string().optional(),
+        cardsJogoUrl: z.string().optional().describe("pasta JOGOS do mês no Drive (cards de jogo, feed e story). Botão 'Cards de jogo' no painel; troque todo mês. Não substitui as fotos."),
         identidadeUrl: z.string().optional(),
         inclusoTexto: z.string().optional(),
       },
@@ -1182,11 +1183,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const repo = await obterRepo();
         const antes = await repo.carregarConfig();
         const c = resolver(antes.clientes, cliente, "Cliente");
-        for (const k of ["planejamentoUrl", "fotosUrl", "identidadeUrl"] as const) {
+        for (const k of ["planejamentoUrl", "fotosUrl", "cardsJogoUrl", "identidadeUrl"] as const) {
           const v = campos[k]?.trim();
           if (v && !/^https:\/\/\S+$/.test(v)) throw new Error(`${k} precisa ser um link completo começando com https://`);
         }
-        const atual: AtalhosPainel = c.atalhos ?? { planejamentoUrl: null, planejamentoRotulo: null, fotosUrl: null, identidadeUrl: null, inclusoTexto: null };
+        const atual: AtalhosPainel = c.atalhos ?? { planejamentoUrl: null, planejamentoRotulo: null, fotosUrl: null, cardsJogoUrl: null, identidadeUrl: null, inclusoTexto: null };
         const novo: AtalhosPainel = { ...atual };
         for (const [k, v] of Object.entries(campos) as [keyof AtalhosPainel, string | undefined][]) if (v !== undefined) novo[k] = v.trim() || null;
         const depois = structuredClone(antes);

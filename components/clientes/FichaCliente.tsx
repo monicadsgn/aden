@@ -44,7 +44,7 @@ export const SITUACAO_PAGAMENTO: Record<SituacaoPagamento, { rotulo: string; tom
 const campo =
   "sem-contorno h-9 w-full rounded-campo border border-linha bg-superficie px-3 text-sm placeholder:text-texto-suave/70 focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20";
 
-const ATALHOS_VAZIOS: AtalhosPainel = { planejamentoUrl: null, planejamentoRotulo: null, fotosUrl: null, identidadeUrl: null, inclusoTexto: null };
+const ATALHOS_VAZIOS: AtalhosPainel = { planejamentoUrl: null, planejamentoRotulo: null, fotosUrl: null, cardsJogoUrl: null, identidadeUrl: null, inclusoTexto: null };
 
 function Rot({ rotulo, children, dica }: { rotulo: string; children: ReactNode; dica?: ReactNode }) {
   return (
@@ -264,13 +264,14 @@ export function FichaCliente({
                 <p className="text-[11px] font-bold tracking-wide text-marca-forte uppercase sm:col-span-2">Muda todo mês</p>
                 <p className="text-[12px] text-texto-suave sm:col-span-2">
                   <strong className="text-texto">Atalhos do painel.</strong> O que o cliente abre direto no painel, sem pedir por fora. Links completos, começando com https://. Vazio = não
-                  aparece. Todo mês, troque o planejamento.
+                  aparece. Todo mês, troque o planejamento e a pasta dos cards de jogo.
                 </p>
                 {(
                   [
                     ["planejamentoUrl", "PDF do planejamento do mês", "https://…"],
                     ["planejamentoRotulo", "Texto do botão do planejamento", "ex.: Planejamento de outubro"],
                     ["fotosUrl", "Pasta de fotos (Drive)", "https://…"],
+                    ["cardsJogoUrl", "Pasta dos cards de jogo do mês (Drive)", "https://…"],
                     ["identidadeUrl", "Pasta da identidade visual", "https://…"],
                   ] as const
                 ).map(([k, rotulo, dica]) => (
