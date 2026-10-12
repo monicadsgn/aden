@@ -64,7 +64,17 @@ Não existe bot de WhatsApp: pedido entre os sócios vira tarefa no Aden.
 - Peça pronta para o cliente olhar: `enviar_para_cliente_aprovar` (vai para o painel dele; o cliente aprova ou pede ajuste lá).
 - O post já está programado: `marcar_agendada` (várias peças de uma vez). Se o cliente aprova pelo painel e ainda não aprovou, o Aden explica; se ele aprovou fora do painel, use `registrar_aprovacao_fora_do_painel`. Foi ao ar: `marcar_publicada`.
 
-## 5. O que nunca entra no contexto da Aden
+## 5. Skills da Aden: os dois sócios com as mesmas
+
+As skills da Aden precisam ser iguais na conta da Moni e na do Áleff. Uma skill salva por um sócio vale só na conta dele, então o outro precisa instalar.
+
+- **Skill nova ou atualizada:** crie uma pasta com a data de hoje (AAAA-MM-DD, "Pacote N") dentro de **03 SKILLS E CONECTOR**, na pasta ADEN do Drive, com os arquivos `.skill`. Acrescente no topo do documento "LEIA-ME e histórico das atualizações" uma linha por skill: nova, atualizada ou conferir, e o que mudou.
+- **Avise o outro sócio:** `salvar_tarefa` para ele, cliente **Aden**, com o nome das skills, o que mudou, o link da pasta nova e o passo de instalar (claude.ai, Configurações, Skills, enviar o arquivo; se já existir com o mesmo nome, substituir). Peça que ele abra um chat novo e confira se a skill aparece.
+- **Só atualizou uma skill que ele já tem:** a tarefa curta basta, com o nome e o que mudou.
+- Quem estiver instalando usa sempre a pasta com a data mais nova. As antigas são só histórico.
+- Se não tiver acesso ao Drive, diga quem precisa subir os arquivos e deixe a tarefa pronta.
+
+## 6. O que nunca entra no contexto da Aden
 
 - Nada pessoal de um sócio: saúde, família, finanças pessoais, compromissos que não são da Aden.
 - Nada de outros negócios de um sócio (trabalhos, clientes ou sistemas que não são da Aden). Se aparecer na
