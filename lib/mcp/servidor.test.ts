@@ -69,7 +69,10 @@ class BancoFalso {
   async decidirPedido(): Promise<never> {
     throw new Error("O conector não aprova.");
   }
-  async cancelarPedido() {}
+  cancelados: string[] = [];
+  async cancelarPedido(id: string) {
+    this.cancelados.push(id);
+  }
   async proporExcecao(p: { clienteId: string | null; afetados: string[]; assinatura: string; descricao: string; dados: DadosExcecao }) {
     const id = novoId();
     this.pedidos.push({
@@ -84,7 +87,13 @@ class BancoFalso {
   async criarAvisos(a: NovoAviso[]) {
     this.avisos.push(...a.map((x) => ({ ...x, id: novoId(), criadoEm: "", lidoEm: null })));
   }
-  async marcarAvisoLido() {}
+  lidos: string[] = [];
+  async marcarAvisoLido(id: string) {
+    this.lidos.push(id);
+  }
+  async eventosAgenda() {
+    return { eventos: [{ id: "e", titulo: "Reunião", inicio: "2026-10-13T10:00", fim: null, diaInteiro: false, local: null, agenda: "Moni" }], erros: [] as string[] };
+  }
   leads: import("../calculo/crm").Lead[] = [];
   interacoes: import("../calculo/crm").InteracaoLead[] = [];
   async listarLeads() {
@@ -913,5 +922,17 @@ describe("conector: peça agendada", () => {
     await expect(chamar("definir_percentuais_empresa", { impostoPct: 150 })).rejects.toThrow();
     await expect(chamar("definir_percentuais_empresa", { taxaRecebimentoPct: -20 })).rejects.toThrow();
     await expect(chamar("salvar_custo_fixo", { nome: "Ferramenta", valorMensalReais: -10 })).rejects.toThrow();
+  });
+  it("ferramentas novas: agenda, histórico do lead, aviso lido, cancelar pedido e apagar tarefa", async () => {
+    expect((await chamar("ver_agenda", { de: "2026-10-13", ate: "2026-10-13" })).eventos[0].titulo).toBe("Reunião");
+    const lead = await chamar("salvar_lead", { nome: "Loja Aurora" });
+    await chamar("registrar_conversa_lead", { id: "Loja Aurora", texto: "Mandei a proposta" });
+    expect((await chamar("ver_historico_lead", { lead: "Loja Aurora" })).conversas).toHaveLength(1);
+    expect(lead).toBeTruthy();
+    await expect(chamar("cancelar_pedido", { id: "nao-existe" })).rejects.toThrow(/não encontrado/);
+    await expect(chamar("remover_tarefa", { id: "nao-existe" })).rejects.toThrow(/não encontrada/);
+    const t = await chamar("salvar_tarefa", { titulo: "Teste" });
+    await chamar("remover_tarefa", { id: t.id });
+    expect(banco.tarefas).toHaveLength(0);
   });
 });

@@ -127,7 +127,7 @@ O Aden é a **central da agência**: tudo num sistema só, em vez de vários pro
 financeiro, metas e clientes no mesmo lugar, cada pessoa com o próprio acesso. Ele **abre na Visão do dia** de quem
 entrou: o que tem para resolver hoje, o que atrasou, o que depende de mim (aprovações, avisos) e um resumo de metas,
 comercial e financeiro. Sócios podem ver as pendências um do outro quando quiserem (seletor "De quem"), nunca imposto
-na tela. A calculadora é uma ferramenta do comercial, não a porta de entrada. Referência de organização: o SoftMoni
+na tela. A calculadora é uma ferramenta do comercial, não a porta de entrada. Referência de organização: o sistema anterior da Moni
 (visão do dia com cartões clicáveis, calendário, janelas de tarefa).
 
 Menu (reorganizado na auditoria de usabilidade de 26/09/2026 e simplificado na Fase 1, 29/09/2026): **Dia a dia**
@@ -212,7 +212,7 @@ Ordem aprovada: 1 Calculadora → 2 Núcleo + Clientes/Contratos + Decisões →
 ## Pendências guardadas para as próximas fases
 
 ### Fluxo de fechamento de ponta a ponta (pedido da Moni, 25/09/2026)
-Referência: o que já funciona no SoftMoni (briefing → proposta → contrato → CRM → pastas no Drive).
+Referência: o que já funcionava no sistema anterior da Moni (briefing → proposta → contrato → CRM → pastas no Drive).
 Na Aden: **cliente fechou → o sistema organiza tudo sozinho, qualquer que seja o serviço**, sem montar nada à mão.
 Entra entre a Fase 2 (clientes e contratos) e a Fase 6 (CRM), e o desenho do modelo de dados já precisa prever isso.
 
@@ -283,7 +283,7 @@ A decidir com a Moni (não inventar):
   ela vale por `quantidade` entregas (calibragem = soma dos segundos ÷ soma das entregas). Relógio flutuante no canto de
   qualquer tela enquanto roda. Lista (agrupada por prazo) e Quadro (arrastar muda o status), janela da tarefa com
   status, datas, estimativa (tempo por entrega × quantidade), responsável, prioridade, cliente, tipo e checklist.
-  Status: a fazer, em produção, em aprovação, concluída. Padrões de UX tirados do SoftMoni (janela, criação rápida).
+  Status: a fazer, em produção, em aprovação, concluída. Padrões de UX tirados do sistema anterior (janela, criação rápida).
 - **Cronômetro opcional (regra de 01/10/2026, substitui o modo calibragem):** vale o tempo médio cadastrado. O relógio
   ("Medir o tempo" dentro da tarefa) só roda quando alguém liga; na lista só aparece se já foi ligado; o sistema não pede
   medições (o campo `medicoes_calibragem` ficou sem uso). Com uma medição já existe média (`situacao: "medido"`); a
@@ -331,7 +331,7 @@ A decidir com a Moni (não inventar):
 
 ## CRM (26/09/2026)
 
-Etapas iguais às do SoftMoni: lead recebido → contato feito → proposta enviada → ganho / perdido (com motivo).
+Etapas iguais às do sistema anterior: lead recebido → contato feito → proposta enviada → ganho / perdido (com motivo).
 Card mostra há quantos dias está na etapa; "parado" só acende com `dias_lead_parado` configurado (vazio = nunca).
 Próximo contato aparece na Visão do dia ("Falar com") e no calendário. Taxa de fechamento = ganhos ÷ (ganhos +
 perdidos). Valor estimado: digitado, ou o preço calculado do pacote de interesse. **Fechou** (`ganharLead`): cria o
