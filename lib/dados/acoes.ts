@@ -42,7 +42,7 @@ export function resumoMudancas(antes: Configuracao, depois: Configuracao): strin
     ["taxaRecebimentoFixaCentavos", "Taxa fixa por cobrança"],
   ];
   for (const [k, nome] of din) if ((ea[k] ?? null) !== (ed[k] ?? null)) out.push(`${nome}: ${formatarMoeda(ea[k] as number | null)} → ${formatarMoeda(ed[k] as number | null)}`);
-  if (ea.regraRateio !== ed.regraRateio) out.push(`Regra de rateio: ${ea.regraRateio ?? "vazia"} → ${ed.regraRateio ?? "vazia"}`);
+  if (ea.regraRateio !== ed.regraRateio) out.push(`Regra de divisão dos custos fixos: ${ea.regraRateio ?? "vazia"} → ${ed.regraRateio ?? "vazia"}`);
   if ((ea.regime ?? null) !== (ed.regime ?? null)) out.push(`Regime: ${ea.regime ?? "vazio"} → ${ed.regime ?? "vazio"}`);
   for (const c of depois.custosFixos) {
     const a = antes.custosFixos.find((x) => x.id === c.id);
@@ -160,7 +160,7 @@ export async function guardarEscopo(repo: Repositorio, config: Configuracao, cli
     clienteId,
     afetados: abaixo.map((a) => a.pessoaId),
     assinatura: `${assinaturaCenario(escopo)}:${valor ?? ""}`,
-    descricao: `Escopo de ${cliente.nome} abaixo do piso de ${abaixo.map((a) => a.nome).join(" e ")}`,
+    descricao: `Entregas do contrato de ${cliente.nome} abaixo do piso de ${abaixo.map((a) => a.nome).join(" e ")}`,
     dados: { aplicar: "escopo", cenario: escopo, valorCentavos: valor, perdas: abaixo },
   });
   return { gravado: false, pedido, valorCentavos: valor, abaixo };

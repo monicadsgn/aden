@@ -202,6 +202,35 @@ export function etapaDaTela(t: Tarefa, passa = true): EtapaDaTela {
   if (t.status !== "concluida" && ehPeca(t) && situacaoPeca(t, passa) === "agendada") return "agendada";
   return t.status;
 }
+/** Nomes das etapas de uma peça de conteúdo: os mesmos do SoftMoni e do painel do cliente. */
+export const ROTULO_ETAPA_PECA: Record<EtapaDaTela, string> = {
+  a_fazer: "Planejado",
+  em_producao: "Em produção",
+  revisao: "Aguardando aprovação",
+  agendada: "Agendada",
+  concluida: "Publicada",
+};
+export const etapasDaPeca = (): { valor: EtapaDaTela; rotulo: string }[] =>
+  etapasDaTela(true).map((e) => ({ valor: e.valor, rotulo: ROTULO_ETAPA_PECA[e.valor] }));
+
+export type PassoSeguinte = { chave: "iniciar" | "enviar" | "agendar" | "publicar"; rotulo: string; destino?: EtapaDaTela };
+
+/**
+ * O botão de um toque de uma peça: o próximo passo natural, sem escolher etapa.
+ * Planejado → começar produção; produção → enviar ao cliente aprovar (com painel) ou agendar (sem painel);
+ * aprovada → agendar; agendada → marcar como publicada. Esperando o cliente, publicada ou concluída: nenhum.
+ */
+export function proximoPasso(t: Tarefa, passa: boolean): PassoSeguinte | null {
+  if (!ehPeca(t) || t.publicadaEm || t.status === "concluida") return null;
+  const sit = situacaoPeca(t, passa);
+  if (t.status === "a_fazer") return { chave: "iniciar", rotulo: "Começar produção", destino: "em_producao" };
+  if (sit === "agendada") return { chave: "publicar", rotulo: "Marcar como publicada" };
+  if (sit === "aprovada") return { chave: "agendar", rotulo: "Agendar", destino: "agendada" };
+  if (sit === "aguardando") return null;
+  if (!passa) return { chave: "agendar", rotulo: "Agendar", destino: "agendada" };
+  return { chave: "enviar", rotulo: (t.rodadas ?? 0) > 0 ? "Reenviar para o cliente aprovar" : "Enviar para o cliente aprovar" };
+}
+
 export const rotuloEtapaDaTela = (e: EtapaDaTela) => (e === "agendada" ? ETAPA_AGENDADA.rotulo : rotuloStatus(e));
 
 export const PRIORIDADES: { valor: Prioridade; rotulo: string }[] = [

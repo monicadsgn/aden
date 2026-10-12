@@ -63,7 +63,7 @@ const zCusto = z.object({
   categoria: z.enum(["ferramenta", "audiovisual", "terceiro", "outro"]).describe("outro = diária, deslocamento (Uber) e custos avulsos do caso"),
   descricao: z.string().optional(),
   forma: z.enum(["fixo", "por_entrega"]).optional().describe("Ferramenta é sempre fixo. Padrão: fixo."),
-  valorReais: z.number().nullable().optional().describe("Fixo: valor do mês (ou do projeto). Por entrega: valor unitário."),
+  valorReais: z.number().nonnegative().nullable().optional().describe("Fixo: valor do mês (ou do projeto). Por entrega: valor unitário."),
   tipoEntrega: z.string().optional().describe("Por entrega: qual tipo de entrega multiplica o valor"),
 });
 
@@ -71,17 +71,17 @@ export const zCenarioConversa = z.object({
   nome: z.string(),
   modo: z.enum(["escopo", "valor"]).describe("escopo = calcula o valor mínimo; valor = mostra o que cabe na mensalidade informada"),
   cliente: z.string().nullable().optional().describe("Cliente ativo (nome ou id) que este cenário substitui no rateio. Vazio = cliente novo."),
-  mensalidadeReais: z.number().nullable().optional().describe("Modo valor: mensalidade que o cliente vai pagar (no projeto avulso, o valor do projeto)"),
+  mensalidadeReais: z.number().nonnegative().nullable().optional().describe("Modo valor: mensalidade que o cliente vai pagar (no projeto avulso, o valor do projeto)"),
   avulso: z.boolean().optional().describe("true = projeto avulso pago uma vez (sem mensalidade): as entregas são o projeto e os extras"),
   entregas: z.array(zEntrega).optional().describe("Rotina mensal"),
   custos: z.array(zCusto).optional().describe("Custos da rotina mensal"),
   trafego: z
     .object({
       modelo: z.enum(["fixo", "por_campanha", "percentual_verba", "incluido", "sem_trafego", "garantia"]).nullable().optional(),
-      valorFixoReais: z.number().nullable().optional(),
-      valorPorCampanhaReais: z.number().nullable().optional(),
+      valorFixoReais: z.number().nonnegative().nullable().optional(),
+      valorPorCampanhaReais: z.number().nonnegative().nullable().optional(),
       campanhas: z.number().nullable().optional(),
-      percentualVerba: z.number().nullable().optional(),
+      percentualVerba: z.number().min(0).max(100).nullable().optional(),
       verbaMensalReais: z
         .number()
         .nullable()
@@ -93,7 +93,7 @@ export const zCenarioConversa = z.object({
     .object({
       entregas: z.array(zEntrega).optional(),
       custos: z.array(zCusto).optional(),
-      valorCobradoReais: z.number().nullable().optional(),
+      valorCobradoReais: z.number().nonnegative().nullable().optional(),
       mesesParaPagar: z.number().nullable().optional(),
     })
     .optional()
@@ -106,7 +106,7 @@ export const zCenarioConversa = z.object({
         meses: z.number().nullable().optional(),
         entregas: z.array(zEntrega).optional(),
         custos: z.array(zCusto).optional(),
-        valorCobradoReais: z.number().nullable().optional(),
+        valorCobradoReais: z.number().nonnegative().nullable().optional(),
       }),
     )
     .optional(),
@@ -115,10 +115,10 @@ export const zCenarioConversa = z.object({
   suspensaoSemCobranca: z.enum(["tudo", "mensalidade"]).nullable().optional(),
   percentuais: z
     .object({
-      reinvestimentoPct: z.number().nullable().optional(),
-      impostoPct: z.number().nullable().optional(),
-      taxaRecebimentoPct: z.number().nullable().optional(),
-      socios: z.record(z.string(), z.number()).optional().describe("sócio (nome ou id) → % só neste cenário"),
+      reinvestimentoPct: z.number().min(0).max(100).nullable().optional(),
+      impostoPct: z.number().min(0).max(100).nullable().optional(),
+      taxaRecebimentoPct: z.number().min(0).max(100).nullable().optional(),
+      socios: z.record(z.string(), z.number().min(0).max(100)).optional().describe("sócio (nome ou id) → % só neste cenário"),
       divisaoServico: z
         .record(z.string(), z.record(z.string(), z.number()))
         .optional()

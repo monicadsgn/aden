@@ -152,6 +152,7 @@ export default function VisaoDoDia() {
   const [avisos, setAvisos] = useState<AvisoSocio[]>([]);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [falhouCarga, setFalhouCarga] = useState(false);
   const [deQuem, setDeQuem] = useState<string | null | undefined>(undefined);
   const [aberto, setAberto] = useState<Chave | null>(null);
   const [tarefaAberta, setTarefaAberta] = useState<string | null>(null);
@@ -166,14 +167,14 @@ export default function VisaoDoDia() {
   }, [usuario, router]);
 
   useEffect(() => {
-    repo.listarLeads().then(setLeads).catch(() => {});
+    repo.listarLeads().then(setLeads).catch(() => setFalhouCarga(true));
     Promise.all([repo.listarPedidos(), repo.listarAvisos(), repo.listarPagamentos()])
       .then(([p, av, pg]) => {
         setPedidos(p);
         setAvisos(av);
         setPagamentos(pg);
       })
-      .catch(() => {});
+      .catch(() => setFalhouCarga(true));
   }, [repo]);
 
   const cfg = a.config;
@@ -271,6 +272,11 @@ export default function VisaoDoDia() {
 
   return (
     <div className="pb-16">
+      {falhouCarga && (
+        <p className="border-b border-linha bg-aviso-suave px-4 py-2 text-center text-xs font-semibold text-aviso sm:px-6" role="alert">
+          Não consegui carregar pedidos, avisos ou pagamentos agora. Recarregue a página. O que aparece vazio pode não estar vazio.
+        </p>
+      )}
       <div className="relative overflow-hidden border-b border-linha bg-marca-tinta/60">
         <div className="relative mx-auto flex max-w-[1300px] flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-bloco bg-marca-cheio text-sobre-marca shadow-card sm:size-12">

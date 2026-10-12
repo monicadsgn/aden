@@ -125,7 +125,7 @@ export default function VistoDeCima() {
               {m.taxasCentavos > 0.5 && <Linha rotulo="Taxas de recebimento" frase="O que o banco cobrou para receber (Pix não cobra; cartão, sim)." valor={m.taxasCentavos} sinal="-" />}
               <Linha rotulo="Custos da Aden" frase="Ferramentas e serviços que a Aden paga todo mês." valor={m.custosFixosCaixaCentavos} sinal="-" />
               {m.custosClientesCentavos > 0.5 && (
-                <Linha rotulo="Custos dos clientes" frase="Terceiros e outros custos que estão no escopo de cada cliente (ex.: gravação)." valor={m.custosClientesCentavos} sinal="-" />
+                <Linha rotulo="Custos dos clientes" frase="Terceiros e outros custos que fazem parte das entregas de cada cliente (ex.: gravação)." valor={m.custosClientesCentavos} sinal="-" />
               )}
               <Linha
                 rotulo="Tráfego próprio da Aden"

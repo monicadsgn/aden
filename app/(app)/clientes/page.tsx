@@ -39,8 +39,8 @@ export default function Clientes() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial vinda do banco
     void recarregar().catch((e) => setErro(e instanceof Error ? e.message : "Erro ao carregar."));
-    repo.listarPagamentos().then(setPagamentos).catch(() => {});
-    repo.listarLeads().then(setLeads).catch(() => {});
+    repo.listarPagamentos().then(setPagamentos).catch(() => setErro("Não consegui carregar os pagamentos. Recarregue a página."));
+    repo.listarLeads().then(setLeads).catch(() => setErro("Não consegui carregar os leads. Recarregue a página."));
     const q = new URLSearchParams(window.location.search);
     const id = q.get("cliente");
     if (id) setAberto(id);

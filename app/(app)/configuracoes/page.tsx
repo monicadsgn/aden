@@ -455,7 +455,7 @@ export default function Configuracoes() {
                       </div>
                       <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr]">
                         <Selecao
-                          rotulo="Login deste sócio (para aprovar o que o afeta)"
+                          rotulo="Acesso deste sócio (para aprovar o que o afeta)"
                           valor={p.membroId ?? null}
                           vazio="— sem login ligado —"
                           opcoes={membros
@@ -465,7 +465,7 @@ export default function Configuracoes() {
                         />
                         <Explica>
                           {orig?.membroId
-                            ? "Login ligado. Trocar o login de um sócio não é feito pela tela, para ninguém aprovar no lugar do outro."
+                            ? "Acesso ligado. Trocar o acesso de um sócio não é feito pela tela, para ninguém aprovar no lugar do outro."
                             : "Sem login ligado, os pedidos que afetam este sócio ficam esperando até ele ter acesso e aprovar."}
                         </Explica>
                       </div>

@@ -267,29 +267,29 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       description:
         "Padrões da empresa: reinvestimento, impostos (em % ou fixo por mês, como no MEI), taxa de recebimento (% e fixa), regra de rateio, teto anual do regime e avisos.",
       inputSchema: {
-        reinvestimentoPct: opt(z.number(), "% de reinvestimento"),
-        impostoPct: opt(z.number(), "% de imposto sobre faturamento"),
-        impostoFixoMensalReais: opt(z.number(), "imposto fixo por mês em reais (ex.: DAS do MEI); entra no rateio"),
-        taxaRecebimentoPct: opt(z.number(), "% de taxa de recebimento"),
-        taxaRecebimentoFixaReais: opt(z.number(), "tarifa fixa por recebimento, em reais"),
+        reinvestimentoPct: opt(z.number().min(0).max(100), "% de reinvestimento"),
+        impostoPct: opt(z.number().min(0).max(100), "% de imposto sobre faturamento"),
+        impostoFixoMensalReais: opt(z.number().nonnegative(), "imposto fixo por mês em reais (ex.: DAS do MEI); entra no rateio"),
+        taxaRecebimentoPct: opt(z.number().min(0).max(100), "% de taxa de recebimento"),
+        taxaRecebimentoFixaReais: opt(z.number().nonnegative(), "tarifa fixa por recebimento, em reais"),
         regraRateio: opt(z.enum(["igual", "proporcional"]), "igual entre clientes ou proporcional ao valor"),
-        tetoFaturamentoAnualReais: opt(z.number(), "teto anual de faturamento do regime, em reais"),
-        avisoTetoPct: opt(z.number(), "avisar quando a projeção anual chegar a este % do teto"),
-        ociosidadePct: opt(z.number(), "sócio com uso abaixo deste % da capacidade aparece com folga sobrando"),
-        arredondamentoPropostaReais: opt(z.number(), "arredondar o valor da proposta para cima, em múltiplos deste valor"),
+        tetoFaturamentoAnualReais: opt(z.number().nonnegative(), "teto anual de faturamento do regime, em reais"),
+        avisoTetoPct: opt(z.number().min(0).max(100), "avisar quando a projeção anual chegar a este % do teto"),
+        ociosidadePct: opt(z.number().min(0).max(100), "sócio com uso abaixo deste % da capacidade aparece com folga sobrando"),
+        arredondamentoPropostaReais: opt(z.number().nonnegative(), "arredondar o valor da proposta para cima, em múltiplos deste valor"),
         regime: opt(z.enum(["mei", "outro"]), "mei = imposto fixo por mês (o imposto em % é ignorado); outro = imposto em %"),
         ordemDistribuicao: opt(
           z.enum(["custo_primeiro", "proporcional"]),
           "como cada pagamento é distribuído: custo_primeiro (paga os custos do mês antes dos sócios) ou proporcional. Só grave o que os sócios decidirem",
         ),
-        diferencaSugerirPct: opt(z.number(), "sugerir novo tempo quando a média medida diferir mais que este %"),
+        diferencaSugerirPct: opt(z.number().min(0).max(100), "sugerir novo tempo quando a média medida diferir mais que este %"),
         followUpsMaximo: opt(z.number().int().positive(), "depois de quantos follow-ups do \"vou ver\" o sistema sugere marcar o lead como perdido"),
         avulsoSinalPct: opt(z.number().min(0).max(100), "projeto avulso: % do valor pago no início (o resto na entrega); só grave o que os sócios decidirem"),
         prazoMinimoPedidoDiasUteis: opt(z.number().int().positive(), "prazo mínimo, em dias úteis, de tarefa pedida ao outro sócio (sem prazo entra sozinho; menor só como urgência)"),
-        ofertaVerbaIndicadaDeReais: opt(z.number(), "oferta padrão: verba de mídia indicada ao cliente, a partir de (reais)"),
-        ofertaVerbaIndicadaAteReais: opt(z.number(), "oferta padrão: verba de mídia indicada, até (reais)"),
-        ofertaGestaoDepoisDoResultadoReais: opt(z.number(), "oferta padrão: valor da gestão de tráfego depois do resultado (reais)"),
-        ofertaMinimoSocialMaisTrafegoReais: opt(z.number(), "oferta padrão: social media + tráfego abaixo disso mostra um aviso na Proposta (reais)"),
+        ofertaVerbaIndicadaDeReais: opt(z.number().nonnegative(), "oferta padrão: verba de mídia indicada ao cliente, a partir de (reais)"),
+        ofertaVerbaIndicadaAteReais: opt(z.number().nonnegative(), "oferta padrão: verba de mídia indicada, até (reais)"),
+        ofertaGestaoDepoisDoResultadoReais: opt(z.number().nonnegative(), "oferta padrão: valor da gestão de tráfego depois do resultado (reais)"),
+        ofertaMinimoSocialMaisTrafegoReais: opt(z.number().nonnegative(), "oferta padrão: social media + tráfego abaixo disso mostra um aviso na Proposta (reais)"),
         mensalidadeNoOnboarding: opt(z.boolean(), "o mês do onboarding cobra mensalidade? Só grave o que os sócios decidirem"),
       },
     },
@@ -331,8 +331,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       inputSchema: {
         id: z.string().optional().describe("id ou nome do sócio a alterar; vazio = novo"),
         nome: z.string().optional(),
-        percentualPadrao: opt(z.number(), "% padrão da divisão"),
-        pisoHoraReais: opt(z.number(), "piso de valor por hora, em reais"),
+        percentualPadrao: opt(z.number().min(0).max(100), "% padrão da divisão"),
+        pisoHoraReais: opt(z.number().nonnegative(), "piso de valor por hora, em reais"),
         capacidadeHorasMes: opt(z.number(), "horas disponíveis por mês"),
         ativo: z.boolean().optional(),
       },
@@ -369,7 +369,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       inputSchema: {
         id: z.string().optional().describe("id ou nome do serviço a alterar; vazio = novo"),
         nome: z.string().optional(),
-        divisao: z.record(z.string(), z.number().nullable()).optional().describe("sócio (nome ou id) → % das horas"),
+        divisao: z.record(z.string(), z.number().min(0).max(100).nullable()).optional().describe("sócio (nome ou id) → % das horas"),
         ativo: z.boolean().optional(),
       },
     },
@@ -457,11 +457,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       inputSchema: {
         socioDoPercentual: z.string().optional().describe("sócio que recebe o % antes da virada (nome ou id)"),
         percentualDoSocio: opt(z.number().min(0).max(100), "% do que entra (depois do imposto) para esse sócio"),
-        tetoDaViradaReais: opt(z.number(), "o que entrou no mês a partir do qual a divisão vira pelo % padrão (reais)"),
-        avisoDeBonusReais: opt(z.number(), "parte do sócio acima deste valor aparece destacada como bônus (reais)"),
+        tetoDaViradaReais: opt(z.number().nonnegative(), "o que entrou no mês a partir do qual a divisão vira pelo % padrão (reais)"),
+        avisoDeBonusReais: opt(z.number().nonnegative(), "parte do sócio acima deste valor aparece destacada como bônus (reais)"),
         socioDaSobra: z.string().optional().describe("sócio que fica com a sobra antes da virada (nome ou id)"),
         percentualDaSobraParaTrafego: opt(z.number().min(0).max(100), "% da sobra desse sócio que vai para o tráfego próprio"),
-        trafegoProprioMinimoReais: opt(z.number(), "mínimo por mês do tráfego próprio da Aden (reais)"),
+        trafegoProprioMinimoReais: opt(z.number().nonnegative(), "mínimo por mês do tráfego próprio da Aden (reais)"),
       },
     },
     async (e) =>
@@ -491,7 +491,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       inputSchema: {
         id: z.string().optional().describe("id ou nome do custo a alterar; vazio = novo"),
         nome: z.string().optional(),
-        valorMensalReais: opt(z.number(), "valor mensal em reais"),
+        valorMensalReais: opt(z.number().nonnegative(), "valor mensal em reais"),
         ativo: z.boolean().optional(),
         pagoPor: z.string().nullable().optional().describe('sócio que paga do bolso (nome ou id); "Aden" ou null = a Aden paga'),
         planejado: z.boolean().optional().describe("custo planejado (fica desligado até os sócios decidirem ligar)"),
@@ -529,7 +529,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       inputSchema: {
         id: z.string().optional().describe("id ou nome do cliente a alterar; vazio = novo"),
         nome: z.string().optional(),
-        valorMensalReais: opt(z.number(), "valor mensal em reais"),
+        valorMensalReais: opt(z.number().nonnegative(), "valor mensal em reais"),
         interno: z.boolean().optional(),
         participaRateio: z.boolean().optional(),
         ativo: z.boolean().optional(),
@@ -565,7 +565,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Remover item da configuração",
       description:
-        "Remove um serviço, tipo de entrega, custo fixo ou cliente. Confirme antes com quem está conversando. Sócio não se apaga; serviço com divisão de horas e tipo de entrega com tempo cadastrado também não (protegidos): para esses, desative com salvar_servico/salvar_tipo_entrega (ativo=false).",
+        "Remove um serviço, tipo de entrega ou custo fixo. Cliente não se apaga por aqui (desative com salvar_cliente, ativo=false). Confirme antes com quem está conversando. Sócio não se apaga; serviço com divisão de horas e tipo de entrega com tempo cadastrado também não (protegidos): para esses, desative com salvar_servico/salvar_tipo_entrega (ativo=false).",
       inputSchema: {
         tipo: z.enum(["socio", "servico", "tipo_entrega", "custo_fixo", "cliente"]),
         id: z.string().describe("id ou nome do item"),
@@ -596,7 +596,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           depois.custosFixos = antes.custosFixos.filter((p) => p.id !== a.id);
         } else {
           const a = resolver(antes.clientes, id, "Cliente");
-          depois.clientes = antes.clientes.filter((p) => p.id !== a.id);
+          throw new Error(
+            `${a.nome}: cliente não se apaga pelo Claude, porque levaria junto pagamentos, horas, contexto, contratos e fechamentos. Para tirar da lista, desative com salvar_cliente (ativo=false). Apagar de vez é só no site, por um sócio.`,
+          );
         }
         return salvarDiferenca(repo, antes, depois);
       }),
@@ -777,7 +779,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
       inputSchema: {
         cliente: z.string().describe("cliente (nome ou id)"),
         competencia: zCompetencia,
-        valorRecebidoReais: opt(z.number(), "lançamento antigo de quanto entrou; prefira registrar_pagamento"),
+        valorRecebidoReais: opt(z.number().nonnegative(), "lançamento antigo de quanto entrou; prefira registrar_pagamento"),
         horas: z.record(z.string(), z.number().nullable()).optional().describe("sócio (nome ou id) → horas reais no mês"),
       },
     },
@@ -923,8 +925,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Convidar alguém para o Aden",
       description:
-        "Cria o convite por e-mail. A pessoa entra em /entrar → 'Primeiro acesso? Criar senha' com esse e-mail. Acessos: admin (sócio, tudo), colaborador (equipe: todas as tarefas, sem valores), freelancer (só as tarefas dele), contador (só financeiro). Confirme o acesso com quem está conversando; sócio só se pedirem explicitamente.",
-      inputSchema: { nome: z.string(), email: z.string().email(), acesso: z.enum(["admin", "colaborador", "freelancer", "contador"]) },
+        "Cria o convite por e-mail. A pessoa entra em /entrar → 'Primeiro acesso? Criar senha' com esse e-mail. Acessos: colaborador (equipe: todas as tarefas, sem valores), freelancer (só as tarefas dele), contador (só financeiro). Confirme o acesso com quem está conversando. Convidar sócio (admin) só pelo site.",
+      inputSchema: { nome: z.string(), email: z.string().email(), acesso: z.enum(["colaborador", "freelancer", "contador"]) },
     },
     async ({ nome, email, acesso }) =>
       executar(async () => {
@@ -1729,7 +1731,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         origem: z.string().optional().describe("como chegou: Indicação, Instagram, Quiz, Landing ou Outro"),
         pacote: z.string().nullable().optional().describe("pacote de interesse (nome ou id)"),
         simulacao: z.string().nullable().optional().describe("proposta salva ligada ao lead (nome ou id da simulação); é dela que ganhar_lead tira as entregas do contrato"),
-        valorEstimadoReais: opt(z.number(), "valor estimado por mês"),
+        valorEstimadoReais: opt(z.number().nonnegative(), "valor estimado por mês"),
         responsavel: z.string().nullable().optional().describe("sócio (nome ou id)"),
         proximoContato: z.string().nullable().optional(),
         proximaAcao: z.string().optional(),
@@ -1873,8 +1875,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         nome: z.string().optional(),
         inclui: z.string().optional(),
         fraseCliente: z.string().optional().describe("o que o cliente lê, ex.: gravação e edição mensal inclusa"),
-        valorPorSaidaReais: opt(z.number(), "valor por saída em reais"),
-        deslocamentoMedioReais: opt(z.number(), "deslocamento médio por saída em reais"),
+        valorPorSaidaReais: opt(z.number().nonnegative(), "valor por saída em reais"),
+        deslocamentoMedioReais: opt(z.number().nonnegative(), "deslocamento médio por saída em reais"),
         ativo: z.boolean().optional(),
       },
     },
@@ -2701,7 +2703,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const alvo = resolver(config.clientes, cliente, "Cliente");
         if (alvo.interno) throw new Error(`${alvo.nome} é a própria Aden (cliente interno): não tem mensalidade nem pagamento.`);
         const mes = competencia ?? competenciaAtual();
-        const hoje = new Date().toISOString().slice(0, 10);
+        const hoje = dataDeBrasilia(new Date().toISOString());
         const id = novoId();
         await repo.salvarPagamento({ id, clienteId: alvo.id, competencia: mes, valorCentavos: paraCentavos(valorReais)!, recebidoEm: recebidoEm ?? hoje, observacao: observacao ?? null, taxaCentavos: taxaReais === undefined ? null : paraCentavos(taxaReais) });
         const d = distribuirPagamentos(config, alvo, mes, await repo.listarPagamentos(), hoje);
@@ -2740,7 +2742,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         const repo = await obterRepo();
         const mes = competencia ?? competenciaAtual();
         const [config, pagamentos] = await Promise.all([repo.carregarConfig(), repo.listarPagamentos()]);
-        const hoje = new Date().toISOString().slice(0, 10);
+        const hoje = dataDeBrasilia(new Date().toISOString());
         const dist = config.clientes.filter((c) => c.ativo && !c.interno && clienteNoMes(c, mes)).map((c) => distribuirPagamentos(config, c, mes, pagamentos, hoje));
         return {
           competencia: mes,

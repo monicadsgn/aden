@@ -3,6 +3,7 @@
 // Janela da tarefa, no jeito do ClickUp: propriedades em grade (Status, Datas, Estimativa,
 // Rastrear tempo, Responsável…), descrição e checklist. Tudo edita no lugar e salva sozinho.
 
+import { ProximoPasso } from "./ProximoPasso";
 import {
   CalendarDays,
   CheckSquare,
@@ -31,6 +32,9 @@ import {
   estimativaHoras,
   etapaDaTela,
   etapasDaTela,
+  etapasDaPeca,
+  ROTULO_ETAPA_PECA,
+  rotuloEtapaDaTela,
   medicaoDaTarefa,
   PRIORIDADES,
   relogio,
@@ -192,24 +196,34 @@ export function DetalheTarefa({ tarefa, a, aoFechar }: { tarefa: Tarefa | null; 
       }
     >
       {a.erro && <p className="mb-3 rounded-bloco bg-erro-suave px-3 py-2 text-xs text-erro">{a.erro}</p>}
+      {peca && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <ProximoPasso t={t} a={a} />
+        </div>
+      )}
       <div className="grid gap-x-8 md:grid-cols-2">
         <div>
-          <Linha icone={Layers} rotulo="Status">
-            <div className="flex flex-wrap gap-1">
-              {etapasDaTela(peca).map((s) => (
-                <button
-                  key={s.valor}
-                  type="button"
-                  onClick={() => s.valor !== etapaAtual && void a.etapa(t, s.valor)}
-                  className={cx(
-                    "rounded-botao px-2.5 py-1 text-[11px] font-bold uppercase transition-opacity",
-                    s.valor === etapaAtual ? COR_STATUS[s.valor] : "bg-superficie-2/60 text-texto-suave opacity-70 hover:opacity-100",
-                  )}
-                  aria-pressed={s.valor === etapaAtual}
-                >
-                  {s.rotulo}
-                </button>
-              ))}
+          <Linha icone={Layers} rotulo="Etapa">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={cx("rounded-botao px-2.5 py-1 text-[11px] font-bold uppercase", COR_STATUS[etapaAtual])}>
+                {(peca ? ROTULO_ETAPA_PECA : null)?.[etapaAtual] ?? rotuloEtapaDaTela(etapaAtual)}
+              </span>
+              <select
+                aria-label="Pular para a etapa"
+                className={campoLeve}
+                value=""
+                onChange={(e) => {
+                  const v = e.target.value as EtapaDaTela;
+                  if (v && v !== etapaAtual) void a.etapa(t, v);
+                }}
+              >
+                <option value="">Pular para a etapa…</option>
+                {(peca ? etapasDaPeca() : etapasDaTela(false)).filter((s) => s.valor !== etapaAtual).map((s) => (
+                  <option key={s.valor} value={s.valor}>
+                    {s.rotulo}
+                  </option>
+                ))}
+              </select>
             </div>
           </Linha>
           <Linha icone={CalendarDays} rotulo="Datas">
