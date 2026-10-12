@@ -12,7 +12,7 @@ const valores = new Set(["pasta_drive", "proposta_enviada", "lead_recebido", "co
 
 describe("skills da Aden", () => {
   it("existem as cinco da Fase 6 e a identidade", () => {
-    expect(skills.map((s) => s.name).sort()).toEqual(["aden-contrato", "aden-fechamento", "aden-identidade", "aden-onboarding", "aden-proposta", "aden-rotina"]);
+    expect(skills.map((s) => s.name).sort()).toEqual(["aden-contrato", "aden-fechamento", "aden-identidade", "aden-onboarding", "aden-proposta", "aden-relatorio", "aden-rotina"]);
   });
 
   for (const s of skills) {

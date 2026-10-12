@@ -9,6 +9,7 @@ Skills para o Claude do claude.ai conduzir o comercial e o fechamento da Aden us
 - `aden-fechamento`: o cliente fechou → checklist inteiro (dados, contrato, onboarding, cobrança, pasta, briefing, kickoff, painel).
 - `aden-contrato`: montar, conferir e enviar o contrato pela Autentique.
 - `aden-onboarding`: gerar e mandar o onboarding.
+- `aden-relatorio`: relatório do mês e plano do próximo mês pro cliente, no padrão aprovado (modelo: StadiumPlay, 07/10/2026).
 - `aden-identidade`: cores, fonte, logo e jeito de falar da Aden, com os PDFs de referência (não chama ferramenta do conector).
 - Apresentação comercial: espera o material de venda do Áleff.
 
