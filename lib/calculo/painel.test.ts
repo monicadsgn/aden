@@ -35,7 +35,7 @@ describe("painel do cliente", () => {
     });
     const [peca] = montarPainel(cli, [t], agora).pecas;
     expect(Object.keys(peca).sort()).toEqual(
-      ["agendadaEm", "aprovadaEm", "aprovadaOnde", "arquivos", "enviadaEm", "feedback", "feedbackEm", "id", "legenda", "publicadaEm", "publicarEm", "respostas", "rodadas", "status", "tipo", "textoArte", "titulo", "vencimento"].sort(),
+      ["agendadaEm", "aprovadaEm", "aprovadaOnde", "arquivos", "enviadaEm", "feedback", "feedbackEm", "id", "legenda", "publicadaEm", "publicarEm", "respostas", "rodadas", "semAprovacao", "status", "tipo", "textoArte", "titulo", "vencimento"].sort(),
     );
     expect(JSON.stringify(peca)).not.toMatch(/nota interna|instagram|Calendário|Áleff|pelo Claude/);
   });

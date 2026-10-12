@@ -878,6 +878,16 @@ describe("conector: peça agendada", () => {
     expect(banco.tarefas[0].agendadaEm).toBeTruthy();
   });
 
+  it("tipo marcado sem aprovação do cliente agenda direto, mesmo com link do painel", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await chamar("link_painel_cliente", { cliente: "Olinda" });
+    await chamar("salvar_tipo_entrega", { nome: "Card de jogo", semAprovacaoCliente: true });
+    const t = await chamar("salvar_tarefa", { titulo: "Card do jogo", cliente: "Olinda", entrega: "Card de jogo", publicarEm: "2026-10-12 12:00" });
+    const r = await chamar("marcar_agendada", { ids: [t.id] });
+    expect(r.mudaram).toEqual([{ peca: "Card do jogo", etapa: "agendada" }]);
+    expect(banco.tarefas.find((x) => x.id === t.id)?.agendadaEm).toBeTruthy();
+  });
+
   it("a própria Aden agenda direto; tarefa sem cliente não é peça", async () => {
     await chamar("salvar_cliente", { nome: "Aden", interno: true });
     const t = await chamar("salvar_tarefa", { titulo: "Post institucional", cliente: "Aden", agendada: true });

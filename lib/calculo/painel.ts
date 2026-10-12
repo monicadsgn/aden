@@ -28,6 +28,8 @@ export interface PecaPainel {
   textoArte: string | null;
   /** quando a equipe programou o post */
   agendadaEm: string | null;
+  /** o tipo da peça não espera aprovação do cliente (ex.: Card de jogo) */
+  semAprovacao?: boolean;
 }
 
 /**
@@ -52,7 +54,7 @@ export function nomeDoTipoParaCliente(t: Pick<TipoEntrega, "nome" | "nomeCliente
 
 const JANELA_DIAS_ENTREGUES = 60; // peças entregues somem do painel depois de um tempo (só organização da tela)
 
-export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = new Date(), tipos: Pick<TipoEntrega, "id" | "nome" | "nomeCliente">[] = []) {
+export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = new Date(), tipos: Pick<TipoEntrega, "id" | "nome" | "nomeCliente" | "semAprovacaoCliente">[] = []) {
   const limite = agora.getTime() - JANELA_DIAS_ENTREGUES * 86400000;
   const recente = (iso: string | null | undefined) => !!iso && new Date(iso).getTime() > limite;
   const pecas: PecaPainel[] = tarefas
@@ -77,6 +79,7 @@ export function montarPainel(cliente: ClienteBase, tarefas: Tarefa[], agora = ne
       tipo: nomeDoTipoParaCliente(tipos.find((x) => x.id === t.tipoEntregaId)),
       textoArte: t.textoArte || null,
       agendadaEm: t.agendadaEm ?? null,
+      semAprovacao: tipos.find((x) => x.id === t.tipoEntregaId)?.semAprovacaoCliente ?? false,
     }));
   return {
     cliente: cliente.nome,
@@ -116,6 +119,7 @@ export type PecaDoQuadro = Pick<PecaPainel, "id" | "status" | "aprovadaEm" | "fe
   publicadaEm?: string | null;
   agendadaEm?: string | null;
   tipo?: string | null;
+  semAprovacao?: boolean;
 };
 
 export type ColunaDoQuadro = "planejado" | "producao" | "aguardando" | "aprovada" | "agendada" | "publicada";
@@ -154,7 +158,7 @@ export const situacaoDaPecaPainel = (p: PecaDoQuadro): SituacaoPeca =>
     publicarEm: p.publicarEm,
     publicadaEm: p.publicadaEm,
     agendadaEm: p.agendadaEm,
-  });
+  }, !p.semAprovacao);
 
 /**
  * Monta as colunas na ordem do quadro. Dentro de cada coluna: as próximas a entrar primeiro;

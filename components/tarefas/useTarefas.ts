@@ -126,7 +126,7 @@ export function useTarefas() {
     });
 
   /** A aprovação desta peça passa pelo painel do cliente? (senão agenda direto, sem esperar aprovação) */
-  const passa = (t: Tarefa) => passaPelaAprovacao(config.clientes.find((c) => c.id === t.clienteId), PAINEL_CLIENTE_ATIVO);
+  const passa = (t: Tarefa) => passaPelaAprovacao(config.clientes.find((c) => c.id === t.clienteId), PAINEL_CLIENTE_ATIVO, config.tiposEntrega.find((x) => x.id === t.tipoEntregaId));
 
   /** Leva a tarefa para uma etapa da tela: os status e "Agendada" (peça já programada). */
   const etapa = (t: Tarefa, destino: EtapaDaTela) =>
