@@ -50,7 +50,7 @@ const CAMPOS: Record<string, string> = {
   ativo: "ativo",
   interno: "interno",
   participa_rateio: "entra na divisão dos custos fixos",
-  participaRateio: "entra no rateio",
+  participaRateio: "entra na divisão dos custos fixos",
   servico_id: "serviço",
   servicoId: "serviço",
   status: "status",

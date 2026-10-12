@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { calcularCalibragem, segundosDaMedicao, type Medicao } from "./calibragem";
 import { configVazia } from "./novo";
-import { agruparPorPrazo, darStart, ehPeca, erroAgendarSemAprovacao, estimativaHoras, etapaDaTela, etapasDaTela, irParaEtapa, motivoSemAprovacaoFora, mudarStatus, novaTarefa, passaPelaAprovacao, relogio, situacaoPeca } from "./tarefas";
+import type { Tarefa } from "./tarefas";
+import { agruparPorPrazo, darStart, ehPeca, erroAgendarSemAprovacao, estimativaHoras, etapaDaTela, etapasDaTela, irParaEtapa, motivoSemAprovacaoFora, mudarStatus, novaTarefa, passaPelaAprovacao, relogio, situacaoPeca, proximoPasso } from "./tarefas";
 import type { Configuracao } from "./tipos";
 
 const cfg = (): Configuracao => {
@@ -144,5 +145,29 @@ describe("peça agendada", () => {
     expect(irParaEtapa(peca({ clienteAprovouEm: "2026-10-10T12:00:00Z" }), "agendada", null, agora, true).tarefa.agendadaEm).toBeTruthy();
     expect(() => irParaEtapa(peca({ clienteId: null }), "agendada", null, agora, false)).toThrow(/peça de cliente/);
     expect(() => irParaEtapa(peca({ publicadaEm: "2026-10-12T15:00:00Z" }), "agendada", null, agora, false)).toThrow(/já foi publicada/);
+  });
+});
+
+describe("proximoPasso (botão de um toque da peça)", () => {
+  const peca = (extra: Partial<Tarefa> = {}) => ({ ...novaTarefa("p", "Post", { clienteId: "c", publicarEm: "2026-10-20T12:00:00Z", status: "em_producao" }), ...extra });
+  it("tarefa que não é peça não tem passo", () => {
+    expect(proximoPasso(novaTarefa("t", "Reunião"), true)).toBeNull();
+  });
+  it("planejada começa a produção", () => {
+    expect(proximoPasso(peca({ status: "a_fazer" }), true)?.chave).toBe("iniciar");
+  });
+  it("com painel: produção envia ao cliente; ajuste reenvia; esperando não tem botão", () => {
+    expect(proximoPasso(peca(), true)?.chave).toBe("enviar");
+    expect(proximoPasso(peca({ rodadas: 1 }), true)?.rotulo).toMatch(/Reenviar/);
+    expect(proximoPasso(peca({ status: "revisao", enviadaClienteEm: "2026-10-10T10:00:00Z" }), true)).toBeNull();
+  });
+  it("sem painel (ou Card de jogo): produção já agenda", () => {
+    expect(proximoPasso(peca(), false)).toMatchObject({ chave: "agendar", destino: "agendada" });
+  });
+  it("aprovada agenda; agendada publica; publicada acaba", () => {
+    const aprovada = peca({ status: "revisao", clienteAprovouEm: "2026-10-11T10:00:00Z" });
+    expect(proximoPasso(aprovada, true)?.chave).toBe("agendar");
+    expect(proximoPasso({ ...aprovada, agendadaEm: "2026-10-11T11:00:00Z" }, true)?.chave).toBe("publicar");
+    expect(proximoPasso({ ...aprovada, publicadaEm: "2026-10-20T12:00:00Z" }, true)).toBeNull();
   });
 });

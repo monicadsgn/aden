@@ -2,11 +2,12 @@
 
 // Linha de tarefa (lista, Visão do dia, calendário) e os metadados (cliente, checklist, prazo, responsável).
 
+import { ProximoPasso } from "./ProximoPasso";
 import { CalendarDays, CheckSquare, ChevronDown, Flag, Layers, ListChecks } from "lucide-react";
 import { useState } from "react";
 import { Avatar } from "../Avatar";
 import { cx } from "../ui";
-import { etapaDaTela, rotuloEtapaDaTela, type Tarefa } from "@/lib/calculo/tarefas";
+import { ehPeca, etapaDaTela, ROTULO_ETAPA_PECA, rotuloEtapaDaTela, type Tarefa } from "@/lib/calculo/tarefas";
 import { agruparPorCalendario, prontasDoCalendario } from "@/lib/calculo/lotes";
 import { coresDosClientes } from "@/lib/calculo/cores";
 import { AprovadoFora } from "./AprovadoFora";
@@ -110,8 +111,9 @@ export function LinhaTarefa({ t, a, abrir }: { t: Tarefa; a: AcoesTarefas; abrir
       {t.status === "revisao" && t.clienteAprovouEm && etapa !== "agendada" ? (
         <span className="rounded-botao bg-ok-suave px-2 py-0.5 text-[10px] font-bold text-ok uppercase">aprovada</span>
       ) : (
-        <span className={cx("rounded-botao px-2 py-0.5 text-[10px] font-bold uppercase", COR_STATUS[etapa])}>{rotuloEtapaDaTela(etapa)}</span>
+        <span className={cx("rounded-botao px-2 py-0.5 text-[10px] font-bold uppercase", COR_STATUS[etapa])}>{ehPeca(t) ? ROTULO_ETAPA_PECA[etapa] : rotuloEtapaDaTela(etapa)}</span>
       )}
+      <ProximoPasso t={t} a={a} compacto />
       <MetaTarefa t={t} a={a} />
       <BotaoRelogio t={t} a={a} pequeno />
     </div>

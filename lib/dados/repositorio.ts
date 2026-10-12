@@ -396,8 +396,8 @@ export interface Repositorio {
 
 /** Mês atual no formato "AAAA-MM". */
 export function competenciaAtual(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  // Mês em Brasília (o servidor roda em UTC e viraria o mês 3 horas antes).
+  return new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 7);
 }
 
 /** Diferença entre duas listas por id, comparando o conteúdo. */

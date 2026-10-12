@@ -905,4 +905,13 @@ describe("conector: peça agendada", () => {
     await chamar("concluir_tarefa", { id: t.id });
     expect(banco.tarefas[0].status).toBe("concluida");
   });
+  it("o Claude não apaga cliente, não convida sócio e respeita 0 a 100", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await expect(chamar("remover_da_configuracao", { tipo: "cliente", id: "Olinda" })).rejects.toThrow(/não se apaga pelo Claude/);
+    expect(banco.config.clientes).toHaveLength(1);
+    await expect(chamar("convidar_pessoa", { nome: "X", email: "x@x.com", acesso: "admin" })).rejects.toThrow();
+    await expect(chamar("definir_percentuais_empresa", { impostoPct: 150 })).rejects.toThrow();
+    await expect(chamar("definir_percentuais_empresa", { taxaRecebimentoPct: -20 })).rejects.toThrow();
+    await expect(chamar("salvar_custo_fixo", { nome: "Ferramenta", valorMensalReais: -10 })).rejects.toThrow();
+  });
 });

@@ -116,7 +116,7 @@ function Solucoes({
           <p className="flex items-center gap-2">
             <Scissors size={15} className="shrink-0 text-marca-forte" />
             <span>
-              <strong>Cortar entregas:</strong> mantendo o valor de {formatarMoeda(cliente.valorMensalCentavos)}, cabe no piso tirando:
+              <strong>Cortar entregas:</strong> mantendo o valor de {formatarMoeda(cliente.valorMensalCentavos)}, fica no piso tirando:
             </span>
           </p>
           {sol.cortar.map((c) => (
@@ -127,7 +127,7 @@ function Solucoes({
               <Abrir aoAbrir={aoAbrir} c={c.cenario} nome={c.cenario.nome} />
             </div>
           ))}
-          <p className="pl-6 text-[12px] text-texto-suave">É um ou outro (não a soma). Mesmo cálculo do “o que cabe” da calculadora.</p>
+          <p className="pl-6 text-[12px] text-texto-suave">É um ou outro (não a soma). Mesmo cálculo do “montar o que cabe” da calculadora.</p>
         </div>
       )}
       {sol.corteSozinhoNaoResolve && (

@@ -242,7 +242,7 @@ export function FichaCliente({
             </Rot>
             <div className="flex flex-col justify-end gap-2 pb-1">
               <Interruptor ligado={c.ativo} rotulo="Cliente ativo" aoMudar={(v) => set({ ativo: v })} />
-              {!c.interno && <Interruptor ligado={c.participaRateio} rotulo="Divide os custos fixos (rateio)" aoMudar={(v) => set({ participaRateio: v })} />}
+              {!c.interno && <Interruptor ligado={c.participaRateio} rotulo="Entra na divisão dos custos fixos" aoMudar={(v) => set({ participaRateio: v })} />}
               <Interruptor
                 ligado={c.interno}
                 rotulo="É a própria Aden (cliente interno)"

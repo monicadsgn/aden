@@ -11,7 +11,7 @@ import { irParaBloco, linkDoDestino } from "@/lib/navegacao";
 import { cx } from "./ui";
 
 const ESTILO: Record<Alerta["nivel"], { icone: LucideIcon; caixa: string; rotulo: string }> = {
-  erro: { icone: AlertOctagon, caixa: "bg-erro-suave text-erro", rotulo: "Resultado errado ou bloqueado" },
+  erro: { icone: AlertOctagon, caixa: "bg-erro-suave text-erro", rotulo: "Resultado errado, precisa de ajuste" },
   aviso: { icone: AlertTriangle, caixa: "bg-aviso-suave text-aviso", rotulo: "Atenção" },
   lembrete: { icone: BellDot, caixa: "border border-dashed border-linha bg-superficie text-texto-suave", rotulo: "Lembrete" },
   info: { icone: Info, caixa: "bg-info-suave text-info", rotulo: "Observação" },
@@ -90,7 +90,7 @@ export function ListaAlertas({ alertas }: { alertas: Alerta[] }) {
     <div className="flex flex-col gap-2">
       {erros.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <p className="px-1 text-[10px] font-bold tracking-wide text-erro uppercase">Precisa resolver: o resultado está errado ou bloqueado</p>
+          <p className="px-1 text-[10px] font-bold tracking-wide text-erro uppercase">Precisa resolver: o resultado está errado e precisa de ajuste</p>
           {erros.map((a) => (
             <Item key={a.texto} a={a} />
           ))}
