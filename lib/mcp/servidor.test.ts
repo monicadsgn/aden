@@ -621,6 +621,17 @@ describe("conector: planejamento mensal, datas e atalhos", () => {
     const f = await chamar("ver_cliente", { cliente: "Olinda" });
     expect(f.atalhosDoPainel).toMatchObject({ planejamentoUrl: "https://a.com/plano.pdf", planejamentoRotulo: "Planejamento de outubro", inclusoTexto: "15 posts\nReunião mensal", fotosUrl: null });
   });
+
+  it("atalho 'Cards de jogo': campo próprio, só https, não mexe nas fotos", async () => {
+    await chamar("salvar_cliente", { nome: "Stadium", valorMensalReais: 1500 });
+    await chamar("atualizar_atalhos_painel", { cliente: "Stadium", fotosUrl: "https://drive.google.com/drive/folders/fotos" });
+    await expect(chamar("atualizar_atalhos_painel", { cliente: "Stadium", cardsJogoUrl: "drive.google.com/jogos" })).rejects.toThrow(/https/);
+    await chamar("atualizar_atalhos_painel", { cliente: "Stadium", cardsJogoUrl: "https://drive.google.com/drive/folders/jogos" });
+    const f = await chamar("ver_cliente", { cliente: "Stadium" });
+    expect(f.atalhosDoPainel).toMatchObject({ fotosUrl: "https://drive.google.com/drive/folders/fotos", cardsJogoUrl: "https://drive.google.com/drive/folders/jogos" });
+    await chamar("atualizar_atalhos_painel", { cliente: "Stadium", cardsJogoUrl: "" });
+    expect((await chamar("ver_cliente", { cliente: "Stadium" })).atalhosDoPainel).toMatchObject({ cardsJogoUrl: null, fotosUrl: "https://drive.google.com/drive/folders/fotos" });
+  });
 });
 
 describe("conector: fechamento do cliente", () => {

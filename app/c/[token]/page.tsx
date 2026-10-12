@@ -5,7 +5,7 @@
 // publicado), para o cliente ver tudo de uma vez sem descer a página. Mostra só as peças que a
 // Aden marcou para ele; aprova ou pede ajuste. Nada interno: nem valores, nem horas, nem notas.
 
-import { CalendarClock, FileText, FolderOpen, HelpCircle, Image as ImageIcon, Layers, ListChecks, Palette, Sparkles, Video, type LucideIcon } from "lucide-react";
+import { CalendarClock, FileText, FolderOpen, HelpCircle, Image as ImageIcon, Layers, ListChecks, Palette, Sparkles, Trophy, Video, type LucideIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Marca, MarcaIcone } from "@/components/Marca";
@@ -133,7 +133,7 @@ export default function PainelDoCliente() {
   const resumo = resumoDoMes(painel.pecas, mes);
   const temResumo = resumo.publicados + resumo.agendados + resumo.emAndamento + resumo.ajustesPedidos > 0;
   const at = painel.atalhos;
-  const temAtalho = !!(at?.planejamentoUrl || at?.fotosUrl || at?.identidadeUrl || at?.inclusoTexto);
+  const temAtalho = !!(at?.planejamentoUrl || at?.fotosUrl || at?.cardsJogoUrl || at?.identidadeUrl || at?.inclusoTexto);
   const tutorial = passosDoTutorial(colunas.some((c) => c.id === "planejado"));
   const passoAtual = passo == null ? null : Math.min(passo, tutorial.length - 1);
 
@@ -185,6 +185,11 @@ export default function PainelDoCliente() {
           {at?.fotosUrl && (
             <a href={at.fotosUrl} target="_blank" rel="noreferrer" className={estiloAtalho}>
               <FolderOpen size={13} /> Fotos
+            </a>
+          )}
+          {at?.cardsJogoUrl && (
+            <a href={at.cardsJogoUrl} target="_blank" rel="noreferrer" className={estiloAtalho}>
+              <Trophy size={13} /> Cards de jogo
             </a>
           )}
           {at?.identidadeUrl && (
