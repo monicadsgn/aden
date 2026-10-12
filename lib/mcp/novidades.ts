@@ -2,9 +2,14 @@
 // muda de jeito, sobe a VERSAO e ganha uma linha em NOVIDADES. O quem_sou_eu devolve isso para o Claude avisar o sócio,
 // e a Visão do dia mostra um aviso aos dois sócios até cada um marcar que atualizou o conector no claude.ai.
 
-export const VERSAO_FERRAMENTAS = "2026-10-11";
+export const VERSAO_FERRAMENTAS = "2026-10-12";
 
 export const NOVIDADES: { versao: string; texto: string }[] = [
+  {
+    versao: "2026-10-12",
+    texto:
+      "Ferramentas novas: ver_agenda (Google Agenda), ver_historico_lead, marcar_aviso_lido, cancelar_pedido e remover_tarefa. Mudou: o Claude não apaga mais cliente (só desativa), não convida sócio (só colaborador, freelancer e contador) e todo percentual vai de 0 a 100.",
+  },
   {
     versao: "2026-10-11",
     texto:

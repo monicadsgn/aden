@@ -2122,6 +2122,94 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
   );
 
   server.registerTool(
+    "marcar_aviso_lido",
+    {
+      title: "Marcar aviso como lido",
+      description: "Marca um aviso do sócio como lido (id vem de ver_avisos). Sem id, marca todos os não lidos deste sócio.",
+      inputSchema: { id: z.string().optional() },
+    },
+    async ({ id }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const [eu, avisos] = await Promise.all([repo.usuarioAtual(), repo.listarAvisos()]);
+        const meus = avisos.filter((x) => !x.lidoEm && (!eu?.pessoaId || x.pessoaId === eu.pessoaId)).filter((x) => !id || x.id === id);
+        if (id && !meus.length) throw new Error("Aviso não encontrado entre os seus não lidos.");
+        for (const a of meus) await repo.marcarAvisoLido(a.id);
+        return { marcados: meus.length };
+      }),
+  );
+
+  server.registerTool(
+    "cancelar_pedido",
+    {
+      title: "Cancelar um pedido que você fez",
+      description: "Cancela um pedido de aprovação que ainda está pendente (id vem de ver_aprovacoes). Só o pedido de quem está usando o conector. Não aprova nem recusa nada.",
+      inputSchema: { id: z.string() },
+    },
+    async ({ id }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const pedidos = await repo.listarPedidos();
+        const p = pedidos.find((x) => x.id === id);
+        if (!p) throw new Error("Pedido não encontrado.");
+        if (p.status !== "pendente") throw new Error("Só dá para cancelar pedido pendente.");
+        await repo.cancelarPedido(id);
+        return { cancelado: p.descricao };
+      }),
+  );
+
+  server.registerTool(
+    "ver_historico_lead",
+    {
+      title: "Histórico de conversas do lead",
+      description: "As conversas e follow-ups já registrados de um lead, da mais nova para a mais antiga. Para registrar uma nova, use registrar_conversa_lead.",
+      inputSchema: { lead: z.string().describe("id ou nome do lead") },
+    },
+    async ({ lead }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const l = resolver(await repo.listarLeads(), lead, "Lead");
+        const itens = await repo.listarInteracoes(l.id);
+        return {
+          lead: l.nome,
+          conversas: [...itens].sort((a, b) => b.em.localeCompare(a.em)).map((i) => ({ tipo: i.tipo, texto: i.texto, quando: i.em, quem: i.autorNome })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "ver_agenda",
+    {
+      title: "Eventos do Google Agenda",
+      description: "Os eventos das agendas ligadas ao Aden (as agendas que cada pessoa conectou), de uma data a outra. Só leitura.",
+      inputSchema: { de: z.string().describe("AAAA-MM-DD"), ate: z.string().describe("AAAA-MM-DD") },
+    },
+    async ({ de, ate }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const r = await repo.eventosAgenda(de, ate);
+        return { eventos: r.eventos.map((e) => ({ titulo: e.titulo, inicio: e.inicio, fim: e.fim, diaInteiro: e.diaInteiro, local: e.local, agenda: e.agenda })), avisos: r.erros };
+      }),
+  );
+
+  server.registerTool(
+    "remover_tarefa",
+    {
+      title: "Apagar uma tarefa",
+      description: "Apaga de vez uma tarefa (e o tempo medido nela). Confirme com quem está conversando antes. Para só encerrar, use concluir_tarefa.",
+      inputSchema: { id: z.string().describe("id da tarefa") },
+    },
+    async ({ id }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const t = (await repo.listarTarefas()).find((x) => x.id === id);
+        if (!t) throw new Error("Tarefa não encontrada. Use o id de listar_tarefas.");
+        await repo.removerTarefa(id);
+        return { apagada: t.titulo };
+      }),
+  );
+
+  server.registerTool(
     "quem_sou_eu",
     {
       title: "Quem está usando o conector",
