@@ -692,3 +692,12 @@ Todas as tabelas têm `id`, `org_id`, `atualizado_em`, `atualizado_por`, RLS e t
 
 **Relatórios**
 - `integracoes`, `metricas_diarias`, `relatorios`
+
+## Aviso por e-mail ao cliente (rascunho, 11/10/2026)
+
+Regra da Moni: o cliente só recebe e-mail quando há peça enviada para aprovar ou ajuste devolvido. Nada de "sem novidade".
+- Uma vez por dia, de manhã (`vercel.json`, 11h UTC = 8h em Brasília), a Vercel chama `/api/avisos` com `CRON_SECRET`.
+- A rota pede ao banco a lista (`avisos_cliente_pendentes`, migration 0043): clientes ativos, não internos, com link do painel, e-mail na ficha e `aviso_email` ligado; peças em revisão enviadas depois de `aviso_email_em`. Sem chave de serviço: o banco confere o segredo pela impressão digital (sha-256).
+- `lib/email/avisoCliente.ts` monta o texto e o HTML (cores da marca, logo em `public/email/`); `lib/email/avisosDoDia.ts` junta tudo; `lib/email/gmail.ts` envia pelo Gmail da Aden (`AVISO_GMAIL_USUARIO`, `AVISO_GMAIL_SENHA_APP`, só na Vercel).
+- Só carimba `aviso_email_em` depois de enviar; se o Gmail falhar, o aviso sai no dia seguinte.
+- O campo e-mail da ficha aceita mais de um endereço (vírgula ou ponto e vírgula).
