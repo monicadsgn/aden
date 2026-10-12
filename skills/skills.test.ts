@@ -11,8 +11,8 @@ const ferramentas = new Set([...servidor.matchAll(/registerTool\(\s*"([a-z_]+)"/
 const valores = new Set(["pasta_drive", "proposta_enviada", "lead_recebido", "contato_feito"]);
 
 describe("skills da Aden", () => {
-  it("existem as cinco da Fase 6", () => {
-    expect(skills.map((s) => s.name).sort()).toEqual(["aden-contrato", "aden-fechamento", "aden-onboarding", "aden-proposta", "aden-rotina"]);
+  it("existem as cinco da Fase 6 e a identidade", () => {
+    expect(skills.map((s) => s.name).sort()).toEqual(["aden-contrato", "aden-fechamento", "aden-identidade", "aden-onboarding", "aden-proposta", "aden-rotina"]);
   });
 
   for (const s of skills) {
@@ -20,9 +20,10 @@ describe("skills da Aden", () => {
     it(`${s.name}: cabeçalho com name e description`, () => {
       expect(texto).toMatch(new RegExp(`^---\\nname: ${s.name}\\ndescription: .+\\n---\\n`));
     });
+    // a identidade é só visual e de voz: não manda chamar ferramenta
     it(`${s.name}: só cita ferramentas do conector que existem`, () => {
       const citadas = [...texto.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)].map((m) => m[1]);
-      expect(citadas.length).toBeGreaterThan(0);
+      if (s.name !== "aden-identidade") expect(citadas.length).toBeGreaterThan(0);
       for (const f of citadas) expect(ferramentas.has(f) || valores.has(f), f).toBe(true);
     });
     it(`${s.name}: não cita outro sistema`, () => {

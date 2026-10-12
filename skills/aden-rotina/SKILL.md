@@ -61,6 +61,7 @@ Não existe bot de WhatsApp: pedido entre os sócios vira tarefa no Aden.
   o que está sem prazo (diga quem pediu, quando vier `pedidaPor`) e os próximos 7 dias. No fim, a pendência anotada no contexto da Aden que for dessa pessoa, se houver.
 - "E o [outro sócio]?" → a mesma coisa com o nome dele. "E todo mundo?" → sem nome.
 - Terminou uma tarefa: `concluir_tarefa`.
+- Peça pronta para o cliente olhar: `enviar_para_cliente_aprovar` (vai para o painel dele; o cliente aprova ou pede ajuste lá).
 - O post já está programado: `marcar_agendada` (várias peças de uma vez). Se o cliente aprova pelo painel e ainda não aprovou, o Aden explica; se ele aprovou fora do painel, use `registrar_aprovacao_fora_do_painel`. Foi ao ar: `marcar_publicada`.
 
 ## 5. O que nunca entra no contexto da Aden
