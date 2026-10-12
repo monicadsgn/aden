@@ -112,8 +112,12 @@ export function situacaoPeca(
  * A aprovação desta peça passa pelo painel do cliente? Só com painel ligado, cliente de fora e link criado na ficha.
  * (A própria Aden, cliente sem link ou painel desligado: sem passo de aprovação no sistema.)
  */
-export function passaPelaAprovacao(cliente: { interno?: boolean; painelToken?: string | null } | null | undefined, painelAtivo: boolean): boolean {
-  return !!cliente && painelAtivo && !cliente.interno && !!cliente.painelToken;
+export function passaPelaAprovacao(
+  cliente: { interno?: boolean; painelToken?: string | null } | null | undefined,
+  painelAtivo: boolean,
+  tipo?: { semAprovacaoCliente?: boolean } | null,
+): boolean {
+  return !!cliente && painelAtivo && !cliente.interno && !!cliente.painelToken && !tipo?.semAprovacaoCliente;
 }
 
 /** Tarefa de cliente que é uma peça de conteúdo (legenda, arte, data de ir ao ar, calendário ou painel). */

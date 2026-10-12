@@ -204,8 +204,12 @@ function acharData(datas: DataComemorativa[], ref: string): DataComemorativa {
 }
 
 /** A aprovação desta tarefa passa pelo painel do cliente? (senão "agendada" não espera aprovação) */
-const passaDe = (config: Configuracao, t: Pick<Tarefa, "clienteId">) =>
-  passaPelaAprovacao(config.clientes.find((c) => c.id === t.clienteId), PAINEL_CLIENTE_ATIVO);
+const passaDe = (config: Configuracao, t: Pick<Tarefa, "clienteId"> & Partial<Pick<Tarefa, "tipoEntregaId">>) =>
+  passaPelaAprovacao(
+    config.clientes.find((c) => c.id === t.clienteId),
+    PAINEL_CLIENTE_ATIVO,
+    config.tiposEntrega.find((x) => x.id === t.tipoEntregaId),
+  );
 
 const ROTULO_CONTEXTO: Record<TipoContexto, string> = { decisao: "decisão", preferencia: "preferência", pendencia: "pendência", nota: "nota" };
 
@@ -406,6 +410,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         audiovisual: z.boolean().optional().describe("não use: é definido por 'terceiro'"),
         terceiro: opt(z.string(), "quem faz: terceiro cadastrado (nome ou id), cada unidade = 1 saída; null = os sócios"),
         nomeCliente: opt(z.string(), "como aparece no painel do cliente (ex.: Post, Carrossel); null = o próprio nome"),
+        semAprovacaoCliente: z.boolean().optional().describe("true = peça deste tipo não espera aprovação do cliente (ex.: Card de jogo): marcou como agendada, está agendada"),
         projeto: z.boolean().optional().describe("true = projeto de marca: mede em horas totais do projeto e prazo em dias, não em minutos"),
         horasDoProjeto: opt(z.number().positive(), "horas totais estimadas do projeto (só para projeto; campo protegido)"),
         prazoDias: opt(z.number().int().positive(), "prazo de entrega do projeto em dias úteis (só para projeto; vai para o contrato)"),

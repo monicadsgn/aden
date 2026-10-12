@@ -288,6 +288,7 @@ export class RepositorioSupabase implements Repositorio {
         calibrarDesde: (t.calibrar_desde as string) ?? null,
         terceiroId: (t.terceiro_id as string) ?? null,
         nomeCliente: (t.nome_cliente as string) ?? null,
+        semAprovacaoCliente: (t.sem_aprovacao_cliente as boolean) ?? false,
         projeto: (t.projeto as boolean) ?? false,
         prazoDias: num(t.prazo_dias),
       })),
@@ -517,6 +518,7 @@ export class RepositorioSupabase implements Repositorio {
         calibrar_desde: t.calibrarDesde ?? null,
         terceiro_id: t.terceiroId ?? null,
         nome_cliente: t.nomeCliente?.trim() || null,
+        sem_aprovacao_cliente: t.semAprovacaoCliente ?? false,
         projeto: t.projeto ?? false,
         prazo_dias: t.projeto ? (t.prazoDias ?? null) : null,
         ordem: i,
@@ -1359,6 +1361,7 @@ export class RepositorioSupabase implements Repositorio {
       calibrarDesde: (t.calibrar_desde as string) ?? null,
       terceiroId: (t.terceiro_id as string) ?? null,
       nomeCliente: (t.nome_cliente as string) ?? null,
+      semAprovacaoCliente: (t.sem_aprovacao_cliente as boolean) ?? false,
       projeto: (t.projeto as boolean) ?? false,
       prazoDias: num(t.prazo_dias),
     }));

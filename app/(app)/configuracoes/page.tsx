@@ -677,6 +677,18 @@ export default function Configuracoes() {
                       valor={t.nomeCliente ?? ""}
                       aoMudar={(v) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { nomeCliente: v || null }) })}
                     />
+                    <label className="col-span-full flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={t.semAprovacaoCliente ?? false}
+                        onChange={(e) => set({ tiposEntrega: atualizar(rascunho.tiposEntrega, t.id, { semAprovacaoCliente: e.target.checked }) })}
+                      />
+                      <span>
+                        Não precisa da aprovação do cliente
+                        <span className="block text-xs text-texto-suave">Peça deste tipo vai direto: ao marcar como agendada, já fica agendada. Ex.: card de jogo.</span>
+                      </span>
+                    </label>
                     {t.terceiroId && (
                       <p className="col-span-full text-xs text-texto-suave">Não conta horas dos sócios. Vira custo do cliente, pelo valor cadastrado em Terceiros.</p>
                     )}
