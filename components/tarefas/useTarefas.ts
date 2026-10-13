@@ -11,6 +11,7 @@ import { useDados } from "@/lib/dados/contexto";
 import { hojeISO } from "@/lib/calculo/dia";
 import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
 import { conferirPrazoDoPedido } from "@/lib/regras/prazoPedido";
+import { conferirPrazoDaPeca, MENSAGEM_SEM_DIA_DA_POSTAGEM, semDiaDaPostagem } from "@/lib/regras/prazoPostagem";
 
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
@@ -66,9 +67,11 @@ export function useTarefas() {
   /** Salva a tarefa (otimista: a tela muda na hora). */
   const salvar = (pedida: Tarefa) =>
     tentar(async () => {
+      // peça com dia de postagem: o prazo da tarefa é 1 dia antes dele (vazio ou no dia da postagem vira a véspera)
+      const peca = conferirPrazoDaPeca(pedida);
       // pedido ao outro sócio: prazo mínimo em dias úteis; sem prazo entra o mínimo, menor só como urgência
       const antes = tarefas.find((x) => x.id === pedida.id);
-      const p = conferirPrazoDoPedido({ config, antes, depois: pedida, eu: usuario?.pessoaId, hoje: hojeISO() });
+      const p = conferirPrazoDoPedido({ config, antes, depois: peca.tarefa, eu: usuario?.pessoaId, hoje: hojeISO() });
       let t = p.tarefa;
       if (p.pedeUrgencia && p.minimo) {
         const urgente = window.confirm(
@@ -78,6 +81,12 @@ export function useTarefas() {
       }
       setTarefas((l) => (l.some((x) => x.id === t.id) ? l.map((x) => (x.id === t.id ? t : x)) : [t, ...l]));
       await repo.salvarTarefa(t);
+      if (peca.ajuste && peca.vespera && t.vencimento === peca.vespera)
+        setErro(
+          peca.ajuste === "preencheu"
+            ? `Prazo da tarefa: ${ddmm(peca.vespera)}, 1 dia antes de a peça ir ao ar.`
+            : `O prazo ${ddmm(peca.prazoAnterior!)} era no dia da postagem ou depois. Ajustei para ${ddmm(peca.vespera)}, 1 dia antes.`,
+        );
       // a medição acompanha a quantidade da tarefa
       const m = medicaoDaTarefa(t, medicoes);
       if (m && (m.unidades ?? 1) !== Math.max(1, t.quantidade)) {
@@ -163,7 +172,8 @@ export function useTarefas() {
   /** Manda a peça para o cliente aprovar (aparece no painel dele). */
   const enviarParaCliente = (t: Tarefa) =>
     tentar(async () => {
-      await repo.salvarTarefa({ ...t, visivelCliente: true });
+      if (semDiaDaPostagem(t)) throw new Error(MENSAGEM_SEM_DIA_DA_POSTAGEM);
+      await repo.salvarTarefa({ ...conferirPrazoDaPeca(t).tarefa, visivelCliente: true });
       await repo.enviarParaCliente(t.id);
       await recarregar();
       avisarRelogio();

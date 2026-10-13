@@ -10,7 +10,8 @@ import { useTarefas, type AcoesTarefas } from "@/components/tarefas/useTarefas";
 import { Botao, Card, Segmentado, Selecao, Vazio, cx } from "@/components/ui";
 import { podeCriarTarefa } from "@/lib/acesso";
 import { novoId } from "@/lib/calculo/novo";
-import { agruparPorPrazo, ehPeca, etapaDaTela, etapasDaTela, novaTarefa, ROTULO_GRUPO, type EtapaDaTela, type Tarefa } from "@/lib/calculo/tarefas";
+import { agruparPorPrazo, ehPeca, etapaDaTela, etapasDaTela, novaTarefa, ordenarParaQuadro, ROTULO_GRUPO, type EtapaDaTela, type Tarefa } from "@/lib/calculo/tarefas";
+import { semDiaDaPostagem } from "@/lib/regras/prazoPostagem";
 
 type Visao = "lista" | "quadro" | "calendario";
 type Situacao = "abertas" | "concluidas" | "todas";
@@ -23,7 +24,11 @@ function Quadro({ tarefas, a, abrir }: { tarefas: Tarefa[]; a: AcoesTarefas; abr
   return (
     <div className={cx("grid gap-3 md:grid-cols-2", colunas.length > 4 ? "xl:grid-cols-5" : "xl:grid-cols-4")}>
       {colunas.map((s) => {
-        const col = tarefas.filter((t) => etapaDaTela(t, a.passa(t)) === s.valor);
+        // de cima para baixo, da data de postagem (ou prazo) mais perto para a mais longe
+        const col = ordenarParaQuadro(
+          tarefas.filter((t) => etapaDaTela(t, a.passa(t)) === s.valor),
+          s.valor,
+        );
         return (
           <div
             key={s.valor}
@@ -57,6 +62,7 @@ function Quadro({ tarefas, a, abrir }: { tarefas: Tarefa[]; a: AcoesTarefas; abr
                 className="flex cursor-grab flex-col gap-2 rounded-item border border-linha bg-superficie p-3 shadow-card hover:border-marca/50 active:cursor-grabbing"
               >
                 <span className={cx("text-[13px] font-medium", t.status === "concluida" && "text-texto-suave line-through")}>{t.titulo}</span>
+                {semDiaDaPostagem(t) && <span className="text-[11px] font-semibold text-erro">falta o dia da postagem</span>}
                 <div className="flex flex-wrap items-center gap-2">
                   <MetaTarefa t={t} a={a} />
                   <span className="ml-auto">

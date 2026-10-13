@@ -9,6 +9,7 @@ import { Badge, Botao, cx } from "../ui";
 import { aprovarAte } from "@/lib/calculo/painel";
 import { linkWhatsapp, mensagemPecaNoPainel } from "@/lib/calculo/avisoCliente";
 import { ehPeca, ROTULO_PECA, situacaoPeca, type Tarefa } from "@/lib/calculo/tarefas";
+import { semDiaDaPostagem } from "@/lib/regras/prazoPostagem";
 import { AprovadoFora } from "./AprovadoFora";
 import type { AcoesTarefas } from "./useTarefas";
 
@@ -35,6 +36,8 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
   const rodadas = t.rodadas ?? 0;
   const prazo = sit === "aguardando" ? aprovarAte(t.enviadaClienteEm ?? null, cliente.contrato?.prazoAprovacaoDias ?? null) : null;
   const arquivos = t.arquivos ?? [];
+  // peça de calendário sem o dia da postagem: avisa e não deixa enviar para o cliente
+  const faltaDia = semDiaDaPostagem(t);
   // M12: tarefa de um calendário do planejamento já é peça: o bloco abre sozinho
   const ehPecaAberta = aberto || ehPeca(t);
   // com painel, a peça passa pela aprovação do cliente antes de agendar ou publicar
@@ -88,6 +91,15 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
             onBlur={(e) => e.target.value !== (t.legenda ?? "") && void a.salvar({ ...t, legenda: e.target.value })}
           />
         </label>
+
+        {faltaDia && (
+          <p className="mt-3 flex items-start gap-2 rounded-item bg-erro-suave px-3 py-2 text-xs text-erro">
+            <CalendarClock size={14} className="mt-px shrink-0" />
+            <span>
+              <strong>Falta o dia da postagem.</strong> Preencha &quot;Vai ao ar em&quot; (logo abaixo). O prazo da tarefa vira 1 dia antes dele, e a peça só vai para o cliente com o dia preenchido.
+            </span>
+          </p>
+        )}
 
         <div className="mt-3 flex flex-wrap gap-2">
           {arquivos.map((f, i) => (
@@ -177,8 +189,8 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
         {/* publicação: quando vai ao ar e quando foi */}
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
-            <span className="inline-flex items-center gap-1">
-              <CalendarClock size={13} /> Vai ao ar em
+            <span className={cx("inline-flex items-center gap-1", faltaDia && "text-erro")}>
+              <CalendarClock size={13} /> Vai ao ar em{faltaDia && " (falta preencher)"}
             </span>
             <input
               key={`${t.id}-pub-${t.publicarEm ?? ""}`}
@@ -231,7 +243,7 @@ export function ParaCliente({ t, a }: { t: Tarefa; a: AcoesTarefas }) {
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {!interno && (sit === "planejado" || sit === "producao" || sit === "ajuste") && (
-            <Botao pequeno variante="primario" icone={Send} onClick={() => void a.enviarParaCliente(t)}>
+            <Botao pequeno variante="primario" icone={Send} disabled={faltaDia} title={faltaDia ? "Preencha o dia da postagem (Vai ao ar em) primeiro" : undefined} onClick={() => void a.enviarParaCliente(t)}>
               {rodadas > 0 ? "Reenviar para o cliente aprovar" : "Enviar para o cliente aprovar"}
             </Botao>
           )}

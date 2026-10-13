@@ -583,15 +583,60 @@ describe("conector: planejamento mensal, datas e atalhos", () => {
     expect(r.criadas).toBe(2);
     expect(r.pecas.map((p: { etapa: string }) => p.etapa)).toEqual(["planejado", "planejado"]);
     const t = banco.tarefas.find((x) => x.titulo === "Dicionário: Entretela")!;
-    expect(t).toMatchObject({ visivelCliente: true, rede: "instagram", lote: "Calendário Outubro — Olinda", status: "a_fazer", vencimento: "2026-10-02", textoArte: "ENTRETELA" });
+    // prazo da tarefa = 1 dia antes da postagem (13/10/2026)
+    expect(t).toMatchObject({ visivelCliente: true, rede: "instagram", lote: "Calendário Outubro — Olinda", status: "a_fazer", vencimento: "2026-10-01", textoArte: "ENTRETELA" });
     expect(t.publicarEm).toBe("2026-10-02T15:00:00.000Z");
+    expect(banco.tarefas.find((x) => x.titulo === "Tour pela loja")!.vencimento).toBe("2026-10-03");
+    expect(r.pecas.map((p: { prazo: string }) => p.prazo)).toEqual(["2026-10-01", "2026-10-03"]);
     const lista = await chamar("listar_tarefas", { lote: "calendário outubro — olinda" });
     expect(lista).toHaveLength(2);
     // tipo que não existe: nada é gravado
     await expect(
-      chamar("importar_planejamento_mensal", { cliente: "Olinda", lote: "X", pecas: [{ titulo: "a", tipo: "Post simples" }, { titulo: "b", tipo: "Sticker" }] }),
+      chamar("importar_planejamento_mensal", {
+        cliente: "Olinda",
+        lote: "X",
+        pecas: [
+          { titulo: "a", tipo: "Post simples", publicarEm: "2026-10-05" },
+          { titulo: "b", tipo: "Sticker", publicarEm: "2026-10-06" },
+        ],
+      }),
     ).rejects.toThrow(/Nada foi gravado.*Sticker/);
     expect(banco.tarefas).toHaveLength(2);
+  });
+
+  it("peça do planejamento sem o dia da postagem: nada é gravado", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    await chamar("salvar_tipo_entrega", { nome: "Post simples" });
+    await expect(
+      chamar("importar_planejamento_mensal", {
+        cliente: "Olinda",
+        lote: "X",
+        pecas: [
+          { titulo: "com dia", tipo: "Post simples", publicarEm: "2026-10-05" },
+          { titulo: "sem dia", tipo: "Post simples", publicarEm: "  " },
+        ],
+      }),
+    ).rejects.toThrow(/Nada foi gravado.*sem dia.*falta o dia da postagem/);
+    await expect(chamar("importar_planejamento_mensal", { cliente: "Olinda", lote: "X", pecas: [{ titulo: "sem campo", tipo: "Post simples" }] })).rejects.toThrow();
+    expect(banco.tarefas).toHaveLength(0);
+  });
+
+  it("salvar_tarefa: prazo vazio ou no dia da postagem vai para a véspera; prazo mais cedo fica; sem o dia, avisa", async () => {
+    await chamar("salvar_cliente", { nome: "Olinda", valorMensalReais: 1500 });
+    const a = await chamar("salvar_tarefa", { titulo: "Post A", cliente: "Olinda", lote: "Calendário", publicarEm: "2026-10-20 12:00" });
+    expect(a).toMatchObject({ prazoDaPeca: "2026-10-19", prazoAjustado: expect.stringMatching(/entrou sozinho/) });
+    expect(banco.tarefas.find((x) => x.titulo === "Post A")!.vencimento).toBe("2026-10-19");
+    const b = await chamar("salvar_tarefa", { titulo: "Post B", cliente: "Olinda", lote: "Calendário", publicarEm: "2026-10-20 12:00", vencimento: "2026-10-20" });
+    expect(b.prazoAjustado).toMatch(/passou para 1 dia antes/);
+    expect(banco.tarefas.find((x) => x.titulo === "Post B")!.vencimento).toBe("2026-10-19");
+    const c = await chamar("salvar_tarefa", { titulo: "Post C", cliente: "Olinda", lote: "Calendário", publicarEm: "2026-10-20 12:00", vencimento: "2026-10-16" });
+    expect(c.prazoAjustado).toBeUndefined();
+    expect(banco.tarefas.find((x) => x.titulo === "Post C")!.vencimento).toBe("2026-10-16");
+    const d = await chamar("salvar_tarefa", { titulo: "Post D", cliente: "Olinda", lote: "Calendário" });
+    expect(d.aviso).toMatch(/Falta o dia da postagem/);
+    // tarefa que não é peça de calendário não é cobrada
+    const e = await chamar("salvar_tarefa", { titulo: "Reunião", cliente: "Olinda", vencimento: "2026-10-20" });
+    expect(e.aviso).toBeUndefined();
   });
 
   it("datas comemorativas com a janela de cada cliente", async () => {
@@ -800,6 +845,9 @@ describe("conector: painel do cliente", () => {
     await chamar("salvar_tarefa", { id: t.id, cliente: "Olinda" });
     await chamar("enviar_para_cliente_aprovar", { id: t.id, legenda: "Oi!" });
     expect(banco.tarefas[0]).toMatchObject({ status: "revisao", visivelCliente: true, legenda: "Oi!" });
+    // peça de calendário sem o dia da postagem não vai para o cliente
+    const semDia = await chamar("salvar_tarefa", { titulo: "Post sem dia", cliente: "Olinda", lote: "Calendário" });
+    await expect(chamar("enviar_para_cliente_aprovar", { id: semDia.id })).rejects.toThrow(/Falta o dia da postagem/);
     const [lt] = await chamar("listar_tarefas");
     expect(lt.noPainelDoCliente).toBe("aguardando");
   });
