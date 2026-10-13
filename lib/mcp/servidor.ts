@@ -50,6 +50,7 @@ import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
 import { motivoNaoApagar, REGRAS_PROTECAO } from "../regras/aprovacao";
 import { conferirPrazoDoPedido } from "../regras/prazoPedido";
+import { conferirPrazoDaPeca, MENSAGEM_SEM_DIA_DA_POSTAGEM, semDiaDaPostagem, vesperaDaPostagem } from "../regras/prazoPostagem";
 import { COMO_ATUALIZAR, NOVIDADES, VERSAO_FERRAMENTAS } from "./novidades";
 import { PAINEL_CLIENTE_ATIVO } from "../recursos";
 import type { RepositorioSupabase } from "../dados/supabase";
@@ -118,6 +119,9 @@ Regras que você deve seguir:
   (ex.: no grupo do WhatsApp): registrar_aprovacao_fora_do_painel com a lista de peças leva direto para agendada, sem
   avisar o cliente. Post já programado: marcar_agendada (ou mudar_status_tarefa com "agendada"). Cliente que aprova pelo
   painel (link criado na ficha) só agenda depois de aprovar (senão dá erro); a própria Aden e cliente sem link agendam direto.
+- Peça de calendário (do planejamento mensal) SEMPRE tem o dia da postagem (publicarEm): o planejamento já nasce com ele. O prazo da
+  tarefa (vencimento) é pelo menos 1 dia ANTES da postagem (a véspera): vazio ou no dia da postagem, o Aden ajusta sozinho para a
+  véspera. Peça sem o dia da postagem não vai para o cliente aprovar: pergunte o dia e preencha antes.
 - Pacotes: ver_pacotes mostra os preços CALCULADOS (nunca digitados). salvar_pacote só guarda o que é entregue.
 - Terceiros (salvar_terceiro): custo por saída + deslocamento, só do cliente que recebe; o cliente nunca vê o valor.
 - Metas (ver_metas, salvar_meta): trilha de crescimento em degraus. Só cadastre metas que os sócios definiram.
@@ -974,7 +978,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           const cli = (await repo.carregarConfig()).clientes.find((c) => c.id === t.clienteId);
           if (cli?.interno) throw new Error(`${cli.nome} é a própria Aden: não tem painel de cliente.`);
           if (!cli?.painelToken) throw new Error(`${cli?.nome ?? "Este cliente"} ainda não tem painel: crie o link na ficha dele (ou com link_painel_cliente) antes de enviar.`);
-          await repo.salvarTarefa({ ...t, visivelCliente: true, ...(legenda != null && { legenda }) });
+          if (semDiaDaPostagem(t)) throw new Error(`${MENSAGEM_SEM_DIA_DA_POSTAGEM} Use salvar_tarefa com publicarEm e tente de novo.`);
+          await repo.salvarTarefa({ ...conferirPrazoDaPeca(t).tarefa, visivelCliente: true, ...(legenda != null && { legenda }) });
           await repo.enviarParaCliente(t.id);
           return { enviada: t.titulo };
         }),
@@ -2339,9 +2344,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
         if (e.agendada && !t.clienteId) throw new Error("Só peça de cliente pode ser agendada: informe o cliente da tarefa.");
         const semAprovar = erroAgendarSemAprovacao(base, e.agendada, passaDe(config, t));
         if (semAprovar) throw new Error(semAprovar);
+        // peça com dia de postagem: o prazo da tarefa é 1 dia antes dele (vazio ou no dia da postagem vira a véspera)
+        const peca = conferirPrazoDaPeca(t);
         // pedido ao outro sócio: prazo mínimo em dias úteis (sem prazo entra sozinho; menor só como urgência)
         const eu = await repo.usuarioAtual();
-        const prazo = conferirPrazoDoPedido({ config, antes, depois: t, eu: eu?.pessoaId, hoje: dataDeBrasilia(new Date().toISOString()) });
+        const prazo = conferirPrazoDoPedido({ config, antes, depois: peca.tarefa, eu: eu?.pessoaId, hoje: dataDeBrasilia(new Date().toISOString()) });
         if (prazo.pedeUrgencia)
           throw new Error(
             `Pedido ao outro sócio tem prazo mínimo de ${prazo.dias} dias úteis (a partir de ${prazo.minimo}). Prazo menor só como urgência: confirme com quem pediu se é urgente e mande de novo com prioridade "urgente", ou use ${prazo.minimo} ou depois.`,
@@ -2353,6 +2360,11 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           criada: !antes,
           ...(prazo.minimo && { prazo: prazo.tarefa.vencimento, prazoMinimo: prazo.preencheu ? `entrou sozinho: ${prazo.dias} dias úteis a partir do pedido` : undefined }),
           ...(prazo.minimo && prazo.tarefa.prioridade === "urgente" && { urgente: true }),
+          ...(peca.ajuste && {
+            prazoDaPeca: prazo.tarefa.vencimento,
+            prazoAjustado: peca.ajuste === "preencheu" ? "entrou sozinho: 1 dia antes da postagem" : `era ${peca.prazoAnterior} (dia da postagem ou depois): passou para 1 dia antes da postagem`,
+          }),
+          ...(semDiaDaPostagem(t) && { aviso: `Peça de calendário sem o dia da postagem. ${MENSAGEM_SEM_DIA_DA_POSTAGEM} Pergunte o dia e mande publicarEm.` }),
         };
       }),
   );
@@ -2374,7 +2386,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               textoArte: z.string().optional().describe("o que vai escrito dentro da arte"),
               legenda: z.string().optional(),
               rede: z.string().optional().describe("ex.: instagram (interno)"),
-              publicarEm: z.string().optional().describe("AAAA-MM-DD ou AAAA-MM-DD HH:MM (horário de Brasília); só a data = meio-dia"),
+              publicarEm: z.string().describe("OBRIGATÓRIO: o dia em que a peça vai ao ar, AAAA-MM-DD ou AAAA-MM-DD HH:MM (horário de Brasília); só a data = meio-dia. O prazo da tarefa fica 1 dia antes."),
             }),
           )
           .min(1),
@@ -2396,7 +2408,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
             erros.push(`peça ${i + 1} (${p.titulo}): tipo "${p.tipo}" não existe`);
           }
           let publicarEm: string | null = null;
-          if (p.publicarEm) {
+          if (!p.publicarEm?.trim()) {
+            erros.push(`peça ${i + 1} (${p.titulo}): falta o dia da postagem (publicarEm)`);
+          } else {
             const v = /^\d{4}-\d{2}-\d{2}$/.test(p.publicarEm.trim()) ? `${p.publicarEm.trim()} 12:00` : p.publicarEm;
             try {
               publicarEm = dataHoraBrasilia(v);
@@ -2413,7 +2427,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
             rede: p.rede?.trim() || null,
             lote: lote.trim(),
             publicarEm,
-            vencimento: publicarEm ? dataDeBrasilia(publicarEm) : null,
+            // prazo da tarefa: 1 dia antes da postagem (a arte tem que estar pronta e aprovada antes de ir ao ar)
+            vencimento: publicarEm ? vesperaDaPostagem(publicarEm) : null,
             visivelCliente: true,
           };
         });
@@ -2424,7 +2439,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           cliente: c.nome,
           lote: lote.trim(),
           criadas: novas.length,
-          pecas: novas.map((t) => ({ id: t.id, titulo: t.titulo, vaiAoArEm: t.publicarEm, etapa: ROTULO_PECA[situacaoPeca(t, passaDe(config, t))] })),
+          pecas: novas.map((t) => ({ id: t.id, titulo: t.titulo, vaiAoArEm: t.publicarEm, prazo: t.vencimento, etapa: ROTULO_PECA[situacaoPeca(t, passaDe(config, t))] })),
           painelDoCliente: c.painelToken ? "aparecem em 'Vem por aí'" : "este cliente ainda não tem link do painel",
         };
       }),

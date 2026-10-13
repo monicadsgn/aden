@@ -49,6 +49,7 @@
   tarefa por entrega (sócio de maior % no serviço, prazo em dias úteis). Projeto pontual "cobrado à parte" da
   calculadora passou a pagar a parte dos custos fixos também. Primeiro mês dos pacotes mensais = mínimo(rotina +
   entrada) − mínimo(rotina), para seguir a regra da sociedade.
+- **Dia da postagem e prazo da peça (13/10/2026, `lib/regras/prazoPostagem.ts`):** peça de calendário (de cliente, com calendário ou rede do planejamento) sempre tem `publicar_em`; o prazo da tarefa é a véspera da postagem no máximo (vazio, no dia da postagem ou depois vira a véspera). `importar_planejamento_mensal` exige o dia de cada peça e já grava o prazo na véspera; `salvar_tarefa` e a tela ajustam o prazo ao salvar; `enviar_para_cliente_aprovar` e o botão "Enviar para o cliente aprovar" recusam peça de calendário sem o dia. Só na aplicação, sem trava no banco. Quadro de tarefas: cada coluna ordenada pela data da postagem (ou o prazo, se não tiver), da mais perto para a mais longe (`ordenarParaQuadro` em `lib/calculo/tarefas.ts`); em Concluída, a mais recente primeiro.
 - **Prazo mínimo de pedido (migration 0037, `lib/regras/prazoPedido.ts`):** pedido ao outro sócio tem prazo mínimo
   de `configuracoes_empresa.prazo_minimo_pedido_dias_uteis` dias úteis (seg. a sex., sem feriados) a partir do pedido.
   Vale ao criar, ao passar a tarefa para outro sócio e quando quem pediu muda o prazo. Sem prazo, entra o mínimo; menor

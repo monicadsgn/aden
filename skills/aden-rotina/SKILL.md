@@ -48,6 +48,9 @@ Não existe bot de WhatsApp: pedido entre os sócios vira tarefa no Aden.
     data, não pergunte: o Aden põe o prazo mínimo sozinho. Se a pessoa pedir para antes disso, pergunte "é urgente?"
     antes de gravar; se for, mande `prioridade: "urgente"` (a tarefa ganha o selo urgente); se não, use o prazo mínimo.
     Sem "urgente", o Aden recusa o prazo curto;
+  - **Peça de calendário** (post, story, reels do planejamento): sempre com o dia da postagem (`publicarEm`). Se a pessoa
+    não disse o dia, pergunte antes de gravar. O prazo da tarefa é 1 dia antes da postagem: se vier vazio ou no dia da
+    postagem, o Aden põe a véspera sozinho. Peça sem o dia da postagem não vai para o cliente aprovar;
   - `descricao` com o pedido em uma ou duas frases e quem pediu.
 - **Antes de criar, confira se o pedido está completo.** Quem vai fazer a tarefa não tem como adivinhar. Se faltar
   algo, pergunte uma coisa por vez e só crie a tarefa quando estiver completo:

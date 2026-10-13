@@ -233,6 +233,23 @@ export function proximoPasso(t: Tarefa, passa: boolean): PassoSeguinte | null {
 
 export const rotuloEtapaDaTela = (e: EtapaDaTela) => (e === "agendada" ? ETAPA_AGENDADA.rotulo : rotuloStatus(e));
 
+/** Data que manda na ordem do quadro: o dia (e hora) da postagem da peça; sem ele, o prazo da tarefa. */
+const chaveDeData = (t: Tarefa): string | null => t.publicarEm ?? (t.vencimento ? `${t.vencimento}T00:00:00.000Z` : null);
+
+/**
+ * Ordem de cada coluna do quadro (13/10/2026): de cima para baixo, da data mais perto para a mais longe.
+ * Sem data vai para o fim. Em "Concluída" é o contrário: o que foi feito mais perto de hoje fica em cima.
+ */
+export function ordenarParaQuadro(coluna: Tarefa[], etapa: EtapaDaTela): Tarefa[] {
+  const recenteAntes = etapa === "concluida";
+  return [...coluna].sort((a, b) => {
+    const x = chaveDeData(a);
+    const y = chaveDeData(b);
+    if (x == null || y == null) return x === y ? a.criadoEm.localeCompare(b.criadoEm) : x == null ? 1 : -1;
+    return (recenteAntes ? y.localeCompare(x) : x.localeCompare(y)) || a.criadoEm.localeCompare(b.criadoEm);
+  });
+}
+
 export const PRIORIDADES: { valor: Prioridade; rotulo: string }[] = [
   { valor: "urgente", rotulo: "Urgente" },
   { valor: "alta", rotulo: "Alta" },

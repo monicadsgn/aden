@@ -9,6 +9,9 @@ import type { Tarefa } from "./tarefas";
 export const hojeISO = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+/** Dia (AAAA-MM-DD) no horário de Brasília de um instante em ISO (ex.: o "vai ao ar em" de uma peça). */
+export const diaDeBrasilia = (iso: string): string => new Date(new Date(iso).getTime() - 3 * 3600000).toISOString().slice(0, 10);
+
 export function somarDias(iso: string, n: number): string {
   const [a, m, d] = iso.split("-").map(Number);
   return hojeISO(new Date(a, m - 1, d + n));
