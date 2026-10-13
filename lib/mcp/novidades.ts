@@ -2,9 +2,14 @@
 // muda de jeito, sobe a VERSAO e ganha uma linha em NOVIDADES. O quem_sou_eu devolve isso para o Claude avisar o sócio,
 // e a Visão do dia mostra um aviso aos dois sócios até cada um marcar que atualizou o conector no claude.ai.
 
-export const VERSAO_FERRAMENTAS = "2026-10-11";
+export const VERSAO_FERRAMENTAS = "2026-10-13";
 
 export const NOVIDADES: { versao: string; texto: string }[] = [
+  {
+    versao: "2026-10-13",
+    texto:
+      "listar_tarefas agora traz a descrição da tarefa inteira (antes cortava em 600 caracteres), para pedidos com várias peças não perderem o final.",
+  },
   {
     versao: "2026-10-11",
     texto:
