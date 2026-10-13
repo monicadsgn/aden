@@ -13,7 +13,7 @@ comment on column clientes.aviso_email_em is 'Até que momento o cliente já foi
 
 create or replace function public.aviso_segredo_ok(p_segredo text) returns boolean
 language sql immutable as $$
-  select coalesce(p_segredo, '') <> '' and encode(sha256(convert_to(p_segredo, 'utf8')), 'hex') = '66f9f94f1f8556eedec493557c974b3faaa44d7974920ee7fc3b67c22dbbe236';
+  select coalesce(p_segredo, '') <> '' and encode(sha256(convert_to(p_segredo, 'utf8')), 'hex') = 'b5f4b3e6ecbbffa2afd1453028316b4e24899e24d84c8ca0872baabf0c4ab071';
 $$;
 
 -- Lista, por cliente, o que está esperando aviso. Peça nova = enviada para aprovar e nunca teve ajuste pedido.
