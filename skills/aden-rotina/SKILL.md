@@ -49,6 +49,14 @@ Não existe bot de WhatsApp: pedido entre os sócios vira tarefa no Aden.
     antes de gravar; se for, mande `prioridade: "urgente"` (a tarefa ganha o selo urgente); se não, use o prazo mínimo.
     Sem "urgente", o Aden recusa o prazo curto;
   - `descricao` com o pedido em uma ou duas frases e quem pediu.
+- **Antes de criar, confira se o pedido está completo.** Quem vai fazer a tarefa não tem como adivinhar. Se faltar
+  algo, pergunte uma coisa por vez e só crie a tarefa quando estiver completo:
+  - **Criativo ou peça:** modelo exato do produto (nome do modelo, nunca só a marca), preço ou condição que vai na
+    arte, texto da arte, formato (1:1, 4:5, story), fotos e a imagem de referência.
+  - **Imagens:** o conector não anexa arquivo. Suba a imagem no Drive (pasta do cliente) e cole o link na
+    `descricao`. Se não der para subir, diga isso ao sócio na hora e peça que mande a imagem junto da mensagem.
+  - **Várias peças:** uma tarefa por peça, no mesmo Calendário (`lote`), cada uma com a própria descrição completa.
+    Assim cada peça tem seu prazo, sua aprovação e pode ser concluída sozinha.
 - O Aden grava sozinho quem pediu ("[você] (pelo Claude)") e avisa o outro sócio na Visão do dia dele (Depende de
   mim) e em Pedidos e avisos, com o prazo (o que veio ou o mínimo que entrou sozinho).
 - Confirme em uma linha: "tarefa criada para [sócio]: …, até [data]; ele foi avisado".

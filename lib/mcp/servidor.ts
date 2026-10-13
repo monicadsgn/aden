@@ -2239,7 +2239,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               vencimento: t.vencimento,
               checklist: t.etapas.map((e) => `${e.feita ? "[x]" : "[ ]"} ${e.titulo}`),
               // M15: o que está escrito na tarefa e o que o cliente já respondeu, para o Claude sugerir com base nisso
-              ...(t.descricao?.trim() && { descricao: t.descricao.trim().slice(0, 600) }),
+              ...(t.descricao?.trim() && { descricao: t.descricao.trim().slice(0, 4000) }),
               ...(t.legenda?.trim() && { legenda: t.legenda.trim().slice(0, 600) }),
               ...(t.textoArte?.trim() && { textoDaArte: t.textoArte.trim().slice(0, 300) }),
               ...((t.respostasCliente?.length ?? 0) > 0 && {
