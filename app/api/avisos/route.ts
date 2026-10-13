@@ -21,7 +21,9 @@ export async function GET(req: Request) {
   if (!gmailConfigurado()) return Response.json({ erro: "O Gmail da Aden ainda não foi ligado na Vercel." }, { status: 503 });
 
   const sb = createClient(url, chave, { auth: { persistSession: false } });
-  const urlBase = ler("AVISO_URL_BASE") ?? `https://${req.headers.get("host")}`;
+  // O cron da Vercel chama o endereço interno do deploy (protegido), então o link do e-mail usa o endereço de produção.
+  const producao = ler("VERCEL_PROJECT_PRODUCTION_URL");
+  const urlBase = ler("AVISO_URL_BASE") ?? (producao ? `https://${producao}` : `https://${req.headers.get("host")}`);
   const hoje = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo" }).format(new Date());
 
   const r = await enviarAvisosDoDia({
