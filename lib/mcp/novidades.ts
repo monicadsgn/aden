@@ -2,9 +2,14 @@
 // muda de jeito, sobe a VERSAO e ganha uma linha em NOVIDADES. O quem_sou_eu devolve isso para o Claude avisar o sócio,
 // e a Visão do dia mostra um aviso aos dois sócios até cada um marcar que atualizou o conector no claude.ai.
 
-export const VERSAO_FERRAMENTAS = "2026-10-13";
+export const VERSAO_FERRAMENTAS = "2026-10-26";
 
 export const NOVIDADES: { versao: string; texto: string }[] = [
+  {
+    versao: "2026-10-26",
+    texto:
+      "Quiz de conversão: lead que vem do quiz chega no funil com a etiqueta (qualificado, com ressalva, desqualificado ou só social media), o que pesou nela, empresa, cidade e as respostas, e listar_leads mostra tudo isso. Nova ferramenta ver_funil_quiz: quantos começaram, onde pararam e quantos enviaram.",
+  },
   {
     versao: "2026-10-13",
     texto:

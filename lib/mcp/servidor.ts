@@ -16,7 +16,8 @@ import { distribuirPagamentos, repasseDosSocios, somaPagamentos } from "../calcu
 import { calcularMesDeCima, mesQueEstouraOTeto } from "../calculo/sociedade";
 import { calcularSolucoes } from "../calculo/solucoes";
 import { clienteNoMes, contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio } from "../calculo/clientes";
-import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, rotuloEtapa, situacaoFollowUp, type Lead } from "../calculo/crm";
+import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, ROTULO_QUALIFICACAO, rotuloEtapa, situacaoFollowUp, type Lead } from "../calculo/crm";
+import { resumoDoQuiz } from "../calculo/quizFunil";
 import { PAPEIS } from "../acesso";
 import { avisosDePublicacao, hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
@@ -1687,7 +1688,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     "listar_leads",
     {
       title: "Listar leads",
-      description: "Leads do funil com etapa, dias na etapa, valor estimado, próximo contato e responsável. Por padrão só os em aberto. Inclui o resumo do funil.",
+      description: "Leads do funil com etapa, dias na etapa, valor estimado, próximo contato e responsável. Por padrão só os em aberto. Inclui o resumo do funil. Lead que veio do quiz traz a etiqueta (qualificacao: qualificado, com ressalva, desqualificado ou só social media), o que pesou nela, empresa, cidade e as respostas.",
       inputSchema: { incluirFechados: z.boolean().optional() },
     },
     async ({ incluirFechados }) =>
@@ -1715,7 +1716,44 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               origem: l.origem,
               observacoes: l.observacoes,
               motivoPerda: l.motivoPerda || null,
+              ...(l.qualificacao
+                ? {
+                    qualificacao: ROTULO_QUALIFICACAO[l.qualificacao],
+                    motivosDaEtiqueta: l.qualificacaoMotivos || null,
+                    empresa: l.empresa || null,
+                    cidade: l.cidade || null,
+                    respostasDoQuiz: l.respostasQuiz ?? [],
+                  }
+                : {}),
             })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "ver_funil_quiz",
+    {
+      title: "Funil do quiz de conversão",
+      description:
+        "Quantas pessoas começaram o quiz, quantas enviaram o contato, quantas chegaram em cada tela e onde mais gente parou sem enviar. Mostra também quantos leads saíram com cada etiqueta. Só leitura. Telas de verba mínima e de verba para anúncios só aparecem para parte das pessoas (depende do faturamento), então chegam menos gente nelas de propósito.",
+      inputSchema: {},
+    },
+    async () =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const r = resumoDoQuiz(await repo.quizProgresso());
+        return {
+          comecaram: r.comecaram,
+          enviaram: r.enviaram,
+          taxaDeEnvioPct: r.taxaDeEnvio,
+          ondeMaisParam: r.ondeMaisParam ? { tela: r.ondeMaisParam.rotulo, pessoas: r.ondeMaisParam.pararamAqui } : null,
+          telas: r.telas.map((t) => ({ tela: t.rotulo, chegaram: t.viram, pctDeQuemComecou: t.pctDeQuemComecou, pararamAqui: t.pararamAqui, observacao: t.sePula ?? null })),
+          etiquetas: {
+            qualificado: r.porEtiqueta.qualificado,
+            comRessalva: r.porEtiqueta.com_ressalva,
+            desqualificado: r.porEtiqueta.desqualificado,
+            soSocialMedia: r.porEtiqueta.social_media,
+          },
         };
       }),
   );

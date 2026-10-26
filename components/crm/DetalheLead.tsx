@@ -26,8 +26,10 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { Avatar } from "../Avatar";
 import { Modal } from "../Modal";
+import { MensagensProntas } from "./MensagensProntas";
+import { RespostasDoQuiz } from "./QuizLead";
 import { Botao, CampoMoeda, Segmentado, cx } from "../ui";
-import { ETAPAS, moverLead, ORIGENS_LEAD, situacaoFollowUp, TIPOS_INTERACAO, type InteracaoLead, type Lead, type TipoInteracao } from "@/lib/calculo/crm";
+import { ETAPAS, etapaAberta, moverLead, ORIGENS_LEAD, situacaoFollowUp, TIPOS_INTERACAO, type InteracaoLead, type Lead, type TipoInteracao } from "@/lib/calculo/crm";
 import { novoId } from "@/lib/calculo/novo";
 import { precoDoPacote } from "@/lib/calculo/pacotes";
 import type { Configuracao } from "@/lib/calculo/tipos";
@@ -235,6 +237,9 @@ export function DetalheLead({
           </Botao>
         </div>
       )}
+
+      <RespostasDoQuiz lead={l} />
+      {etapaAberta(l.etapa) && <MensagensProntas lead={l} />}
 
       <div className="grid gap-x-8 md:grid-cols-2">
         <div>

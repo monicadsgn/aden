@@ -6,6 +6,7 @@ import type { Medicao } from "../calculo/calibragem";
 import { configVazia } from "../calculo/novo";
 import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
+import type { VisitaQuiz } from "../calculo/quizFunil";
 import { enderecoDeAgendaValido, type EventoAgenda } from "../agenda/ics";
 import type { RegistroMesCliente } from "../calculo/mes";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -1587,8 +1588,32 @@ export class RepositorioSupabase implements Repositorio {
       motivoPerda: (l.motivo_perda as string) ?? "",
       clienteId: (l.cliente_id as string) ?? null,
       comercialEstruturado: (l.comercial_estruturado as boolean | null) ?? null,
+      empresa: (l.empresa as string) ?? "",
+      cidade: (l.cidade as string) ?? "",
+      qualificacao: (l.qualificacao as Lead["qualificacao"]) ?? null,
+      qualificacaoMotivos: (l.qualificacao_motivos as string) ?? "",
+      respostasQuiz: (l.respostas_quiz as Lead["respostasQuiz"]) ?? null,
       criadoEm: l.criado_em as string,
       fechadoEm: (l.fechado_em as string) ?? null,
+    }));
+  }
+
+  /** Cada visita ao quiz: telas que a pessoa viu, onde parou e se enviou (migration 0046). Só sócio lê. */
+  async quizProgresso(): Promise<VisitaQuiz[]> {
+    const org = await this.org();
+    const { data, error } = await this.sb
+      .from("quiz_progresso")
+      .select("passos, ultimo_passo, enviou, qualificacao, criado_em")
+      .eq("org_id", org)
+      .order("criado_em", { ascending: false })
+      .limit(5000);
+    erro(error);
+    return ((data ?? []) as Linha[]).map((v) => ({
+      passos: (v.passos as string[]) ?? [],
+      ultimoPasso: (v.ultimo_passo as string) ?? null,
+      enviou: Boolean(v.enviou),
+      qualificacao: (v.qualificacao as string) ?? null,
+      criadoEm: v.criado_em as string,
     }));
   }
 

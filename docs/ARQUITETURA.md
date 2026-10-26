@@ -160,6 +160,29 @@ e o Financeiro diz quanto falta entrar no mês.
 - Nomes: a tarefa em status `revisao` aparece como **Com o cliente** (esperando a aprovação dele); "aprovação"
   sozinha fica só para os pedidos entre sócios.
 
+## Quiz de conversão de leads (26/10/2026, migration 0046)
+
+- **Página pública** `public/quiz.html` (abre em `/quiz`), com a Poppins do próprio sistema (`public/quiz/fonts`). A
+  regra de qualificação (qualificado, com ressalva, desqualificado, só social media) é da página, decisão do Áleff; o
+  Aden só guarda o resultado. Nenhum número de negócio no código do Aden.
+- **Entrada** `app/api/quiz/route.ts` (+ `lib/quiz.ts`, testado): valida, descarta robô sem avisar (campo escondido e
+  tempo mínimo), limita por hora por visitante e chama as funções do banco com o **segredo da rota** (`QUIZ_SEGREDO`;
+  no banco só o hash, em `quiz_segredo`). As funções `quiz_passo`, `quiz_enviar` e `quiz_limite_checar` são
+  `security definer` e recusam quem não traz o segredo; as tabelas novas não aceitam escrita direta de ninguém.
+- **Lead do quiz**: `leads` ganhou `empresa`, `cidade`, `qualificacao`, `qualificacao_motivos`, `respostas_quiz`,
+  `quiz_sessao`. Mesmo telefone em até 7 dias atualiza o lead e anota "Refez o quiz" em vez de duplicar.
+- **Funil do quiz**: `quiz_progresso` guarda uma linha por visita (telas vistas, última tela, se enviou). Fica **sem o
+  gatilho `auditar()` de propósito** (seriam centenas de linhas anônimas no Histórico); o lead criado continua
+  auditado. `quiz_limite` é infraestrutura (hash do visitante e contagem por hora). Cálculo em
+  `lib/calculo/quizFunil.ts` (testado); tela: bloco "Quiz de conversão" em Leads, só aparece com visitas.
+- **Tela de Leads**: etiqueta no card, bloco "Quiz" na ficha (o que pesou na etiqueta e as respostas) e "Mensagens
+  prontas" (`lib/calculo/mensagensLead.ts`, testado): primeiro contato, social media, follow-up e retomada, para
+  copiar ou abrir no WhatsApp. São sugestões; nada é enviado sozinho.
+- **Conector**: `listar_leads` traz etiqueta, motivos, empresa, cidade e respostas; nova `ver_funil_quiz`.
+- **Falha de envio**: se o Aden não registrar, a página avisa e manda a pessoa para o WhatsApp com as respostas; nunca
+  promete um contato que não vai acontecer. Quem diz que não topa a verba mínima sai do quiz sem deixar contato (só
+  aparece no funil como "Saída: sem a verba mínima").
+
 ## Fase 2 · regras da reunião de 29/09/2026
 
 - **Divisão entre os sócios** (campos protegidos em `configuracoes_empresa`, migration 0019; regra em

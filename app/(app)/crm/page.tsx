@@ -7,11 +7,13 @@ import { CalendarClock, Coins, MessagesSquare, Plus, Target, Trophy, XCircle, ty
 import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { COR_ETAPA, DetalheLead } from "@/components/crm/DetalheLead";
+import { EtiquetaQuiz, FunilDoQuiz } from "@/components/crm/QuizLead";
 import { CabecalhoPagina } from "@/components/Shell";
 import { cx } from "@/components/ui";
 import { contatosParaHoje, diasNaEtapa, ETAPAS, leadParado, moverLead, novoLead, resumoFunil, type EtapaLead, type Lead } from "@/lib/calculo/crm";
 import { hojeISO } from "@/lib/calculo/dia";
 import { configVazia, novoId } from "@/lib/calculo/novo";
+import type { VisitaQuiz } from "@/lib/calculo/quizFunil";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { ganharLead } from "@/lib/dados/acoes";
 import { useDados } from "@/lib/dados/contexto";
@@ -35,6 +37,7 @@ export default function Crm() {
   const [config, setConfig] = useState<Configuracao>(configVazia());
   const [leads, setLeads] = useState<Lead[]>([]);
   const [sims, setSims] = useState<ResumoSimulacao[]>([]);
+  const [visitasQuiz, setVisitasQuiz] = useState<VisitaQuiz[]>([]);
   const [carregado, setCarregado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState<string | null>(null);
@@ -46,10 +49,12 @@ export default function Crm() {
   useEffect(() => {
     (async () => {
       try {
-        const [c, l, s] = await Promise.all([repo.carregarConfig(), repo.listarLeads(), repo.listarSimulacoes()]);
+        // o funil do quiz nunca derruba a tela (sem a migration 0046 ou sem visitas, simplesmente não aparece)
+        const [c, l, s, q] = await Promise.all([repo.carregarConfig(), repo.listarLeads(), repo.listarSimulacoes(), repo.quizProgresso().catch(() => [] as VisitaQuiz[])]);
         setConfig(c);
         setLeads(l);
         setSims(s);
+        setVisitasQuiz(q);
         // link direto: /crm?lead=id
         const id = new URLSearchParams(window.location.search).get("lead");
         if (id) setAberto(id);
@@ -114,6 +119,8 @@ export default function Crm() {
           <Numero icone={Trophy} rotulo="Fechados este mês" valor={String(resumo.ganhosNoMes)} sub={resumo.ganhosNoMes ? `${formatarMoeda(resumo.valorGanhoNoMesCentavos)}/mês` : undefined} />
           <Numero icone={Coins} rotulo="Taxa de fechamento" valor={resumo.taxaGanhoPct == null ? "—" : formatarPct(resumo.taxaGanhoPct)} sub="ganhos ÷ (ganhos + perdidos)" />
         </div>
+
+        <FunilDoQuiz visitas={visitasQuiz} />
 
         <div className="flex items-center gap-2 rounded-botao border border-linha bg-superficie px-4 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
           <Plus size={15} className="text-texto-suave" />
@@ -189,6 +196,7 @@ export default function Crm() {
                         <span className="min-w-0 flex-1 text-[13px] font-semibold">{l.nome}</span>
                         {resp && <Avatar nome={resp.nome} foto={resp.fotoUrl} tamanho="sm" />}
                       </div>
+                      {l.qualificacao && <EtiquetaQuiz qualificacao={l.qualificacao} />}
                       {l.valorEstimadoCentavos != null && <span className="numero text-xs font-bold text-marca-forte">{formatarMoeda(l.valorEstimadoCentavos)}/mês</span>}
                       {l.proximaAcao && <span className="text-[11px] text-texto-suave">→ {l.proximaAcao}</span>}
                       <div className="flex flex-wrap items-center gap-2 text-[10px]">

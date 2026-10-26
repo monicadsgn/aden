@@ -13,6 +13,7 @@ import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
 import { motivoSemAprovacaoFora, type Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
+import type { VisitaQuiz } from "../calculo/quizFunil";
 import { aplicarResposta, montarPainel } from "../calculo/painel";
 import type { Pagamento } from "../calculo/pagamentos";
 import type { Cenario, Configuracao } from "../calculo/tipos";
@@ -728,6 +729,11 @@ export class RepositorioLocal implements Repositorio {
 
   async listarLeads() {
     return (ler().leads ?? []).slice();
+  }
+
+  /** O quiz só existe com o banco de verdade: no modo demonstração não há visitas. */
+  async quizProgresso(): Promise<VisitaQuiz[]> {
+    return [];
   }
 
   async salvarLead(l: Lead) {
