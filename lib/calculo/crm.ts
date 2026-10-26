@@ -10,6 +10,20 @@ import type { Id } from "./tipos";
 export type EtapaLead = "lead_recebido" | "pesquisa" | "contato_feito" | "reuniao" | "proposta_enviada" | "ganho" | "perdido";
 export type TipoInteracao = "nota" | "ligacao" | "whatsapp" | "reuniao" | "email" | "proposta" | "follow_up";
 
+/** Resultado do quiz de conversão (a regra mora na página do quiz; o Aden só guarda o resultado). */
+export const QUALIFICACOES = ["qualificado", "com_ressalva", "desqualificado", "social_media"] as const;
+export type Qualificacao = (typeof QUALIFICACOES)[number];
+export const ROTULO_QUALIFICACAO: Record<Qualificacao, string> = {
+  qualificado: "Qualificado",
+  com_ressalva: "Qualificado com ressalva",
+  desqualificado: "Desqualificado",
+  social_media: "Quer só social media",
+};
+export interface RespostaQuiz {
+  pergunta: string;
+  resposta: string;
+}
+
 export interface Lead {
   id: Id;
   nome: string;
@@ -36,6 +50,13 @@ export interface Lead {
   clienteId: Id | null;
   /** o comercial do cliente está estruturado (quem atende e vende os leads)? Condição para oferecer a garantia. null = não perguntado */
   comercialEstruturado?: boolean | null;
+  /** vindos do quiz de conversão (migration 0046); vazios nos leads criados à mão */
+  empresa?: string;
+  cidade?: string;
+  qualificacao?: Qualificacao | null;
+  /** o que pesou na etiqueta (ex.: "Margem baixa; Atende sem processo") */
+  qualificacaoMotivos?: string;
+  respostasQuiz?: RespostaQuiz[] | null;
   criadoEm: string;
   fechadoEm: string | null;
 }

@@ -69,3 +69,32 @@ aparece no Histórico como "Claude (conector)".
 Se o conector não responder, abrir `https://aden-sable.vercel.app/api/mcp/x` no navegador mostra
 "Não autorizado" (configuração ok) ou "Faltam: …" com os nomes das variáveis que o servidor não encontrou.
 Na Vercel, variáveis do tipo **Secret** já chegaram vazias em Production uma vez; se isso acontecer, recrie como **Config**.
+
+## 5. Quiz de conversão de leads (página pública `/quiz`)
+
+O quiz é uma página pública (`public/quiz.html`, abre em `/quiz`). Cada pessoa que responde vira um **lead** no funil
+(origem "Quiz"), já com a etiqueta (qualificado, com ressalva, desqualificado ou só social media), o que pesou nela e as
+respostas. O Aden também guarda **em que tela cada pessoa parou** (funil do quiz, na tela de Leads). Sem planilha e sem
+CRM de fora.
+
+Como funciona por dentro: a página manda os dados para `/api/quiz`; a rota confere o que chegou, limita por hora por
+visitante (guarda só um hash do endereço), descarta robô (campo escondido e tempo mínimo) e chama funções do banco
+(migration `0046`). Quem chama o banco direto, sem o segredo da rota, é recusado. A regra de quem é qualificado fica
+**na página do quiz** (decisão do Áleff); o Aden só guarda o resultado.
+
+Para ligar (uma vez):
+
+1. **Supabase → SQL Editor** (query limpa): rode `supabase/migrations/0046_quiz_leads.sql`.
+2. Invente um segredo de 24 letras ou mais (só letras e números). Ele vai em dois lugares, e **o texto do segredo
+   nunca é colado no SQL**, só o hash (resultado de `sha256`, 64 caracteres):
+
+```sql
+insert into quiz_segredo (hash) values ('<HASH-SHA256-DO-SEGREDO>')
+on conflict (id) do update set hash = excluded.hash, atualizado_em = now();
+```
+
+3. **Vercel → Settings → Environment Variables**: `QUIZ_SEGREDO` = o segredo (texto). Depois, **Redeploy**.
+4. Abra `https://<seu-endereço>/quiz`, responda de teste e confira o lead em **Leads**.
+
+Sem o segredo cadastrado (passo 2) ou sem a variável (passo 3), a página abre, mas o envio responde "fora do ar" e a
+pessoa é mandada para o WhatsApp. Para trocar o segredo: repita os passos 2 e 3 com um texto novo.

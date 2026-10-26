@@ -17,6 +17,10 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // página pública do quiz de conversão (public/quiz.html): o endereço sem ".html" também abre
+  async rewrites() {
+    return [{ source: "/quiz", destination: "/quiz.html" }];
+  },
   async headers() {
     return [
       {
