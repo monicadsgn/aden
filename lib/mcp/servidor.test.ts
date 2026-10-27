@@ -86,6 +86,17 @@ class BancoFalso {
   }
   async marcarAvisoLido() {}
   leads: import("../calculo/crm").Lead[] = [];
+  configQuiz: import("../calculo/quizConfig").ConfigQuiz = { whatsapp: "", instagramUrl: "", metaPixel: "", googleTag: "" };
+  visitasQuiz: import("../calculo/quizFunil").VisitaQuiz[] = [];
+  async carregarConfigQuiz() {
+    return { ...this.configQuiz };
+  }
+  async salvarConfigQuiz(c: import("../calculo/quizConfig").ConfigQuiz) {
+    this.configQuiz = { ...c };
+  }
+  async quizProgresso() {
+    return structuredClone(this.visitasQuiz);
+  }
   interacoes: import("../calculo/crm").InteracaoLead[] = [];
   async listarLeads() {
     return structuredClone(this.leads);
@@ -292,6 +303,46 @@ beforeEach(async () => {
   await servidor.connect(a);
   cliente = new Client({ name: "teste", version: "1" });
   await cliente.connect(b);
+});
+
+describe("conector MCP da Aden · painel do quiz", () => {
+  it("as ferramentas novas existem e a descrição avisa para nunca inventar código", async () => {
+    const { tools } = await cliente.listTools();
+    const nomes = tools.map((t) => t.name);
+    for (const n of ["ver_config_quiz", "salvar_config_quiz", "gerar_link_quiz", "ver_funil_quiz"]) expect(nomes).toContain(n);
+    expect(cliente.getInstructions()).toContain("Nunca invente código de pixel");
+  });
+
+  it("salva só o que foi enviado, arruma o formato e mantém o resto", async () => {
+    await chamar("salvar_config_quiz", { whatsapp: "(81) 99955-7470", instagram: "@grupoaden" });
+    expect(banco.configQuiz).toMatchObject({ whatsapp: "5581999557470", instagramUrl: "https://www.instagram.com/grupoaden/", metaPixel: "", googleTag: "" });
+    await chamar("salvar_config_quiz", { pixelMeta: "fbq('init', '1234567890123456');" });
+    expect(banco.configQuiz).toMatchObject({ whatsapp: "5581999557470", metaPixel: "1234567890123456" });
+    await chamar("salvar_config_quiz", { pixelMeta: "" });
+    expect(banco.configQuiz.metaPixel).toBe("");
+    const v = await chamar("ver_config_quiz");
+    expect(v).toMatchObject({ whatsapp: "5581999557470", pixelMetaLigado: false, googleLigado: false });
+  });
+
+  it("código com formato errado não salva nada e explica em frase simples", async () => {
+    await expect(chamar("salvar_config_quiz", { whatsapp: "(81) 99955-7470", tagGoogle: "UA-1" })).rejects.toThrow(/Nada foi salvo.*G-, AW- ou GTM-/);
+    expect(banco.configQuiz.whatsapp).toBe("");
+  });
+
+  it("gera o link do anúncio e recusa quando falta a campanha", async () => {
+    const r = await chamar("gerar_link_quiz", { fonte: "Meta", campanha: "Captação Outubro", conteudo: "Vídeo 1" });
+    expect(r.link).toBe("/quiz?utm_source=meta&utm_campaign=captacao-outubro&utm_content=video-1");
+    await expect(chamar("gerar_link_quiz", { fonte: "meta", campanha: " " })).rejects.toThrow(/nome da campanha/);
+  });
+
+  it("ver_funil_quiz mostra o resultado por campanha", async () => {
+    banco.visitasQuiz = [
+      { passos: ["hero"], ultimoPasso: "hero", enviou: false, qualificacao: null, campanha: { source: "meta", campaign: "outubro" }, criadoEm: "" },
+      { passos: ["hero", "form"], ultimoPasso: "form", enviou: true, qualificacao: "qualificado", campanha: { source: "meta", campaign: "outubro" }, criadoEm: "" },
+    ];
+    const r = await chamar("ver_funil_quiz");
+    expect(r.porCampanha).toEqual([{ campanha: "meta · outubro", comecaram: 2, enviaram: 1, taxaDeEnvioPct: 50, bons: 1 }]);
+  });
 });
 
 describe("conector MCP da Aden", () => {

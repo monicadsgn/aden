@@ -98,3 +98,13 @@ on conflict (id) do update set hash = excluded.hash, atualizado_em = now();
 
 Sem o segredo cadastrado (passo 2) ou sem a variável (passo 3), a página abre, mas o envio responde "fora do ar" e a
 pessoa é mandada para o WhatsApp. Para trocar o segredo: repita os passos 2 e 3 com um texto novo.
+
+### Painel do quiz e campanha (migration 0047)
+
+Para o sócio trocar WhatsApp, Instagram e pixels pela tela, e para ver de qual anúncio veio cada lead:
+
+1. **Supabase → SQL Editor** (query limpa): rode `supabase/migrations/0047_quiz_painel_e_campanha.sql`. **Rode antes de
+   aprovar o PR**, senão o quiz passa a chamar funções que ainda não existem. É só acréscimo; nada é apagado.
+2. Não há variável nova na Vercel (continua só `QUIZ_SEGREDO`).
+3. Depois do deploy: **Leads → Configurar o quiz**. Cole o código do pixel da Meta e/ou da tag do Google e salve; a
+   página do quiz passa a usar em até 1 minuto. Use "Link para o anúncio" para gerar o endereço com a campanha.

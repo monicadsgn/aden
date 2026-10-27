@@ -19,6 +19,21 @@ export const ROTULO_QUALIFICACAO: Record<Qualificacao, string> = {
   desqualificado: "Desqualificado",
   social_media: "Quer só social media",
 };
+/** utm_* do link do anúncio. Só estas cinco chaves. */
+export interface CampanhaDoLead {
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  content?: string;
+  term?: string;
+}
+
+/** Texto curto para a tela: "meta · captacao-outubro" (ou "sem campanha identificada"). */
+export function rotuloCampanha(c: CampanhaDoLead | null | undefined): string {
+  if (!c || (!c.source && !c.campaign)) return "sem campanha identificada";
+  return [c.source, c.campaign].filter(Boolean).join(" · ");
+}
+
 export interface RespostaQuiz {
   pergunta: string;
   resposta: string;
@@ -57,6 +72,8 @@ export interface Lead {
   /** o que pesou na etiqueta (ex.: "Margem baixa; Atende sem processo") */
   qualificacaoMotivos?: string;
   respostasQuiz?: RespostaQuiz[] | null;
+  /** de qual anúncio veio (migration 0047). Vale a primeira campanha, mesmo que a pessoa volte por outra */
+  campanha?: CampanhaDoLead | null;
   criadoEm: string;
   fechadoEm: string | null;
 }

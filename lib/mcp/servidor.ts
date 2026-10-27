@@ -17,7 +17,8 @@ import { calcularMesDeCima, mesQueEstouraOTeto } from "../calculo/sociedade";
 import { calcularSolucoes } from "../calculo/solucoes";
 import { clienteNoMes, contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio } from "../calculo/clientes";
 import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, ROTULO_QUALIFICACAO, rotuloEtapa, situacaoFollowUp, type Lead } from "../calculo/crm";
-import { resumoDoQuiz } from "../calculo/quizFunil";
+import { configQuizVazia, linkDoQuiz, normalizarConfigQuiz } from "../calculo/quizConfig";
+import { resumoDoQuiz, resumoPorCampanha } from "../calculo/quizFunil";
 import { PAPEIS } from "../acesso";
 import { avisosDePublicacao, hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
@@ -125,6 +126,7 @@ Regras que você deve seguir:
   véspera. Peça sem o dia da postagem não vai para o cliente aprovar: pergunte o dia e preencha antes.
 - Pacotes: ver_pacotes mostra os preços CALCULADOS (nunca digitados). salvar_pacote só guarda o que é entregue.
 - Terceiros (salvar_terceiro): custo por saída + deslocamento, só do cliente que recebe; o cliente nunca vê o valor.
+- Quiz de conversão: ver_funil_quiz (onde as pessoas param e por campanha), ver_config_quiz e salvar_config_quiz (WhatsApp, Instagram e códigos de pixel da Meta e do Google; só o que a pessoa mandou), gerar_link_quiz (link de anúncio com campanha). Nunca invente código de pixel nem número.
 - Metas (ver_metas, salvar_meta): trilha de crescimento em degraus. Só cadastre metas que os sócios definiram.
 - Sem regra de rateio (com custo fixo cadastrado) a calculadora não calcula: diga o motivo, não invente o resultado.
 - Antes de alterar configurações, confirme com quem está conversando o que vai mudar.
@@ -1714,6 +1716,7 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
               proximaAcao: l.proximaAcao,
               contato: [l.contato, l.telefone, l.instagram, l.email].filter(Boolean).join(" · "),
               origem: l.origem,
+              campanha: l.campanha ?? null,
               observacoes: l.observacoes,
               motivoPerda: l.motivoPerda || null,
               ...(l.qualificacao
@@ -1735,19 +1738,21 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
     {
       title: "Funil do quiz de conversão",
       description:
-        "Quantas pessoas começaram o quiz, quantas enviaram o contato, quantas chegaram em cada tela e onde mais gente parou sem enviar. Mostra também quantos leads saíram com cada etiqueta. Só leitura. Telas de verba mínima e de verba para anúncios só aparecem para parte das pessoas (depende do faturamento), então chegam menos gente nelas de propósito.",
+        "Quantas pessoas começaram o quiz, quantas enviaram o contato, quantas chegaram em cada tela e onde mais gente parou sem enviar. Mostra também quantos leads saíram com cada etiqueta e o resultado de cada campanha de anúncio (quem veio por link com campanha). Só leitura. Telas de verba mínima e de verba para anúncios só aparecem para parte das pessoas (depende do faturamento), então chegam menos gente nelas de propósito.",
       inputSchema: {},
     },
     async () =>
       executar(async () => {
         const repo = await obterRepo();
-        const r = resumoDoQuiz(await repo.quizProgresso());
+        const visitas = await repo.quizProgresso();
+        const r = resumoDoQuiz(visitas);
         return {
           comecaram: r.comecaram,
           enviaram: r.enviaram,
           taxaDeEnvioPct: r.taxaDeEnvio,
           ondeMaisParam: r.ondeMaisParam ? { tela: r.ondeMaisParam.rotulo, pessoas: r.ondeMaisParam.pararamAqui } : null,
           telas: r.telas.map((t) => ({ tela: t.rotulo, chegaram: t.viram, pctDeQuemComecou: t.pctDeQuemComecou, pararamAqui: t.pararamAqui, observacao: t.sePula ?? null })),
+          porCampanha: resumoPorCampanha(visitas).map((c) => ({ campanha: c.rotulo, comecaram: c.comecaram, enviaram: c.enviaram, taxaDeEnvioPct: c.taxaDeEnvio, bons: c.bons })),
           etiquetas: {
             qualificado: r.porEtiqueta.qualificado,
             comRessalva: r.porEtiqueta.com_ressalva,
@@ -1755,6 +1760,88 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
             soSocialMedia: r.porEtiqueta.social_media,
           },
         };
+      }),
+  );
+
+  server.registerTool(
+    "ver_config_quiz",
+    {
+      title: "Configuração do quiz",
+      description:
+        "WhatsApp do botão, Instagram e códigos de pixel (Meta e Google) que a página pública do quiz usa. Campo vazio = a página usa o valor de reserva dela. Só leitura.",
+      inputSchema: {},
+    },
+    async () =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const c = await repo.carregarConfigQuiz().catch(() => configQuizVazia());
+        return {
+          whatsapp: c.whatsapp || null,
+          instagram: c.instagramUrl || null,
+          pixelMeta: c.metaPixel || null,
+          tagGoogle: c.googleTag || null,
+          pixelMetaLigado: Boolean(c.metaPixel),
+          googleLigado: Boolean(c.googleTag),
+          paginaDoQuiz: `${origem}/quiz`,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "salvar_config_quiz",
+    {
+      title: "Alterar configuração do quiz",
+      description:
+        "Troca o WhatsApp do botão, o Instagram e os códigos de pixel (Meta e Google) do quiz. Só mande o que a pessoa disse na conversa, nunca invente. Campo não enviado fica como está; texto vazio apaga o campo (a página volta ao valor de reserva). Aceita número com máscara, @usuario ou o código colado: a ferramenta arruma e diz o que não entendeu. Vale na página em até 1 minuto.",
+      inputSchema: {
+        whatsapp: z.string().optional().describe("com DDD, ex.: (81) 99999-9999"),
+        instagram: z.string().optional().describe("@usuario ou endereço"),
+        pixelMeta: z.string().optional().describe("ID do pixel da Meta (só números)"),
+        tagGoogle: z.string().optional().describe("G-..., AW-... ou GTM-..."),
+      },
+    },
+    async ({ whatsapp, instagram, pixelMeta, tagGoogle }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const antes = await repo.carregarConfigQuiz().catch(() => configQuizVazia());
+        const r = normalizarConfigQuiz({
+          whatsapp: whatsapp ?? antes.whatsapp,
+          instagramUrl: instagram ?? antes.instagramUrl,
+          metaPixel: pixelMeta ?? antes.metaPixel,
+          googleTag: tagGoogle ?? antes.googleTag,
+        });
+        const problemas = Object.values(r.erros);
+        if (problemas.length) throw new Error(`Nada foi salvo. ${problemas.join(" ")}`);
+        await repo.salvarConfigQuiz(r.config);
+        return {
+          salvo: true,
+          whatsapp: r.config.whatsapp || null,
+          instagram: r.config.instagramUrl || null,
+          pixelMeta: r.config.metaPixel || null,
+          tagGoogle: r.config.googleTag || null,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "gerar_link_quiz",
+    {
+      title: "Link do quiz para anúncio",
+      description:
+        "Monta o endereço do quiz com a campanha grudada (utm). Use esse link no anúncio: o lead chega com o nome da campanha e o funil do quiz mostra qual campanha traz gente boa. Precisa de onde o anúncio roda e do nome da campanha.",
+      inputSchema: {
+        fonte: z.string().describe("onde roda: meta, google, instagram…"),
+        campanha: z.string().describe("nome da campanha"),
+        midia: z.string().optional().describe("pago, story, orgânico…"),
+        conteudo: z.string().optional().describe("qual anúncio ou criativo"),
+        termo: z.string().optional().describe("palavra-chave (anúncio de busca)"),
+      },
+    },
+    async ({ fonte, campanha, midia, conteudo, termo }) =>
+      executar(async () => {
+        const link = linkDoQuiz(`${origem}/quiz`, { fonte, campanha, midia, conteudo, termo });
+        if (!link) throw new Error("Preciso de onde o anúncio roda e do nome da campanha.");
+        return { link };
       }),
   );
 

@@ -3,7 +3,6 @@
 // validação do que chega. A regra de qualificação fica na página do quiz; aqui só se recebe e se guarda.
 
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
 import {
   LIMITE_ENVIOS_POR_HORA,
   LIMITE_PASSOS_POR_HORA,
@@ -12,17 +11,7 @@ import {
   ipDoPedido,
   pedidoDoQuiz,
 } from "@/lib/quiz";
-
-function ler(nome: string): string | null {
-  return process.env[nome]?.trim() || null;
-}
-
-function banco() {
-  const url = ler("NEXT_PUBLIC_SUPABASE_URL") ?? ler("SUPABASE_URL");
-  const chave = ler("NEXT_PUBLIC_SUPABASE_ANON_KEY") ?? ler("SUPABASE_ANON_KEY");
-  if (!url || !chave) return null;
-  return createClient(url, chave, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-}
+import { banco, ler } from "@/lib/quizServidor";
 
 const resposta = (corpo: Record<string, unknown>, status = 200) => Response.json(corpo, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -63,7 +52,12 @@ export async function POST(req: Request) {
   if (limite.error) return respostaDeErro(limite.error.message);
 
   if (pedido.acao === "passo") {
-    const { error } = await sb.rpc("quiz_passo", { p_segredo: segredo, p_sessao: pedido.sessao, p_passo: pedido.passo });
+    const { error } = await sb.rpc("quiz_passo", {
+      p_segredo: segredo,
+      p_sessao: pedido.sessao,
+      p_passo: pedido.passo,
+      p_campanha: pedido.campanha,
+    });
     if (error) return respostaDeErro(error.message);
     return resposta({ ok: true });
   }

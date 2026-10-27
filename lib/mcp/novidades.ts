@@ -2,9 +2,14 @@
 // muda de jeito, sobe a VERSAO e ganha uma linha em NOVIDADES. O quem_sou_eu devolve isso para o Claude avisar o sócio,
 // e a Visão do dia mostra um aviso aos dois sócios até cada um marcar que atualizou o conector no claude.ai.
 
-export const VERSAO_FERRAMENTAS = "2026-10-26";
+export const VERSAO_FERRAMENTAS = "2026-10-27";
 
 export const NOVIDADES: { versao: string; texto: string }[] = [
+  {
+    versao: "2026-10-27",
+    texto:
+      "Painel do quiz: novas ferramentas ver_config_quiz e salvar_config_quiz (WhatsApp, Instagram e códigos de pixel da Meta e do Google, sem mexer no código) e gerar_link_quiz (link de anúncio com campanha). listar_leads mostra de qual campanha o lead veio e ver_funil_quiz mostra o resultado por campanha.",
+  },
   {
     versao: "2026-10-26",
     texto:

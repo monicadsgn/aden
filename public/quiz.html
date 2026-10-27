@@ -277,6 +277,7 @@ h1 b{font-weight:800}
 var RM=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 var $=function(s,r){return (r||document).querySelector(s)};
 var stage=$('#stage'),view=$('#view'),backBtn=$('#back'),countEl=$('#count');
+/* valores de reserva: os de verdade vêm do painel do quiz no Aden (carregarConfig) */
 var WA='5581999557470',IG='https://www.instagram.com/grupoaden/';
 var API='/api/quiz',EQUIPE=false,T0=Date.now(),SES=uuid(),envio='demo',salvando=null;
 function uuid(){
@@ -292,19 +293,80 @@ function post(body,tentativa){
 }
 function track(k){
   if(!API||['hero','form','desq','res','wait'].indexOf(k)<0&&!Q[k])return;
-  post({acao:'passo',sessao:SES,passo:k},1);
+  post({acao:'passo',sessao:SES,passo:k,campanha:CAMP},1);
 }
 var ROT={'Qualificado':'qualificado','Qualificado com ressalva':'com_ressalva','Só social media':'social_media','Desqualificado':'desqualificado'};
 function enviar(){
   if(!API){envio='demo';return Promise.resolve()}
   var ev=evaluate();
   return post({
-    acao:'enviar',sessao:SES,tempoMs:Date.now()-T0,site:lead.site||'',
+    acao:'enviar',sessao:SES,tempoMs:Date.now()-T0,site:lead.site||'',campanha:CAMP,
     nome:lead.nome,telefone:lead.whatsapp,empresa:lead.empresa,instagram:lead.instagram,cidade:lead.cidade,
     qualificacao:ROT[ev.status]||'qualificado',motivos:ev.motivos,
     respostas:Object.keys(ans).map(function(k){return {pergunta:Q[k].label,resposta:ans[k].label}})
-  }).then(function(r){envio=r});
+  }).then(function(r){envio=r;if(r==='ok')eventoLead(ROT[ev.status]||'qualificado')});
 }
+
+/* ---------- campanha do anúncio, painel do quiz e pixels ---------- */
+/* de qual anúncio a pessoa veio (utm_*); fica guardado na aba para valer mesmo se ela recarregar a página */
+function campanha(){
+  var out={},n=0,mapa={utm_source:'source',utm_medium:'medium',utm_campaign:'campaign',utm_content:'content',utm_term:'term'};
+  try{
+    var q=new URLSearchParams(location.search);
+    for(var k in mapa){var v=q.get(k);if(v){out[mapa[k]]=v.slice(0,120);n++}}
+    if(n){sessionStorage.setItem('aden_camp',JSON.stringify(out))}
+    else{var g=sessionStorage.getItem('aden_camp');if(g){out=JSON.parse(g);n=1}}
+  }catch(e){}
+  return n?out:null;
+}
+var CAMP=campanha(),PIX={meta:false,google:false,gtm:false};
+/* os códigos de pixel vêm do painel do Aden; o navegador só carrega o que tem formato de código de verdade */
+function iniciarPixels(c){
+  if(!API||!c)return;
+  if(c.metaPixel&&/^[0-9]{5,20}$/.test(c.metaPixel)&&!PIX.meta){
+    PIX.meta=true;
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init',c.metaPixel);fbq('track','PageView');
+  }
+  if(c.googleTag&&/^(G|AW|GTM)-[A-Za-z0-9]{4,20}$/.test(c.googleTag)&&!PIX.google){
+    PIX.google=true;
+    window.dataLayer=window.dataLayer||[];
+    var el=document.createElement('script');el.async=true;
+    if(c.googleTag.indexOf('GTM-')===0){
+      PIX.gtm=true;
+      dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});
+      el.src='https://www.googletagmanager.com/gtm.js?id='+encodeURIComponent(c.googleTag);
+    }else{
+      window.gtag=function(){dataLayer.push(arguments)};
+      gtag('js',new Date());gtag('config',c.googleTag);
+      el.src='https://www.googletagmanager.com/gtag/js?id='+encodeURIComponent(c.googleTag);
+    }
+    document.head.appendChild(el);
+  }
+}
+/* avisa os anúncios que chegou um lead. Só qualificado e com ressalva contam como "Lead" principal;
+   quem quer só social media vai como evento à parte, para não confundir a otimização do anúncio */
+function eventoLead(q){
+  try{
+    var principal=(q==='qualificado'||q==='com_ressalva');
+    if(PIX.meta&&window.fbq){if(principal)fbq('track','Lead',{content_category:q});else fbq('trackCustom','LeadSocialMedia')}
+    if(PIX.google&&principal){
+      if(PIX.gtm)dataLayer.push({event:'generate_lead',qualificacao:q});
+      else if(window.gtag)gtag('event','generate_lead',{qualificacao:q});
+    }
+  }catch(e){}
+}
+function carregarConfig(){
+  if(!API)return;
+  fetch(API+'/config',{headers:{Accept:'application/json'}}).then(function(r){return r.ok?r.json():null}).then(function(c){
+    if(!c)return;
+    if(c.whatsapp&&/^[0-9]{10,13}$/.test(c.whatsapp))WA=c.whatsapp;
+    if(c.instagram&&/^https:\/\/(www\.)?instagram\.com\//.test(c.instagram))IG=c.instagram;
+    iniciarPixels(c);
+  }).catch(function(){});
+}
+carregarConfig();
+
 var ICON_APP='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 214.83 214.83"> <defs><clipPath id="adenClip"><rect width="214.83" height="214.83" rx="32.87" ry="32.87"/></clipPath></defs> <g> <rect fill="#fcf9f1" y="0" width="214.83" height="214.83" rx="32.87" ry="32.87"/> <g clip-path="url(#adenClip)"> <path fill="#797c46" d="M144.23,56.4c1.87-3.53,3.91-6.89,6.12-10.07.32-.46.5-1.01.5-1.57v-14.66c0-1.54-1.25-2.79-2.79-2.79h-27.99c-1.54,0-2.79,1.25-2.79,2.79v16.26c0,2.65-3.35,3.82-4.98,1.72-1.17-1.52-2.54-3.1-4.1-4.76-5.13-5.46-11.96-10.27-20.49-14.44-8.52-4.15-18.57-6.25-30.14-6.25-14.83,0-28.27,3.55-40.3,10.64-12.03,7.1-21.59,16.98-28.69,29.66-7.1,12.69-10.64,27.55-10.64,44.59s3.54,31.9,10.64,44.58c7.1,12.69,16.66,22.54,28.69,29.57,12.03,7.03,25.47,10.54,40.3,10.54,11.71,0,21.89-2.31,30.53-6.93,8.66-4.61,15.49-9.79,20.49-15.52,1.55-1.77,2.91-3.43,4.09-4.97,1.61-2.12,4.99-.96,4.99,1.71v18.23c0,1.54,1.25,2.79,2.79,2.79h27.6c1.54,0,2.79-1.25,2.79-2.79v-14.47c0-.56-.17-1.11-.5-1.57-2.22-3.18-4.26-6.54-6.12-10.08-2.69-5.07-4.93-10.52-6.69-16.2-3.3-10.59-4.98-22.33-4.98-34.89s1.67-24.31,4.98-34.92c1.76-5.66,4-11.11,6.69-16.2ZM110.06,137.27c-4.54,8.53-10.73,15.13-18.54,19.81-7.81,4.68-16.64,7.03-26.53,7.03-9.24,0-17.93-2.3-26.05-6.93-8.14-4.61-14.73-11.15-19.81-19.61-5.07-8.45-7.61-18.47-7.61-30.04s2.54-21.59,7.61-30.05c5.07-8.46,11.67-15.03,19.81-19.71,8.13-4.68,16.81-7.03,26.05-7.03,9.88,0,18.72,2.37,26.53,7.12,7.81,4.75,14,11.39,18.54,19.91,4.56,8.52,6.83,18.44,6.83,29.76s-2.27,21.23-6.83,29.75Z"/> </g> </g> </svg>';
 
 var CK='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
@@ -552,7 +614,15 @@ function recap(){
 }
 var SEAL_OK='<svg class="seal" viewBox="0 0 120 120" aria-hidden="true"><circle class="s-bg" cx="60" cy="60" r="54"/><circle class="s-ring" cx="60" cy="60" r="54" pathLength="1"/><path class="s-ck" d="M38 62l16 16 30-34" pathLength="1"/></svg>';
 var SEAL_WAVE='<svg class="seal" viewBox="0 0 120 120" aria-hidden="true"><circle class="s-bg" cx="60" cy="60" r="54"/><circle class="s-ring" cx="60" cy="60" r="54" pathLength="1"/><path class="s-ck" d="M34 62q13-17 26 0t26 0" pathLength="1"/></svg>';
-var FOOT='<p class="foot">WhatsApp +55 81 99955-7470<br>Instagram @grupoaden, segunda a sexta, das 8h às 18h</p>';
+function fmtWA(d){
+  if(d.length===13)return '+'+d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,9)+'-'+d.slice(9);
+  if(d.length===12)return '+'+d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+'-'+d.slice(8);
+  return '+'+d;
+}
+function foot(){
+  var u=(IG.replace(/\/+$/,'').split('/').pop()||'').replace(/[^A-Za-z0-9._]/g,'');
+  return '<p class="foot">WhatsApp '+fmtWA(WA)+'<br>Instagram @'+u+', segunda a sexta, das 8h às 18h</p>';
+}
 
 function resultScreen(){
   var ev=evaluate(),soc=ev.status==='Só social media';
@@ -574,7 +644,7 @@ function resultScreen(){
     '<div style="--n:5">'+recap()+'</div>'+
     '<div class="actions" style="--n:6"><a class="btn btn-main pulse" id="wa" href="'+waLink()+'" target="_blank" rel="noopener">Falar com a Aden no WhatsApp<span class="ar">'+AR+'</span></a>'+
     (falhou?'':'<button class="btn btn-ghost" id="wait" type="button">Prefiro esperar o contato de vocês</button>')+'</div>'+
-    '<div style="--n:7">'+FOOT+'</div></div>');
+    '<div style="--n:7">'+foot()+'</div></div>');
 }
 function waitScreen(){
   return h('<div class="res">'+
@@ -582,7 +652,7 @@ function waitScreen(){
     '<h1 tabindex="-1" style="--n:1"><b>Combinado.</b></h1>'+
     '<p class="lead" style="--n:2">A gente chama no seu WhatsApp em até 1 dia útil. Se quiser adiantar, é só mandar um oi.</p>'+
     '<div class="actions" style="--n:3"><a class="btn btn-main" href="'+waLink()+'" target="_blank" rel="noopener">Falar com a Aden no WhatsApp<span class="ar">'+AR+'</span></a></div>'+
-    '<div style="--n:4">'+FOOT+'</div></div>');
+    '<div style="--n:4">'+foot()+'</div></div>');
 }
 function desqScreen(){
   return h('<div class="res">'+
@@ -592,7 +662,7 @@ function desqScreen(){
     '<p class="lead" style="--n:4">Quando você chegar nesse ponto, volte e refaça o quiz.</p>'+
     '<div class="actions" style="--n:5"><a class="btn btn-main" href="'+IG+'" target="_blank" rel="noopener">Voltar ao Instagram<span class="ar">'+AR+'</span></a>'+
     '<button class="btn btn-ghost" id="soc" type="button">Quero só social media, sem anúncio</button></div>'+
-    '<div style="--n:6">'+FOOT+'</div></div>');
+    '<div style="--n:6">'+foot()+'</div></div>');
 }
 
 /* ---------- navegação ---------- */

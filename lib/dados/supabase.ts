@@ -6,6 +6,7 @@ import type { Medicao } from "../calculo/calibragem";
 import { configVazia } from "../calculo/novo";
 import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
+import type { ConfigQuiz } from "../calculo/quizConfig";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { enderecoDeAgendaValido, type EventoAgenda } from "../agenda/ics";
 import type { RegistroMesCliente } from "../calculo/mes";
@@ -1593,6 +1594,7 @@ export class RepositorioSupabase implements Repositorio {
       qualificacao: (l.qualificacao as Lead["qualificacao"]) ?? null,
       qualificacaoMotivos: (l.qualificacao_motivos as string) ?? "",
       respostasQuiz: (l.respostas_quiz as Lead["respostasQuiz"]) ?? null,
+      campanha: (l.campanha as Lead["campanha"]) ?? null,
       criadoEm: l.criado_em as string,
       fechadoEm: (l.fechado_em as string) ?? null,
     }));
@@ -1603,7 +1605,7 @@ export class RepositorioSupabase implements Repositorio {
     const org = await this.org();
     const { data, error } = await this.sb
       .from("quiz_progresso")
-      .select("passos, ultimo_passo, enviou, qualificacao, criado_em")
+      .select("passos, ultimo_passo, enviou, qualificacao, campanha, criado_em")
       .eq("org_id", org)
       .order("criado_em", { ascending: false })
       .limit(5000);
@@ -1613,8 +1615,36 @@ export class RepositorioSupabase implements Repositorio {
       ultimoPasso: (v.ultimo_passo as string) ?? null,
       enviou: Boolean(v.enviou),
       qualificacao: (v.qualificacao as string) ?? null,
+      campanha: (v.campanha as VisitaQuiz["campanha"]) ?? null,
       criadoEm: v.criado_em as string,
     }));
+  }
+
+  /** Painel do quiz (migration 0047). Sem linha ainda = tudo vazio. */
+  async carregarConfigQuiz(): Promise<ConfigQuiz> {
+    const org = await this.org();
+    const { data, error } = await this.sb.from("quiz_config").select("whatsapp, instagram_url, meta_pixel, google_tag").eq("org_id", org).maybeSingle();
+    erro(error);
+    const c = (data ?? {}) as Linha;
+    return {
+      whatsapp: (c.whatsapp as string) ?? "",
+      instagramUrl: (c.instagram_url as string) ?? "",
+      metaPixel: (c.meta_pixel as string) ?? "",
+      googleTag: (c.google_tag as string) ?? "",
+    };
+  }
+
+  async salvarConfigQuiz(c: ConfigQuiz) {
+    const org_id = await this.org();
+    const vazio = (t: string) => (t.trim() ? t.trim() : null);
+    const { error } = await this.sb.from("quiz_config").upsert({
+      org_id,
+      whatsapp: vazio(c.whatsapp),
+      instagram_url: vazio(c.instagramUrl),
+      meta_pixel: vazio(c.metaPixel),
+      google_tag: vazio(c.googleTag),
+    });
+    erro(error);
   }
 
   async salvarLead(l: Lead) {

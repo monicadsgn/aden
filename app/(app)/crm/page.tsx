@@ -7,6 +7,7 @@ import { CalendarClock, Coins, MessagesSquare, Plus, Target, Trophy, XCircle, ty
 import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { COR_ETAPA, DetalheLead } from "@/components/crm/DetalheLead";
+import { PainelDoQuiz } from "@/components/crm/PainelDoQuiz";
 import { EtiquetaQuiz, FunilDoQuiz } from "@/components/crm/QuizLead";
 import { CabecalhoPagina } from "@/components/Shell";
 import { cx } from "@/components/ui";
@@ -121,6 +122,7 @@ export default function Crm() {
         </div>
 
         <FunilDoQuiz visitas={visitasQuiz} />
+        <PainelDoQuiz repo={repo} podeEditar={usuario?.papel === "admin" || repo.modo === "local"} />
 
         <div className="flex items-center gap-2 rounded-botao border border-linha bg-superficie px-4 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
           <Plus size={15} className="text-texto-suave" />
