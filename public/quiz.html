@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Responda 8 perguntas rápidas e descubra se o nosso modelo de tráfego faz sentido para o seu negócio.">
+<meta name="description" content="Responda 8 perguntas rápidas e descubra se o nosso modelo de marketing faz sentido para o seu negócio.">
 <title>Quiz Aden</title>
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-icon.png">
@@ -428,10 +428,10 @@ function focusTitle(el){var t=$('[tabindex="-1"]',el);if(t){try{t.focus({prevent
 function heroScreen(){
   var words=['Sua','empresa','está','pronta','para','crescer','com'];
   var hw=words.map(function(w,i){return '<span class="word" aria-hidden="true"><span style="--i:'+i+'">'+w+'</span></span>'}).join(' ')+
-    ' <span class="word" aria-hidden="true"><span style="--i:7"><b>tráfego?</b></span></span>';
+    ' <span class="word" aria-hidden="true"><span style="--i:7"><b>marketing?</b></span></span>';
   return h('<div class="hero">'+
     '<p class="eyebrow" style="--n:0">Quiz da Aden</p>'+
-    '<h1 tabindex="-1" aria-label="Sua empresa está pronta para crescer com tráfego?">'+hw+'</h1>'+
+    '<h1 tabindex="-1" aria-label="Sua empresa está pronta para crescer com marketing?">'+hw+'</h1>'+
     '<p class="lead" style="--n:7">Responda 8 perguntas rápidas. No final, a gente te mostra se faz sentido trabalhar juntos.</p>'+
     '<p class="note-pill" style="--n:8">Leva 2 minutos. Atendemos poucos clientes por vez.</p>'+
     '<div style="--n:9"><button class="btn btn-main pulse" id="go" type="button">Começar<span class="ar">'+AR+'</span></button></div>'+
