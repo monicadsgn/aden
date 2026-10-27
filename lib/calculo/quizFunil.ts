@@ -1,7 +1,7 @@
 // Funil do quiz de conversão: quantas pessoas começaram, em que tela cada uma parou e quantas enviaram.
 // Puro e testado (como o resto de lib/calculo). Os dados vêm de quiz_progresso (migration 0046): uma linha por visita.
 
-import type { Qualificacao } from "./crm";
+import { rotuloCampanha, type CampanhaDoLead, type Qualificacao } from "./crm";
 
 export interface VisitaQuiz {
   /** telas que a pessoa viu, na ordem */
@@ -9,6 +9,8 @@ export interface VisitaQuiz {
   ultimoPasso: string | null;
   enviou: boolean;
   qualificacao: string | null;
+  /** de qual anúncio veio (migration 0047); vazio em visitas antigas ou sem link de campanha */
+  campanha?: CampanhaDoLead | null;
   criadoEm: string;
 }
 
@@ -68,4 +70,41 @@ export function resumoDoQuiz(visitas: VisitaQuiz[]): ResumoQuiz {
   const porEtiqueta: Record<Qualificacao, number> = { qualificado: 0, com_ressalva: 0, desqualificado: 0, social_media: 0 };
   for (const v of visitas) if (v.enviou && v.qualificacao && v.qualificacao in porEtiqueta) porEtiqueta[v.qualificacao as Qualificacao]++;
   return { comecaram, enviaram, taxaDeEnvio: pct(enviaram, comecaram), telas, ondeMaisParam: maisParam && maisParam.pararamAqui > 0 ? maisParam : null, porEtiqueta };
+}
+
+export interface LinhaCampanha {
+  /** fonte + campanha: duas visitas com o mesmo par entram na mesma linha */
+  chave: string;
+  rotulo: string;
+  fonte: string | null;
+  campanha: string | null;
+  comecaram: number;
+  enviaram: number;
+  /** quem enviou e saiu qualificado ou com ressalva (os contatos que vale ligar) */
+  bons: number;
+  /** % de quem começou que enviou */
+  taxaDeEnvio: number;
+}
+
+/** Quantas pessoas cada campanha trouxe, quantas enviaram e quantas saíram boas. Quem veio sem link de campanha fica numa linha só, no fim. */
+export function resumoPorCampanha(visitas: VisitaQuiz[]): LinhaCampanha[] {
+  const grupos = new Map<string, LinhaCampanha>();
+  for (const v of visitas) {
+    const c = v.campanha;
+    const fonte = c?.source ?? null;
+    const campanha = c?.campaign ?? null;
+    const chave = fonte || campanha ? `${fonte ?? ""}|${campanha ?? ""}` : "";
+    let g = grupos.get(chave);
+    if (!g) {
+      g = { chave, rotulo: rotuloCampanha(chave ? { source: fonte ?? undefined, campaign: campanha ?? undefined } : null), fonte, campanha, comecaram: 0, enviaram: 0, bons: 0, taxaDeEnvio: 0 };
+      grupos.set(chave, g);
+    }
+    g.comecaram++;
+    if (v.enviou) {
+      g.enviaram++;
+      if (v.qualificacao === "qualificado" || v.qualificacao === "com_ressalva") g.bons++;
+    }
+  }
+  const linhas = [...grupos.values()].map((g) => ({ ...g, taxaDeEnvio: pct(g.enviaram, g.comecaram) }));
+  return linhas.sort((a, b) => (a.chave === "" ? 1 : b.chave === "" ? -1 : b.comecaram - a.comecaram || a.rotulo.localeCompare(b.rotulo, "pt-BR")));
 }

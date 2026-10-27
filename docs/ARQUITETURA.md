@@ -183,6 +183,30 @@ e o Financeiro diz quanto falta entrar no mês.
   promete um contato que não vai acontecer. Quem diz que não topa a verba mínima sai do quiz sem deixar contato (só
   aparece no funil como "Saída: sem a verba mínima").
 
+### Painel do quiz e campanha do lead (27/10/2026, migration 0047)
+
+- **Painel do quiz** (Leads → "Configurar o quiz", `components/crm/PainelDoQuiz.tsx`): o sócio troca WhatsApp, Instagram,
+  pixel da Meta e tag do Google sem mexer no código. Tabela `quiz_config` (uma linha por organização, RLS: leitura
+  membro, escrita admin, `carimbar()` e `auditar()`); campo vazio = a página usa o valor que já vem nela. Limpeza e
+  validação em `lib/calculo/quizConfig.ts` (testado): aceita número com máscara, `@usuario`, link completo e até o
+  trecho `fbq('init', '...')` colado do Gerenciador.
+- **Leitura pública**: `GET /api/quiz/config` (`app/api/quiz/config/route.ts`) chama `quiz_config_publica` com o segredo
+  da rota e devolve só os 4 campos (cache de 1 minuto). Se falhar, a página segue com os valores embutidos. Os códigos
+  de pixel são públicos por natureza; nada interno sai por aí.
+- **Pixels**: a página injeta Meta (`fbevents.js`) e Google (`gtag.js` ou `gtm.js`) só se o código tem o formato certo.
+  Evento **Lead** (Meta) e **generate_lead** (Google) só para qualificado e com ressalva; "só social media" manda o
+  evento próprio `LeadSocialMedia`; desqualificado não conta como lead. (Regra padrão, a confirmar com Moni e Áleff.)
+- **CSP**: o resto do sistema segue com a política estrita. Só `/quiz` e `/quiz.html` liberam os endereços da Meta e do
+  Google (`montarCsp` em `next.config.ts`; a regra do sistema exclui essas duas rotas para sair um único cabeçalho
+  por caminho).
+- **Campanha do lead**: a página guarda a primeira UTM (`source`, `medium`, `campaign`, `content`, `term`; até 120
+  caracteres cada) e manda com cada passo e no envio. Vai em `leads.campanha` e `quiz_progresso.campanha` (jsonb).
+  **Vale a primeira**: quem refaz o quiz por outro anúncio mantém a campanha original. A campanha nunca recusa o pedido.
+  Funil "Por campanha": `resumoPorCampanha` em `lib/calculo/quizFunil.ts`. Link para anúncio: `linkDoQuiz`.
+- **Conector**: `ver_config_quiz`, `salvar_config_quiz` (só o que foi enviado; "" limpa; erro lista tudo e não grava
+  nada), `gerar_link_quiz`; `ver_funil_quiz` traz `porCampanha`; `listar_leads` traz `campanha`.
+- `public/quiz.html` agora é editado direto (o script antigo que o gerava ficou obsoleto).
+
 ## Fase 2 · regras da reunião de 29/09/2026
 
 - **Divisão entre os sócios** (campos protegidos em `configuracoes_empresa`, migration 0019; regra em

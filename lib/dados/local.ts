@@ -13,6 +13,7 @@ import type { RegistroMesCliente } from "../calculo/mes";
 import { configVazia, novoId } from "../calculo/novo";
 import { motivoSemAprovacaoFora, type Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
+import { configQuizVazia, type ConfigQuiz } from "../calculo/quizConfig";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { aplicarResposta, montarPainel } from "../calculo/painel";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -61,6 +62,7 @@ interface Banco {
   respostasBriefing?: RespostaBriefing[];
   modeloContrato?: ModeloContrato;
   modeloOnboarding?: ModeloOnboarding;
+  configQuiz?: ConfigQuiz;
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -734,6 +736,17 @@ export class RepositorioLocal implements Repositorio {
   /** O quiz só existe com o banco de verdade: no modo demonstração não há visitas. */
   async quizProgresso(): Promise<VisitaQuiz[]> {
     return [];
+  }
+
+  async carregarConfigQuiz(): Promise<ConfigQuiz> {
+    return { ...configQuizVazia(), ...(ler().configQuiz ?? {}) };
+  }
+
+  async salvarConfigQuiz(c: ConfigQuiz) {
+    const b = ler();
+    registrar(b, "quiz_config", "local", b.configQuiz ?? configQuizVazia(), c);
+    b.configQuiz = c;
+    gravar(b);
   }
 
   async salvarLead(l: Lead) {

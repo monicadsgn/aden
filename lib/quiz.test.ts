@@ -1,6 +1,6 @@
 // Entrada pública do quiz: o que a rota aceita, joga fora ou recusa (migration 0046).
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { chaveDoVisitante, ipDoPedido, pedidoDoQuiz, TEMPO_MINIMO_MS } from "./quiz";
+import { campanhaDoQuiz, chaveDoVisitante, ipDoPedido, pedidoDoQuiz, TEMPO_MINIMO_MS } from "./quiz";
 
 const SESSAO = "11111111-1111-4111-8111-111111111111";
 const envio = (extra: Record<string, unknown> = {}) => ({
@@ -16,7 +16,7 @@ const envio = (extra: Record<string, unknown> = {}) => ({
 
 describe("pedidoDoQuiz", () => {
   it("passo: aceita nome de tela simples e recusa o resto", () => {
-    expect(pedidoDoQuiz({ acao: "passo", sessao: SESSAO, passo: "fat" })).toEqual({ acao: "passo", sessao: SESSAO, passo: "fat" });
+    expect(pedidoDoQuiz({ acao: "passo", sessao: SESSAO, passo: "fat" })).toEqual({ acao: "passo", sessao: SESSAO, passo: "fat", campanha: null });
     expect(() => pedidoDoQuiz({ acao: "passo", sessao: SESSAO, passo: "DROP TABLE;" })).toThrow("Pedido inválido.");
     expect(() => pedidoDoQuiz({ acao: "passo", sessao: "nao-e-uuid", passo: "fat" })).toThrow("Pedido inválido.");
     expect(() => pedidoDoQuiz(null)).toThrow("Pedido inválido.");
@@ -71,6 +71,29 @@ describe("pedidoDoQuiz", () => {
   });
 });
 
+describe("campanha do anúncio", () => {
+  it("fica só com as cinco chaves conhecidas e textos curtos", () => {
+    expect(campanhaDoQuiz({ source: " meta ", campaign: "outubro", medium: "", extra: "x", content: "c".repeat(300), term: 5 })).toEqual({
+      source: "meta",
+      campaign: "outubro",
+      content: "c".repeat(120),
+    });
+  });
+
+  it("não é objeto ou vem vazia: não tem campanha, e isso nunca derruba o pedido", () => {
+    for (const v of [null, undefined, "meta", ["meta"], {}, { source: "  " }]) expect(campanhaDoQuiz(v)).toBeNull();
+    const p = pedidoDoQuiz(envio({ campanha: "lixo" }));
+    expect(p.acao === "enviar" && p.dados.campanha).toBeNull();
+  });
+
+  it("passo e enviar levam a campanha adiante", () => {
+    const camp = { source: "meta", campaign: "outubro" };
+    expect(pedidoDoQuiz({ acao: "passo", sessao: SESSAO, passo: "fat", campanha: camp })).toMatchObject({ campanha: camp });
+    const p = pedidoDoQuiz(envio({ campanha: camp }));
+    expect(p.acao === "enviar" && p.dados.campanha).toEqual(camp);
+  });
+});
+
 describe("visitante", () => {
   it("a chave é um hash: não carrega o endereço e muda com o sal", () => {
     const k = chaveDoVisitante("200.1.2.3", "sal-a");
@@ -120,7 +143,7 @@ describe("rota /api/quiz", () => {
     expect(rpc.mock.calls.map((c) => c[0])).toEqual(["quiz_limite_checar", "quiz_passo"]);
     expect(rpc.mock.calls[0][1].p_segredo).toBe(process.env.QUIZ_SEGREDO);
     expect(rpc.mock.calls[0][1].p_chave).toMatch(/^[0-9a-f]{64}$/);
-    expect(rpc.mock.calls[1][1]).toEqual({ p_segredo: process.env.QUIZ_SEGREDO, p_sessao: SESSAO, p_passo: "fat" });
+    expect(rpc.mock.calls[1][1]).toEqual({ p_segredo: process.env.QUIZ_SEGREDO, p_sessao: SESSAO, p_passo: "fat", p_campanha: null });
   });
 
   it("enviar: manda os dados limpos para o banco", async () => {
@@ -130,6 +153,15 @@ describe("rota /api/quiz", () => {
     expect(nome).toBe("quiz_enviar");
     expect(args.p_dados).toMatchObject({ nome: "Ana Teste", empresa: "Loja X", qualificacao: "qualificado", cidade: "Recife" });
     expect(args.p_dados).not.toHaveProperty("tempoMs");
+  });
+
+  it("a campanha chega ao banco nos dois pedidos", async () => {
+    const camp = { source: "meta", campaign: "outubro" };
+    await chamar({ acao: "passo", sessao: SESSAO, passo: "fat", campanha: camp });
+    expect(rpc.mock.calls[1][1].p_campanha).toEqual(camp);
+    rpc.mockClear();
+    await chamar(envio({ campanha: camp }));
+    expect(rpc.mock.calls[1][1].p_dados.campanha).toEqual(camp);
   });
 
   it("enviar: robô recebe sucesso e nada é gravado nem consultado", async () => {

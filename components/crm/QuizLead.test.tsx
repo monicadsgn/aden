@@ -38,6 +38,24 @@ describe("FunilDoQuiz", () => {
   });
 });
 
+describe("FunilDoQuiz por campanha", () => {
+  const com = (passos: string[], source: string, campaign: string, enviou = false, q: string | null = null): VisitaQuiz => ({ ...visita(passos, enviou, q), campanha: { source, campaign } });
+
+  it("mostra quantas pessoas cada campanha trouxe e quantas saíram boas", () => {
+    const html = renderToStaticMarkup(
+      <FunilDoQuiz visitas={[com(["hero"], "meta", "outubro"), com(["hero", "form"], "meta", "outubro", true, "qualificado"), visita(["hero"])]} />,
+    );
+    expect(html).toContain("Por campanha");
+    expect(html).toContain("meta · outubro");
+    expect(html).toContain("2 começaram · 1 enviou (50%) · 1 bom");
+    expect(html).toContain("sem campanha identificada");
+  });
+
+  it("sem nenhuma campanha o bloco nem aparece", () => {
+    expect(renderToStaticMarkup(<FunilDoQuiz visitas={[visita(["hero"])]} />)).not.toContain("Por campanha");
+  });
+});
+
 describe("RespostasDoQuiz e etiqueta", () => {
   it("lead criado à mão não mostra o bloco do quiz", () => {
     expect(renderToStaticMarkup(<RespostasDoQuiz lead={novoLead("1", "Ana")} />)).toBe("");
@@ -60,6 +78,13 @@ describe("RespostasDoQuiz e etiqueta", () => {
     expect(html).toContain("Loja X");
     expect(html).toContain("Recife");
     expect(html).toContain("Varejo");
+  });
+
+  it("lead que veio de anúncio mostra a campanha; sozinho já abre o bloco", () => {
+    const html = renderToStaticMarkup(<RespostasDoQuiz lead={novoLead("1", "Ana", { campanha: { source: "meta", campaign: "outubro", content: "video-1" } })} />);
+    expect(html).toContain("Veio do anúncio");
+    expect(html).toContain("meta · outubro");
+    expect(html).toContain("video-1");
   });
 
   it("cada etiqueta tem o seu texto", () => {

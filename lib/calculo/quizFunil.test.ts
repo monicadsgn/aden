@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resumoDoQuiz, type VisitaQuiz } from "./quizFunil";
+import { resumoDoQuiz, resumoPorCampanha, type VisitaQuiz } from "./quizFunil";
 
 const v = (passos: string[], enviou = false, qualificacao: string | null = null): VisitaQuiz => ({
   passos,
@@ -39,5 +39,33 @@ describe("resumoDoQuiz", () => {
     const r = resumoDoQuiz([v(["hero", "form"], true, "qualificado")]);
     expect(r.telas.find((t) => t.passo === "form")!.pararamAqui).toBe(0);
     expect(r.ondeMaisParam).toBeNull();
+  });
+});
+
+describe("resumoPorCampanha", () => {
+  const c = (source: string, campaign: string, passos: string[], enviou = false, qualificacao: string | null = null): VisitaQuiz => ({
+    ...v(passos, enviou, qualificacao),
+    campanha: { source, campaign },
+  });
+
+  it("junta as visitas da mesma fonte e campanha e conta quem enviou e quem saiu bom", () => {
+    const r = resumoPorCampanha([
+      c("meta", "outubro", ["hero"]),
+      c("meta", "outubro", ["hero", "form"], true, "qualificado"),
+      c("meta", "outubro", ["hero", "form"], true, "desqualificado"),
+      c("google", "busca", ["hero", "form"], true, "com_ressalva"),
+    ]);
+    expect(r[0]).toMatchObject({ rotulo: "meta · outubro", comecaram: 3, enviaram: 2, bons: 1, taxaDeEnvio: 66.7 });
+    expect(r[1]).toMatchObject({ rotulo: "google · busca", comecaram: 1, enviaram: 1, bons: 1, taxaDeEnvio: 100 });
+  });
+
+  it("visita sem campanha vira uma linha só, no fim, mesmo sendo a maioria", () => {
+    const r = resumoPorCampanha([v(["hero"]), v(["hero"]), v(["hero", "form"], true, "qualificado"), c("meta", "x", ["hero"])]);
+    expect(r.map((l) => l.rotulo)).toEqual(["meta · x", "sem campanha identificada"]);
+    expect(r[1]).toMatchObject({ comecaram: 3, enviaram: 1, bons: 1 });
+  });
+
+  it("sem visitas, sem linhas", () => {
+    expect(resumoPorCampanha([])).toEqual([]);
   });
 });

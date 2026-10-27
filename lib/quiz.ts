@@ -16,6 +16,10 @@ export const TAMANHO_MAXIMO_PEDIDO = 20_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PASSO = /^[a-z0-9_]{1,20}$/;
 
+/** De qual anúncio a pessoa veio (utm_*). Só estas cinco chaves, textos curtos. */
+export type CampanhaQuiz = Partial<Record<"source" | "medium" | "campaign" | "content" | "term", string>>;
+const CHAVES_CAMPANHA = ["source", "medium", "campaign", "content", "term"] as const;
+
 export interface EnvioQuiz {
   sessao: string;
   nome: string;
@@ -26,13 +30,26 @@ export interface EnvioQuiz {
   qualificacao: Qualificacao;
   motivos: string;
   respostas: RespostaQuiz[];
+  campanha: CampanhaQuiz | null;
 }
 
 export type PedidoQuiz =
-  | { acao: "passo"; sessao: string; passo: string }
+  | { acao: "passo"; sessao: string; passo: string; campanha: CampanhaQuiz | null }
   | { acao: "enviar"; descartar: boolean; dados: EnvioQuiz };
 
 const texto = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+/** Campanha nunca derruba o pedido: o que não for texto curto simplesmente fica de fora. */
+export function campanhaDoQuiz(v: unknown): CampanhaQuiz | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const c = v as Record<string, unknown>;
+  const out: CampanhaQuiz = {};
+  for (const k of CHAVES_CAMPANHA) {
+    const t = texto(c[k], 120);
+    if (t) out[k] = t;
+  }
+  return Object.keys(out).length ? out : null;
+}
 
 /** Valida o corpo do POST. Erro com frase simples quando não dá. */
 export function pedidoDoQuiz(corpo: unknown): PedidoQuiz {
@@ -43,7 +60,7 @@ export function pedidoDoQuiz(corpo: unknown): PedidoQuiz {
 
   if (c.acao === "passo") {
     if (typeof c.passo !== "string" || !PASSO.test(c.passo)) throw new Error("Pedido inválido.");
-    return { acao: "passo", sessao, passo: c.passo };
+    return { acao: "passo", sessao, passo: c.passo, campanha: campanhaDoQuiz(c.campanha) };
   }
 
   if (c.acao === "enviar") {
@@ -86,6 +103,7 @@ export function pedidoDoQuiz(corpo: unknown): PedidoQuiz {
         qualificacao: c.qualificacao as Qualificacao,
         motivos,
         respostas,
+        campanha: campanhaDoQuiz(c.campanha),
       },
     };
   }

@@ -5,8 +5,8 @@
 
 import type { ReactNode } from "react";
 import { cx } from "@/components/ui";
-import { ROTULO_QUALIFICACAO, type Lead, type Qualificacao } from "@/lib/calculo/crm";
-import { resumoDoQuiz, type VisitaQuiz } from "@/lib/calculo/quizFunil";
+import { ROTULO_QUALIFICACAO, rotuloCampanha, type Lead, type Qualificacao } from "@/lib/calculo/crm";
+import { resumoDoQuiz, resumoPorCampanha, type VisitaQuiz } from "@/lib/calculo/quizFunil";
 
 const COR_ETIQUETA: Record<Qualificacao, string> = {
   qualificado: "bg-ok-suave text-ok",
@@ -31,7 +31,7 @@ function Linha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 /** Bloco da ficha do lead: o que ele respondeu no quiz e o que pesou na etiqueta. */
 export function RespostasDoQuiz({ lead }: { lead: Lead }) {
   const respostas = lead.respostasQuiz ?? [];
-  if (!lead.qualificacao && respostas.length === 0 && !lead.empresa && !lead.cidade) return null;
+  if (!lead.qualificacao && respostas.length === 0 && !lead.empresa && !lead.cidade && !lead.campanha) return null;
   return (
     <section className="mb-3 rounded-bloco border border-linha bg-superficie-2/40 p-3" aria-label="Respostas do quiz">
       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -42,6 +42,14 @@ export function RespostasDoQuiz({ lead }: { lead: Lead }) {
       <dl className="flex flex-col gap-1.5">
         {lead.empresa && <Linha rotulo="Empresa">{lead.empresa}</Linha>}
         {lead.cidade && <Linha rotulo="Cidade">{lead.cidade}</Linha>}
+        {lead.campanha && (
+          <Linha rotulo="Veio do anúncio">
+            {rotuloCampanha(lead.campanha)}
+            {[lead.campanha.medium, lead.campanha.content, lead.campanha.term].filter(Boolean).length > 0 && (
+              <span className="text-texto-suave"> ({[lead.campanha.medium, lead.campanha.content, lead.campanha.term].filter(Boolean).join(", ")})</span>
+            )}
+          </Linha>
+        )}
         {respostas.map((r, i) => (
           <Linha key={`${r.pergunta}-${i}`} rotulo={r.pergunta}>
             {r.resposta}
@@ -56,6 +64,7 @@ export function RespostasDoQuiz({ lead }: { lead: Lead }) {
 export function FunilDoQuiz({ visitas }: { visitas: VisitaQuiz[] }) {
   if (visitas.length === 0) return null;
   const r = resumoDoQuiz(visitas);
+  const campanhas = resumoPorCampanha(visitas);
   return (
     <section className="rounded-bloco border border-linha bg-superficie p-4" aria-label="Funil do quiz">
       <h2 className="text-sm font-bold">Quiz de conversão</h2>
@@ -98,6 +107,22 @@ export function FunilDoQuiz({ visitas }: { visitas: VisitaQuiz[] }) {
           </li>
         ))}
       </ol>
+      {campanhas.some((c) => c.chave !== "") && (
+        <div className="mt-4">
+          <h3 className="text-[12px] font-bold uppercase">Por campanha</h3>
+          <p className="mt-0.5 text-[11px] text-texto-suave">De qual anúncio vieram as pessoas. “Bons” são os contatos que saíram qualificados ou com ressalva.</p>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {campanhas.map((c) => (
+              <li key={c.chave || "sem"} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[12px]">
+                <span className="min-w-0 flex-1 break-words font-semibold">{c.rotulo}</span>
+                <span className="text-texto-suave">
+                  {c.comecaram} {c.comecaram === 1 ? "começou" : "começaram"} · {c.enviaram} {c.enviaram === 1 ? "enviou" : "enviaram"} ({c.taxaDeEnvio.toLocaleString("pt-BR")}%) · {c.bons} {c.bons === 1 ? "bom" : "bons"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <p className="mt-3 text-[11px] text-texto-suave">
         Etiquetas de quem enviou: {r.porEtiqueta.qualificado} qualificado · {r.porEtiqueta.com_ressalva} com ressalva · {r.porEtiqueta.desqualificado} desqualificado · {r.porEtiqueta.social_media} só social media.
       </p>
