@@ -409,7 +409,7 @@ var Q={
 };
 
 /* ---------- estado ---------- */
-var ans={},hist=[],cur=null,locked=false,social=false,lead=null,timer=null;
+var ans={},hist=[],cur=null,locked=false,social=false,mudou=false,lead=null,timer=null;
 function low(){return ans.fat&&ans.fat.i<2}
 function stepOf(k){var m={seg:1,fat:2,gate:3,mar:low()?4:3,vrb:4,tic:5,ate:6,reg:7,obj:8};return m[k]}
 function nextOf(k){
@@ -429,6 +429,7 @@ function save(k,i,label){
   ans[k]={i:i,label:label};
   if(k==='fat'){delete ans.gate;delete ans.vrb}
   if(k==='gate'||k==='obj'){social=(k==='obj'&&i===4)}
+  if(k==='fat'||k==='gate')mudou=false;
 }
 
 /* ---------- regras de qualificação (uso interno) ---------- */
@@ -437,6 +438,7 @@ function evaluate(){
   if(!a.fat)return {status:'Sem respostas',motivos:[]};
   var lw=a.fat.i<2;
   if(social)return {status:'Só social media',motivos:[]};
+  if(mudou)return {status:'Qualificado com ressalva',motivos:['Disse que não conseguia investir R$ 1.500 e depois mudou de ideia']};
   if(lw&&a.gate&&a.gate.i===1)return {status:'Desqualificado',motivos:['Fatura abaixo de R$ 30 mil e não consegue investir R$ 1.500']};
   if(a.mar&&a.mar.i===0)m.push('Margem abaixo de R$ 30 a cada R$ 100');
   if(a.tic&&a.tic.i===2)m.push('Ciclo longo de venda');
@@ -659,8 +661,9 @@ function desqScreen(){
     '<div style="--n:0">'+SEAL_WAVE+'</div>'+
     '<h1 tabindex="-1" style="--n:1"><b>Ainda não é o momento,</b> <span class="lt">e tudo bem.</span></h1>'+
     '<p class="lead" style="--n:3">Com uma verba menor que R$ 1.500, a conta do nosso modelo não fecha, e a gente não quer te fazer gastar à toa.</p>'+
-    '<p class="lead" style="--n:4">Quando você chegar nesse ponto, volte e refaça o quiz.</p>'+
-    '<div class="actions" style="--n:5"><a class="btn btn-main" href="'+IG+'" target="_blank" rel="noopener">Voltar ao Instagram<span class="ar">'+AR+'</span></a>'+
+    '<p class="lead" style="--n:4">Mas se der para investir <strong>R$ 1.500 ou mais por mês</strong> em anúncios, é só falar: a gente continua daqui.</p>'+
+    '<div class="actions" style="--n:5"><button class="btn btn-main" id="sim" type="button">Consigo investir R$ 1.500 ou mais<span class="ar">'+AR+'</span></button>'+
+    '<a class="btn btn-ghost" href="'+IG+'" target="_blank" rel="noopener">Voltar ao Instagram</a>'+
     '<button class="btn btn-ghost" id="soc" type="button">Quero só social media, sem anúncio</button></div>'+
     '<div style="--n:6">'+foot()+'</div></div>');
 }
@@ -683,6 +686,7 @@ function go(k,isBack){
     var w=$('#wait',el);if(w)w.addEventListener('click',function(){go('wait')});focusTitle(el);burst()})}
   else if(k==='wait'){setTide(.2);swap(waitScreen,focusTitle)}
   else if(k==='desq'){setTide(.1);swap(desqScreen,function(el){
+    $('#sim',el).addEventListener('click',function(){ans.gate={i:0,label:Q.gate.o[0]};mudou=true;social=false;go('form')});
     $('#soc',el).addEventListener('click',function(){social=true;go('form')});focusTitle(el)})}
   panel();
 }

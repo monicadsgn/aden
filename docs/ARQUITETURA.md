@@ -180,8 +180,11 @@ e o Financeiro diz quanto falta entrar no mês.
   copiar ou abrir no WhatsApp. São sugestões; nada é enviado sozinho.
 - **Conector**: `listar_leads` traz etiqueta, motivos, empresa, cidade e respostas; nova `ver_funil_quiz`.
 - **Falha de envio**: se o Aden não registrar, a página avisa e manda a pessoa para o WhatsApp com as respostas; nunca
-  promete um contato que não vai acontecer. Quem diz que não topa a verba mínima sai do quiz sem deixar contato (só
-  aparece no funil como "Saída: sem a verba mínima").
+  promete um contato que não vai acontecer. Quem diz que não topa a verba mínima cai em "Ainda não é o momento" e,
+  se não mudar de ideia, sai sem deixar contato (aparece no funil como "Saída: sem a verba mínima"). Segunda chance
+  (decisão do Áleff, 27/10/2026): a tela tem o botão "Consigo investir R$ 1.500 ou mais", que leva direto à tela dos
+  dados; o lead entra como **com ressalva** (motivo: "Disse que não conseguia investir R$ 1.500 e depois mudou de
+  ideia"). A regra continua só na página do quiz.
 
 ### Painel do quiz e campanha do lead (27/10/2026, migration 0047)
 
