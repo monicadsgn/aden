@@ -38,6 +38,7 @@ import { SecaoOnboarding } from "@/components/configuracoes/SecaoOnboarding";
 import { SecaoEquipe } from "@/components/configuracoes/SecaoEquipe";
 import { SecaoMetas, SecaoPacotes, SecaoTerceiros } from "@/components/configuracoes/SecoesNovas";
 import { CabecalhoPagina } from "@/components/Shell";
+import { Recolhivel } from "@/components/Recolhivel";
 import {
   Badge,
   Botao,
@@ -1063,10 +1064,10 @@ export default function Configuracoes() {
 }
 
 function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
+  // fechado por padrão: a tela mostra só os títulos, e cada um lembra se foi deixado aberto
   return (
-    <section className="rounded-bloco border border-linha p-4">
-      <h3 className="mb-3 text-[13px] font-bold">{titulo}</h3>
+    <Recolhivel id={`config-${titulo}`} titulo={titulo}>
       <div className="grid gap-3 sm:grid-cols-2">{children}</div>
-    </section>
+    </Recolhivel>
   );
 }
