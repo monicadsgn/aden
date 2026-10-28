@@ -52,6 +52,7 @@ import { descreverItem, ganharLead, guardarEscopo } from "../dados/acoes";
 import { competenciaAtual, diferenca, temAlteracoes, type AlteracoesConfig, type NotaContexto, type TipoContexto } from "../dados/repositorio";
 import { motivoNaoApagar, REGRAS_PROTECAO } from "../regras/aprovacao";
 import { conferirPrazoDoPedido } from "../regras/prazoPedido";
+import { barraProducao, faltaParaComecar, mensagemNaoPodeComecar } from "../regras/prontoParaComecar";
 import { conferirPrazoDaPeca, MENSAGEM_SEM_DIA_DA_POSTAGEM, semDiaDaPostagem, vesperaDaPostagem } from "../regras/prazoPostagem";
 import { COMO_ATUALIZAR, NOVIDADES, VERSAO_FERRAMENTAS } from "./novidades";
 import { PAINEL_CLIENTE_ATIVO } from "../recursos";
@@ -106,7 +107,8 @@ Regras que você deve seguir:
 - Aprovação de conteúdo pelo cliente: pelo painel do cliente do Aden (link criado na ficha; só quem tem link vê peças).
   enviar_para_cliente_aprovar manda a peça; tarefa em status revisao = "com o cliente", esperando a aprovação dele.
 - Clientes: ver_cliente (ficha completa) e salvar_ficha_cliente (contato e condições do contrato).
-- Leads: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente).
+- Leads: listar_leads, salvar_lead, mover_lead, registrar_conversa_lead; quando fechar, ganhar_lead (cria o cliente). ganhar_lead só funciona com o básico do lead preenchido (contato, WhatsApp ou e-mail, valor mensal): se faltar, avise o que falta e pergunte, nunca invente.
+- Cliente novo (vindo do fechamento de lead) só começa a produzir com a ficha pronta: ver_cliente traz "faltaParaComecar". Se a lista não estiver vazia, NÃO crie tarefa nem peça: diga o que falta e peça os dados. Aviso prévio e prazo mínimo são decisão dos sócios, nunca chute.
 - O Aden é a central da agência (tarefas, calendário, comercial, financeiro, metas). "O que tenho pra hoje?" → ver_visao_do_dia.
 - Tarefas: listar_tarefas, salvar_tarefa (cria ou edita: cliente, tipo de entrega, quantidade, responsável, prazo, checklist),
   concluir_tarefa, marcar_agendada e mudar_status_tarefa. As horas vêm do TEMPO CADASTRADO de cada tipo de entrega. O cronômetro é OPCIONAL
@@ -1036,6 +1038,8 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
             .slice(0, 6)
             .map((p) => ({ valor: paraReais(p.valorCentavos), recebidoEm: p.recebidoEm, mes: p.competencia })),
           veioDoCrm: lead ? { lead: lead.nome, origem: lead.origem || null, fechadoEm: lead.fechadoEm } : null,
+          faltaParaComecar: faltaParaComecar(c).map((f) => f.item),
+          bloqueadoParaProduzir: barraProducao(c),
           atalhosDoPainel: c.atalhos ?? null,
           contexto: contexto.slice(0, 10).map(notaParaConector),
           contextoTotal: contexto.length,
@@ -2465,6 +2469,9 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           ...(e.lote !== undefined && { lote: e.lote?.trim() || null }),
           ...(e.mostrarAoCliente != null && { visivelCliente: e.mostrarAoCliente }),
         };
+        // cliente novo (nascido do fechamento de lead) só começa a produzir com o essencial da ficha preenchido
+        const clienteDaTarefa = t.clienteId ? config.clientes.find((c) => c.id === t.clienteId) : null;
+        if (!antes && clienteDaTarefa && barraProducao(clienteDaTarefa)) throw new Error(mensagemNaoPodeComecar(clienteDaTarefa));
         // "agendada": peça de cliente; se a aprovação passa pelo painel, só depois de aprovada (nada muda em silêncio)
         if (e.agendada && !t.clienteId) throw new Error("Só peça de cliente pode ser agendada: informe o cliente da tarefa.");
         const semAprovar = erroAgendarSemAprovacao(base, e.agendada, passaDe(config, t));

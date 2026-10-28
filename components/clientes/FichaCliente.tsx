@@ -3,6 +3,7 @@
 // Ficha do cliente: tudo de um cliente num lugar só (dados, contrato e escopo, tarefas,
 // pagamentos e a conversa que veio do CRM). Edita no lugar e salva ao sair do campo.
 
+import { barraProducao, faltaParaComecar } from "@/lib/regras/prontoParaComecar";
 import { BookMarked, Calculator, FileQuestion, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, SlidersHorizontal, User, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,7 +18,7 @@ import { LinkPainel } from "./LinkPainel";
 import { DetalheTarefa } from "../tarefas/DetalheTarefa";
 import { LinhaTarefa } from "../tarefas/LinhaTarefa";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
-import { Badge, Botao, CampoMoeda, CampoNumero, Interruptor, Segmentado, Selecao } from "../ui";
+import { Badge, Botao, CampoMoeda, CampoNumero, cx, Interruptor, Segmentado, Selecao } from "../ui";
 import { contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio, proximoVencimento } from "@/lib/calculo/clientes";
 import { rotuloEtapa, TIPOS_INTERACAO, type InteracaoLead, type Lead } from "@/lib/calculo/crm";
 import { hojeISO } from "@/lib/calculo/dia";
@@ -205,6 +206,23 @@ export function FichaCliente({
               Sem mensalidade e fora da divisão dos custos fixos do mês. Fechado em {new Date(c.projetoAvulso.fechadoEm).toLocaleDateString("pt-BR")}
               {c.projetoAvulso.sinalPct != null && `; ${c.projetoAvulso.sinalPct}% no início e o resto na entrega`}. Registre cada parte em Pagamentos quando cair.
             </p>
+          </div>
+        )}
+
+        {!c.interno && faltaParaComecar(c).length > 0 && (
+          <div className={cx("mb-3 rounded-bloco px-3 py-2.5 text-[13px]", barraProducao(c) ? "bg-erro-suave text-erro" : "bg-aviso-suave text-aviso")} role="status">
+            <p className="font-semibold">
+              {barraProducao(c) ? "Falta pra começar. O Claude não cria tarefa pra este cliente até preencher:" : "Falta preencher na ficha (não trava, é cliente antigo):"}
+            </p>
+            <ul className="mt-1.5 flex flex-wrap gap-1.5">
+              {faltaParaComecar(c).map((f) => (
+                <li key={f.item}>
+                  <button type="button" onClick={() => setAba(f.aba)} className="rounded-botao border border-current/30 px-2 py-0.5 text-[12px] font-semibold hover:bg-superficie/60">
+                    {f.item}
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

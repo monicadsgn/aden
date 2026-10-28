@@ -527,7 +527,7 @@ describe("conector: projeto avulso (01/10/2026)", () => {
       ["Logo essencial", true],
       ["Identidade visual completa", false],
     ]);
-    await chamar("salvar_lead", { nome: "Café Lume", pacote: "Logo essencial", valorEstimadoReais: 1500 });
+    await chamar("salvar_lead", { nome: "Café Lume", pacote: "Logo essencial", valorEstimadoReais: 1500, contato: "Ana", telefone: "(81) 99999-9999" });
     const g = await chamar("ganhar_lead", { id: "Café Lume" });
     expect(g.tarefasCriadas).toHaveLength(1);
     expect(g.tarefasCriadas[0]).toMatchObject({ titulo: "Logo essencial · Café Lume", responsavel: "Mônica" });
@@ -539,7 +539,7 @@ describe("conector: projeto avulso (01/10/2026)", () => {
 
 describe("conector: CRM", () => {
   it("lead do começo ao fim: cria, conversa, fecha e vira cliente", async () => {
-    await chamar("salvar_lead", { nome: "Loja Aurora", origem: "indicação", valorEstimadoReais: 1800, proximoContato: "2026-09-30" });
+    await chamar("salvar_lead", { nome: "Loja Aurora", origem: "indicação", contato: "Bia", telefone: "(81) 98888-8888", valorEstimadoReais: 1800, proximoContato: "2026-09-30" });
     await expect(chamar("salvar_lead", { id: "Loja Aurora", proximoContato: "30/09" })).rejects.toThrow(/AAAA-MM-DD/);
     await chamar("registrar_conversa_lead", { id: "Loja Aurora", texto: "Pediu proposta", tipo: "whatsapp", proximaAcao: "mandar proposta" });
     await chamar("mover_lead", { id: "Loja Aurora", etapa: "proposta_enviada" });
@@ -732,7 +732,7 @@ describe("conector: planejamento mensal, datas e atalhos", () => {
 
 describe("conector: fechamento do cliente", () => {
   it("abre o checklist, marca na ordem, kickoff com data vira tarefa e o CRM tem as etapas novas", async () => {
-    await chamar("salvar_lead", { nome: "Loja Nova", valorEstimadoReais: 2000 });
+    await chamar("salvar_lead", { nome: "Loja Nova", valorEstimadoReais: 2000, contato: "Caio", telefone: "(81) 97777-7777" });
     await chamar("mover_lead", { id: "Loja Nova", etapa: "pesquisa" });
     await chamar("mover_lead", { id: "Loja Nova", etapa: "reuniao" });
     await chamar("ganhar_lead", { id: "Loja Nova" });
@@ -1012,5 +1012,12 @@ describe("conector: peça agendada", () => {
     await expect(chamar("definir_percentuais_empresa", { impostoPct: 150 })).rejects.toThrow();
     await expect(chamar("definir_percentuais_empresa", { taxaRecebimentoPct: -20 })).rejects.toThrow();
     await expect(chamar("salvar_custo_fixo", { nome: "Ferramenta", valorMensalReais: -10 })).rejects.toThrow();
+  });
+});
+
+describe("conector: trava ao fechar lead (28/10/2026)", () => {
+  it("lead sem contato não vira cliente e diz o que falta", async () => {
+    await chamar("salvar_lead", { nome: "Loja Vazia", valorEstimadoReais: 1500 });
+    await expect(chamar("ganhar_lead", { id: "Loja Vazia" })).rejects.toThrow(/Falta: pessoa de contato, WhatsApp ou e-mail/);
   });
 });

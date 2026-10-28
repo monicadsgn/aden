@@ -61,14 +61,14 @@ export function RespostasDoQuiz({ lead }: { lead: Lead }) {
 }
 
 /** Funil do quiz na tela de Leads. Só aparece quando já houve visitas. */
-export function FunilDoQuiz({ visitas }: { visitas: VisitaQuiz[] }) {
+export function FunilDoQuiz({ visitas, embutido = false }: { visitas: VisitaQuiz[]; embutido?: boolean }) {
   if (visitas.length === 0) return null;
   const r = resumoDoQuiz(visitas);
   const campanhas = resumoPorCampanha(visitas);
   return (
-    <section className="rounded-bloco border border-linha bg-superficie p-4" aria-label="Funil do quiz">
-      <h2 className="text-sm font-bold">Quiz de conversão</h2>
-      <p className="mt-0.5 text-[12px] text-texto-suave">
+    <section className={embutido ? undefined : "rounded-bloco border border-linha bg-superficie p-4"} aria-label="Funil do quiz">
+      {!embutido && <h2 className="text-sm font-bold">Quiz de conversão</h2>}
+      <p className={embutido ? "text-[12px] text-texto-suave" : "mt-0.5 text-[12px] text-texto-suave"}>
         Cada barra mostra quantas pessoas chegaram naquela tela. A tela onde mais gente para sem enviar é a que vale mexer primeiro.
       </p>
       <div className="mt-3 grid grid-cols-3 gap-2">

@@ -1,6 +1,7 @@
 // Ações que valem igual no site, no modo demonstração e no conector do Claude:
 // avisos para os sócios e guardar escopo com a regra do piso.
 
+import { faltaParaFechar, mensagemFaltaParaFechar } from "../regras/fechamentoLead";
 import { moverLead, type Lead } from "../calculo/crm";
 import { pacoteParaCenario, prazoDoProjeto, precoDoCenario } from "../calculo/pacotes";
 import { novaTarefa, type Tarefa } from "../calculo/tarefas";
@@ -213,6 +214,8 @@ export async function ganharLead(repo: Repositorio, config: Configuracao, lead: 
   if (lead.simulacaoId) cenario = (await repo.carregarSimulacao(lead.simulacaoId))?.cenarios[0] ?? null;
   const pacote = lead.pacoteId ? ((config.pacotes ?? []).find((x) => x.id === lead.pacoteId) ?? null) : null;
   if (!cenario && pacote) cenario = pacoteParaCenario(pacote);
+  const falta = faltaParaFechar(lead, { avulso: Boolean(cenario?.avulso) });
+  if (falta.length) throw new Error(mensagemFaltaParaFechar(falta));
   if (cenario?.avulso) return ganharProjetoAvulso(repo, config, lead, cenario, pacote);
   const cliente: ClienteBase = {
     id: novoId(),

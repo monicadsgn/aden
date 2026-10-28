@@ -92,7 +92,16 @@ export function PainelDoQuiz({ repo, podeEditar }: { repo: Repositorio; podeEdit
         <Megaphone size={16} className="shrink-0 text-marca" aria-hidden />
         <span className="flex-1">
           <span className="block text-sm font-bold">Configurar o quiz</span>
-          <span className="block text-[12px] text-texto-suave">WhatsApp, Instagram, códigos dos anúncios e links com campanha. Tudo editável aqui, sem mexer no código.</span>
+          <span className="block text-[12px] text-texto-suave">
+            {pronto ? (
+              <>
+                Pixel da Meta: <strong className={salvo.metaPixel ? "text-ok" : "text-aviso"}>{salvo.metaPixel ? "ligado" : "desligado"}</strong> · Google:{" "}
+                <strong className={salvo.googleTag ? "text-ok" : "text-aviso"}>{salvo.googleTag ? "ligado" : "desligado"}</strong>. Clique para colocar os códigos, o WhatsApp e gerar links de anúncio.
+              </>
+            ) : (
+              "WhatsApp, Instagram, códigos dos anúncios e links com campanha. Tudo editável aqui, sem mexer no código."
+            )}
+          </span>
         </span>
         <ChevronDown size={16} className={cx("shrink-0 text-texto-suave transition-transform", aberto && "rotate-180")} aria-hidden />
       </button>
