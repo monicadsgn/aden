@@ -94,6 +94,15 @@ class BancoFalso {
   async salvarConfigQuiz(c: import("../calculo/quizConfig").ConfigQuiz) {
     this.configQuiz = { ...c };
   }
+  campanhas: import("../calculo/campanhas").Campanha[] = [];
+  async listarCampanhas() {
+    return structuredClone(this.campanhas);
+  }
+  async salvarCampanha(c: import("../calculo/campanhas").Campanha) {
+    const i = this.campanhas.findIndex((x) => x.id === c.id);
+    if (i >= 0) this.campanhas[i] = structuredClone(c);
+    else this.campanhas.push(structuredClone(c));
+  }
   async quizProgresso() {
     return structuredClone(this.visitasQuiz);
   }
@@ -1019,5 +1028,25 @@ describe("conector: trava ao fechar lead (28/10/2026)", () => {
   it("lead sem contato não vira cliente e diz o que falta", async () => {
     await chamar("salvar_lead", { nome: "Loja Vazia", valorEstimadoReais: 1500 });
     await expect(chamar("ganhar_lead", { id: "Loja Vazia" })).rejects.toThrow(/Falta: pessoa de contato, WhatsApp ou e-mail/);
+  });
+});
+
+describe("conector: campanhas (28/10/2026)", () => {
+  it("cria, pausa, arquiva e não inventa nada", async () => {
+    const r = await chamar("salvar_campanha", { nome: "Mês grátis" });
+    expect(r.status).toBe("ativa");
+    expect(r.faltaDefinir).toContain("o limite de clientes");
+    await chamar("salvar_campanha", { id: r.id, status: "pausada", promete: "texto dos sócios" });
+    const [c] = await chamar("listar_campanhas", { status: "pausada" });
+    expect(c.promete).toBe("texto dos sócios");
+    expect(c.limiteClientes).toBeNull();
+    await chamar("salvar_campanha", { id: r.id, status: "arquivada" });
+    expect(await chamar("listar_campanhas", { status: "ativa" })).toEqual([]);
+    expect(banco.campanhas[0].arquivadaEm).not.toBeNull();
+  });
+
+  it("recusa link sem https e campanha sem nome", async () => {
+    await expect(chamar("salvar_campanha", { nome: "X", paginaUrl: "http://x.com" })).rejects.toThrow(/https/);
+    await expect(chamar("salvar_campanha", {})).rejects.toThrow(/nome/);
   });
 });

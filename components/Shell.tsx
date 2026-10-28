@@ -12,6 +12,7 @@ import {
   FileSignature,
   LogOut,
   Menu,
+  Megaphone,
   MessagesSquare,
   Moon,
   Presentation,
@@ -72,6 +73,7 @@ const GRUPOS: { titulo: string; itens: Item[]; fixo?: boolean }[] = [
     fixo: true,
     itens: [
       { href: "/crm", rotulo: "Leads", icone: MessagesSquare, area: "crm" },
+      { href: "/campanhas", rotulo: "Campanhas", icone: Megaphone, area: "campanhas" },
       { href: "/negociacao", rotulo: "Proposta", icone: Presentation, area: "negociacao" },
       { href: "/calculadora", rotulo: "Calculadora de projeto", icone: Calculator, area: "calculadora", destaque: true },
     ],

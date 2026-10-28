@@ -3,19 +3,17 @@
 // CRM: o funil de vendas. Colunas por etapa (arrastar muda a etapa), tempo parado em
 // cada etapa, próximo contato e valor estimado. Clicar no lead abre a ficha.
 
-import { BarChart3, CalendarClock, Coins, MessagesSquare, Plus, Target, Trophy, XCircle, type LucideIcon } from "lucide-react";
+import { CalendarClock, Coins, MessagesSquare, Plus, Target, Trophy, XCircle, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { COR_ETAPA, DetalheLead } from "@/components/crm/DetalheLead";
-import { PainelDoQuiz } from "@/components/crm/PainelDoQuiz";
-import { EtiquetaQuiz, FunilDoQuiz } from "@/components/crm/QuizLead";
+import { EtiquetaQuiz } from "@/components/crm/QuizLead";
 import { CabecalhoPagina } from "@/components/Shell";
-import { Recolhivel } from "@/components/Recolhivel";
 import { cx } from "@/components/ui";
 import { contatosParaHoje, diasNaEtapa, ETAPAS, leadParado, moverLead, novoLead, resumoFunil, type EtapaLead, type Lead } from "@/lib/calculo/crm";
 import { hojeISO } from "@/lib/calculo/dia";
 import { configVazia, novoId } from "@/lib/calculo/novo";
-import { resumoDoQuiz, type VisitaQuiz } from "@/lib/calculo/quizFunil";
 import type { Configuracao } from "@/lib/calculo/tipos";
 import { ganharLead } from "@/lib/dados/acoes";
 import { useDados } from "@/lib/dados/contexto";
@@ -39,7 +37,6 @@ export default function Crm() {
   const [config, setConfig] = useState<Configuracao>(configVazia());
   const [leads, setLeads] = useState<Lead[]>([]);
   const [sims, setSims] = useState<ResumoSimulacao[]>([]);
-  const [visitasQuiz, setVisitasQuiz] = useState<VisitaQuiz[]>([]);
   const [carregado, setCarregado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState<string | null>(null);
@@ -51,12 +48,10 @@ export default function Crm() {
   useEffect(() => {
     (async () => {
       try {
-        // o funil do quiz nunca derruba a tela (sem a migration 0046 ou sem visitas, simplesmente não aparece)
-        const [c, l, s, q] = await Promise.all([repo.carregarConfig(), repo.listarLeads(), repo.listarSimulacoes(), repo.quizProgresso().catch(() => [] as VisitaQuiz[])]);
+        const [c, l, s] = await Promise.all([repo.carregarConfig(), repo.listarLeads(), repo.listarSimulacoes()]);
         setConfig(c);
         setLeads(l);
         setSims(s);
-        setVisitasQuiz(q);
         // link direto: /crm?lead=id
         const id = new URLSearchParams(window.location.search).get("lead");
         if (id) setAberto(id);
@@ -122,17 +117,13 @@ export default function Crm() {
           <Numero icone={Coins} rotulo="Taxa de fechamento" valor={resumo.taxaGanhoPct == null ? "—" : formatarPct(resumo.taxaGanhoPct)} sub="ganhos ÷ (ganhos + perdidos)" />
         </div>
 
-        {visitasQuiz.length > 0 && (
-          <Recolhivel
-            id="crm-funil-quiz"
-            icone={BarChart3}
-            titulo="Funil do quiz"
-            resumo={`${resumoDoQuiz(visitasQuiz).comecaram} começaram, ${resumoDoQuiz(visitasQuiz).enviaram} enviaram o contato (${resumoDoQuiz(visitasQuiz).taxaDeEnvio.toLocaleString("pt-BR")}%)`}
-          >
-            <FunilDoQuiz visitas={visitasQuiz} embutido />
-          </Recolhivel>
-        )}
-        <PainelDoQuiz repo={repo} podeEditar={usuario?.papel === "admin" || repo.modo === "local"} />
+        <p className="text-[12px] text-texto-suave">
+          O funil e as configurações do quiz agora ficam em{" "}
+          <Link href="/campanhas" className="font-semibold text-marca-forte underline">
+            Campanhas
+          </Link>
+          .
+        </p>
 
         <div className="flex items-center gap-2 rounded-botao border border-linha bg-superficie px-4 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
           <Plus size={15} className="text-texto-suave" />

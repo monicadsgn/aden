@@ -17,6 +17,7 @@ import { calcularMesDeCima, mesQueEstouraOTeto } from "../calculo/sociedade";
 import { calcularSolucoes } from "../calculo/solucoes";
 import { clienteNoMes, contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio } from "../calculo/clientes";
 import { diasNaEtapa, etapaAberta, moverLead, novoLead, resumoFunil, ROTULO_QUALIFICACAO, rotuloEtapa, situacaoFollowUp, type Lead } from "../calculo/crm";
+import { faltaDefinir, mudarStatusCampanha, novaCampanha, paginaUrlValida, type Campanha } from "../calculo/campanhas";
 import { configQuizVazia, linkDoQuiz, normalizarConfigQuiz } from "../calculo/quizConfig";
 import { resumoDoQuiz, resumoPorCampanha } from "../calculo/quizFunil";
 import { PAPEIS } from "../acesso";
@@ -129,6 +130,7 @@ Regras que você deve seguir:
 - Pacotes: ver_pacotes mostra os preços CALCULADOS (nunca digitados). salvar_pacote só guarda o que é entregue.
 - Terceiros (salvar_terceiro): custo por saída + deslocamento, só do cliente que recebe; o cliente nunca vê o valor.
 - Quiz de conversão: ver_funil_quiz (onde as pessoas param e por campanha), ver_config_quiz e salvar_config_quiz (WhatsApp, Instagram e códigos de pixel da Meta e do Google; só o que a pessoa mandou), gerar_link_quiz (link de anúncio com campanha). Nunca invente código de pixel nem número.
+- Campanhas (listar_campanhas, salvar_campanha): cada página ou oferta (o quiz, uma LP, um mês grátis) com status ativa/pausada/arquivada, o que promete, quem entra, regras, serviços, limite de clientes, link e notas. Nada se apaga: arquivar. Pausar é só registro, não tira a página do ar. Só grave o que os sócios disseram; as regras do mês grátis ainda estão sendo definidas.
 - Metas (ver_metas, salvar_meta): trilha de crescimento em degraus. Só cadastre metas que os sócios definiram.
 - Sem regra de rateio (com custo fixo cadastrado) a calculadora não calcula: diga o motivo, não invente o resultado.
 - Antes de alterar configurações, confirme com quem está conversando o que vai mudar.
@@ -1788,6 +1790,72 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           googleLigado: Boolean(c.googleTag),
           paginaDoQuiz: `${origem}/quiz`,
         };
+      }),
+  );
+
+  server.registerTool(
+    "listar_campanhas",
+    {
+      title: "Listar campanhas",
+      description: "Lista as campanhas (páginas e ofertas que trazem leads): status, o que promete, quem entra, regras, serviços, limite de clientes, link e o que ainda falta definir. O quiz de conversão é a primeira. Só leitura.",
+      inputSchema: { status: z.enum(["ativa", "pausada", "arquivada"]).optional().describe("filtra por status; sem isso, todas") },
+    },
+    async ({ status }) =>
+      executar(async () => {
+        const lista = await (await obterRepo()).listarCampanhas();
+        return lista
+          .filter((c) => !status || c.status === status)
+          .map((c) => ({ id: c.id, nome: c.nome, tipo: c.tipo, status: c.status, promete: c.promete || null, quemEntra: c.quemEntra || null, regras: c.regras || null, servicos: c.servicos || null, limiteClientes: c.limiteClientes, paginaUrl: c.paginaUrl || null, notas: c.notas || null, faltaDefinir: faltaDefinir(c) }));
+      }),
+  );
+
+  server.registerTool(
+    "salvar_campanha",
+    {
+      title: "Criar ou alterar campanha",
+      description:
+        "Cria uma campanha (sem id) ou altera uma existente (com id). Campo não enviado fica como está; texto vazio limpa. Só grave o que os sócios disseram na conversa, nunca invente regra, limite ou prazo. Para pausar, reativar ou arquivar use status. Nada se apaga. Pausar é só registro: não tira a página do ar.",
+      inputSchema: {
+        id: z.string().optional().describe("id da campanha (de listar_campanhas); sem id cria uma nova"),
+        nome: z.string().optional(),
+        status: z.enum(["ativa", "pausada", "arquivada"]).optional(),
+        promete: z.string().max(4000).optional().describe("o que o anúncio e a página prometem"),
+        quemEntra: z.string().max(4000).optional().describe("quem pode entrar e quem não"),
+        regras: z.string().max(4000).optional(),
+        servicos: z.string().max(2000).optional(),
+        limiteClientes: z.number().int().min(0).nullable().optional().describe("null = sem limite combinado"),
+        paginaUrl: z.string().max(300).optional().describe("https://..."),
+        notas: z.string().max(8000).optional(),
+      },
+    },
+    async (a) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const lista = await repo.listarCampanhas();
+        let c: Campanha;
+        if (a.id) {
+          const antes = lista.find((x) => x.id === a.id);
+          if (!antes) throw new Error("Não achei essa campanha. Use listar_campanhas para ver os ids.");
+          c = antes;
+        } else {
+          if (!a.nome?.trim()) throw new Error("Para criar uma campanha, diga o nome.");
+          c = novaCampanha(novoId(), a.nome);
+        }
+        if (a.paginaUrl !== undefined && !paginaUrlValida(a.paginaUrl)) throw new Error("O link da página precisa começar com https://.");
+        c = {
+          ...c,
+          nome: a.nome?.trim() || c.nome,
+          promete: a.promete ?? c.promete,
+          quemEntra: a.quemEntra ?? c.quemEntra,
+          regras: a.regras ?? c.regras,
+          servicos: a.servicos ?? c.servicos,
+          limiteClientes: a.limiteClientes === undefined ? c.limiteClientes : a.limiteClientes,
+          paginaUrl: a.paginaUrl === undefined ? c.paginaUrl : a.paginaUrl.trim(),
+          notas: a.notas ?? c.notas,
+        };
+        if (a.status) c = mudarStatusCampanha(c, a.status);
+        await repo.salvarCampanha(c);
+        return { salvo: true, id: c.id, nome: c.nome, status: c.status, faltaDefinir: faltaDefinir(c) };
       }),
   );
 

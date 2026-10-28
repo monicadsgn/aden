@@ -6,6 +6,7 @@ export type Papel = "admin" | "contador" | "colaborador" | "freelancer" | "clien
 export type Area =
   | "clientes"
   | "crm"
+  | "campanhas"
   | "hoje"
   | "calendario"
   | "calculadora"

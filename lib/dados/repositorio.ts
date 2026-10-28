@@ -16,6 +16,7 @@ import type { Pagamento } from "../calculo/pagamentos";
 import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { ConfigQuiz } from "../calculo/quizConfig";
+import type { Campanha } from "../calculo/campanhas";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import type { EventoAgenda } from "../agenda/ics";
 import type { AtalhosPainel, Cenario, ClienteBase, ConfigEmpresa, Configuracao, CustoFixo, Meta, Pacote, Pessoa, ResultadoCenario, Servico, Terceiro, TipoEntrega } from "../calculo/tipos";
@@ -389,6 +390,9 @@ export interface Repositorio {
   /** Painel do quiz: WhatsApp, Instagram e códigos de pixel (migration 0047). Campo vazio = a página usa o valor de reserva. */
   carregarConfigQuiz(): Promise<ConfigQuiz>;
   salvarConfigQuiz(c: ConfigQuiz): Promise<void>;
+  /** Campanhas (migration 0048): páginas e ofertas, cada uma com status e ficha. Nada se apaga: arquivar. */
+  listarCampanhas(): Promise<Campanha[]>;
+  salvarCampanha(c: Campanha): Promise<void>;
   salvarLead(l: Lead): Promise<void>;
   removerLead(id: string): Promise<void>;
   listarInteracoes(leadId: string): Promise<InteracaoLead[]>;

@@ -7,6 +7,7 @@ import { configVazia } from "../calculo/novo";
 import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { ConfigQuiz } from "../calculo/quizConfig";
+import type { Campanha } from "../calculo/campanhas";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { enderecoDeAgendaValido, type EventoAgenda } from "../agenda/ics";
 import type { RegistroMesCliente } from "../calculo/mes";
@@ -1643,6 +1644,48 @@ export class RepositorioSupabase implements Repositorio {
       instagram_url: vazio(c.instagramUrl),
       meta_pixel: vazio(c.metaPixel),
       google_tag: vazio(c.googleTag),
+    });
+    erro(error);
+  }
+
+  /** Campanhas (migration 0048). */
+  async listarCampanhas(): Promise<Campanha[]> {
+    const org = await this.org();
+    const { data, error } = await this.sb.from("campanhas").select("*").eq("org_id", org).order("criado_em", { ascending: false }).limit(500);
+    erro(error);
+    return ((data ?? []) as Linha[]).map((c) => ({
+      id: c.id as string,
+      nome: c.nome as string,
+      tipo: c.tipo as Campanha["tipo"],
+      status: c.status as Campanha["status"],
+      promete: (c.promete as string) ?? "",
+      quemEntra: (c.quem_entra as string) ?? "",
+      regras: (c.regras as string) ?? "",
+      servicos: (c.servicos as string) ?? "",
+      limiteClientes: c.limite_clientes == null ? null : Number(c.limite_clientes),
+      paginaUrl: (c.pagina_url as string) ?? "",
+      notas: (c.notas as string) ?? "",
+      criadaEm: c.criado_em as string,
+      arquivadaEm: (c.arquivada_em as string) ?? null,
+    }));
+  }
+
+  async salvarCampanha(c: Campanha) {
+    const org_id = await this.org();
+    const { error } = await this.sb.from("campanhas").upsert({
+      id: c.id,
+      org_id,
+      nome: c.nome,
+      tipo: c.tipo,
+      status: c.status,
+      promete: c.promete,
+      quem_entra: c.quemEntra,
+      regras: c.regras,
+      servicos: c.servicos,
+      limite_clientes: c.limiteClientes,
+      pagina_url: c.paginaUrl,
+      notas: c.notas,
+      arquivada_em: c.arquivadaEm,
     });
     erro(error);
   }

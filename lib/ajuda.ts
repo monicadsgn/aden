@@ -24,6 +24,12 @@ export const AJUDA_TELAS: Record<string, AjudaTela> = {
       "Cada pessoa interessada na Aden, da primeira mensagem até fechar. Anote cada conversa na ficha do lead e marque o próximo contato: ele aparece na sua Visão do dia. Quando fechar, um clique cria o cliente com a proposta combinada.",
     termos: ["lead", "escopo"],
   },
+  "/campanhas": {
+    titulo: "Campanhas",
+    texto:
+      "As páginas e ofertas que trazem gente para a Aden: o quiz, uma LP, um mês grátis. Cada campanha tem a sua ficha (o que promete, quem pode entrar, regras, limite de clientes) e pode ser pausada, reativada ou arquivada, sem apagar nada. Pausar é um combinado entre os sócios: não tira a página do ar sozinho.",
+    termos: ["lead"],
+  },
   "/clientes": {
     titulo: "Clientes e contratos",
     texto:

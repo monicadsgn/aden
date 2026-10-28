@@ -106,5 +106,5 @@ Para o sócio trocar WhatsApp, Instagram e pixels pela tela, e para ver de qual 
 1. **Supabase → SQL Editor** (query limpa): rode `supabase/migrations/0047_quiz_painel_e_campanha.sql`. **Rode antes de
    aprovar o PR**, senão o quiz passa a chamar funções que ainda não existem. É só acréscimo; nada é apagado.
 2. Não há variável nova na Vercel (continua só `QUIZ_SEGREDO`).
-3. Depois do deploy: **Leads → Configurar o quiz**. Cole o código do pixel da Meta e/ou da tag do Google e salve; a
+3. Depois do deploy: **Campanhas → Quiz de conversão → Configurar o quiz**. Cole o código do pixel da Meta e/ou da tag do Google e salve; a
    página do quiz passa a usar em até 1 minuto. Use "Link para o anúncio" para gerar o endereço com a campanha.
