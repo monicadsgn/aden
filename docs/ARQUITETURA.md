@@ -174,7 +174,7 @@ e o Financeiro diz quanto falta entrar no mês.
 - **Funil do quiz**: `quiz_progresso` guarda uma linha por visita (telas vistas, última tela, se enviou). Fica **sem o
   gatilho `auditar()` de propósito** (seriam centenas de linhas anônimas no Histórico); o lead criado continua
   auditado. `quiz_limite` é infraestrutura (hash do visitante e contagem por hora). Cálculo em
-  `lib/calculo/quizFunil.ts` (testado); tela: bloco "Quiz de conversão" em Leads, só aparece com visitas.
+  `lib/calculo/quizFunil.ts` (testado); tela: funil do quiz na ficha da campanha Quiz (Comercial → Campanhas; antes ficava em Leads).
 - **Tela de Leads**: etiqueta no card, bloco "Quiz" na ficha (o que pesou na etiqueta e as respostas) e "Mensagens
   prontas" (`lib/calculo/mensagensLead.ts`, testado): primeiro contato, social media, follow-up e retomada, para
   copiar ou abrir no WhatsApp. São sugestões; nada é enviado sozinho.
@@ -186,9 +186,23 @@ e o Financeiro diz quanto falta entrar no mês.
   dados; o lead entra como **com ressalva** (motivo: "Disse que não conseguia investir R$ 1.500 e depois mudou de
   ideia"). A regra continua só na página do quiz.
 
+### Área de Campanhas (28/10/2026, migration 0048)
+
+- **O que é**: menu Comercial → **Campanhas** (`app/(app)/campanhas/page.tsx`), ao lado de Leads. Cada página de captação
+  ou oferta (o quiz, uma LP, um "mês grátis") tem ficha própria: status **ativa / pausada / arquivada**, o que promete,
+  quem pode entrar, regras, serviços, limite de clientes (vazio = sem limite combinado), link da página (só https) e
+  notas. Nada se apaga: encerrar é arquivar (`arquivada_em`). **Pausar é só registro**: não tira a página do ar.
+- **Quiz = campanha #1** (`tipo = 'quiz'`, uma por organização, criada pela migration). A ficha dele reaproveita
+  `PainelDoQuiz` (WhatsApp, Instagram, pixel, links com campanha) e `FunilDoQuiz`; a configuração continua em
+  `quiz_config`. O funil e o painel **saíram da tela de Leads**, que só aponta para Campanhas.
+- **Textos livres de propósito**: as regras do mês grátis ainda dependem da definição dos sócios; quando saírem,
+  viram regra (e testes). Nenhum número de negócio no código.
+- **Tabela `campanhas`**: RLS leitura membro / escrita admin, `carimbar()` e `auditar()`. Cálculo e lembretes do que
+  falta definir em `lib/calculo/campanhas.ts` (testado). Conector: `listar_campanhas` e `salvar_campanha`.
+
 ### Painel do quiz e campanha do lead (27/10/2026, migration 0047)
 
-- **Painel do quiz** (Leads → "Configurar o quiz", `components/crm/PainelDoQuiz.tsx`): o sócio troca WhatsApp, Instagram,
+- **Painel do quiz** (Campanhas → Quiz de conversão → "Página e anúncios", `components/crm/PainelDoQuiz.tsx`): o sócio troca WhatsApp, Instagram,
   pixel da Meta e tag do Google sem mexer no código. Tabela `quiz_config` (uma linha por organização, RLS: leitura
   membro, escrita admin, `carimbar()` e `auditar()`); campo vazio = a página usa o valor que já vem nela. Limpeza e
   validação em `lib/calculo/quizConfig.ts` (testado): aceita número com máscara, `@usuario`, link completo e até o

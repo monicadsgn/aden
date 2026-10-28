@@ -14,6 +14,7 @@ import { configVazia, novoId } from "../calculo/novo";
 import { motivoSemAprovacaoFora, type Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import { configQuizVazia, type ConfigQuiz } from "../calculo/quizConfig";
+import { novaCampanha, type Campanha } from "../calculo/campanhas";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { aplicarResposta, montarPainel } from "../calculo/painel";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -63,6 +64,7 @@ interface Banco {
   modeloContrato?: ModeloContrato;
   modeloOnboarding?: ModeloOnboarding;
   configQuiz?: ConfigQuiz;
+  campanhas?: Campanha[];
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -746,6 +748,22 @@ export class RepositorioLocal implements Repositorio {
     const b = ler();
     registrar(b, "quiz_config", "local", b.configQuiz ?? configQuizVazia(), c);
     b.configQuiz = c;
+    gravar(b);
+  }
+
+  /** No modo demonstração o quiz já nasce como a primeira campanha, igual ao banco. */
+  async listarCampanhas(): Promise<Campanha[]> {
+    const b = ler();
+    if (b.campanhas) return structuredClone(b.campanhas);
+    return [novaCampanha("quiz", "Quiz de conversão", { tipo: "quiz" })];
+  }
+
+  async salvarCampanha(c: Campanha) {
+    const b = ler();
+    const lista = b.campanhas ?? [novaCampanha("quiz", "Quiz de conversão", { tipo: "quiz" })];
+    const antes = lista.find((x) => x.id === c.id);
+    registrar(b, "campanhas", c.id, antes ?? null, c);
+    b.campanhas = antes ? lista.map((x) => (x.id === c.id ? c : x)) : [...lista, c];
     gravar(b);
   }
 
