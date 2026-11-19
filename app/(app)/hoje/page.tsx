@@ -429,7 +429,7 @@ export default function VisaoDoDia() {
                 <div className="mb-2 flex flex-col">
                   <p className="px-2 pt-1 text-[11px] font-bold tracking-wide text-marca-forte uppercase">Fechamento de cliente</p>
                   {fechamentos.map((f) => (
-                    <Link key={f.clienteId} href={`/clientes?cliente=${f.clienteId}&aba=comercial`} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-item px-2 py-2 hover:bg-superficie-2/70">
+                    <Link key={f.clienteId} href={`/clientes/${f.clienteId}?aba=comercial`} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-item px-2 py-2 hover:bg-superficie-2/70">
                       <ClipboardCheck size={16} className="shrink-0 text-marca-forte" />
                       <span className="min-w-0 flex-1 basis-40 truncate text-[13px] font-medium">
                         {f.nome}
@@ -619,7 +619,7 @@ export default function VisaoDoDia() {
                       </Link>
                     ))}
                     {lembretes.map((l) => (
-                      <Link key={`${l.clienteId}-${l.texto}`} href={`/clientes?cliente=${l.clienteId}`} className="flex min-h-11 items-center gap-2 rounded-item bg-aviso-suave px-3 py-2 text-[12px] text-aviso hover:opacity-90">
+                      <Link key={`${l.clienteId}-${l.texto}`} href={`/clientes/${l.clienteId}`} className="flex min-h-11 items-center gap-2 rounded-item bg-aviso-suave px-3 py-2 text-[12px] text-aviso hover:opacity-90">
                         <CalendarDays size={13} className="shrink-0" />
                         <span className="flex-1">
                           <strong>{l.cliente}</strong>: {l.texto}

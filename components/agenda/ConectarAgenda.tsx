@@ -16,7 +16,7 @@ export function ConectarAgenda({ aberto, aoFechar, aoMudar }: { aberto: boolean;
   const [endereco, setEndereco] = useState("");
   const [erro, setErro] = useState<string | null>(null);
 
-  const carregar = useCallback(() => repo.listarAgendas().then(setAgendas).catch(() => {}), [repo]);
+  const carregar = useCallback(() => repo.listarAgendas().then(setAgendas).catch(() => setErro("Não consegui carregar as agendas. Recarregue a página.")), [repo]);
   useEffect(() => {
     if (aberto) void carregar();
   }, [aberto, carregar]);

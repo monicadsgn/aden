@@ -168,7 +168,7 @@ export function DetalheLead({
             </Botao>
           )}
           {l.clienteId ? (
-            <Link href={`/clientes?cliente=${l.clienteId}&aba=comercial`} className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-ok px-4 text-sm font-semibold text-superficie">
+            <Link href={`/clientes/${l.clienteId}?aba=comercial`} className="inline-flex h-10 items-center gap-1.5 rounded-botao bg-ok px-4 text-sm font-semibold text-superficie">
               <Users size={16} /> Ver o cliente
             </Link>
           ) : l.etapa !== "perdido" ? (

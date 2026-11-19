@@ -26,6 +26,11 @@ export const NOVIDADES: { versao: string; texto: string }[] = [
       "listar_tarefas agora traz a descrição da tarefa inteira (antes cortava em 600 caracteres), para pedidos com várias peças não perderem o final.",
   },
   {
+    versao: "2026-10-12",
+    texto:
+      "Ferramentas novas: ver_agenda (Google Agenda), ver_historico_lead, marcar_aviso_lido, cancelar_pedido e remover_tarefa. Mudou: o Claude não apaga mais cliente (só desativa), não convida sócio (só colaborador, freelancer e contador) e todo percentual vai de 0 a 100.",
+  },
+  {
     versao: "2026-10-11",
     texto:
       'Peça agendada: marcar_agendada (várias de uma vez, desfaz com agendada=false) e "agendada" em mudar_status_tarefa; a própria Aden e cliente sem link agendam direto, cliente com link só depois de aprovar. concluir_tarefa. listar_tarefas filtra por responsavel e etapa. Descrições das ferramentas de tarefa mais curtas.',

@@ -1,185 +1,201 @@
 "use client";
 
-// Clientes e contratos: a lista de clientes e a ficha de cada um.
+// Clientes e contratos: a lista de clientes. Cada um abre na sua própria página (/clientes/[id]).
 
-import { FileSignature, ClipboardList, Plus, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FichaCliente, SITUACAO_PAGAMENTO, type Aba } from "@/components/clientes/FichaCliente";
+import { AlertTriangle, ChevronRight, ClipboardList, FileSignature, Plus, Search, Users } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { abaDeTexto, SITUACAO_PAGAMENTO } from "@/components/clientes/FichaCliente";
+import { useClientes } from "@/components/clientes/useClientes";
 import { CabecalhoPagina } from "@/components/Shell";
-import { useTarefas } from "@/components/tarefas/useTarefas";
 import { Badge, Vazio, cx } from "@/components/ui";
-import type { Lead } from "@/lib/calculo/crm";
-import { clienteNoMes } from "@/lib/calculo/clientes";
-import { hojeISO } from "@/lib/calculo/dia";
 import { novoId } from "@/lib/calculo/novo";
-import { distribuirPagamentos, type Pagamento, type SituacaoPagamento } from "@/lib/calculo/pagamentos";
 import type { ClienteBase } from "@/lib/calculo/tipos";
+import { faltaParaComecar } from "@/lib/regras/prontoParaComecar";
+import { hojeISO } from "@/lib/calculo/dia";
 import { salvarCliente } from "@/lib/dados/acoes";
-import { useDados } from "@/lib/dados/contexto";
 import { formatarMoeda } from "@/lib/formato";
 
+type Filtro = "todos" | "atencao" | "atrasados";
+
 export default function Clientes() {
-  const a = useTarefas();
-  const { repo } = useDados();
-  const [clientes, setClientes] = useState<ClienteBase[]>([]);
-  const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [aberto, setAberto] = useState<string | null>(null);
-  const [abaInicial, setAbaInicial] = useState<Aba | null>(null);
+  const x = useClientes();
+  const router = useRouter();
   const [novo, setNovo] = useState("");
+  const [busca, setBusca] = useState("");
+  const [filtro, setFiltro] = useState<Filtro>("todos");
   const [verInativos, setVerInativos] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const pendentes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  const recarregar = useCallback(async () => {
-    const c = await repo.carregarConfig();
-    setClientes(c.clientes);
-  }, [repo]);
-
+  // links antigos (/clientes?cliente=ID&aba=contrato) levam para a página do cliente
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial vinda do banco
-    void recarregar().catch((e) => setErro(e instanceof Error ? e.message : "Erro ao carregar."));
-    repo.listarPagamentos().then(setPagamentos).catch(() => setErro("Não consegui carregar os pagamentos. Recarregue a página."));
-    repo.listarLeads().then(setLeads).catch(() => setErro("Não consegui carregar os leads. Recarregue a página."));
     const q = new URLSearchParams(window.location.search);
     const id = q.get("cliente");
-    if (id) setAberto(id);
-    const aba = q.get("aba");
-    if (aba === "contrato" || aba === "tarefas" || aba === "contexto" || aba === "briefing" || aba === "financeiro" || aba === "comercial") setAbaInicial(aba);
-  }, [repo, recarregar]);
-
-  // a tela muda na hora; o banco grava quando a pessoa para de digitar
-  const salvar = async (c: ClienteBase) => {
-    setClientes((l) => l.map((x) => (x.id === c.id ? c : x)));
-    const t = pendentes.current.get(c.id);
-    if (t) clearTimeout(t);
-    pendentes.current.set(
-      c.id,
-      setTimeout(() => {
-        pendentes.current.delete(c.id);
-        salvarCliente(repo, c).catch((e) => setErro(e instanceof Error ? e.message : "Não deu para salvar."));
-      }, 700),
-    );
-  };
+    if (!id) return;
+    const aba = abaDeTexto(q.get("aba"));
+    router.replace(`/clientes/${id}${aba && aba !== "visao" ? `?aba=${aba}` : ""}`);
+  }, [router]);
 
   const hoje = hojeISO();
-  const cfg = a.config;
-  const situacao = useMemo(() => {
-    const m = new Map<string, SituacaoPagamento>();
-    for (const c of clientes) if (c.ativo && !c.interno && clienteNoMes(c, hoje.slice(0, 7))) m.set(c.id, distribuirPagamentos({ ...cfg, clientes }, c, hoje.slice(0, 7), pagamentos, hoje).situacao);
-    return m;
-  }, [cfg, clientes, pagamentos, hoje]);
+  const pendencias = (c: ClienteBase) => (c.interno ? 0 : faltaParaComecar(c).length + (c.escopo ? 0 : 1));
+  const precisaAtencao = (c: ClienteBase) => pendencias(c) > 0 || x.situacao.get(c.id) === "atrasado";
 
-  if (!a.carregado) return null;
+  const lista = useMemo(() => {
+    const b = busca.trim().toLowerCase();
+    return x.clientes
+      .filter((c) => !b || [c.nome, c.segmento, c.contato].filter(Boolean).join(" ").toLowerCase().includes(b))
+      .filter((c) => filtro === "todos" || (filtro === "atrasados" ? x.situacao.get(c.id) === "atrasado" : precisaAtencao(c)))
+      .sort((p, q) => Number(precisaAtencao(q)) - Number(precisaAtencao(p)) || p.nome.localeCompare(q.nome));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- precisaAtencao só lê os próprios dados
+  }, [x.clientes, x.situacao, busca, filtro]);
 
-  const ativos = clientes.filter((c) => c.ativo);
-  const inativos = clientes.filter((c) => !c.ativo);
-  const cliente = clientes.find((c) => c.id === aberto) ?? null;
-  const total = ativos.filter((c) => !c.interno).reduce((s, c) => s + (c.valorMensalCentavos ?? 0), 0);
+  if (!x.carregou) return null;
+
+  const ativos = lista.filter((c) => c.ativo);
+  const inativos = lista.filter((c) => !c.ativo);
+  const total = x.clientes.filter((c) => c.ativo && !c.interno).reduce((s, c) => s + (c.valorMensalCentavos ?? 0), 0);
+  const nAtivos = x.clientes.filter((c) => c.ativo).length;
+  const nAtencao = x.clientes.filter((c) => c.ativo && precisaAtencao(c)).length;
+  const nAtrasados = x.clientes.filter((c) => c.ativo && x.situacao.get(c.id) === "atrasado").length;
 
   const criar = async () => {
     const nome = novo.trim();
     if (!nome) return;
     const c: ClienteBase = { id: novoId(), nome, interno: false, participaRateio: true, valorMensalCentavos: null, ativo: true, clienteDesde: hoje };
-    setClientes((l) => [...l, c]);
+    x.setClientes((l) => [...l, c]);
     setNovo("");
-    await salvarCliente(repo, c);
-    await a.recarregar();
-    setAberto(c.id);
+    await salvarCliente(x.repo, c);
+    await x.a.recarregar();
+    router.push(`/clientes/${c.id}?aba=dados`);
   };
 
-  const cartao = (c: ClienteBase) => {
-    const abertas = a.tarefas.filter((t) => t.clienteId === c.id && t.status !== "concluida").length;
-    const s = situacao.get(c.id);
+  const linha = (c: ClienteBase) => {
+    const abertas = x.a.tarefas.filter((t) => t.clienteId === c.id && t.status !== "concluida").length;
+    const s = x.situacao.get(c.id);
+    const falta = pendencias(c);
     return (
-      <button
-        key={c.id}
-        type="button"
-        onClick={() => setAberto(c.id)}
-        className={cx("flex flex-col gap-2 rounded-card border bg-superficie p-4 text-left shadow-card transition-colors hover:border-marca", c.ativo ? "border-linha" : "border-dashed border-linha opacity-70")}
-      >
-        <div className="flex items-start gap-2">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-bloco bg-marca-suave text-sm font-bold text-marca-forte">{c.nome.slice(0, 1).toUpperCase()}</span>
+      <li key={c.id}>
+        <Link
+          href={`/clientes/${c.id}`}
+          className={cx(
+            "group flex items-center gap-3 rounded-card border bg-superficie p-3.5 shadow-card transition-colors hover:border-marca sm:gap-4 sm:p-4",
+            c.ativo ? "border-linha" : "border-dashed border-linha opacity-70",
+          )}
+        >
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-bloco bg-marca-suave text-base font-bold text-marca-forte">{c.nome.slice(0, 1).toUpperCase()}</span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{c.nome}</p>
-            <p className="truncate text-[11px] text-texto-suave">{[c.segmento, c.contato].filter(Boolean).join(" · ") || (c.interno ? "projeto interno" : "—")}</p>
+            <p className="truncate text-[12px] text-texto-suave">{[c.segmento, c.contato].filter(Boolean).join(" · ") || (c.interno ? "projeto interno" : "sem segmento")}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+              {s && s !== "sem_contrato" && <Badge tom={SITUACAO_PAGAMENTO[s].tom}>{SITUACAO_PAGAMENTO[s].rotulo}</Badge>}
+              {falta > 0 && (
+                <Badge tom="aviso" icone={AlertTriangle}>
+                  {falta === 1 ? "falta 1 coisa" : `faltam ${falta} coisas`}
+                </Badge>
+              )}
+              {abertas > 0 && (
+                <span className="inline-flex items-center gap-1 text-texto-suave">
+                  <ClipboardList size={11} aria-hidden /> {abertas} tarefa{abertas === 1 ? "" : "s"}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-[11px]">
-          {c.valorMensalCentavos != null && <span className="numero font-bold">{formatarMoeda(c.valorMensalCentavos)}/mês</span>}
-          {s && s !== "sem_contrato" && <Badge tom={SITUACAO_PAGAMENTO[s].tom}>{SITUACAO_PAGAMENTO[s].rotulo}</Badge>}
-          {!c.escopo && !c.interno && <Badge tom="aviso">sem entregas do contrato</Badge>}
-          {abertas > 0 && (
-            <span className="inline-flex items-center gap-1 text-texto-suave">
-              <ClipboardList size={11} /> {abertas} tarefa{abertas === 1 ? "" : "s"}
-            </span>
-          )}
-        </div>
-      </button>
+          <div className="hidden shrink-0 text-right sm:block">
+            {c.projetoAvulso ? (
+              <p className="numero text-sm font-bold">{formatarMoeda(c.projetoAvulso.valorCentavos)}</p>
+            ) : c.valorMensalCentavos != null ? (
+              <p className="numero text-sm font-bold">
+                {formatarMoeda(c.valorMensalCentavos)}
+                <span className="text-[11px] font-medium text-texto-suave">/mês</span>
+              </p>
+            ) : null}
+          </div>
+          <ChevronRight size={18} className="shrink-0 text-texto-suave transition-transform group-hover:translate-x-0.5" aria-hidden />
+        </Link>
+      </li>
     );
   };
 
+  const filtros: { v: Filtro; rotulo: string; n: number }[] = [
+    { v: "todos", rotulo: "Todos", n: nAtivos },
+    { v: "atencao", rotulo: "Pedem atenção", n: nAtencao },
+    { v: "atrasados", rotulo: "Atrasados", n: nAtrasados },
+  ];
+
   return (
     <div className="pb-16">
-      <CabecalhoPagina
-        icone={FileSignature}
-        selo="Clientes"
-        titulo="Clientes e contratos"
-        descricao="A ficha de cada cliente: contato, contrato, entregas do contrato, tarefas, pagamentos e a conversa de antes de fechar."
-      />
-      <div className="mx-auto flex max-w-[1300px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
-        {erro && <p className="rounded-card bg-erro-suave px-4 py-3 text-sm text-erro">{erro}</p>}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex min-w-64 flex-1 items-center gap-2 rounded-botao border border-linha bg-superficie px-4 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
-            <Plus size={15} className="text-texto-suave" />
-            <input
-              className="sem-contorno h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-suave"
-              placeholder="Novo cliente: escreva o nome e aperte Enter"
-              value={novo}
-              onChange={(e) => setNovo(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && void criar()}
-              aria-label="Novo cliente"
-            />
+      <CabecalhoPagina icone={FileSignature} selo="Clientes" titulo="Clientes e contratos" descricao="Escolha um cliente para ver tudo dele: contrato, entregas, tarefas, pagamentos e a conversa de antes de fechar." />
+      <div className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
+        {x.erro && <p className="rounded-card bg-erro-suave px-4 py-3 text-sm text-erro">{x.erro}</p>}
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-card border border-linha bg-superficie p-4 shadow-card">
+            <p className="text-[11px] font-bold tracking-wide text-texto-suave uppercase">Clientes ativos</p>
+            <p className="numero text-2xl font-bold">{nAtivos}</p>
           </div>
-          <p className="text-xs text-texto-suave">
-            {ativos.length} ativo{ativos.length === 1 ? "" : "s"} · <span className="numero font-semibold text-texto">{formatarMoeda(total)}</span>/mês
-          </p>
+          <div className="rounded-card border border-linha bg-superficie p-4 shadow-card">
+            <p className="text-[11px] font-bold tracking-wide text-texto-suave uppercase">Mensalidades somadas</p>
+            <p className="numero text-2xl font-bold">{formatarMoeda(total)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltro(filtro === "atencao" ? "todos" : "atencao")}
+            className={cx("rounded-card border p-4 text-left shadow-card transition-colors", nAtencao ? "border-aviso/40 bg-aviso-suave" : "border-linha bg-superficie")}
+          >
+            <p className="text-[11px] font-bold tracking-wide text-texto-suave uppercase">Pedem atenção</p>
+            <p className="numero text-2xl font-bold">{nAtencao}</p>
+            <p className="text-[12px] text-texto-suave">{nAtencao ? "Falta preencher algo ou há pagamento atrasado." : "Tudo em ordem."}</p>
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex min-w-56 flex-1 items-center gap-2 rounded-botao border border-linha bg-superficie px-4 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
+            <Search size={15} className="text-texto-suave" aria-hidden />
+            <input className="sem-contorno h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-suave" placeholder="Buscar cliente" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar cliente" />
+          </div>
+          <div role="group" aria-label="Filtrar clientes" className="inline-flex rounded-botao bg-superficie-2 p-1">
+            {filtros.map((f) => (
+              <button
+                key={f.v}
+                type="button"
+                aria-pressed={filtro === f.v}
+                onClick={() => setFiltro(f.v)}
+                className={cx("min-h-9 rounded-botao px-3 text-xs font-semibold pointer-coarse:min-h-11", filtro === f.v ? "bg-superficie text-marca-forte shadow-card" : "text-texto-suave hover:text-texto")}
+              >
+                {f.rotulo} <span className="numero">{f.n}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-botao border border-dashed border-linha bg-marca-tinta/40 px-4 focus-within:border-marca focus-within:ring-2 focus-within:ring-marca/20">
+          <Plus size={15} className="text-texto-suave" aria-hidden />
+          <input
+            className="sem-contorno h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-suave"
+            placeholder="Novo cliente: escreva o nome e aperte Enter"
+            value={novo}
+            onChange={(e) => setNovo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void criar()}
+            aria-label="Novo cliente"
+          />
         </div>
 
         {ativos.length === 0 ? (
-          <Vazio icone={Users} titulo="Nenhum cliente ativo">
-            Crie aqui, ou feche um lead em Leads: ele vira cliente com a proposta combinada.
+          <Vazio icone={Users} titulo={x.clientes.length ? "Nenhum cliente com esse filtro" : "Nenhum cliente ativo"}>
+            {x.clientes.length ? "Limpe a busca ou troque o filtro." : "Crie aqui, ou feche um lead em Leads: ele vira cliente com a proposta combinada."}
           </Vazio>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{ativos.map(cartao)}</div>
+          <ul className="flex flex-col gap-2.5">{ativos.map(linha)}</ul>
         )}
         {inativos.length > 0 && (
           <div>
             <button type="button" className="text-xs font-semibold text-texto-suave hover:text-texto" onClick={() => setVerInativos(!verInativos)}>
               {verInativos ? "Esconder" : "Ver"} {inativos.length} inativo(s)
             </button>
-            {verInativos && <div className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{inativos.map(cartao)}</div>}
+            {verInativos && <ul className="mt-2 flex flex-col gap-2.5">{inativos.map(linha)}</ul>}
           </div>
         )}
       </div>
-      <FichaCliente
-        cliente={cliente}
-        config={{ ...cfg, clientes }}
-        a={a}
-        pagamentos={pagamentos}
-        situacaoMes={cliente ? (situacao.get(cliente.id) ?? null) : null}
-        leads={leads}
-        aoSalvar={salvar}
-        aoRecarregar={async () => {
-          await recarregar();
-          await a.recarregar();
-        }}
-        abaInicial={abaInicial}
-        aoFechar={() => {
-          setAberto(null);
-          setAbaInicial(null);
-        }}
-      />
     </div>
   );
 }
