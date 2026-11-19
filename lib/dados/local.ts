@@ -15,6 +15,7 @@ import { motivoSemAprovacaoFora, type Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import { configQuizVazia, type ConfigQuiz } from "../calculo/quizConfig";
 import { novaCampanha, type Campanha } from "../calculo/campanhas";
+import type { ConexaoMeta, RespostaStatusMeta } from "../meta/estado";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { aplicarResposta, montarPainel } from "../calculo/painel";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -65,6 +66,7 @@ interface Banco {
   modeloOnboarding?: ModeloOnboarding;
   configQuiz?: ConfigQuiz;
   campanhas?: Campanha[];
+  conexoesMeta?: ConexaoMeta[];
 }
 
 const USUARIO: Usuario = { id: "local", nome: "Modo local", email: "local", papel: "admin", pessoaId: null };
@@ -765,6 +767,25 @@ export class RepositorioLocal implements Repositorio {
     registrar(b, "campanhas", c.id, antes ?? null, c);
     b.campanhas = antes ? lista.map((x) => (x.id === c.id ? c : x)) : [...lista, c];
     gravar(b);
+  }
+
+  async obterConexaoMeta(clienteId: string): Promise<ConexaoMeta | null> {
+    const c = (ler().conexoesMeta ?? []).find((x) => x.clienteId === clienteId);
+    return c ? structuredClone(c) : null;
+  }
+
+  async salvarConexaoMeta(c: ConexaoMeta) {
+    const b = ler();
+    const lista = b.conexoesMeta ?? [];
+    const antes = lista.find((x) => x.clienteId === c.clienteId);
+    registrar(b, "conexoes_meta", c.clienteId, antes ?? null, c);
+    b.conexoesMeta = antes ? lista.map((x) => (x.clienteId === c.clienteId ? c : x)) : [...lista, c];
+    gravar(b);
+  }
+
+  /** No modo demonstração não existe servidor nem Meta. */
+  async metaNoServidor(): Promise<RespostaStatusMeta> {
+    return { ativo: false, motivo: "desligado" };
   }
 
   async salvarLead(l: Lead) {

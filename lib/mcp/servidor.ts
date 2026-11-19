@@ -21,6 +21,8 @@ import { faltaDefinir, mudarStatusCampanha, novaCampanha, paginaUrlValida, type 
 import { configQuizVazia, linkDoQuiz, normalizarConfigQuiz } from "../calculo/quizConfig";
 import { resumoDoQuiz, resumoPorCampanha } from "../calculo/quizFunil";
 import { PAPEIS } from "../acesso";
+import { conferirConexaoMeta } from "../meta/conferir";
+import { ROTULO_STATUS_META } from "../meta/estado";
 import { avisosDePublicacao, hojeISO, montarVisaoDoDia } from "../calculo/dia";
 import { calcularTrilha, espacoPraVender, unidadeDoCriterio } from "../calculo/metas";
 import { frasesParaCliente, pacoteParaCenario, pacotePadrao, parcelasDoProjeto, prazoDoProjeto, precoDoPacote, projetosQueCabem, textoParcelas } from "../calculo/pacotes";
@@ -131,6 +133,7 @@ Regras que você deve seguir:
 - Terceiros (salvar_terceiro): custo por saída + deslocamento, só do cliente que recebe; o cliente nunca vê o valor.
 - Quiz de conversão: ver_funil_quiz (onde as pessoas param e por campanha), ver_config_quiz e salvar_config_quiz (WhatsApp, Instagram e códigos de pixel da Meta e do Google; só o que a pessoa mandou), gerar_link_quiz (link de anúncio com campanha). Nunca invente código de pixel nem número.
 - Campanhas (listar_campanhas, salvar_campanha): cada página ou oferta (o quiz, uma LP, um mês grátis) com status ativa/pausada/arquivada, o que promete, quem entra, regras, serviços, limite de clientes, link e notas. Nada se apaga: arquivar. Pausar é só registro, não tira a página do ar. Só grave o que os sócios disseram; as regras do mês grátis ainda estão sendo definidas.
+- Instagram e Facebook (ver_conexao_meta): etapa 1, só leitura. Confere o acesso da Aden à Meta e o estado de cada cliente. Escolher qual Página é do cliente, pausar e reativar é na ficha do cliente, no site. Nunca peça, mostre ou grave token; nada é publicado por aqui.
 - Metas (ver_metas, salvar_meta): trilha de crescimento em degraus. Só cadastre metas que os sócios definiram.
 - Sem regra de rateio (com custo fixo cadastrado) a calculadora não calcula: diga o motivo, não invente o resultado.
 - Antes de alterar configurações, confirme com quem está conversando o que vai mudar.
@@ -1789,6 +1792,31 @@ export function criarServidorMcp(obterRepo: () => Promise<RepositorioSupabase>, 
           pixelMetaLigado: Boolean(c.metaPixel),
           googleLigado: Boolean(c.googleTag),
           paginaDoQuiz: `${origem}/quiz`,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "ver_conexao_meta",
+    {
+      title: "Conexão com o Instagram e o Facebook",
+      description:
+        "Confere com a Meta (só leitura) o acesso da Aden: quais Páginas e Instagrams ele enxerga e que permissões tem. Com cliente, diz o estado da conexão dele (não conectado, conectando, conectado, com problema, pausado), o motivo e o passo a passo pronto para o cliente liberar o acesso. Não publica nada, não liga publicação nem métricas e nunca mostra token. Se a conexão estiver desligada, diga que um sócio cadastra META_CONEXAO_ATIVA=1 na Vercel e faz Redeploy.",
+      inputSchema: { cliente: z.string().optional().describe("nome ou id; sem isso, só lista o que o acesso enxerga") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const c = cliente ? resolver((await repo.carregarConfig()).clientes, cliente, "Cliente") : null;
+        const r = await conferirConexaoMeta(repo, c?.id);
+        if (!r.ativo) return r.motivo === "desligado" ? "A conexão com a Meta está desligada (META_CONEXAO_ATIVA na Vercel)." : "Falta o acesso da Aden à Meta na Vercel (META_ACCESS_TOKEN).";
+        return {
+          acesso: { valendo: r.token.valido, venceEm: r.token.expiraEm, erro: r.token.erro, faltaPorEtapa: r.token.porEtapa.filter((e) => e.faltam.length).map((e) => ({ etapa: e.rotulo, faltam: e.faltam })) },
+          paginas: r.contas.map((x) => ({ pagina: x.paginaNome, instagram: x.instagramUsuario ? `@${x.instagramUsuario}` : null })),
+          erroAoListar: r.erroContas,
+          ...(r.cliente && c && {
+            cliente: { nome: c.nome, status: ROTULO_STATUS_META[r.cliente.status], motivo: r.cliente.motivo, pagina: r.cliente.paginaNome, instagram: r.cliente.instagramUsuario ? `@${r.cliente.instagramUsuario}` : null, passoAPassoParaOCliente: r.cliente.passosParaCliente },
+          }),
         };
       }),
   );

@@ -2,9 +2,14 @@
 // muda de jeito, sobe a VERSAO e ganha uma linha em NOVIDADES. O quem_sou_eu devolve isso para o Claude avisar o sócio,
 // e a Visão do dia mostra um aviso aos dois sócios até cada um marcar que atualizou o conector no claude.ai.
 
-export const VERSAO_FERRAMENTAS = "2026-10-27";
+export const VERSAO_FERRAMENTAS = "2026-11-19";
 
 export const NOVIDADES: { versao: string; texto: string }[] = [
+  {
+    versao: "2026-11-19",
+    texto:
+      "Instagram e Facebook, etapa 1 (só leitura): nova ferramenta ver_conexao_meta confere o acesso da Aden à Meta, as Páginas e Instagrams que ele enxerga e o estado de cada cliente, com o passo a passo para o cliente liberar o acesso. Nada é publicado. Lembrete: listar_campanhas e salvar_campanha (área Campanhas) existem desde 28/10.",
+  },
   {
     versao: "2026-10-27",
     texto:

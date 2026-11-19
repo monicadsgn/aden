@@ -108,3 +108,22 @@ Para o sócio trocar WhatsApp, Instagram e pixels pela tela, e para ver de qual 
 2. Não há variável nova na Vercel (continua só `QUIZ_SEGREDO`).
 3. Depois do deploy: **Campanhas → Quiz de conversão → Configurar o quiz**. Cole o código do pixel da Meta e/ou da tag do Google e salve; a
    página do quiz passa a usar em até 1 minuto. Use "Link para o anúncio" para gerar o endereço com a campanha.
+
+## 6. Instagram e Facebook (conexão com a Meta, etapa 1: só leitura)
+
+Mostra, na ficha de cada cliente, se a Aden enxerga a Página do Facebook e o Instagram dele. **Não publica nada.**
+Tudo nasce desligado. O token da Meta mora **só** na Vercel: nunca em chat, código, banco, log, commit ou PR.
+
+1. **Supabase → SQL Editor** (query limpa): rode `supabase/migrations/0049_conexoes_meta.sql`. É só acréscimo. Rode
+   **antes** de aprovar o PR.
+2. **Vercel → Settings → Environment Variables** (Production), quando decidir ligar:
+   - `META_CONEXAO_ATIVA` = `1` (chave geral; vazio = desligado)
+   - `META_ACCESS_TOKEN` = token do usuário do sistema da Meta (permissões: `pages_show_list`, `instagram_basic`;
+     as das próximas etapas podem ser marcadas depois)
+   - `META_APP_ID` e `META_APP_SECRET` (opcionais: com eles o cartão mostra quando o acesso vence)
+   - `META_NEGOCIO_ID` (opcional, não é segredo: o ID do negócio que aparece no passo a passo do cliente)
+   - `META_GRAPH_VERSION` (opcional, padrão `v23.0`)
+3. **Redeploy** depois de mexer nas variáveis.
+4. No site: ficha do cliente → Dados → **Instagram e Facebook** → **Conferir conexão**. Escolha a Página do cliente
+   ("Usar neste cliente" ou "É esta", quando o @ bate com o da ficha). Se ainda não aparecer, copie o passo a passo e
+   mande ao cliente.
