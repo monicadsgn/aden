@@ -123,7 +123,7 @@ Tudo nasce desligado. O token da Meta mora **só** na Vercel: nunca em chat, có
    - `META_APP_ID` e `META_APP_SECRET` (opcionais: com eles o cartão mostra quando o acesso vence)
    - `META_NEGOCIO_ID` (opcional, não é segredo: o ID do negócio que aparece no passo a passo do cliente)
    - `META_GRAPH_VERSION` (opcional, padrão `v23.0`)
-   - Publicar (etapa 2, só quando a Moni pedir): `META_PUBLICAR_ATIVO` = `1` e `META_PUBLICAR_CONTAS` = `@conta1,@conta2` (só essas contas publicam)
+   - Publicar (etapa 2, só quando a Moni pedir): `META_PUBLICAR_ATIVO` = `1` e `META_PUBLICAR_CONTAS` = `@conta1,@conta2` (só essas contas publicam) ou `*` (qualquer conta; a trava fica no "Permitir publicar" de cada cliente)
 3. **Redeploy** depois de mexer nas variáveis.
 4. No site: ficha do cliente → Dados → **Instagram e Facebook** → **Conferir conexão**. Escolha a Página do cliente
    ("Usar neste cliente" ou "É esta", quando o @ bate com o da ficha). Se ainda não aparecer, copie o passo a passo e

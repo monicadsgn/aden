@@ -38,5 +38,6 @@ describe("contasLiberadas", () => {
     expect(contasLiberadas(" @Teste , outra ,")).toEqual(["teste", "outra"]);
     expect(contasLiberadas("")).toEqual([]);
     expect(contasLiberadas(undefined)).toEqual([]);
+    expect(contasLiberadas(" * ")).toEqual(["*"]);
   });
 });
