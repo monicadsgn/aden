@@ -17,7 +17,7 @@ import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { ConfigQuiz } from "../calculo/quizConfig";
 import type { Campanha } from "../calculo/campanhas";
-import type { ConexaoMeta, RespostaPublicarMeta, RespostaStatusMeta } from "../meta/estado";
+import type { ConexaoMeta, PublicacaoFila, RespostaPublicarMeta, RespostaStatusMeta } from "../meta/estado";
 import type { RespostaMetricas } from "../meta/metricas";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import type { EventoAgenda } from "../agenda/ics";
@@ -403,6 +403,8 @@ export interface Repositorio {
   metaNoServidor(clienteId?: string): Promise<RespostaStatusMeta>;
   /** Publicar no Instagram (rota /api/meta/publicar). dryRun=true só mostra a prévia. */
   metaPublicarNoServidor(pedido: { clienteId: string; imagens: string[]; legenda?: string; dryRun: boolean; confirmacao?: string }): Promise<RespostaPublicarMeta>;
+  /** Fila de publicação automática (migration 0050): peças aprovadas que saem sozinhas na hora de "Vai ao ar em". */
+  listarFilaInstagram(clienteId?: string): Promise<PublicacaoFila[]>;
   /** Métricas do Instagram do cliente (rota /api/meta/metricas), só leitura. */
   metaMetricasNoServidor(clienteId: string, dias?: number): Promise<RespostaMetricas>;
   salvarLead(l: Lead): Promise<void>;

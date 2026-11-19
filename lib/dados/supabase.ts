@@ -8,7 +8,7 @@ import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { ConfigQuiz } from "../calculo/quizConfig";
 import type { Campanha } from "../calculo/campanhas";
-import type { ConexaoMeta, RespostaPublicarMeta, RespostaStatusMeta } from "../meta/estado";
+import type { ConexaoMeta, PublicacaoFila, RespostaPublicarMeta, RespostaStatusMeta } from "../meta/estado";
 import type { RespostaMetricas } from "../meta/metricas";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { enderecoDeAgendaValido, type EventoAgenda } from "../agenda/ics";
@@ -1707,6 +1707,7 @@ export class RepositorioSupabase implements Repositorio {
       status: data.status as ConexaoMeta["status"],
       publicarAtivo: !!data.publicar_ativo,
       metricasAtivas: !!data.metricas_ativas,
+      agendarAtivo: !!data.agendar_ativo,
       ultimaConferencia: (data.ultima_conferencia as string) ?? null,
       ultimoErro: (data.ultimo_erro as string) ?? null,
     };
@@ -1726,12 +1727,38 @@ export class RepositorioSupabase implements Repositorio {
         status: c.status,
         publicar_ativo: c.publicarAtivo,
         metricas_ativas: c.metricasAtivas,
+        agendar_ativo: c.agendarAtivo,
         ultima_conferencia: c.ultimaConferencia,
         ultimo_erro: c.ultimoErro,
       },
       { onConflict: "cliente_id" },
     );
     erro(error);
+  }
+
+  async listarFilaInstagram(clienteId?: string): Promise<PublicacaoFila[]> {
+    let q = this.sb
+      .from("publicacoes_meta")
+      .select("tarefa_id, cliente_id, estado, tentativas, erro, link, tarefas(titulo, publicar_em)")
+      .eq("org_id", await this.org())
+      .order("criado_em", { ascending: false })
+      .limit(100);
+    if (clienteId) q = q.eq("cliente_id", clienteId);
+    const { data, error } = await q;
+    erro(error);
+    return ((data ?? []) as unknown as Linha[]).map((l) => {
+      const t = (Array.isArray(l.tarefas) ? l.tarefas[0] : l.tarefas) as Linha | null;
+      return {
+        tarefaId: l.tarefa_id as string,
+        clienteId: l.cliente_id as string,
+        titulo: (t?.titulo as string) ?? "Peça",
+        publicarEm: (t?.publicar_em as string) ?? null,
+        estado: l.estado as PublicacaoFila["estado"],
+        tentativas: num(l.tentativas) ?? 0,
+        erro: (l.erro as string) ?? null,
+        link: (l.link as string) ?? null,
+      };
+    });
   }
 
   async metaNoServidor(clienteId?: string): Promise<RespostaStatusMeta> {

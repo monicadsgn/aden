@@ -30,8 +30,29 @@ export type ConexaoMeta = {
   status: StatusConexaoMeta;
   publicarAtivo: boolean;
   metricasAtivas: boolean;
+  /** peça aprovada pelo cliente entra na fila e sai sozinha na hora de "Vai ao ar em" (migration 0050) */
+  agendarAtivo: boolean;
   ultimaConferencia: string | null;
   ultimoErro: string | null;
+};
+
+/** Uma peça na fila de publicação automática (tabela publicacoes_meta). */
+export type PublicacaoFila = {
+  tarefaId: string;
+  clienteId: string;
+  titulo: string;
+  publicarEm: string | null;
+  estado: "na_fila" | "publicando" | "publicada" | "falhou";
+  tentativas: number;
+  erro: string | null;
+  link: string | null;
+};
+
+export const ROTULO_FILA: Record<PublicacaoFila["estado"], string> = {
+  na_fila: "Agendada, sai sozinha na hora",
+  publicando: "Publicando agora (se travar, confira no Instagram)",
+  publicada: "Publicada",
+  falhou: "Não saiu",
 };
 
 export function conexaoVazia(clienteId: string): ConexaoMeta {
@@ -44,6 +65,7 @@ export function conexaoVazia(clienteId: string): ConexaoMeta {
     status: "nao_conectado",
     publicarAtivo: false,
     metricasAtivas: false,
+    agendarAtivo: false,
     ultimaConferencia: null,
     ultimoErro: null,
   };

@@ -15,6 +15,8 @@ import {
   EXPLICA_STATUS_META,
   ROTULO_STATUS_META,
   type ConexaoMeta as Conexao,
+  type PublicacaoFila,
+  ROTULO_FILA,
   type ContaMeta,
   type RespostaPublicarMeta,
   type RespostaStatusMeta,
@@ -36,8 +38,13 @@ export function ConexaoMeta({ clienteId }: { clienteId: string }) {
   const [confirmacao, setConfirmacao] = useState("");
   const [previa, setPrevia] = useState<RespostaPublicarMeta | null>(null);
   const [publicado, setPublicado] = useState<RespostaPublicarMeta | null>(null);
+  const [fila, setFila] = useState<PublicacaoFila[]>([]);
 
   const carregar = useCallback(async () => setConexao((await repo.obterConexaoMeta(clienteId)) ?? conexaoVazia(clienteId)), [repo, clienteId]);
+
+  useEffect(() => {
+    void repo.listarFilaInstagram(clienteId).then(setFila).catch(() => setFila([]));
+  }, [repo, clienteId]);
 
   useEffect(() => {
     void (async () => {
@@ -238,6 +245,30 @@ export function ConexaoMeta({ clienteId }: { clienteId: string }) {
           </p>
           {conexao.publicarAtivo && (
             <>
+              <label className="flex items-center gap-2 font-semibold">
+                <input type="checkbox" checked={conexao.agendarAtivo} disabled={ocupado} onChange={(e) => void salvar({ agendarAtivo: e.target.checked }, false)} />
+                Agendar sozinho o que o cliente aprovar
+              </label>
+              <p className="text-texto-suave">
+                Quando o cliente aprova a peça no painel, ela fica agendada e sai sozinha no dia e na hora de &quot;Vai ao ar em&quot; (foto e carrossel, na ordem das artes; vídeo e reels continuam pelo app). Vale só para peças aprovadas depois de ligar. Para desfazer uma, tire a peça de &quot;Agendada&quot; ou mude a data.
+              </p>
+              {fila.length > 0 && (
+                <ul className="flex flex-col gap-1">
+                  {fila.slice(0, 8).map((f) => (
+                    <li key={f.tarefaId} className="flex flex-wrap items-baseline gap-x-2">
+                      <Badge tom={f.estado === "publicada" ? "ok" : f.estado === "falhou" ? "erro" : "aviso"}>{ROTULO_FILA[f.estado]}</Badge>
+                      <span className="font-semibold">{f.titulo}</span>
+                      {f.publicarEm && <span className="text-texto-suave">{quando(f.publicarEm)}</span>}
+                      {f.estado === "falhou" && f.erro && <span className="text-erro">{f.erro}</span>}
+                      {f.link && (
+                        <a href={f.link} target="_blank" rel="noreferrer" className="underline">
+                          ver post
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <label className="flex flex-col gap-1">
                 Links das imagens (https, terminando em .jpg), um por linha
                 <textarea className="rounded-campo border border-linha bg-superficie px-2 py-1.5" rows={3} value={imagens} onChange={(e) => setImagens(e.target.value)} />
