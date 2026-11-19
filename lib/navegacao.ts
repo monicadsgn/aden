@@ -4,7 +4,7 @@ import type { DestinoAlerta, SecaoConfig } from "./calculo/tipos";
 
 export function linkConfig(secao: SecaoConfig, campo?: string, clienteId?: string): string {
   // os dados do cliente moram só na ficha (grave 5 da auditoria); com o cliente, abre a ficha dele
-  if (secao === "clientes") return clienteId ? `/clientes?cliente=${clienteId}&aba=contrato` : "/clientes";
+  if (secao === "clientes") return clienteId ? `/clientes/${clienteId}?aba=contrato` : "/clientes";
   return `/configuracoes?secao=${secao}${campo ? `&campo=${campo}` : ""}`;
 }
 

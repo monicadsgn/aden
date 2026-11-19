@@ -1,25 +1,25 @@
 "use client";
 
-// Ficha do cliente: tudo de um cliente num lugar só (dados, contrato e escopo, tarefas,
-// pagamentos e a conversa que veio do CRM). Edita no lugar e salva ao sair do campo.
+// Página do cliente (/clientes/[id]): partes separadas por assunto, com a visão geral só para ler.
 
 import { barraProducao, faltaParaComecar } from "@/lib/regras/prontoParaComecar";
-import { BookMarked, Calculator, FileQuestion, ClipboardList, FileSignature, Handshake, MessageCircle, Package, Plus, SlidersHorizontal, User, Wallet } from "lucide-react";
+import { ArrowLeft, BookMarked, Calculator, FileQuestion, ClipboardList, FileSignature, Handshake, LayoutDashboard, MessageCircle, Package, Plus, Share2, SlidersHorizontal, User, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
-import { Modal } from "../Modal";
-import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
+import { useEffect, useState } from "react";
+import { CabecalhoPagina } from "../Shell";
 import { BriefingCliente } from "./BriefingCliente";
-import { ConexaoMeta } from "./ConexaoMeta";
+import { campo, ComDica, dataBr, Rot, Texto } from "./campos";
+import { DadosCliente } from "./DadosCliente";
+import { PainelRedes } from "./PainelRedes";
+import { VisaoCliente } from "./VisaoCliente";
 import { ContextoCliente } from "./ContextoCliente";
 import { ContratoCliente } from "./ContratoCliente";
 import { FechamentoCliente } from "./FechamentoCliente";
-import { LinkPainel } from "./LinkPainel";
 import { DetalheTarefa } from "../tarefas/DetalheTarefa";
 import { LinhaTarefa } from "../tarefas/LinhaTarefa";
 import type { AcoesTarefas } from "../tarefas/useTarefas";
-import { Badge, Botao, CampoMoeda, CampoNumero, cx, Interruptor, Segmentado, Selecao } from "../ui";
+import { Badge, Botao, CampoMoeda, CampoNumero, cx, Interruptor, Selecao } from "../ui";
 import { contratoVazio, fimDaFidelidade, prazoDoAvisoPrevio, proximoVencimento } from "@/lib/calculo/clientes";
 import { rotuloEtapa, TIPOS_INTERACAO, type InteracaoLead, type Lead } from "@/lib/calculo/crm";
 import { hojeISO } from "@/lib/calculo/dia";
@@ -27,13 +27,17 @@ import { novoCenario, novoId } from "@/lib/calculo/novo";
 import { pacoteParaCenario } from "@/lib/calculo/pacotes";
 import type { Pagamento, SituacaoPagamento } from "@/lib/calculo/pagamentos";
 import { novaTarefa } from "@/lib/calculo/tarefas";
-import type { AtalhosPainel, ClienteBase, Configuracao, DadosContrato } from "@/lib/calculo/tipos";
+import type { ClienteBase, Configuracao, DadosContrato } from "@/lib/calculo/tipos";
 import { guardarEscopo } from "@/lib/dados/acoes";
 import { useDados } from "@/lib/dados/contexto";
-import { formatarDocumento, formatarMoeda } from "@/lib/formato";
+import { formatarMoeda } from "@/lib/formato";
 import { enviarCenario } from "@/lib/navegacao";
 
-export type Aba = "resumo" | "contrato" | "tarefas" | "contexto" | "briefing" | "financeiro" | "comercial";
+export type Aba = "visao" | "dados" | "contrato" | "tarefas" | "contexto" | "briefing" | "financeiro" | "painel" | "comercial";
+
+/** Nomes antigos de aba (links e passos do fechamento) viram os atuais. */
+export const abaDeTexto = (v: string | null | undefined): Aba | null =>
+  v === "resumo" ? "dados" : v === "visao" || v === "dados" || v === "contrato" || v === "tarefas" || v === "contexto" || v === "briefing" || v === "financeiro" || v === "painel" || v === "comercial" ? v : null;
 
 export const SITUACAO_PAGAMENTO: Record<SituacaoPagamento, { rotulo: string; tom: "ok" | "aviso" | "erro" | "neutro" }> = {
   pago: { rotulo: "pago", tom: "ok" },
@@ -42,48 +46,6 @@ export const SITUACAO_PAGAMENTO: Record<SituacaoPagamento, { rotulo: string; tom
   atrasado: { rotulo: "atrasado", tom: "erro" },
   sem_contrato: { rotulo: "sem valor", tom: "neutro" },
 };
-
-const campo =
-  "sem-contorno h-9 w-full rounded-campo border border-linha bg-superficie px-3 text-sm placeholder:text-texto-suave/70 focus:border-marca focus:outline-none focus:ring-2 focus:ring-marca/20";
-
-const ATALHOS_VAZIOS: AtalhosPainel = { planejamentoUrl: null, planejamentoRotulo: null, fotosUrl: null, cardsJogoUrl: null, identidadeUrl: null, inclusoTexto: null };
-
-function Rot({ rotulo, children, dica }: { rotulo: string; children: ReactNode; dica?: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
-      {rotulo}
-      {children}
-      {dica && <span className="text-[12px] leading-snug font-normal">{dica}</span>}
-    </label>
-  );
-}
-
-/** Campo numérico com a frase do que ele significa embaixo. */
-function ComDica({ dica, children }: { dica: string; children: ReactNode }) {
-  return (
-    <div>
-      {children}
-      <p className="mt-1 text-[12px] leading-snug text-texto-suave">{dica}</p>
-    </div>
-  );
-}
-
-/** Texto que salva ao sair do campo. */
-function Texto({ valor, aoSalvar, placeholder, tipo = "text" }: { valor: string; aoSalvar: (v: string) => void; placeholder?: string; tipo?: string }) {
-  return (
-    <input
-      key={valor}
-      type={tipo}
-      className={campo}
-      placeholder={placeholder}
-      defaultValue={valor}
-      onBlur={(e) => e.target.value !== valor && aoSalvar(e.target.value)}
-      onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-    />
-  );
-}
-
-const dataBr = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString("pt-BR") : "—");
 
 export function FichaCliente({
   cliente,
@@ -94,7 +56,6 @@ export function FichaCliente({
   leads,
   aoSalvar,
   aoRecarregar,
-  aoFechar,
   abaInicial,
 }: {
   cliente: ClienteBase | null;
@@ -105,13 +66,12 @@ export function FichaCliente({
   leads: Lead[];
   aoSalvar: (c: ClienteBase) => Promise<void>;
   aoRecarregar: () => Promise<void>;
-  aoFechar: () => void;
   /** aba que abre primeiro (ex.: voltando da Proposta, abre no Contrato) */
   abaInicial?: Aba | null;
 }) {
   const { repo } = useDados();
   const router = useRouter();
-  const [aba, setAba] = useState<Aba>(abaInicial ?? "resumo");
+  const [aba, setAba] = useState<Aba>(abaInicial ?? "visao");
   const clienteId = cliente?.id ?? null;
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- abre na aba pedida pelo endereço
@@ -159,15 +119,46 @@ export function FichaCliente({
     }
   };
 
+  const GRUPOS: { titulo: string; itens: { valor: Aba; rotulo: string; icone: typeof User; mostrar?: boolean }[] }[] = [
+    { titulo: "Visão", itens: [{ valor: "visao", rotulo: "Visão geral", icone: LayoutDashboard }] },
+    {
+      titulo: "Cadastro",
+      itens: [
+        { valor: "dados", rotulo: "Dados", icone: User },
+        { valor: "contrato", rotulo: "Contrato e entregas", icone: FileSignature },
+        { valor: "painel", rotulo: "Painel e redes", icone: Share2, mostrar: !c.interno },
+      ],
+    },
+    {
+      titulo: "Trabalho",
+      itens: [
+        { valor: "tarefas", rotulo: `Tarefas${abertas.length ? ` (${abertas.length})` : ""}`, icone: ClipboardList },
+        { valor: "contexto", rotulo: "Contexto", icone: BookMarked },
+        { valor: "briefing", rotulo: "Briefing", icone: FileQuestion },
+      ],
+    },
+    {
+      titulo: "Dinheiro e venda",
+      itens: [
+        { valor: "financeiro", rotulo: "Pagamentos", icone: Wallet },
+        { valor: "comercial", rotulo: "Fechamento e lead", icone: Handshake },
+      ],
+    },
+  ];
+  const irAba = (v: Aba) => {
+    setAba(v);
+    if (typeof window !== "undefined") window.history.replaceState(null, "", `/clientes/${c.id}${v === "visao" ? "" : `?aba=${v}`}`);
+  };
+  const pendencias = c.interno ? [] : faltaParaComecar(c);
+
   return (
-    <>
-      <Modal
-        aberto={!tarefaAberta}
-        aoFechar={aoFechar}
-        largura="lg"
-        expandivel
+    <div className="pb-16">
+      <CabecalhoPagina
+        icone={User}
+        selo="Cliente"
         titulo={c.nome}
-        subtitulo={
+        ajuda="clientes"
+        descricao={
           <span className="flex flex-wrap items-center gap-2">
             {c.segmento && <span>{c.segmento}</span>}
             {c.projetoAvulso ? (
@@ -179,164 +170,84 @@ export function FichaCliente({
             {!c.ativo && <Badge>inativo</Badge>}
           </span>
         }
-      >
-        <div className="mb-4">
-          <Segmentado<Aba>
-            rotulo="Parte da ficha"
-            valor={aba}
-            aoMudar={setAba}
-            opcoes={[
-              { valor: "resumo", rotulo: "Dados", icone: User },
-              { valor: "contrato", rotulo: "Contrato", icone: FileSignature },
-              { valor: "tarefas", rotulo: `Tarefas${abertas.length ? ` (${abertas.length})` : ""}`, icone: ClipboardList },
-              { valor: "contexto", rotulo: "Contexto", icone: BookMarked },
-              { valor: "briefing", rotulo: "Briefing", icone: FileQuestion },
-              { valor: "financeiro", rotulo: "Pagamentos", icone: Wallet },
-              { valor: "comercial", rotulo: "Comercial", icone: Handshake },
-            ]}
-          />
-        </div>
-        {msg && <p className="mb-3 rounded-bloco bg-info-suave px-3 py-2 text-xs text-info">{msg}</p>}
-        {c.projetoAvulso && (
-          <div className="mb-3 rounded-bloco bg-marca-tinta px-3 py-2 text-[13px]">
-            <p className="font-semibold">
-              Projeto avulso: {c.projetoAvulso.nome} · {formatarMoeda(c.projetoAvulso.valorCentavos)}
-              {c.projetoAvulso.prazoDiasUteis != null && ` · entrega em até ${c.projetoAvulso.prazoDiasUteis} dias úteis`}
-            </p>
-            <p className="text-[12px] text-texto-suave">
-              Sem mensalidade e fora da divisão dos custos fixos do mês. Fechado em {new Date(c.projetoAvulso.fechadoEm).toLocaleDateString("pt-BR")}
-              {c.projetoAvulso.sinalPct != null && `; ${c.projetoAvulso.sinalPct}% no início e o resto na entrega`}. Registre cada parte em Pagamentos quando cair.
-            </p>
+        acoes={
+          <Link href="/clientes" className="inline-flex h-10 items-center gap-1.5 rounded-botao border border-linha bg-superficie px-3 text-xs font-semibold hover:bg-superficie-2">
+            <ArrowLeft size={14} aria-hidden /> Todos os clientes
+          </Link>
+        }
+      />
+      <div className="mx-auto grid max-w-[1300px] grid-cols-[minmax(0,1fr)] gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8 lg:px-8">
+        <nav aria-label="Partes da ficha" className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+          <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0">
+            {GRUPOS.map((g) => {
+              const itens = g.itens.filter((i) => i.mostrar !== false);
+              if (!itens.length) return null;
+              return (
+                <div key={g.titulo} className="flex gap-1.5 lg:flex-col lg:gap-0.5">
+                  {g.titulo !== "Visão" && <p className="hidden px-3 pb-1 text-[11px] font-bold tracking-wide text-texto-suave uppercase lg:block">{g.titulo}</p>}
+                  {itens.map((i) => {
+                    const Ic = i.icone;
+                    const ativo = aba === i.valor;
+                    return (
+                      <button
+                        key={i.valor}
+                        type="button"
+                        aria-current={ativo ? "page" : undefined}
+                        onClick={() => irAba(i.valor)}
+                        className={cx(
+                          "flex min-h-10 shrink-0 items-center gap-2 rounded-botao px-3 text-left text-[13px] font-semibold whitespace-nowrap transition-colors pointer-coarse:min-h-11",
+                          ativo ? "bg-marca-suave text-marca-forte" : "text-texto-suave hover:bg-superficie-2 hover:text-texto",
+                        )}
+                      >
+                        <Ic size={15} aria-hidden /> {i.rotulo}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
-        )}
+        </nav>
 
-        {!c.interno && faltaParaComecar(c).length > 0 && (
-          <div className={cx("mb-3 rounded-bloco px-3 py-2.5 text-[13px]", barraProducao(c) ? "bg-erro-suave text-erro" : "bg-aviso-suave text-aviso")} role="status">
-            <p className="font-semibold">
-              {barraProducao(c) ? "Falta pra começar. O Claude não cria tarefa pra este cliente até preencher:" : "Falta preencher na ficha (não trava, é cliente antigo):"}
-            </p>
-            <ul className="mt-1.5 flex flex-wrap gap-1.5">
-              {faltaParaComecar(c).map((f) => (
-                <li key={f.item}>
-                  <button type="button" onClick={() => setAba(f.aba)} className="rounded-botao border border-current/30 px-2 py-0.5 text-[12px] font-semibold hover:bg-superficie/60">
-                    {f.item}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {aba === "resumo" && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Rot rotulo="Nome">
-              <Texto valor={c.nome} aoSalvar={(v) => v.trim() && set({ nome: v.trim() })} />
-            </Rot>
-            <Rot rotulo="Segmento">
-              <Texto valor={c.segmento ?? ""} aoSalvar={(v) => set({ segmento: v })} placeholder="ex.: moda, saúde, loja física" />
-            </Rot>
-            <Rot rotulo="Pessoa de contato">
-              <Texto valor={c.contato ?? ""} aoSalvar={(v) => set({ contato: v })} />
-            </Rot>
-            <Rot rotulo="Telefone / WhatsApp">
-              <Texto valor={c.telefone ?? ""} aoSalvar={(v) => set({ telefone: v })} />
-            </Rot>
-            <Rot rotulo="Instagram">
-              <Texto valor={c.instagram ?? ""} aoSalvar={(v) => set({ instagram: v })} placeholder="@perfil" />
-            </Rot>
-            <Rot rotulo="E-mail">
-              <Texto valor={c.email ?? ""} aoSalvar={(v) => set({ email: v })} />
-            </Rot>
-            <Rot rotulo="Nome no contrato" dica="Razão social ou nome completo. Vazio = o nome do cliente.">
-              <Texto valor={c.razaoSocial ?? ""} aoSalvar={(v) => set({ razaoSocial: v })} />
-            </Rot>
-            <Rot rotulo="CPF ou CNPJ" dica="Vai no contrato.">
-              <Texto valor={c.documento ?? ""} aoSalvar={(v) => set({ documento: formatarDocumento(v) })} />
-            </Rot>
-            <Rot rotulo="Endereço" dica="Vai no contrato.">
-              <Texto valor={c.endereco ?? ""} aoSalvar={(v) => set({ endereco: v })} />
-            </Rot>
-            <Rot rotulo="Cliente desde">
-              <input type="date" className={campo} value={c.clienteDesde ?? ""} onChange={(e) => set({ clienteDesde: e.target.value || null })} />
-            </Rot>
-            <div className="flex flex-col justify-end gap-2 pb-1">
-              <Interruptor ligado={c.ativo} rotulo="Cliente ativo" aoMudar={(v) => set({ ativo: v })} />
-              {!c.interno && <Interruptor ligado={c.participaRateio} rotulo="Entra na divisão dos custos fixos" aoMudar={(v) => set({ participaRateio: v })} />}
-              <Interruptor
-                ligado={c.interno}
-                rotulo="É a própria Aden (cliente interno)"
-                aoMudar={(v) => set(v ? { interno: true, participaRateio: false } : { interno: false })}
-              />
-              {c.interno && (
-                <p className="text-[12px] text-texto-suave">
-                  Sem mensalidade: fica fora do faturamento, da divisão dos custos fixos, da divisão entre sócios e do teto do MEI, e não pede exceção de piso. Tarefas e cronômetro funcionam igual; as horas
-                  aparecem no Mês como investidas na Aden.
-                </p>
+        <div className="flex min-w-0 flex-col gap-4">
+          {msg && <p className="rounded-bloco bg-info-suave px-3 py-2 text-xs text-info">{msg}</p>}
+          {aba === "visao" && (
+            <>
+              {c.projetoAvulso && (
+                <div className="rounded-bloco bg-marca-tinta px-3 py-2 text-[13px]">
+                  <p className="font-semibold">
+                    Projeto avulso: {c.projetoAvulso.nome} · {formatarMoeda(c.projetoAvulso.valorCentavos)}
+                    {c.projetoAvulso.prazoDiasUteis != null && ` · entrega em até ${c.projetoAvulso.prazoDiasUteis} dias úteis`}
+                  </p>
+                  <p className="text-[12px] text-texto-suave">
+                    Sem mensalidade e fora da divisão dos custos fixos do mês. Fechado em {new Date(c.projetoAvulso.fechadoEm).toLocaleDateString("pt-BR")}
+                    {c.projetoAvulso.sinalPct != null && `; ${c.projetoAvulso.sinalPct}% no início e o resto na entrega`}. Registre cada parte em Pagamentos quando cair.
+                  </p>
+                </div>
               )}
-            </div>
-            <div className="sm:col-span-2">
-              {PAINEL_CLIENTE_ATIVO && !c.interno && <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />}
-            </div>
-            {!c.interno && (
-              <div className="sm:col-span-2">
-                <ConexaoMeta clienteId={c.id} />
-              </div>
-            )}
-            {PAINEL_CLIENTE_ATIVO && !c.interno && c.painelToken && (
-              <div className="grid gap-3 rounded-bloco border border-marca/40 bg-marca-tinta/40 p-3 sm:col-span-2 sm:grid-cols-2">
-                {/* D1: o que muda todo mês fica separado do cadastro (que se preenche uma vez) */}
-                <p className="text-[11px] font-bold tracking-wide text-marca-forte uppercase sm:col-span-2">Muda todo mês</p>
-                <p className="text-[12px] text-texto-suave sm:col-span-2">
-                  <strong className="text-texto">Atalhos do painel.</strong> O que o cliente abre direto no painel, sem pedir por fora. Links completos, começando com https://. Vazio = não
-                  aparece. Todo mês, troque o planejamento e a pasta dos cards de jogo.
-                </p>
-                {(
-                  [
-                    ["planejamentoUrl", "PDF do planejamento do mês", "https://…"],
-                    ["planejamentoRotulo", "Texto do botão do planejamento", "ex.: Planejamento de outubro"],
-                    ["fotosUrl", "Pasta de fotos (Drive)", "https://…"],
-                    ["cardsJogoUrl", "Pasta dos cards de jogo do mês (Drive)", "https://…"],
-                    ["identidadeUrl", "Pasta da identidade visual", "https://…"],
-                  ] as const
-                ).map(([k, rotulo, dica]) => (
-                  <Rot key={k} rotulo={rotulo}>
-                    <Texto
-                      valor={c.atalhos?.[k] ?? ""}
-                      placeholder={dica}
-                      aoSalvar={(v) => {
-                        const limpo = v.trim();
-                        if (k !== "planejamentoRotulo" && limpo && !/^https:\/\/\S+$/.test(limpo)) return setMsg("O link precisa ser completo, começando com https://.");
-                        set({ atalhos: { ...ATALHOS_VAZIOS, ...c.atalhos, [k]: limpo || null } });
-                      }}
-                    />
-                  </Rot>
-                ))}
-                <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave sm:col-span-2">
-                  O que está incluso (o cliente lê no painel)
-                  <textarea
-                    key={`incluso-${c.id}`}
-                    className="min-h-20 rounded-campo border border-linha bg-superficie px-3 py-2 text-sm font-normal text-texto focus:border-marca focus:outline-none"
-                    defaultValue={c.atalhos?.inclusoTexto ?? ""}
-                    placeholder="O que o serviço cobre e o que é extra."
-                    onBlur={(e) =>
-                      e.target.value.trim() !== (c.atalhos?.inclusoTexto ?? "") && set({ atalhos: { ...ATALHOS_VAZIOS, ...c.atalhos, inclusoTexto: e.target.value.trim() || null } })
-                    }
-                  />
-                </label>
-              </div>
-            )}
-            <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave sm:col-span-2">
-              Observações
-              <textarea
-                key={c.id}
-                className="min-h-20 rounded-campo border border-linha bg-superficie px-3 py-2 text-sm font-normal text-texto focus:border-marca focus:outline-none"
-                defaultValue={c.observacoes ?? ""}
-                placeholder="Preferências, acessos, combinados…"
-                onBlur={(e) => e.target.value !== (c.observacoes ?? "") && set({ observacoes: e.target.value })}
-              />
-            </label>
-          </div>
-        )}
+              {pendencias.length > 0 && (
+                <div className={cx("rounded-bloco px-3 py-2.5 text-[13px]", barraProducao(c) ? "bg-erro-suave text-erro" : "bg-aviso-suave text-aviso")} role="status">
+                  <p className="font-semibold">
+                    {barraProducao(c) ? "Falta pra começar. O Claude não cria tarefa pra este cliente até preencher:" : "Falta preencher na ficha (não trava, é cliente antigo):"}
+                  </p>
+                  <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                    {pendencias.map((f) => (
+                      <li key={f.item}>
+                        <button type="button" onClick={() => irAba(abaDeTexto(f.aba) ?? "dados")} className="rounded-botao border border-current/30 px-2 py-0.5 text-[12px] font-semibold hover:bg-superficie/60">
+                          {f.item}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <VisaoCliente c={c} contrato={k} entregas={entregas} abertas={abertas} entrouNoMes={entrouNoMes} situacaoMes={situacaoMes} nomeTipo={nomeTipo} irPara={irAba} abrirTarefa={setTarefaAberta} />
+            </>
+          )}
+
+          {aba === "dados" && <DadosCliente c={c} set={set} />}
+
+          {aba === "painel" && !c.interno && <PainelRedes c={c} set={set} aoRecarregar={aoRecarregar} />}
 
         {aba === "contrato" && (
           <div className="flex flex-col gap-4">
@@ -432,7 +343,7 @@ export function FichaCliente({
                     const base = c.escopo ? { ...c.escopo, clienteId: c.id } : { ...novoCenario(`Entregas do contrato · ${c.nome}`), clienteId: c.id };
                     const cen = c.valorMensalCentavos != null ? { ...base, modo: "valor" as const, mensalidadeCentavos: c.valorMensalCentavos } : base;
                     enviarCenario({ origem: "ficha", nome: `Entregas do contrato · ${c.nome}`, cenarios: [cen] });
-                    router.push(`/negociacao?volta=${encodeURIComponent(`/clientes?cliente=${c.id}&aba=contrato`)}`);
+                    router.push(`/negociacao?volta=${encodeURIComponent(`/clientes/${c.id}?aba=contrato`)}`);
                   }}
                 >
                   Personalizar entregas
@@ -559,7 +470,7 @@ export function FichaCliente({
                 a={a}
                 mensalidadeNoOnboarding={config.empresa.mensalidadeNoOnboarding}
                 aoAbrir={() => set({ fechamentoIniciadoEm: new Date().toISOString() })}
-                irPara={setAba}
+                irPara={(x) => irAba(abaDeTexto(x) ?? "dados")}
               />
             )}
             {!c.interno && <ContratoCliente config={config} clienteId={c.id} />}
@@ -597,9 +508,10 @@ export function FichaCliente({
             )}
           </div>
         )}
-      </Modal>
+        </div>
+      </div>
       {tarefaAberta && <TarefaDaFicha id={tarefaAberta} a={a} aoFechar={() => setTarefaAberta(null)} />}
-    </>
+    </div>
   );
 }
 

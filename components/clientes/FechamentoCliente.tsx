@@ -146,7 +146,7 @@ export function FechamentoCliente({
               {i.passo === "contrato" && !i.feito && irPara && (
                 <span className="flex flex-wrap items-center gap-1 text-[12px] text-texto-suave">
                   dados em
-                  <Botao pequeno variante="fantasma" onClick={() => irPara("resumo")}>
+                  <Botao pequeno variante="fantasma" onClick={() => irPara("dados")}>
                     Dados
                   </Botao>
                   e
@@ -162,7 +162,7 @@ export function FechamentoCliente({
                 </Botao>
               )}
               {i.passo === "painel" && !i.feito && irPara && (
-                <Botao pequeno onClick={() => irPara("resumo")}>
+                <Botao pequeno onClick={() => irPara("painel")}>
                   Criar o link
                 </Botao>
               )}

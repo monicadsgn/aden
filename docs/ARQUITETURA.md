@@ -160,6 +160,15 @@ e o Financeiro diz quanto falta entrar no mês.
 - Nomes: a tarefa em status `revisao` aparece como **Com o cliente** (esperando a aprovação dele); "aprovação"
   sozinha fica só para os pedidos entre sócios.
 
+## Página do cliente (19/11/2026)
+
+O cliente deixou de ser uma janela com 7 abas editáveis. Agora a lista (`/clientes`) leva para `/clientes/[id]`, uma página com menu
+lateral (no celular, faixa que desliza) em 4 grupos: **Visão** (visão geral só de leitura: cobrança, contrato, entregas, tarefas, contato),
+**Cadastro** (Dados, Contrato e entregas, Painel e redes), **Trabalho** (Tarefas, Contexto, Briefing) e **Dinheiro e venda** (Pagamentos,
+Fechamento e lead). Dados abre só para ler; "Editar dados" libera os campos. O cartão da Meta e o link do painel ficam em "Painel e redes".
+`?aba=` escolhe a parte; links antigos (`/clientes?cliente=ID&aba=…`, aba `resumo`) continuam funcionando. Carga e gravação dos clientes:
+`components/clientes/useClientes.ts`.
+
 ## Quiz de conversão de leads (26/10/2026, migration 0046)
 
 - **Página pública** `public/quiz.html` (abre em `/quiz`), com a Poppins do próprio sistema (`public/quiz/fonts`). A
