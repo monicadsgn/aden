@@ -79,6 +79,7 @@ export function FichaCliente({
   }, [abaInicial, clienteId]);
   const [interacoes, setInteracoes] = useState<InteracaoLead[]>([]);
   const [novaT, setNovaT] = useState("");
+  const [verConcluidas, setVerConcluidas] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [tarefaAberta, setTarefaAberta] = useState<string | null>(null);
   const lead = cliente ? (leads.find((l) => l.clienteId === cliente.id) ?? null) : null;
@@ -96,6 +97,7 @@ export function FichaCliente({
   const setK = (patch: Partial<DadosContrato>) => set({ contrato: { ...k, ...patch } });
   const tarefas = a.tarefas.filter((t) => t.clienteId === c.id);
   const abertas = tarefas.filter((t) => t.status !== "concluida");
+  const concluidas = tarefas.filter((t) => t.status === "concluida").slice(0, 20);
   const pags = pagamentos.filter((p) => p.clienteId === c.id).sort((x, y) => y.recebidoEm.localeCompare(x.recebidoEm));
   const nomeTipo = (id: string | null) => config.tiposEntrega.find((t) => t.id === id)?.nome ?? "entrega";
   const entregas = (c.escopo?.entregas ?? []).filter((l) => (l.quantidade ?? 0) > 0);
@@ -408,7 +410,20 @@ export function FichaCliente({
             {tarefas.length === 0 ? (
               <p className="py-3 text-center text-xs text-texto-suave">Nenhuma tarefa deste cliente.</p>
             ) : (
-              [...abertas, ...tarefas.filter((t) => t.status === "concluida").slice(0, 10)].map((t) => <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />)
+              <>
+                {abertas.length === 0 && <p className="py-3 text-center text-xs text-texto-suave">Nada em aberto. Tudo em dia.</p>}
+                {abertas.map((t) => (
+                  <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />
+                ))}
+                {concluidas.length > 0 && (
+                  <div className="mt-3">
+                    <button type="button" className="text-xs font-semibold text-texto-suave hover:text-texto" onClick={() => setVerConcluidas(!verConcluidas)}>
+                      {verConcluidas ? "Esconder" : "Ver"} {concluidas.length} concluída(s)
+                    </button>
+                    {verConcluidas && concluidas.map((t) => <LinhaTarefa key={t.id} t={t} a={a} abrir={() => setTarefaAberta(t.id)} />)}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
