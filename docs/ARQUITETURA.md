@@ -259,8 +259,14 @@ Primeira etapa da integração com a Meta. **Só leitura**: nada é publicado, n
   `META_PUBLICAR_CONTAS` (lista separada por vírgula), cliente conectado com "Permitir publicar" ligado na ficha
   (`conexoes_meta.publicar_ativo`, nasce `false`). `dryRun` é `true` por padrão (prévia); publicar de verdade exige
   `dryRun=false` e a frase de confirmação com o @ da conta. Facebook, reels, stories e agendamento ficam para depois.
-- Próximas etapas (cada uma um PR, nascendo desligada): publicar agora (só conta de teste), fila de agendamento,
-  Facebook, exclusão, métricas (base e tela do cliente).
+- **Métricas e relatório (19/11/2026):** só leitura. `GET /api/meta/metricas?clienteId=&dias=` (só sócio) e conector
+  `ver_metricas_instagram`, por `lib/meta/metricasCliente.ts` (travas: `META_CONEXAO_ATIVA`, token, cliente conectado e
+  "Permitir ler as métricas" ligado, `conexoes_meta.metricas_ativas`). Coleta em `lib/meta/metricasMeta.ts` (cada métrica
+  em try/catch próprio; o que a Meta não entregar vai em `faltou`); regras puras em `lib/meta/metricas.ts` (período de 1 a
+  30 dias, comparação com o período anterior, amostra pequena). Relatório em PDF: `/imprimir/relatorio?cliente=&dias=`
+  (botão na ficha), com prints do Meta Business Suite anexados na hora, sem guardar. Nunca inventa número.
+- Próximas etapas (cada uma um PR, nascendo desligada): fila de agendamento (peça aprovada pelo cliente publica sozinha
+  no dia de "Vai ao ar em"), Facebook, exclusão.
 
 ## Fase 2 · regras da reunião de 29/09/2026
 

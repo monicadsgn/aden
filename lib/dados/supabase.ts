@@ -9,6 +9,7 @@ import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { ConfigQuiz } from "../calculo/quizConfig";
 import type { Campanha } from "../calculo/campanhas";
 import type { ConexaoMeta, RespostaPublicarMeta, RespostaStatusMeta } from "../meta/estado";
+import type { RespostaMetricas } from "../meta/metricas";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { enderecoDeAgendaValido, type EventoAgenda } from "../agenda/ics";
 import type { RegistroMesCliente } from "../calculo/mes";
@@ -1713,7 +1714,7 @@ export class RepositorioSupabase implements Repositorio {
 
   async salvarConexaoMeta(c: ConexaoMeta) {
     const org_id = await this.org();
-    // metricas_ativas fica de fora de propósito (etapa futura). publicar_ativo só vale junto com as chaves da Vercel.
+    // publicar_ativo e metricas_ativas só valem junto com as chaves da Vercel (META_PUBLICAR_ATIVO / META_CONEXAO_ATIVA).
     const { error } = await this.sb.from("conexoes_meta").upsert(
       {
         org_id,
@@ -1724,6 +1725,7 @@ export class RepositorioSupabase implements Repositorio {
         instagram_usuario: c.instagramUsuario,
         status: c.status,
         publicar_ativo: c.publicarAtivo,
+        metricas_ativas: c.metricasAtivas,
         ultima_conferencia: c.ultimaConferencia,
         ultimo_erro: c.ultimoErro,
       },
@@ -1748,6 +1750,16 @@ export class RepositorioSupabase implements Repositorio {
     if (!token) throw new Error("Entre de novo no Aden para publicar.");
     const r = await fetch("/api/meta/publicar", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(pedido), cache: "no-store" });
     const corpo = (await r.json().catch(() => null)) as (RespostaPublicarMeta & { erro?: string }) | null;
+    if (!r.ok || !corpo) throw new Error(corpo?.erro ?? "Não deu para falar com o servidor.");
+    return corpo;
+  }
+
+  async metaMetricasNoServidor(clienteId: string, dias?: number): Promise<RespostaMetricas> {
+    const { data } = await this.sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Entre de novo no Aden para ver as métricas.");
+    const r = await fetch(`/api/meta/metricas?clienteId=${encodeURIComponent(clienteId)}${dias ? `&dias=${dias}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const corpo = (await r.json().catch(() => null)) as (RespostaMetricas & { erro?: string }) | null;
     if (!r.ok || !corpo) throw new Error(corpo?.erro ?? "Não deu para falar com o servidor.");
     return corpo;
   }

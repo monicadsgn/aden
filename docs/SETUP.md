@@ -125,6 +125,7 @@ Tudo nasce desligado. O token da Meta mora **só** na Vercel: nunca em chat, có
    - `META_GRAPH_VERSION` (opcional, padrão `v23.0`)
    - Publicar (etapa 2, só quando a Moni pedir): `META_PUBLICAR_ATIVO` = `1` e `META_PUBLICAR_CONTAS` = `@conta1,@conta2` (só essas contas publicam) ou `*` (qualquer conta; a trava fica no "Permitir publicar" de cada cliente)
 3. **Redeploy** depois de mexer nas variáveis.
-4. No site: ficha do cliente → Dados → **Instagram e Facebook** → **Conferir conexão**. Escolha a Página do cliente
+4. Métricas: marque "Permitir ler as métricas" na ficha do cliente (o token precisa de `instagram_manage_insights`, `pages_read_engagement`, `read_insights`). "Gerar relatório (PDF)" abre a página de impressão.
+5. No site: ficha do cliente → Dados → **Instagram e Facebook** → **Conferir conexão**. Escolha a Página do cliente
    ("Usar neste cliente" ou "É esta", quando o @ bate com o da ficha). Se ainda não aparecer, copie o passo a passo e
    mande ao cliente.
