@@ -11,6 +11,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Modal } from "../Modal";
 import { PAINEL_CLIENTE_ATIVO } from "@/lib/recursos";
 import { BriefingCliente } from "./BriefingCliente";
+import { ConexaoMeta } from "./ConexaoMeta";
 import { ContextoCliente } from "./ContextoCliente";
 import { ContratoCliente } from "./ContratoCliente";
 import { FechamentoCliente } from "./FechamentoCliente";
@@ -276,6 +277,11 @@ export function FichaCliente({
             <div className="sm:col-span-2">
               {PAINEL_CLIENTE_ATIVO && !c.interno && <LinkPainel clienteId={c.id} token={c.painelToken} aoMudar={(t) => void aoRecarregar().then(() => setMsg(t ? "Link do painel pronto." : null))} />}
             </div>
+            {!c.interno && (
+              <div className="sm:col-span-2">
+                <ConexaoMeta clienteId={c.id} />
+              </div>
+            )}
             {PAINEL_CLIENTE_ATIVO && !c.interno && c.painelToken && (
               <div className="grid gap-3 rounded-bloco border border-marca/40 bg-marca-tinta/40 p-3 sm:col-span-2 sm:grid-cols-2">
                 {/* D1: o que muda todo mês fica separado do cadastro (que se preenche uma vez) */}

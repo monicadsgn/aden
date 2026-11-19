@@ -8,6 +8,7 @@ import type { ArquivoPeca, RespostaCliente, Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import type { ConfigQuiz } from "../calculo/quizConfig";
 import type { Campanha } from "../calculo/campanhas";
+import type { ConexaoMeta, RespostaStatusMeta } from "../meta/estado";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { enderecoDeAgendaValido, type EventoAgenda } from "../agenda/ics";
 import type { RegistroMesCliente } from "../calculo/mes";
@@ -1688,6 +1689,56 @@ export class RepositorioSupabase implements Repositorio {
       arquivada_em: c.arquivadaEm,
     });
     erro(error);
+  }
+
+  // ─── Conexão com a Meta (migration 0049) ──────────────────────────────────
+
+  async obterConexaoMeta(clienteId: string): Promise<ConexaoMeta | null> {
+    const { data, error } = await this.sb.from("conexoes_meta").select("*").eq("org_id", await this.org()).eq("cliente_id", clienteId).maybeSingle();
+    erro(error);
+    if (!data) return null;
+    return {
+      clienteId: data.cliente_id as string,
+      paginaId: (data.pagina_id as string) ?? null,
+      paginaNome: (data.pagina_nome as string) ?? null,
+      instagramId: (data.instagram_id as string) ?? null,
+      instagramUsuario: (data.instagram_usuario as string) ?? null,
+      status: data.status as ConexaoMeta["status"],
+      publicarAtivo: !!data.publicar_ativo,
+      metricasAtivas: !!data.metricas_ativas,
+      ultimaConferencia: (data.ultima_conferencia as string) ?? null,
+      ultimoErro: (data.ultimo_erro as string) ?? null,
+    };
+  }
+
+  async salvarConexaoMeta(c: ConexaoMeta) {
+    const org_id = await this.org();
+    // publicar_ativo e metricas_ativas ficam de fora de propósito: só as etapas futuras ligam, e nascem desligados
+    const { error } = await this.sb.from("conexoes_meta").upsert(
+      {
+        org_id,
+        cliente_id: c.clienteId,
+        pagina_id: c.paginaId,
+        pagina_nome: c.paginaNome,
+        instagram_id: c.instagramId,
+        instagram_usuario: c.instagramUsuario,
+        status: c.status,
+        ultima_conferencia: c.ultimaConferencia,
+        ultimo_erro: c.ultimoErro,
+      },
+      { onConflict: "cliente_id" },
+    );
+    erro(error);
+  }
+
+  async metaNoServidor(clienteId?: string): Promise<RespostaStatusMeta> {
+    const { data } = await this.sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Entre de novo no Aden para conferir a conexão.");
+    const r = await fetch(`/api/meta/status${clienteId ? `?clienteId=${encodeURIComponent(clienteId)}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const corpo = (await r.json().catch(() => null)) as (RespostaStatusMeta & { erro?: string }) | null;
+    if (!r.ok || !corpo) throw new Error(corpo?.erro ?? "Não deu para falar com o servidor.");
+    return corpo;
   }
 
   async salvarLead(l: Lead) {

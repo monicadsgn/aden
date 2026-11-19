@@ -224,6 +224,29 @@ e o Financeiro diz quanto falta entrar no mês.
   nada), `gerar_link_quiz`; `ver_funil_quiz` traz `porCampanha`; `listar_leads` traz `campanha`.
 - `public/quiz.html` agora é editado direto (o script antigo que o gerava ficou obsoleto).
 
+## Instagram e Facebook, etapa 1: conexão e status (19/11/2026, migration 0049)
+
+Primeira etapa da integração com a Meta. **Só leitura**: nada é publicado, nada liga sozinho.
+
+- `lib/meta/estado.ts` (puro, testado): estados do cliente (`nao_conectado`, `conectando`, `conectado`, `com_problema`,
+  `pausado`), permissões por etapa (conexão, publicar no Instagram, publicar no Facebook, métricas), sugestão de Página
+  pelo @ da ficha, tradução dos erros da Meta e o passo a passo que o cliente faz para liberar o acesso.
+- `lib/meta/graph.ts` (servidor): `graph()` com o token **só no cabeçalho** (nunca na URL; POST no corpo; sem cache;
+  paginação só dentro de graph.facebook.com e sem `access_token` no `next`); `listarContasMeta` (Páginas + Instagram,
+  `limit=100` seguindo `paging.next`); `conferirToken` (`me/permissions` e, com ID e segredo do app, `debug_token` por
+  POST para saber quando vence). Log só com códigos de erro, nunca token ou resposta crua.
+- `lib/meta/conferir.ts`: usado pela rota e pelo conector. Com cliente, avalia e grava status, última conferência e erro.
+- Rota `GET /api/meta/status` (lista o que o acesso enxerga) e `?clienteId=` (confere um cliente). Só sócio (sessão no
+  cabeçalho, como `/api/contrato`). Chave `META_CONEXAO_ATIVA=1`; desligada responde `{ ativo: false, motivo: "desligado" }`.
+- Tabela `conexoes_meta` (uma por cliente): Página e Instagram escolhidos, status, `publicar_ativo` e `metricas_ativas`
+  (nascem `false`, para as próximas etapas), última conferência e erro. **Nunca guarda token.** RLS: leitura e escrita
+  só sócio; trigger impede ligar cliente de outra organização.
+- Ficha do cliente → Dados → cartão **Instagram e Facebook** (`components/clientes/ConexaoMeta.tsx`): estado em
+  português, Conferir conexão, escolher a Página, pausar/reativar, permissões por etapa e passo a passo copiável.
+- Conector: `ver_conexao_meta` (só leitura).
+- Próximas etapas (cada uma um PR, nascendo desligada): publicar agora (só conta de teste), fila de agendamento,
+  Facebook, exclusão, métricas (base e tela do cliente).
+
 ## Fase 2 · regras da reunião de 29/09/2026
 
 - **Divisão entre os sócios** (campos protegidos em `configuracoes_empresa`, migration 0019; regra em
