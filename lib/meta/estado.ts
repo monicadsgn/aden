@@ -156,3 +156,9 @@ export function passosParaCliente(negocioId: string | null): string {
     "Os nomes dos botões às vezes mudam um pouco. Se travar em algum passo, manda um print que a gente te ajuda.",
   ].join("\n");
 }
+
+// Publicar no Instagram (etapa 2): formato da resposta da rota /api/meta/publicar. Sem token, só ids, links e texto.
+export type RespostaPublicarMeta =
+  | { ativo: false; motivo: string }
+  | { ativo: true; dryRun: true; conta: string; tipo: "foto" | "carrossel"; imagens: number; legenda: string; confirmacaoNecessaria: string; aviso: string }
+  | { ativo: true; dryRun: false; conta: string; tipo: "foto" | "carrossel"; postId: string; link: string | null };

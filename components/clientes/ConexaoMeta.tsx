@@ -5,7 +5,7 @@
 // deixa escolher qual Página é do cliente e dá o passo a passo pronto para mandar a ele.
 // Nada aqui publica, liga métricas ou mexe na conta do cliente.
 
-import { Check, Copy, Pause, Play, PlugZap, RefreshCw, Share2 } from "lucide-react";
+import { Check, Copy, Pause, Play, PlugZap, RefreshCw, Send, Share2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Botao, type Tom } from "../ui";
 import { useDados } from "@/lib/dados/contexto";
@@ -15,6 +15,7 @@ import {
   ROTULO_STATUS_META,
   type ConexaoMeta as Conexao,
   type ContaMeta,
+  type RespostaPublicarMeta,
   type RespostaStatusMeta,
   type StatusConexaoMeta,
 } from "@/lib/meta/estado";
@@ -29,6 +30,11 @@ export function ConexaoMeta({ clienteId }: { clienteId: string }) {
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [imagens, setImagens] = useState("");
+  const [legenda, setLegenda] = useState("");
+  const [confirmacao, setConfirmacao] = useState("");
+  const [previa, setPrevia] = useState<RespostaPublicarMeta | null>(null);
+  const [publicado, setPublicado] = useState<RespostaPublicarMeta | null>(null);
 
   const carregar = useCallback(async () => setConexao((await repo.obterConexaoMeta(clienteId)) ?? conexaoVazia(clienteId)), [repo, clienteId]);
 
@@ -64,6 +70,28 @@ export function ConexaoMeta({ clienteId }: { clienteId: string }) {
       setOcupado(false);
     }
     if (depoisConferir) await conferir();
+  };
+
+  const listaImagens = () => imagens.split(/\s+/).map((x) => x.trim()).filter(Boolean);
+  const publicar = async (dryRun: boolean) => {
+    setOcupado(true);
+    setErro(null);
+    try {
+      const r = await repo.metaPublicarNoServidor({ clienteId, imagens: listaImagens(), legenda: legenda.trim() || undefined, dryRun, confirmacao: dryRun ? undefined : confirmacao });
+      if (dryRun) {
+        setPrevia(r);
+        setPublicado(null);
+      } else {
+        setPublicado(r);
+        setPrevia(null);
+        setConfirmacao("");
+      }
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não deu para publicar.");
+    } finally {
+      setOcupado(false);
+    }
   };
 
   const escolher = (c: ContaMeta) =>
@@ -177,6 +205,57 @@ export function ConexaoMeta({ clienteId }: { clienteId: string }) {
             </ul>
           </details>
         </>
+      )}
+
+      {status === "conectado" && conexao.instagramUsuario && (
+        <div className="flex flex-col gap-2 rounded-bloco border border-linha px-3 py-2 text-[12px]">
+          <label className="flex items-center gap-2 font-semibold">
+            <input type="checkbox" checked={conexao.publicarAtivo} disabled={ocupado} onChange={(e) => void salvar({ publicarAtivo: e.target.checked }, false)} />
+            Permitir publicar no Instagram deste cliente
+          </label>
+          <p className="text-texto-suave">
+            Desligado por padrão. Mesmo ligado aqui, só publica se um sócio também liberar na Vercel (META_PUBLICAR_ATIVO e META_PUBLICAR_CONTAS). Primeiro sempre aparece uma prévia, e você escreve a confirmação.
+          </p>
+          {conexao.publicarAtivo && (
+            <>
+              <label className="flex flex-col gap-1">
+                Links das imagens (https, terminando em .jpg), um por linha
+                <textarea className="rounded-campo border border-linha bg-superficie px-2 py-1.5" rows={3} value={imagens} onChange={(e) => setImagens(e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1">
+                Legenda
+                <textarea className="rounded-campo border border-linha bg-superficie px-2 py-1.5" rows={3} value={legenda} onChange={(e) => setLegenda(e.target.value)} />
+              </label>
+              <div>
+                <Botao pequeno icone={Send} disabled={ocupado || listaImagens().length === 0} onClick={() => void publicar(true)}>
+                  Ver prévia (não publica)
+                </Botao>
+              </div>
+              {previa?.ativo === false && <p className="rounded-bloco bg-aviso-suave px-3 py-2 text-aviso">Publicação desligada na Vercel ({previa.motivo}). Nada foi enviado.</p>}
+              {previa?.ativo === true && previa.dryRun && (
+                <div className="flex flex-col gap-2 rounded-bloco bg-superficie-2/60 px-3 py-2">
+                  <p>
+                    Prévia: {previa.tipo} com {previa.imagens} imagem(ns) em <strong>@{previa.conta}</strong>. Nada foi publicado.
+                  </p>
+                  <p>
+                    Para publicar de verdade, escreva exatamente: <strong>{previa.confirmacaoNecessaria}</strong>
+                  </p>
+                  <input className="rounded-campo border border-linha bg-superficie px-2 py-1.5" value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} placeholder="escreva a frase acima" />
+                  <div>
+                    <Botao pequeno variante="primario" icone={Send} disabled={ocupado || confirmacao.trim().toLowerCase() !== previa.confirmacaoNecessaria} onClick={() => void publicar(false)}>
+                      Publicar agora
+                    </Botao>
+                  </div>
+                </div>
+              )}
+              {publicado?.ativo === true && !publicado.dryRun && (
+                <p className="rounded-bloco bg-ok-suave px-3 py-2 text-ok">
+                  Publicado em @{publicado.conta}. {publicado.link && <a className="underline" href={publicado.link} target="_blank" rel="noreferrer">Ver o post</a>}
+                </p>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {precisaPassos && cli?.passosParaCliente && (

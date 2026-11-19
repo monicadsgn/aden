@@ -14,6 +14,7 @@ import { configQuizVazia, linkDoQuiz, normalizarConfigQuiz } from "../calculo/qu
 import { resumoDoQuiz, resumoPorCampanha } from "../calculo/quizFunil";
 import type { Meta, Pacote } from "../calculo/tipos";
 import { ganharLead } from "../dados/acoes";
+import { publicarMeta } from "../meta/publicar";
 import { conferirConexaoMeta } from "../meta/conferir";
 import { ROTULO_STATUS_META } from "../meta/estado";
 import { paraCentavos, paraReais, resolver } from "./traducao";
@@ -146,6 +147,30 @@ export function registrarComercial(server: McpServer, obterRepo: () => Promise<R
             cliente: { nome: c.nome, status: ROTULO_STATUS_META[r.cliente.status], motivo: r.cliente.motivo, pagina: r.cliente.paginaNome, instagram: r.cliente.instagramUsuario ? `@${r.cliente.instagramUsuario}` : null, passoAPassoParaOCliente: r.cliente.passosParaCliente },
           }),
         };
+      }),
+  );
+
+  server.registerTool(
+    "publicar_no_instagram",
+    {
+      title: "Publicar foto ou carrossel no Instagram (etapa de teste)",
+      description:
+        "Publica uma foto (1 imagem) ou um carrossel (2 a 10) no Instagram de um cliente conectado, só se a publicação estiver ligada na Vercel (META_PUBLICAR_ATIVO=1), o @ estiver em META_PUBLICAR_CONTAS e \"Publicar no Instagram\" estiver ligado na ficha. Imagens: links https terminando em .jpg. SEMPRE comece com dryRun=true (padrão): mostra a prévia e a frase de confirmação. Só use dryRun=false depois que a Moni ou o Áleff escreverem, na conversa, que podem publicar, e passe a frase exata em confirmacao. Nunca publique por conta própria nem em conta de cliente sem o pedido deles.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id do cliente"),
+        imagens: z.array(z.string()).describe("links https das imagens (.jpg), em ordem"),
+        legenda: z.string().optional(),
+        dryRun: z.boolean().optional().describe("padrão true (só prévia)"),
+        confirmacao: z.string().optional().describe("frase exata da prévia, só com dryRun=false"),
+      },
+    },
+    async ({ cliente, imagens, legenda, dryRun, confirmacao }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const c = resolver((await repo.carregarConfig()).clientes, cliente, "Cliente");
+        const r = await publicarMeta(repo, { clienteId: c.id, imagens, legenda, dryRun: dryRun === false ? false : true, confirmacao });
+        if (!r.ativo) return r.motivo === "desligado" ? "A conexão com a Meta está desligada (META_CONEXAO_ATIVA)." : r.motivo === "publicacao_desligada" ? "A publicação está desligada na Vercel (META_PUBLICAR_ATIVO)." : "Falta o acesso da Aden à Meta na Vercel.";
+        return r;
       }),
   );
 
