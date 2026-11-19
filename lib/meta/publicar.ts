@@ -24,7 +24,8 @@ export async function publicarMeta(repo: Repositorio, pedido: PedidoPublicar): P
     throw new Error("Este cliente ainda não está conectado ao Instagram. Use \"Conferir conexão\" na ficha primeiro.");
   if (!conexao.publicarAtivo) throw new Error("A publicação está desligada na ficha deste cliente. Ligue \"Publicar no Instagram\" antes.");
   const arroba = conexao.instagramUsuario.toLowerCase();
-  if (!contasLiberadas(process.env.META_PUBLICAR_CONTAS).includes(arroba)) throw new Error(`O @${arroba} não está na lista de contas liberadas para publicar (META_PUBLICAR_CONTAS).`);
+  const liberadas = contasLiberadas(process.env.META_PUBLICAR_CONTAS);
+  if (!liberadas.includes("*") && !liberadas.includes(arroba)) throw new Error(`O @${arroba} não está na lista de contas liberadas para publicar (META_PUBLICAR_CONTAS).`);
 
   const montado = montarPlano(pedido);
   if ("erro" in montado) throw new Error(montado.erro);

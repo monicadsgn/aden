@@ -47,7 +47,7 @@ export function confirmacaoEsperada(instagramUsuario: string, plano: PlanoPublic
 
 export const confirmacaoConfere = (escrita: string | null | undefined, esperada: string) => (escrita ?? "").trim().toLowerCase().replace(/\s+/g, " ") === esperada;
 
-/** Lista de @ liberados para publicar (META_PUBLICAR_CONTAS, separados por vírgula). Vazia = ninguém. */
+/** Lista de @ liberados para publicar (META_PUBLICAR_CONTAS, separados por vírgula). Vazia = ninguém; "*" = qualquer conta (a trava passa a ser só o "Permitir publicar" de cada cliente). */
 export function contasLiberadas(valor: string | null | undefined): string[] {
   return (valor ?? "")
     .split(",")
