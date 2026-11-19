@@ -5,7 +5,12 @@ import { describe, expect, it } from "vitest";
 
 const pasta = path.resolve(__dirname);
 const skills = readdirSync(pasta, { withFileTypes: true }).filter((d) => d.isDirectory() && d.name.startsWith("aden-"));
-const servidor = readFileSync(path.resolve(pasta, "../lib/mcp/servidor.ts"), "utf8");
+// as ferramentas moram uma área por arquivo em lib/mcp
+const pastaMcp = path.resolve(pasta, "../lib/mcp");
+const servidor = readdirSync(pastaMcp)
+  .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
+  .map((f) => readFileSync(path.join(pastaMcp, f), "utf8"))
+  .join("\n");
 const ferramentas = new Set([...servidor.matchAll(/registerTool\(\s*"([a-z_]+)"/g)].map((m) => m[1]));
 // valores de parâmetro (passo do fechamento, etapa do lead) também aparecem entre crases
 const valores = new Set(["pasta_drive", "proposta_enviada", "lead_recebido", "contato_feito"]);

@@ -681,6 +681,8 @@ Verificado em 25/09/2026: trocando só o `tokens.css` por outra paleta e outra f
 
 ## Conector MCP (Claude no claude.ai)
 
+> Código (19/11/2026): `lib/mcp/servidor.ts` só monta o servidor; as ferramentas moram uma área por arquivo (`configuracao`, `mesESimulacoes`, `equipeEClientes`, `datas`, `fechamento`, `briefingEContexto`, `comercial`, `tarefas`, `financeiro`) e as peças comuns em `comum.ts`. Ferramenta nova entra no arquivo da área.
+
 `app/api/mcp` e `app/api/mcp/[token]` → `lib/mcp/`. O Claude entra com um usuário próprio vinculado como admin
 ("Claude (conector)"): RLS e auditoria valem para ele como para um sócio. Ferramentas: ver/alterar configuração
 (percentuais, regime, ordem de distribuição, sócios, serviços, tipos de entrega em minutos, custos fixos, clientes),
