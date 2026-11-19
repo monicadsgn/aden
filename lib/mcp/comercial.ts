@@ -14,6 +14,7 @@ import { configQuizVazia, linkDoQuiz, normalizarConfigQuiz } from "../calculo/qu
 import { resumoDoQuiz, resumoPorCampanha } from "../calculo/quizFunil";
 import type { Meta, Pacote } from "../calculo/tipos";
 import { ganharLead } from "../dados/acoes";
+import { metricasDoCliente } from "../meta/metricasCliente";
 import { publicarMeta } from "../meta/publicar";
 import { conferirConexaoMeta } from "../meta/conferir";
 import { ROTULO_STATUS_META } from "../meta/estado";
@@ -147,6 +148,27 @@ export function registrarComercial(server: McpServer, obterRepo: () => Promise<R
             cliente: { nome: c.nome, status: ROTULO_STATUS_META[r.cliente.status], motivo: r.cliente.motivo, pagina: r.cliente.paginaNome, instagram: r.cliente.instagramUsuario ? `@${r.cliente.instagramUsuario}` : null, passoAPassoParaOCliente: r.cliente.passosParaCliente },
           }),
         };
+      }),
+  );
+
+  server.registerTool(
+    "ver_metricas_instagram",
+    {
+      title: "Métricas do Instagram do cliente (só leitura)",
+      description:
+        "Puxa direto da Meta os números do Instagram de um cliente conectado: visualizações, pessoas alcançadas, interações, compartilhamentos, salvamentos, visitas ao perfil, cliques no link e seguidores novos, cada um com o período anterior e a variação em %. Traz também o alcance e os seguidores dia a dia, os melhores posts do período e o perfil do público. Use para montar o relatório e a apresentação (siga a skill de relatório da Aden). Só funciona se o cliente estiver conectado e com \"Permitir ler métricas\" ligado na ficha. Nunca invente número: o que vier em `faltou` a Meta não devolveu, avise em vez de estimar. Os últimos 1 ou 2 dias podem estar incompletos na Meta.",
+      inputSchema: {
+        cliente: z.string().describe("nome ou id do cliente"),
+        dias: z.number().int().min(1).max(30).optional().describe("tamanho do período em dias (padrão 28, máximo 30); compara com o período de mesmo tamanho logo antes"),
+      },
+    },
+    async ({ cliente, dias }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const c = resolver((await repo.carregarConfig()).clientes, cliente, "Cliente");
+        const r = await metricasDoCliente(repo, c.id, dias);
+        if (!r.ativo) return r.motivo === "desligado" ? "A conexão com a Meta está desligada (META_CONEXAO_ATIVA)." : "Falta o acesso da Aden à Meta na Vercel.";
+        return r;
       }),
   );
 

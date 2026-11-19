@@ -5,7 +5,8 @@
 // deixa escolher qual Página é do cliente e dá o passo a passo pronto para mandar a ele.
 // Nada aqui publica, liga métricas ou mexe na conta do cliente.
 
-import { Check, Copy, Pause, Play, PlugZap, RefreshCw, Send, Share2 } from "lucide-react";
+import { Check, Copy, FileText, Pause, Play, PlugZap, RefreshCw, Send, Share2 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Badge, Botao, type Tom } from "../ui";
 import { useDados } from "@/lib/dados/contexto";
@@ -205,6 +206,25 @@ export function ConexaoMeta({ clienteId }: { clienteId: string }) {
             </ul>
           </details>
         </>
+      )}
+
+      {status === "conectado" && conexao.instagramUsuario && (
+        <div className="flex flex-col gap-2 rounded-bloco border border-linha px-3 py-2 text-[12px]">
+          <label className="flex items-center gap-2 font-semibold">
+            <input type="checkbox" checked={conexao.metricasAtivas} disabled={ocupado} onChange={(e) => void salvar({ metricasAtivas: e.target.checked }, false)} />
+            Permitir ler as métricas do Instagram deste cliente
+          </label>
+          <p className="text-texto-suave">
+            Só leitura: a Aden puxa os números direto da Meta (alcance, visitas, seguidores, melhores posts). O Claude usa isso para montar a apresentação, e o botão abaixo gera o relatório em PDF.
+          </p>
+          {conexao.metricasAtivas && (
+            <div>
+              <Link href={`/imprimir/relatorio?cliente=${clienteId}&dias=28`} className="inline-flex h-8 items-center gap-1.5 rounded-botao border border-linha px-3 text-xs font-semibold hover:bg-superficie-2">
+                <FileText size={13} /> Gerar relatório (PDF)
+              </Link>
+            </div>
+          )}
+        </div>
       )}
 
       {status === "conectado" && conexao.instagramUsuario && (
