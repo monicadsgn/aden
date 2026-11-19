@@ -15,7 +15,7 @@ import { motivoSemAprovacaoFora, type Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import { configQuizVazia, type ConfigQuiz } from "../calculo/quizConfig";
 import { novaCampanha, type Campanha } from "../calculo/campanhas";
-import type { ConexaoMeta, RespostaStatusMeta } from "../meta/estado";
+import type { ConexaoMeta, RespostaPublicarMeta, RespostaStatusMeta } from "../meta/estado";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { aplicarResposta, montarPainel } from "../calculo/painel";
 import type { Pagamento } from "../calculo/pagamentos";
@@ -785,6 +785,10 @@ export class RepositorioLocal implements Repositorio {
 
   /** No modo demonstração não existe servidor nem Meta. */
   async metaNoServidor(): Promise<RespostaStatusMeta> {
+    return { ativo: false, motivo: "desligado" };
+  }
+
+  async metaPublicarNoServidor(): Promise<RespostaPublicarMeta> {
     return { ativo: false, motivo: "desligado" };
   }
 

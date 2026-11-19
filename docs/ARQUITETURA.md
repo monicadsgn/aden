@@ -253,6 +253,12 @@ Primeira etapa da integração com a Meta. **Só leitura**: nada é publicado, n
 - Ficha do cliente → Dados → cartão **Instagram e Facebook** (`components/clientes/ConexaoMeta.tsx`): estado em
   português, Conferir conexão, escolher a Página, pausar/reativar, permissões por etapa e passo a passo copiável.
 - Conector: `ver_conexao_meta` (só leitura).
+- **Etapa 2, publicar foto ou carrossel (19/11/2026):** `POST /api/meta/publicar` (só sócio) e conector `publicar_no_instagram`,
+  ambos por `lib/meta/publicar.ts`. Regras puras em `lib/meta/publicacao.ts` (só .jpg https, 1 foto ou 2 a 10 no
+  carrossel, legenda até 2200). Travas, todas juntas: `META_CONEXAO_ATIVA=1`, `META_PUBLICAR_ATIVO=1`, o @ em
+  `META_PUBLICAR_CONTAS` (lista separada por vírgula), cliente conectado com "Permitir publicar" ligado na ficha
+  (`conexoes_meta.publicar_ativo`, nasce `false`). `dryRun` é `true` por padrão (prévia); publicar de verdade exige
+  `dryRun=false` e a frase de confirmação com o @ da conta. Facebook, reels, stories e agendamento ficam para depois.
 - Próximas etapas (cada uma um PR, nascendo desligada): publicar agora (só conta de teste), fila de agendamento,
   Facebook, exclusão, métricas (base e tela do cliente).
 

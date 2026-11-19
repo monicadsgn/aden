@@ -125,3 +125,59 @@ export async function conferirToken(token: string): Promise<SituacaoToken> {
 
 /** Token do usuário do sistema (variável da Vercel). Nunca sai do servidor. */
 export const tokenMeta = () => ler("META_ACCESS_TOKEN");
+
+// ── Publicar no Instagram (etapa 2) ────────────────────────────────────────────────────────────────────────
+// Foto: cria o contêiner e publica. Carrossel: um contêiner por imagem, um do carrossel, e publica.
+// Só é chamado por lib/meta/publicar.ts depois de todas as travas (chaves, lista de contas, confirmação escrita).
+
+const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Espera o contêiner ficar pronto (FINISHED). Erro da Meta ou demora demais = erro em português simples. */
+async function esperarContainer(token: string, id: string, tentativas = 10, pausaMs = 2000): Promise<void> {
+  for (let i = 0; i < tentativas; i++) {
+    const r: { status_code?: string } = await graph(id, { token, parametros: { fields: "status_code" } });
+    if (r.status_code === "FINISHED") return;
+    if (r.status_code === "ERROR" || r.status_code === "EXPIRED") throw new ErroMeta("A Meta não conseguiu processar a imagem. Confira se o link abre e é um .jpg.", null);
+    await dormir(pausaMs);
+  }
+  throw new ErroMeta("A Meta demorou demais para processar a imagem. Tente de novo em instantes.", null);
+}
+
+export async function publicarNoInstagram(
+  token: string,
+  instagramId: string,
+  plano: { imagens: string[]; legenda: string },
+): Promise<{ postId: string; link: string | null }> {
+  let containerId: string;
+  if (plano.imagens.length === 1) {
+    const c: { id: string } = await graph(`${instagramId}/media`, {
+      token,
+      metodo: "POST",
+      parametros: { image_url: plano.imagens[0], ...(plano.legenda && { caption: plano.legenda }) },
+    });
+    containerId = c.id;
+  } else {
+    const filhos: string[] = [];
+    for (const url of plano.imagens) {
+      const f: { id: string } = await graph(`${instagramId}/media`, { token, metodo: "POST", parametros: { image_url: url, is_carousel_item: "true" } });
+      filhos.push(f.id);
+    }
+    for (const id of filhos) await esperarContainer(token, id);
+    const c: { id: string } = await graph(`${instagramId}/media`, {
+      token,
+      metodo: "POST",
+      parametros: { media_type: "CAROUSEL", children: filhos.join(","), ...(plano.legenda && { caption: plano.legenda }) },
+    });
+    containerId = c.id;
+  }
+  await esperarContainer(token, containerId);
+  const p: { id: string } = await graph(`${instagramId}/media_publish`, { token, metodo: "POST", parametros: { creation_id: containerId } });
+  let link: string | null = null;
+  try {
+    const m: { permalink?: string } = await graph(p.id, { token, parametros: { fields: "permalink" } });
+    link = m.permalink ?? null;
+  } catch {
+    // o post já saiu; o link é só um extra
+  }
+  return { postId: p.id, link };
+}
