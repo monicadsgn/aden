@@ -265,8 +265,18 @@ Primeira etapa da integração com a Meta. **Só leitura**: nada é publicado, n
   em try/catch próprio; o que a Meta não entregar vai em `faltou`); regras puras em `lib/meta/metricas.ts` (período de 1 a
   30 dias, comparação com o período anterior, amostra pequena). Relatório em PDF: `/imprimir/relatorio?cliente=&dias=`
   (botão na ficha), com prints do Meta Business Suite anexados na hora, sem guardar. Nunca inventa número.
-- Próximas etapas (cada uma um PR, nascendo desligada): fila de agendamento (peça aprovada pelo cliente publica sozinha
-  no dia de "Vai ao ar em"), Facebook, exclusão.
+- **Fila de publicação automática (19/11/2026, migration 0050):** cliente aprova a peça (painel ou aprovação registrada
+  de fora) → o gatilho `agendar_meta_ao_aprovar` marca a peça como agendada e a põe em `publicacoes_meta`, se o cliente
+  tiver "Agendar sozinho" ligado (`conexoes_meta.agendar_ativo`, nasce `false`), "Permitir publicar" e conexão pronta.
+  Só entra peça aprovada depois de ligar (o que já estava agendado à mão no Instagram nunca é publicado de novo).
+  `/api/meta/fila` (segredo `CRON_SECRET`, a cada 5 min pelo pg_cron do Supabase, mais uma vez por dia pela Vercel) chama
+  `meta_fila_pegar` (já marca "publicando", sem publicar duas vezes), publica foto ou carrossel na ordem das artes
+  (`lib/meta/fila.ts`) e `meta_fila_resultado` dá baixa (peça publicada, tarefa concluída). Hora de "Vai ao ar em" já
+  passou e no máximo 1 dia atrás; meia-noite exata (sem hora) não sai. Imagem que não é JPEG passa por
+  `/api/meta/jpg` (converte arte da própria Aden, qualidade 95). Vídeo, PDF ou imagem de fora: falha definitiva com o
+  motivo na ficha e em `ver_fila_instagram`. Mesmas travas da publicação (`META_CONEXAO_ATIVA`, `META_PUBLICAR_ATIVO`,
+  `META_PUBLICAR_CONTAS`). Para desfazer uma peça: tirar de "Agendada" ou mudar a data. Reels e stories seguem manuais.
+- Próximas etapas (cada uma um PR, nascendo desligada): Facebook, stories em sequência, exclusão.
 
 ## Fase 2 · regras da reunião de 29/09/2026
 

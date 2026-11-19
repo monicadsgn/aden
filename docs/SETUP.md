@@ -126,6 +126,20 @@ Tudo nasce desligado. O token da Meta mora **só** na Vercel: nunca em chat, có
    - Publicar (etapa 2, só quando a Moni pedir): `META_PUBLICAR_ATIVO` = `1` e `META_PUBLICAR_CONTAS` = `@conta1,@conta2` (só essas contas publicam) ou `*` (qualquer conta; a trava fica no "Permitir publicar" de cada cliente)
 3. **Redeploy** depois de mexer nas variáveis.
 4. Métricas: marque "Permitir ler as métricas" na ficha do cliente (o token precisa de `instagram_manage_insights`, `pages_read_engagement`, `read_insights`). "Gerar relatório (PDF)" abre a página de impressão.
-5. No site: ficha do cliente → Dados → **Instagram e Facebook** → **Conferir conexão**. Escolha a Página do cliente
+5. **Fila de publicação automática** (peça aprovada pelo cliente sai sozinha na hora de "Vai ao ar em"):
+   - **Supabase → SQL Editor** (query limpa): rode `supabase/migrations/0050_fila_instagram.sql`. É só acréscimo. Rode **antes** de aprovar o PR.
+   - Para a conferência a cada 5 minutos (a Vercel Hobby só roda uma vez por dia), rode uma vez, trocando `SEU-CRON-SECRET`
+     pelo valor de `CRON_SECRET` da Vercel (o mesmo do aviso diário; o texto fica só no seu banco, nunca em chat ou código):
+     ```sql
+     create extension if not exists pg_cron;
+     create extension if not exists pg_net;
+     select cron.schedule('aden-fila-instagram', '*/5 * * * *', $$
+       select net.http_get(url := 'https://aden-sable.vercel.app/api/meta/fila',
+         headers := jsonb_build_object('Authorization', 'Bearer SEU-CRON-SECRET'));
+     $$);
+     ```
+     Para parar: `select cron.unschedule('aden-fila-instagram');`.
+   - Na ficha do cliente: "Permitir publicar" e "Agendar sozinho o que o cliente aprovar". Nasce desligado.
+6. No site: ficha do cliente → Dados → **Instagram e Facebook** → **Conferir conexão**. Escolha a Página do cliente
    ("Usar neste cliente" ou "É esta", quando o @ bate com o da ficha). Se ainda não aparecer, copie o passo a passo e
    mande ao cliente.

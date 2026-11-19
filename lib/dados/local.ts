@@ -15,7 +15,7 @@ import { motivoSemAprovacaoFora, type Tarefa } from "../calculo/tarefas";
 import type { InteracaoLead, Lead } from "../calculo/crm";
 import { configQuizVazia, type ConfigQuiz } from "../calculo/quizConfig";
 import { novaCampanha, type Campanha } from "../calculo/campanhas";
-import type { ConexaoMeta, RespostaPublicarMeta, RespostaStatusMeta } from "../meta/estado";
+import type { ConexaoMeta, PublicacaoFila, RespostaPublicarMeta, RespostaStatusMeta } from "../meta/estado";
 import type { RespostaMetricas } from "../meta/metricas";
 import type { VisitaQuiz } from "../calculo/quizFunil";
 import { aplicarResposta, montarPainel } from "../calculo/painel";
@@ -791,6 +791,10 @@ export class RepositorioLocal implements Repositorio {
 
   async metaPublicarNoServidor(): Promise<RespostaPublicarMeta> {
     return { ativo: false, motivo: "desligado" };
+  }
+
+  async listarFilaInstagram(): Promise<PublicacaoFila[]> {
+    return [];
   }
 
   async metaMetricasNoServidor(): Promise<RespostaMetricas> {

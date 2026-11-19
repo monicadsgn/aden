@@ -17,7 +17,7 @@ import { ganharLead } from "../dados/acoes";
 import { metricasDoCliente } from "../meta/metricasCliente";
 import { publicarMeta } from "../meta/publicar";
 import { conferirConexaoMeta } from "../meta/conferir";
-import { ROTULO_STATUS_META } from "../meta/estado";
+import { ROTULO_FILA, ROTULO_STATUS_META } from "../meta/estado";
 import { paraCentavos, paraReais, resolver } from "./traducao";
 import { z } from "zod";
 import { aplicar, executar, opt, salvarDiferenca } from "./comum";
@@ -169,6 +169,25 @@ export function registrarComercial(server: McpServer, obterRepo: () => Promise<R
         const r = await metricasDoCliente(repo, c.id, dias);
         if (!r.ativo) return r.motivo === "desligado" ? "A conexão com a Meta está desligada (META_CONEXAO_ATIVA)." : "Falta o acesso da Aden à Meta na Vercel.";
         return r;
+      }),
+  );
+
+  server.registerTool(
+    "ver_fila_instagram",
+    {
+      title: "Fila de publicação automática no Instagram (só leitura)",
+      description:
+        "Mostra as peças que entraram na fila para sair sozinhas no Instagram (cliente aprovou no painel, com \"Agendar sozinho\" ligado na ficha): quando saem, se já foram, e o motivo de quem não saiu. Sem cliente, mostra todos. Peça que \"não saiu\" não tenta de novo sozinha quando o erro é da imagem (vídeo, PDF, imagem de fora): avise a Moni. Quem liga a fila é a Moni, cliente por cliente, na ficha.",
+      inputSchema: { cliente: z.string().optional().describe("nome ou id do cliente (vazio = todos)") },
+    },
+    async ({ cliente }) =>
+      executar(async () => {
+        const repo = await obterRepo();
+        const config = await repo.carregarConfig();
+        const id = cliente ? resolver(config.clientes, cliente, "Cliente").id : undefined;
+        const nomes = new Map(config.clientes.map((c) => [c.id, c.nome]));
+        const fila = await repo.listarFilaInstagram(id);
+        return fila.map((f) => ({ cliente: nomes.get(f.clienteId) ?? "", peca: f.titulo, saiEm: f.publicarEm, situacao: ROTULO_FILA[f.estado], tentativas: f.tentativas, motivo: f.erro, link: f.link }));
       }),
   );
 
